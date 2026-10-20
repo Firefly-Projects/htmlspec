@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Content-address runtime assets</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Content-address runtime assets</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Content-address runtime assets</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-13-content-address-runtime-assets/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-derive-stored-paths-from-the-lockfile">1. Derive stored paths from the lockfile</a></li>
+          <li><a href="#hs-2-build-the-content-addressed-store">2. Build the content-addressed store</a></li>
+          <li><a href="#hs-3-validate-asset-references">3. Validate asset references</a></li>
+          <li><a href="#hs-4-validate-project-asset-topology">4. Validate project asset topology</a></li>
+          <li><a href="#hs-5-reference-rewriting-in-the-formatter">5. Reference rewriting in the formatter</a></li>
+          <li><a href="#hs-6-initialization">6. Initialization</a></li>
+          <li><a href="#hs-7-migrate-existing-documents">7. Migrate existing documents</a></li>
+          <li><a href="#hs-8-verify-the-whole-property">8. Verify the whole property</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-derive-stored-paths-from-the-lockfile">
+          <h2>1. Derive stored paths from the lockfile</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Document the path derivation rule (<code>assets/&lt;algo&gt;-&lt;truncated-hash&gt;/&lt;filename&gt;</code>, 16 hex characters) in <code>assets/vendor.lock.json</code>'s comment block, so the lockfile states the rule it is now the input to</h3>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Add a function in <code>crates/htmlspec-assets</code> that maps a lockfile entry's full <code>sha256</code> and file name to its stored path, with unit tests covering the truncation length and the algorithm prefix</h3>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Add a test asserting no two lockfile entries share a truncated hash, so a collision in the closed store fails the suite rather than silently aliasing</h3>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Extend the derivation to the project's own stylesheets and script (<code>htmlspec.css</code>, <code>htmlspec-print.css</code>, <code>htmlspec.js</code>, <code>template.html</code>), which have no lockfile entry today, by recording their hashes alongside the vendored entries</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-build-the-content-addressed-store">
+          <h2>2. Build the content-addressed store</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Populate the store from the lockfile and the project stylesheets, leaving the existing <code>assets/vendor/</code> tree in place so this step is additive</h3>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Generate the Rust <code>Asset</code> table from the lockfile in a build script, replacing the hand-written <code>include_bytes!</code> paths in <code>crates/htmlspec-assets/src/lib.rs</code></h3>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Update <code>flake.nix</code> path construction in <code>assetProvenance</code> to use the same derivation, and <a href="evidence/group-3-handoff.md">confirm the re-fetch and hash comparison still pass against the new layout</a></h3>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Add a check asserting the path Nix builds and the path the Rust build script generates agree for every lockfile entry, so the two cannot drift apart</h3>
+              <p data-field="deviation">Migration note: the check added, <code>every_generated_address_matches_the_derivation</code>, compares the asset table the build script generates with the Rust derivation, <code>address::stored_path</code>, for every embedded asset. It never evaluates the path <code>flake.nix</code> builds, which <code>flake.nix</code> uses only to read each committed copy in its provenance check; the test's comment says Nix derives the same path by the same rule, "so pinning the rule here pins all three". Shown in <code>crates/htmlspec-assets/src/lib.rs</code> and <code>flake.nix</code> at <code>18acf0d</code>.</p>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done">
+              <h3>2.5 Verify <code>cargo test -p htmlspec-assets</code> still verifies committed bytes against recorded hashes offline</h3>
+            </li>
+            <li class="task" id="task-2-6" data-change="added" data-state="done">
+              <h3>2.6 Add <code>Store::discover</code>, which distinguishes an absent store from an empty one, resolves a reference to Match/Absent/Mismatch/NotAddressed, and reports duplicates across addressed and unaddressed files together</h3>
+            </li>
+            <li class="task" id="task-2-7" data-change="added" data-state="done">
+              <h3>2.7 Replace the template's hardcoded asset paths with <code>{{ASSET:&lt;name&gt;}}</code> placeholders resolved at render time, so no hash is ever written into the template</h3>
+            </li>
+            <li class="task" id="task-2-8" data-change="added" data-state="done">
+              <h3>2.8 Repair <code>conformance/tests/presentation.rs</code>, which read a document directory that moved when the previous change was archived.</h3>
+              <p>Discover change document directories under both <code>openspec/changes/</code> and <code>openspec/changes/archive/</code> so archiving cannot silently drop documents from these checks. <a href="evidence/group-3-handoff.md">This failure pre-existed this change and was pushed in <code>6956324</code></a></p>
+            </li>
+          </ul>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> <a href="evidence/group-3-handoff.md"><code>evidence/group-3-handoff.md</code></a>, written when groups 1 and 2 were done, records that tasks 2.6, 2.7, and 2.8 were added after the fact, for work that was not in the original list.</p>
+          </aside>
+        </section>
+        <section id="hs-3-validate-asset-references">
+          <h2>3. Validate asset references</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Add the rule rejecting a reference whose named bytes are absent from the store, with a stable diagnostic identifier</h3>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Add the rule rejecting a reference whose stored bytes hash differently from the name, with its own distinct diagnostic identifier</h3>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Classify both rules as errors that cannot be downgraded to warnings, alongside the existing safety rules</h3>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 Scope both rules to a document validated within a project that has an asset store, so a document with no store around it has its references left unresolved</h3>
+            </li>
+            <li class="task" id="task-3-5" data-change="added" data-state="done">
+              <h3>3.5 <a href="evidence/group-3-decision.md">Verify the existing 37 conformance fixtures still pass unchanged</a>, since their references are symbolic and no store sits beside them</h3>
+            </li>
+            <li class="task" id="task-3-6" data-change="added" data-state="done">
+              <h3>3.6 Add a test that a marker inside a document cannot exempt it, so the scope stays a property of the store rather than a switch a document carries</h3>
+            </li>
+            <li class="task" id="task-3-7" data-change="added" data-state="done">
+              <h3>3.7 Add conformance fixtures pinning each rule: one valid and one invalid per rule, each invalid fixture declaring the rule identifier it violates</h3>
+            </li>
+            <li class="task" id="task-3-8" data-change="added" data-state="done">
+              <h3>3.8 Add a fixture for the stale-reference case, where a document names one stylesheet revision and a different revision is stored</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-validate-project-asset-topology">
+          <h2>4. Validate project asset topology</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Add the rule rejecting a project that stores identical asset bytes at more than one location, reporting every location holding them</h3>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Confirm the rule does not report differing revisions of one file as duplicates, and reports nothing for a directory with no store</h3>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Wire the topology rule into <code>scripts/check</code>, since it is a project-level property that per-document validation cannot observe</h3>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 Add conformance fixtures for the duplicate case, the copy-per-document case, and the distinct-revisions case</h3>
+            </li>
+            <li class="task" id="task-4-5" data-change="added" data-state="done">
+              <h3>4.5 <a href="evidence/group-8-verification.md">Verify the suite now fails on the project's existing duplication</a>, which is the expected signal before the migration completes</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-reference-rewriting-in-the-formatter">
+          <h2>5. Reference rewriting in the formatter</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Rewrite an asset reference only when the referenced bytes are absent from the store, and report rather than rewrite when the named bytes exist</h3>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Add a fixture pinning that behavior, so a formatter run cannot silently re-point an archived document at newer bytes</h3>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Confirm formatting stays idempotent under the new rewrite: a second pass is byte-identical</h3>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Confirm reference rewriting does not widen a diff beyond the reference itself, per the diff-churn requirement</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-initialization">
+          <h2>6. Initialization</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Have <code>init</code> write asset references matching the bytes the project stores</h3>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Have <code>init</code> reuse an already-stored asset rather than writing a second copy</h3>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Verify a document initialized into a project with no assets still renders offline without a further step</h3>
+            </li>
+            <li class="task" id="task-6-4" data-change="added" data-state="done">
+              <h3>6.4 Add a test that initialization cannot emit a reference whose hash disagrees with the stored bytes, which is the defect class this change exists to eliminate</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-migrate-existing-documents">
+          <h2>7. Migrate existing documents</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Rewrite asset references in the project's own documents, including <code>README.html</code>, to the stored hashes.</h3>
+              <p data-field="deviation"><strong><code>README.html</code> needed no rewrite:</strong> it inlines its assets as <code>data-inline</code> script elements and carries no <code>assets/</code> reference at all, and <a href="proposal.html#hs-what-changes">proposal.md</a> excludes it from this change. The archived <code>deterministic-formatting.html</code> was the only project document with references to rewrite</p>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done">
+              <h3>7.2 Re-render the archived <a href="../2026-08-10-html-spec/evidence/documents/deterministic-formatting.html"><code>openspec/changes/archive/2026-08-10-html-spec/documents/deterministic-formatting.html</code></a> against the current stylesheet, so its declared <code>hs-skip-link</code> works</h3>
+            </li>
+            <li class="task" id="task-7-3" data-change="added" data-state="done">
+              <h3>7.3 Confirm the re-rendered document still validates against the same contract and its semantic content is unchanged</h3>
+            </li>
+            <li class="task" id="task-7-4" data-change="added" data-state="done">
+              <h3>7.4 Remove the duplicated 6.0 MB asset tree under the archived change</h3>
+            </li>
+            <li class="task" id="task-7-5" data-change="added" data-state="done">
+              <h3>7.5 Remove the old <code>assets/vendor/</code> layout once nothing references it</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-8-verify-the-whole-property">
+          <h2>8. Verify the whole property</h2>
+          <ul>
+            <li class="task" id="task-8-1" data-change="added" data-state="done">
+              <h3>8.1 <a href="evidence/group-8-verification.md">Confirm <code>scripts/check</code> passes</a>, including the new asset rules</h3>
+            </li>
+            <li class="task" id="task-8-2" data-change="added" data-state="done" data-refs="scenario-shared-assets">
+              <h3>8.2 <a href="evidence/group-8-verification.md">Confirm each library appears exactly once in the project</a>, satisfying the <a href="specification.html#scenario-shared-assets">shared-assets scenario</a> that is currently violated</h3>
+            </li>
+            <li class="task" id="task-8-3" data-change="added" data-state="done">
+              <h3>8.3 Confirm the skip-link defect is fixed by opening the re-rendered document and reaching the skip link by keyboard.</h3>
+              <p><strong>Verified interactively by Scott in Firefox on 2026-08-13:</strong> Tab reveals "Skip to content" and Enter reaches the content region. The static conditions (link first focusable, target present, stylesheet carries both the hidden and <code>:focus</code> rules) are recorded in <a href="evidence/group-8-verification.md"><code>evidence/group-8-verification.md</code></a>; the keyboard interaction itself needed a person, because this machine has no Chrome and no WebDriver</p>
+            </li>
+            <li class="task" id="task-8-4" data-change="added" data-state="done">
+              <h3>8.4 Reintroduce each defect the new rules exist for and confirm the suite fails, since a check that has never failed is a check nobody has tested.</h3>
+              <p>All three new rules fail on their defect. <strong>Found a coverage boundary:</strong> a document honestly naming an older revision that lacks a class it declares is accepted by <code>asset/*</code>; the archive's actual defect (an unaddressed reference) is caught by <code>format --check</code> instead. Recorded in <a href="evidence/group-8-verification.md"><code>evidence/group-8-verification.md</code></a></p>
+            </li>
+            <li class="task" id="task-8-5" data-change="added" data-state="done">
+              <h3>8.5 Record evidence for the measured claims: store size before and after, the duplication removed, and the browser verification of the skip link</h3>
+              <p data-field="deviation">Migration note: the before-and-after measurement was recorded from <code>18acf0d</code>, this change's own first commit, and not from before the change. At <code>18acf0d</code> the content-addressed store already sat beside <code>assets/vendor/</code> and the flat stylesheets, so the recorded fall from 18.1 MB to 6.0 MB of tracked asset bytes goes from three copies of the runtime to one, with the store this change added counted on both sides. Shown in section 8.5 of <a href="evidence/group-8-verification.md"><code>evidence/group-8-verification.md</code></a>, and in the tree at <code>18acf0d</code>.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

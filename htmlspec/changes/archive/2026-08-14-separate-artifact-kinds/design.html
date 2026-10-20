@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Separate artifact kinds</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Separate artifact kinds</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Separate artifact kinds</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-14-separate-artifact-kinds/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>See <a href="proposal.html#hs-why">proposal.md — Why</a> for the motivation. Requirements are in <a href="specification.html#hs-artifact-kinds"><code>specs/artifact-kinds/spec.md</code></a>, <a href="specification.html#hs-document-template"><code>specs/document-template/spec.md</code></a>, <a href="specification.html#hs-document-validation"><code>specs/document-validation/spec.md</code></a>, and <a href="specification.html#hs-toolchain-packaging"><code>specs/toolchain-packaging/spec.md</code></a>.</p>
+          <p>The constraints that shape the approach are existing project facts, and three of them are load-bearing:</p>
+          <ul>
+            <li><strong><code>status</code> is projected, not merely declared.</strong> <code>crates/htmlspec-parse/src/project.rs:100</code> reads <code>&lt;meta name="htmlspec-status"&gt;</code> into <code>Model.status</code>, and <code>crates/htmlspec-schema/doc/projection.md</code> section 9.3 makes that projection normative: "An absent status is invalid. A status outside the schema's enumeration is invalid." So replacing the field is a change to the projection specification, the JSON Schema, the Rust model, and the projection code — not a metadata rename.</li>
+            <li><strong>The projection specification is a fourth public artifact.</strong> The archived foundation design settled that "the public contract is therefore three pieces, not one: the JSON Schema for the projected model, a normative HTML-to-model projection specification, and conformance fixtures pinning the mapping." A new metadata field has to appear in all three or the contract is incomplete.</li>
+            <li><strong>The schema/Rust split is enforced by a test.</strong> <code>rule_code_does_not_restate_schema_expressible_values</code> in <code>crates/htmlspec-validate/tests/schema_rust_split.rs</code> fails if rule code restates a value the schema could express. The kind vocabulary is an enumeration, so it belongs in the schema, and the three downstream rules are relational, so they belong in Rust. That line is drawn for us.</li>
+            <li>
+              <p><strong>Sixty-nine of the project's 82 HTML documents declare a status</strong>, and they fall into four groups that differ in kind rather than only in size. 41 conformance fixtures, which a generator writes. <strong>23 projection fixtures, which are hand-written and whose <code>expected.json</code> holds the projected model itself</strong> — so the field name appears in committed test data 23 times, and <code>fixtures/projection/metadata</code> exists to pin section 9.3, the clause defining the field being removed. 3 dogfood documents, which are authored prose. The template, and one archived document. The 10 parse-error fixtures declare no status, because malformed markup never reaches the metadata rules, and the 3 root HTML files are not html-spec documents at all.</p>
+              <aside data-migration="note">
+                <p><strong>Migration note.</strong> The total of 82 was later corrected. <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §1 counts 80 tracked <code>.html</code> files at <code>9fec61d</code>, the commit before this change, so the denominator was two high, and it confirms that 69 declared a status.</p>
+              </aside>
+            </li>
+            <li><strong>25 Rust source files carry a status literal in an inline test document</strong> — 12 in <code>htmlspec-validate</code>, 6 in <code>htmlspec-format</code>, 3 in <code>htmlspec-parse</code>, 2 each in <code>htmlspec-cli</code> and <code>htmlspec-assets</code>. The compiler finds none of them: a stale literal fails at run time rather than at build time.</li>
+            <li><strong>Only one existing rule takes a task as its subject.</strong> <code>schema/missing-reason</code> reads <code>task.state == dropped</code>, and no other unit has a state. <a href="evidence/measured-claims.md">I checked the others by building documents and running the binary</a>: <code>refs/unresolved</code>, <code>refs/removed-target</code>, <code>review/stale-reference</code> all fire from a decision, <code>review/stale-verification</code> fires from a verification, and <code>schema/prefix-mismatch</code> fires on any unit. My earlier claim that six rules needed a task was wrong, and it matters because it decides how many fixtures must become <code>tasks</code> documents.</li>
+            <li><strong><code>scripts/check</code> is the single definition of a healthy revision.</strong> Any new rule has to pass it, and the migration has to land in one commit that keeps it green — unlike the previous change, there is no deliberate red phase here.</li>
+          </ul>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong></p>
+          <ul>
+            <li>A declared kind that carries the document's role, replacing <code>status</code>, expressed once in the schema and derived everywhere else.</li>
+            <li>Exactly the three enforced rules the proposal states, and demonstrably no others.</li>
+            <li>Unconstrained proposal and design kinds, with that freedom pinned by fixtures rather than asserted in prose.</li>
+            <li>An archival operation whose synthesis is agent-driven and whose checking is code.</li>
+            <li>A migration that leaves <code>scripts/check</code> green in the same commit.</li>
+          </ul>
+          <p><strong>Non-Goals:</strong></p>
+          <ul>
+            <li>The <code>/htmlspec:*</code> command lifecycle beyond archival.</li>
+            <li>The Markdown-to-HTML converter.</li>
+            <li>Any change to the seven units' own definitions or to <code>document-schema</code>'s unit shapes.</li>
+            <li>A parser that reads a proposal or a design and emits requirements. This is a non-goal in the strong sense: the specs forbid it.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-replace-status-rather-than-add-kind-beside-it" data-change="added" data-status="accepted">
+            <h3>Replace <code>status</code> rather than add <code>kind</code> beside it <span class="hs-id">decision-replace-status-rather-than-add-kind-beside-it</span></h3>
+            <p>Both fields could coexist — <code>kind</code> for role, <code>status</code> for stage — and that is the more conservative move. It is rejected because the two would immediately disagree. A document's kind is fixed for its life and its change's stage is not, so <code>status</code> would drift from reality on every document that outlives one stage, and nothing reads it to notice. The field records the wrong subject: a stage describes a change as it moves, and a change's stage is derivable from which of its documents exist.</p>
+            <p data-field="rationale">Keeping a field that no rule reads, that describes something other than its own document, and that a reader would reasonably trust, is worse than removing it. Removal is breaking and the breakage is mechanical.</p>
+            <p data-field="rationale">Alternative considered: keep <code>status</code> and deprecate it silently. Rejected because a required field cannot be deprecated without either making it optional — which changes the schema anyway — or leaving every document carrying a value nothing believes.</p>
+          </section>
+          <section id="hs-the-kind-vocabulary-lives-in-the-schema-the-three-rules-live-in-rust">
+            <h3>The kind vocabulary lives in the schema; the three rules live in Rust</h3>
+            <p><code>kind</code> is a closed enumeration of four values on a required property, which is exactly what JSON Schema expresses well, and <code>rule_code_does_not_restate_schema_expressible_values</code> would fail a Rust <code>const</code> listing the same four strings. So the schema owns the vocabulary and rule code reads it through <code>schema_facts</code>, the way <code>refs.rs</code> already reads the <code>changeState</code> enumeration to find the removed state.</p>
+            <p>The three enforced rules are relational — a unit's kind against its document's kind, a count of tasks, a requirement against the verifications naming it — and JSON Schema cannot express any of them. They go in Rust. This is the same split the foundation change drew, and drawing it again here costs nothing because the line was already argued.</p>
+          </section>
+          <section id="hs-one-rule-module-and-the-placement-check-reads-the-model-rather-than-the-tree">
+            <h3>One rule module, and the placement check reads the model rather than the tree</h3>
+            <p>The three rules share one question — what kind is this document? — so they belong in one module, <code>rules/kinds.rs</code>, in a new <code>kind/*</code> namespace. A <code>kind/*</code> namespace rather than extending <code>schema/*</code>: these are not contract-shape faults, and a reader triaging a <code>schema/invalid</code> diagnostic is looking for a malformed unit.</p>
+            <p>They read <code>Projection.model</code> rather than the tree. Every input they need — the document's kind, its task list, its requirements, its verifications — is already projected, and a rule that walked the tree for units the model already holds would be a second projection that could disagree with the first. <code>safety/*</code> reads the tree because remote scripts never reach the model; that reasoning does not apply here.</p>
+            <p>Severity follows the proposal exactly: placement and completeness are errors in a namespace that is downgradable, and the advisory rule is a <code>review/*</code> warning rather than a <code>kind/*</code> one. That last choice matters — <a href="evidence/mutation-testing.txt"><code>review/*</code> is the namespace strict mode refuses to promote</a>, and an unverified requirement must not gate the work that produces the verification. Putting it in <code>kind/*</code> would let <code>--strict</code> fail a specification for being in progress, which is the phase gate the dependency model exists to avoid.</p>
+          </section>
+          <section id="hs-unconstrained-means-no-rule-fires-and-fixtures-prove-it">
+            <h3>Unconstrained means <em>no rule fires</em>, and fixtures prove it</h3>
+            <p>"Validation reports nothing about which units a proposal or design carries" is a claim about absence, and absence is the hardest thing to pin. A rule that quietly stopped firing would pass every test written to assert silence.</p>
+            <p>So the proposal and design fixtures are <strong>positive</strong> fixtures carrying units that would be violations if any placement matrix existed: a <code>proposal</code> with a requirement unit and a <code>design</code> with a task unit, each declaring <code>valid: true</code> and no rules. If someone later adds a placement rule for those combinations, those fixtures fail. The suite's existing <code>every_fixture_is_accepted_exactly_when_it_declares_it_is</code> does the work with no new harness concept.</p>
+            <p>A second guard states the boundary from the other side: a test asserting the <code>kind/*</code> namespace has exactly two rules and <code>review/*</code> gained exactly one. A count is crude, and it is the thing that fails when a fourth rule appears without a decision.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> The second guard as built does not count the <code>review/*</code> rules. <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §4 names the test, <code>the_kind_namespace_has_exactly_two_rules_and_constrains_no_upstream_kind</code>. In <code>crates/htmlspec-validate/src/rules/mod.rs</code> at <code>9c3a3c7</code>, the commit that landed this change, it asserts that the kind namespace holds two rules and that a proposal and a design carrying every unit draw no diagnostic at either strictness setting, and nothing in it counts <code>review/*</code>. Task 3.7 asks for that test and names no <code>review/*</code> count.</p>
+            </aside>
+          </section>
+          <section id="hs-kind-is-required-with-no-default">
+            <h3><code>kind</code> is required, with no default</h3>
+            <p>An optional <code>kind</code> with a default would make every unmigrated document silently become whatever the default is, and the most convenient default — <code>specification</code> — is the strictest kind. A document that was a proposal would acquire the one placement error the vocabulary has, and its author would be told their proposal must not carry tasks.</p>
+            <p><a href="evidence/mutation-testing.txt">Required and undefaulted means the migration is visible</a>: an unmigrated document fails with "no kind declared", which names the actual problem. This is the same argument the foundation change made for the schema version.</p>
+          </section>
+          <section id="hs-archival-synthesis-is-a-skill-the-program-only-checks">
+            <h3>Archival synthesis is a skill; the program only checks</h3>
+            <p>The proposal's fourth bullet forbids a parser, and the reason is worth restating as a design fact rather than a rule: the upstream kinds have no imposed structure, so there is no grammar to parse. An extractor would have to guess which paragraph of a design states an obligation, and a wrong guess produces a specification that passes every check while misstating the contract — worse than producing nothing, because it looks authoritative.</p>
+            <p>The division is that an agent writes and <code>htmlspec validate</code> checks. html-spec can hold that division in a way OpenSpec's Markdown sync cannot, because it has a validator: the agent's judgment is unconstrained and its output is not.</p>
+            <p>What the program contributes to archival is therefore small and worth naming precisely: <a href="evidence/measured-claims.md">it validates the specification, and it refuses to proceed while the specification reports an error</a>. Everything else in the sequence is instructions.</p>
+            <p>CAUTION: this makes archival non-reproducible in the strict sense. Two agents synthesizing the same change can produce differently-worded specifications that both validate. The specs require idempotence "in effect" — running twice must not alter the specification's <em>meaning</em> — which is a weaker property than byte-identity and the strongest one available when the operation is judgment. A reviewer reads the specification at archival, which is the same review a human-authored spec gets.</p>
+          </section>
+          <section class="decision" id="decision-the-archived-change-keeps-all-four-documents" data-change="added" data-status="accepted">
+            <h3>The archived change keeps all four documents <span class="hs-id">decision-the-archived-change-keeps-all-four-documents</span></h3>
+            <p>Archival could keep only the specification, since that is what survives as contract. It keeps everything. The whole argument for separating stages is that a proposal's argument and a design's reasoning are worth having later, and discarding them at archival would make the separation a filing convention after all — which is the thing this change exists to fix.</p>
+            <p data-field="rationale">The cost is directory size, and it is negligible: four HTML documents against the 6 MB shared asset store the previous change just deduplicated.</p>
+          </section>
+          <section id="hs-migration-rewrites-every-document-in-one-commit">
+            <h3>Migration rewrites every document in one commit</h3>
+            <p>The kind for each existing document is decidable by inspection rather than by rule, but it is not a substitution. Every conformance fixture, the template, and two dogfood documents carry a <strong>task</strong> alongside their requirements, because <code>base()</code> returns the rendered template and the template demonstrates all seven units at once. Declaring those documents <code>specification</code> trips the one placement rule, so the base loses its task and exactly one fixture — <code>invalid-schema-missing-reason</code>, the only one pinning a rule a task alone can violate — gains it back through its own <code>edit</code> function. That is a variant within one base rather than a second base.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> "Exactly one fixture" was later corrected. <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §2 records that <code>invalid-a11y-script-supplied-content</code> also depended on the task, because it worked by emptying the task's heading, and that it moved to the verification unit rather than taking the task back.</p>
+            </aside>
+            <p>The projection fixtures are the harder half and they are not documents in the same sense. Their <code>expected.json</code> <strong>is</strong> the projected model, so the field appears in committed test data rather than in markup a person reads, and one of them exists to pin the clause being removed.</p>
+            <p>One commit, because <code>scripts/check</code> must stay green and a half-migrated tree fails it. Unlike the asset change, there is no useful intermediate state here: a schema that accepts both <code>status</code> and <code>kind</code> during a transition would be a third shape nobody wants to specify.</p>
+            <p>The fixture generator does most of the work from one edit to its base. The 25 Rust files carrying an inline status literal are a mechanical substitution in test source, and the compiler finds none of them — a stale literal produces a document that fails validation at run time with "no kind declared", which is why the required-and-undefaulted decision matters more here than it looks.</p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>A "reports nothing" guarantee decays silently</strong> → Positive fixtures carrying would-be violations, plus a rule-count test. Both fail when a rule is added rather than passing quietly.</li>
+            <li><strong>The advisory warning becomes a gate under <code>--strict</code></strong> → It lives in <code>review/*</code>, the one namespace strict mode refuses to promote. A <code>kind/*</code> warning would be promotable and would fail an in-progress specification.</li>
+            <li><strong>Agent-synthesized specifications vary between runs</strong> → Accepted deliberately, and bounded by validation plus review at archival. Byte-reproducibility is unavailable for a judgment operation, and the alternative is the parser the specs forbid.</li>
+            <li><strong>A document declares a kind whose intended content it does not match</strong> → Not a defect. Intended content is guidance and the specs say so explicitly. The risk is that a reader mistakes guidance for a rule, which is why the normative table has an "enforced structure" column reading <code>None</code> twice.</li>
+            <li><strong>The migration misses an inline test document and the suite fails obscurely</strong> → It fails as "no kind declared" on a named document, which is the clearest failure this change can produce. The required-and-undefaulted decision buys that.</li>
+            <li><strong><code>kind</code> and the projection specification drift</strong> → Section 9.3 is rewritten in the same change, and the fixtures pin the mapping. The foundation change's three-piece contract argument applies unchanged.</li>
+            <li><strong>Four kinds prove to be the wrong number</strong> → The set is closed and adding a fifth is a schema change with its own compatibility cost. That is the same bet the seven-unit vocabulary made, and it is worth making again only because the four kinds come from OpenSpec's own working practice rather than from invention.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <ol>
+            <li>Add <code>kind</code> to the JSON Schema as a required, closed enumeration, and rewrite section 9.3 of the projection specification to project it. Remove <code>status</code> from both.</li>
+            <li>Update the Rust model and <code>project.rs</code> to read <code>htmlspec-kind</code>, and update <code>schema_facts</code> so rule code reads the vocabulary from the schema.</li>
+            <li>Add <code>rules/kinds.rs</code> with the two <code>kind/*</code> rules and the one <code>review/*</code> rule, registered in <code>rules::ALL</code>.</li>
+            <li>Remove the task unit from the fixture generator's base and declare <code>kind=specification</code>. Give <code>invalid-schema-missing-reason</code> an <code>edit</code> that adds back the dropped task it pins, declared <code>kind=tasks</code>. Regenerate, and confirm the reference and review fixtures still fire from the base's decision unit rather than from the task that left.</li>
+            <li>Migrate the 23 projection fixtures: substitute the field in each <code>expected.json</code>, and rewrite <code>fixtures/projection/metadata</code> — the fixture that pins section 9.3 — against the new clause. Update the 10 <code>status</code> assertions in <code>projection.rs</code>.</li>
+            <li>Migrate the template, the 3 dogfood documents, and the 25 Rust files carrying an inline status literal. Reshape <code>complex-change.html</code> and <code>simple-proposal.html</code>, which carry requirements and tasks together and are the project's shipped examples of the conflated shape.</li>
+            <li>Add the fixtures for the three rules, plus the two positive fixtures that pin the upstream freedom.</li>
+            <li>Extend <code>init</code> to take a kind and to create a whole change directory.</li>
+            <li>Write the archival skill and the instructions it follows, and wire the validation half into the archival operation.</li>
+          </ol>
+          <p>Steps 4 through 6 are one commit with steps 1 through 3, because a half-migrated tree fails <code>scripts/check</code>. Steps 7 through 9 are separable and land after.</p>
+          <figure data-migration="drawn">
+            <figcaption>The nine steps of the migration plan, grouped as the paragraph after them groups them: steps 1 through 6 are one commit, because a half-migrated tree fails <code>scripts/check</code>, and steps 7 through 9 are separable and land after it. Drawn when this document was migrated, from the text beside it.</figcaption>
+            <details>
+              <summary>Diagram source</summary>
+              <pre class="mermaid">flowchart TD
+  subgraph commit["One commit: steps 1 through 6"]
+    S1["1. kind in the JSON Schema and section 9.3, status removed"]
+    S2["2. The Rust model, project.rs, and schema_facts"]
+    S3["3. rules/kinds.rs, registered in rules::ALL"]
+    S4["4. The fixture generator's base, and invalid-schema-missing-reason"]
+    S5["5. The 23 projection fixtures"]
+    S6["6. The template, the 3 dogfood documents, and the 25 Rust files"]
+  end
+  S7["7. The fixtures for the three rules and the two positive fixtures"]
+  S8["8. init takes a kind and creates a whole change directory"]
+  S9["9. The archival skill, and the validation half of the archival operation"]
+  commit --&gt;|separable, lands after| S7
+  commit --&gt;|separable, lands after| S8
+  commit --&gt;|separable, lands after| S9</pre>
+            </details>
+          </figure>
+          <p>Rollback: steps 1 through 6 are not independently useful, so the revert unit is the whole migration commit. After it lands there is nothing to roll back to that a document conforms to, which is what BREAKING means and why the migration is one commit rather than several.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

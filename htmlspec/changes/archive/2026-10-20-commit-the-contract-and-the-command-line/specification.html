@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Commit the contract and the command line</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Commit the contract and the command line</h1>
+        <p>What this change established. The contract's version is a semantic version, and 1.0.0 is its first major: the 0.7.0 vocabulary, unchanged, with every earlier version still accepted. The command surface is stable within a major version: every operation in both spellings, every flag, every exit code, and every field of every <code>--json</code> payload, held by a surface recorded from the program's parser and by published payload schemas. Release 1.0.0, with the contract at 1.0.0.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Commit the contract and the command line</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-document-schema">document-schema</a></li>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-document-schema">
+          <h2>document-schema</h2>
+          <section class="requirement" id="req-the-contract-s-version-is-a-semantic-version" data-change="added">
+            <h3>The contract's version is a semantic version <span class="hs-id">req-the-contract-s-version-is-a-semantic-version</span></h3>
+            <p>The contract's version SHALL be a semantic version. A major release MAY withdraw or reshape a unit, a field, or a projection rule. A minor release adds vocabulary, and MAY add warnings and review findings. A patch release changes wording and fixes defects.</p>
+            <p>Within a major version from 1 on, a document that one version accepts SHALL be accepted by every later version of that major: no later minor or patch SHALL report an error on it that the earlier version did not, except where the earlier version accepted what a requirement stated at that version refused, a defect the release's changelog names. Warnings are outside this promise.</p>
+            <p>The schema SHALL keep accepting every version a minor or patch release succeeded, and SHALL keep accepting <code>0.1.0</code> to <code>0.7.0</code> beside 1.x. Version <code>1.0.0</code> is the <code>0.7.0</code> vocabulary, unchanged. A document the toolchain writes, from a template or as a run's record, SHALL declare the newest version, in its head and wherever its masthead names the contract.</p>
+            <article class="scenario" id="scenario-a-0-7-0-document-validates-under-1-0-0" data-change="added">
+              <h4>A document declaring 0.7.0 validates under 1.0.0</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document that declares <code>0.7.0</code> and validates with no error</dd>
+                <dt>When</dt>
+                <dd>it is validated by a release whose newest contract version is <code>1.0.0</code></dd>
+                <dt>Then</dt>
+                <dd>it reports no error it did not report under <code>0.7.0</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-minor-that-adds-a-warning-keeps-the-promise" data-change="added">
+              <h4>A minor that adds a warning keeps the promise</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document that 1.x accepts</dd>
+                <dt>When</dt>
+                <dd>a later minor release adds a warning that fires on it</dd>
+                <dt>Then</dt>
+                <dd>the document is still accepted, and the release is a minor</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-new-error-on-an-accepted-document-needs-a-major" data-change="added">
+              <h4>A new error on an accepted document needs a major</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document that a 1.x version accepts</dd>
+                <dt>When</dt>
+                <dd>a change would make a later version report an error on it that the earlier one did not, and the earlier version refused nothing a requirement stated</dd>
+                <dt>Then</dt>
+                <dd>that change is released as 2.0.0, not as a 1.x minor or patch</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-version-the-schema-does-not-list-is-refused" data-change="added">
+              <h4>A version the schema does not list is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document declaring <code>1.1.0</code>, <code>2.0.0</code>, <code>1.0</code>, <code>v1.0.0</code>, or <code>1.0.0-rc.1</code></dd>
+                <dt>When</dt>
+                <dd>it is validated by release 1.0.0</dd>
+                <dt>Then</dt>
+                <dd>validation reports the version as one the contract does not accept</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-written-document-declares-the-newest-version" data-change="added">
+              <h4>A written document declares the newest version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the toolchain writes a document from a template, or composes a run's record</dd>
+                <dt>Then</dt>
+                <dd>its head declares <code>1.0.0</code>, and a record's masthead names <code>1.0.0</code> where it reads Contract</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-the-command-surface-is-stable-within-a-major-version" data-change="added">
+            <h3>The command surface is stable within a major version <span class="hs-id">req-the-command-surface-is-stable-within-a-major-version</span></h3>
+            <p>Within a major version, every operation SHALL keep its name in both spellings, the OpenSpec spelling and the request-verb spelling, and every alias it accepts. Every flag SHALL keep its name, its short form, its aliases, and its meaning, and an optional argument SHALL stay optional. Every exit code SHALL keep its value and its meaning. Every field of every <code>--json</code> payload SHALL keep its name, its type, and its meaning, a field always present SHALL stay present, and a value an enumeration admits SHALL stay admitted. <code>--help</code>, <code>-h</code>, <code>--version</code>, <code>-V</code>, and the <code>help</code> subcommand SHALL stay. A minor release MAY add any of them, and only a major release removes or renames one. The wording of human-readable output is not covered.</p>
+            <p>Each operation that writes a payload SHALL publish a JSON Schema for it under <code>crates/htmlspec-cli/schema/payload/</code>, declaring every field it can emit. A published schema SHALL admit a property it does not declare, and SHALL say that a later release of its major can add one and that a consumer ignores a property it does not know. The program SHALL write no field its operation's schema does not declare. Where <code>run --as</code> starts no run because the machine falls short of a prerequisite, its payload SHALL be the preflight report, and run's schema SHALL state that shape.</p>
+            <p>The surface each released minor makes SHALL be recorded, read from the program's own parser, in <code>crates/htmlspec-cli/tests/surface/&lt;major&gt;.&lt;minor&gt;.json</code>. The project's checks SHALL fail when the program lacks anything a released surface of its major holds, when a later file of a major lacks anything an earlier one holds, when the declared version's minor has no file, when the current minor's file does not record the current surface, when the parser accepts a command no operation spells, and when a field a schema declares appears in no payload the tests produce.</p>
+            <article class="scenario" id="scenario-a-renamed-flag-fails-the-checks" data-change="added">
+              <h4>A renamed flag fails the checks</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>release 1.0.0's recorded surface</dd>
+                <dt>When</dt>
+                <dd>a 1.x change renames <code>validate --strict</code> to <code>--strictly</code></dd>
+                <dt>Then</dt>
+                <dd>the checks fail and name each fact of <code>--strict</code> that the program no longer offers</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-changed-exit-code-fails-the-checks" data-change="added">
+              <h4>A changed exit code fails the checks</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>release 1.0.0's recorded surface</dd>
+                <dt>When</dt>
+                <dd>a 1.x change makes a cancelled operation exit 4 rather than 3</dd>
+                <dt>Then</dt>
+                <dd>the checks fail naming the exit code that changed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-removed-payload-field-fails-the-checks" data-change="added">
+              <h4>A removed payload field fails the checks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a 1.x change stops writing <code>openTasks</code> in <code>status</code>'s payload</dd>
+                <dt>Then</dt>
+                <dd>the tests that produce that payload fail on the required field, and the surface comparison names it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-addition-is-recorded-and-binds-later-releases" data-change="added">
+              <h4>An addition is recorded and binds later releases</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a minor release adds a flag, a payload field, an alias, or an exit code</dd>
+                <dt>Then</dt>
+                <dd>the checks pass once the minor's surface file records it, and a later release of the major that drops it fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-writer-refuses-to-record-a-loss" data-change="added">
+              <h4>The recorded surface is not rewritten to lose anything</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a program that no longer offers a flag the current minor's file records</dd>
+                <dt>When</dt>
+                <dd>a contributor runs the test that rewrites that file</dd>
+                <dt>Then</dt>
+                <dd>it refuses and names the loss, and the file is unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-consumer-accepts-a-later-minors-field" data-change="added">
+              <h4>A consumer accepts a later minor's field</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a payload a later 1.x release writes, carrying a property the 1.0 schema does not declare</dd>
+                <dt>When</dt>
+                <dd>a consumer validates it against the published 1.0 schema</dd>
+                <dt>Then</dt>
+                <dd>the payload is valid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-undeclared-field-fails-the-test-that-produced-it" data-change="added">
+              <h4>An undeclared field fails the test that produced it</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the program writes a payload field its schema does not declare</dd>
+                <dt>Then</dt>
+                <dd>the test that ran the binary fails, naming the field and the schema</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-refused-run-writes-the-preflight-report" data-change="added">
+              <h4>A refused run writes the preflight report</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook declaring a prerequisite this machine does not meet</dd>
+                <dt>When</dt>
+                <dd><code>htmlspec --json run release --as second</code> runs</dd>
+                <dt>Then</dt>
+                <dd>it exits 1 with the preflight report on standard output, which run's published schema admits, and no record is created</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-major-release-is-compared-only-with-its-own-major" data-change="added">
+              <h4>A major release is compared only with its own major</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>surfaces recorded for 1.0 and 1.1</dd>
+                <dt>When</dt>
+                <dd>release 2.0.0 removes a flag both recorded</dd>
+                <dt>Then</dt>
+                <dd>the comparison with 1.x does not fail it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-human-readable-wording-can-change" data-change="added">
+              <h4>Human-readable wording can change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a release rewords a message, a help text, or a human-readable report</dd>
+                <dt>Then</dt>
+                <dd>no check of the surface fails</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-each-break-fails-a-test-2026-10-20" data-change="added" data-refs="req-the-command-surface-is-stable-within-a-major-version">
+            <h3>Each break the requirement names fails a test <span class="hs-id">evidence-each-break-fails-a-test-2026-10-20</span></h3>
+            <p>Each change was made in the real program and then reverted. Renaming <code>--strict</code> to <code>--strictly</code> failed the surface comparison with four lost facts. Moving the cancelled exit code from 3 to 4 failed it. Removing <code>openTasks</code> from <code>status</code>'s payload failed five tests on the required property. Moving the version to 1.1.0 failed with no <code>1.1.json</code>. At review, an alias <code>fetch</code> on the verb <code>get</code> and a short alias <code>-s</code> on <code>--strict</code> each failed the comparison of the current minor's file, naming the new spellings. With <code>--strict</code> renamed, the test that rewrites the surface refused and named the three lost facts, leaving the file unchanged. An outcome added to the exit type and left out of the list stopped the surface tests compiling at the test's placement match.</p>
+          </section>
+          <section class="evidence" id="evidence-earlier-versions-validate-unchanged-2026-10-20" data-change="added" data-refs="req-the-contract-s-version-is-a-semantic-version">
+            <h3>Documents declaring every earlier version validate unchanged <span class="hs-id">evidence-earlier-versions-validate-unchanged-2026-10-20</span></h3>
+            <p>The review validated 87 documents, the 81 conformance fixtures and 6 of this repository's own, each declared at 14 versions, with the 0.34.0 binary and with this change's. For <code>0.1.0</code> to <code>0.7.0</code> the output and exit codes were byte for byte the same. <code>1.0.0</code> is newly accepted. <code>1.1.0</code>, <code>2.0.0</code>, <code>0.8.0</code>, <code>1.0</code>, <code>1.0.0-rc.1</code>, and <code>v1.0.0</code> were refused by both. A run's record written by the 0.34.0 binary, declaring <code>0.1.0</code>, still reads, passes <code>run --check</code>, and validates.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-the-surface-holds-every-released-surface" data-change="added" data-outcome="passed" data-refs="req-the-command-surface-is-stable-within-a-major-version">
+            <h3>The program holds every released surface of its major <span class="hs-id">verify-the-surface-holds-every-released-surface</span></h3>
+            <p data-field="method"><code>cargo test -p htmlspec-cli --bin htmlspec surface</code>. <code>src/surface.rs</code> builds the surface from the parser, walking every command under its name and every alias at every level, and fails on a command no operation spells. Its tests compare the program with <code>tests/surface/1.0.json</code> as sets of facts, require the current minor's file to equal the current surface, require the declared minor to have a file, compare files only within a major, and hold the writer to refusing a loss. Ten more each edit a surface one way and require the loss, or the absence of one, that the edit makes. 23 tests passed.</p>
+          </section>
+          <section class="verification" id="verify-every-payload-is-held-to-its-schema" data-change="added" data-outcome="passed" data-refs="req-the-command-surface-is-stable-within-a-major-version">
+            <h3>Every payload a test produces is held to its schema, both ways <span class="hs-id">verify-every-payload-is-held-to-its-schema</span></h3>
+            <p data-field="method">Every helper in <code>crates/htmlspec-cli/tests/</code> that runs the binary passes its output to <code>support::held</code>, which validates the payload against its operation's published schema and against the suite's reading of it, every object refusing an undeclared property. <code>cargo test -p htmlspec-cli</code> ran every integration test through it and passed. <code>an_added_property_passes_the_published_schema_and_fails_the_suites_reading</code> shows the two readings part on an added property, and <code>every_published_payload_schema_admits_an_undeclared_property</code> holds every published object open.</p>
+          </section>
+          <section class="verification" id="verify-every-declared-field-is-produced" data-change="added" data-outcome="passed" data-refs="req-the-command-surface-is-stable-within-a-major-version">
+            <h3>Every declared field appears in a payload <span class="hs-id">verify-every-declared-field-is-produced</span></h3>
+            <p data-field="method"><code>tests/payloads.rs</code>'s <code>every_field_a_payload_schema_declares_is_produced</code> builds the projects that write the rare fields, including a run refused for a missing prerequisite, and fails on any of the 251 declared properties no payload carried. It passed. With <code>list</code>'s <code>follows</code> no longer written, it failed naming four uncovered properties.</p>
+          </section>
+          <section class="verification" id="verify-earlier-contract-versions-still-validate" data-change="added" data-outcome="partial" data-refs="req-the-contract-s-version-is-a-semantic-version">
+            <h3>Earlier contract versions still validate <span class="hs-id">verify-earlier-contract-versions-still-validate</span></h3>
+            <p data-field="method">The conformance suite's <code>no_document_gains_an_error_under_the_newest_contract_version</code> validates every fixture under the version it declares and under <code>1.0.0</code>, and requires no new error. The schema's tests require <code>0.1.0</code> to <code>0.7.0</code> and <code>1.0.0</code> accepted and other versions refused. The CLI's tests require a new document and a run's record, head and masthead, to declare <code>1.0.0</code>. All passed.</p>
+            <p data-field="unchecked">That a later 1.x release reports no new error on a document an earlier one accepts: no later release exists, and while no rule reads the declared version the conformance test cannot fail, so review of each change to what a fixture expects holds that promise.</p>
+          </section>
+          <section class="verification" id="verify-the-repository-checks-pass-at-1-0-0" data-change="added" data-outcome="passed" data-refs="req-the-contract-s-version-is-a-semantic-version req-the-command-surface-is-stable-within-a-major-version">
+            <h3>The repository's checks pass at 1.0.0 <span class="hs-id">verify-the-repository-checks-pass-at-1-0-0</span></h3>
+            <p data-field="method"><code>scripts/check</code> ran its fourteen stages and passed, and <code>publish/export --ref HEAD --dry-run</code> against an empty local repository ran the same checks inside the exported tree and passed. <code>scripts/check-release</code> found the version, the five pins, and the changelog at 1.0.0.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

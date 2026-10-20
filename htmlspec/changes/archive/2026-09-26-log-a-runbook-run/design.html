@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Log a runbook run</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Log a runbook run</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Log a runbook run</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-26-log-a-runbook-run/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>The proposal settles what a run record <em>is</em>: a <code>tasks</code> document under <code>htmlspec/runbooks/&lt;name&gt;/runs/</code>, carrying the copied procedure with its states advanced plus one <code>verification</code> per log requirement, checked by a project-level rule at <code>review/*</code> severity. It settles that shape by measurement rather than by preference, and re-measuring confirmed all four claims with no correction — <a href="evidence/the-shape-is-forced-2026-09-18.md"><code>evidence/the-shape-is-forced-2026-09-18.md</code></a>.</p>
+          <p>It leaves this design three decisions and names them: where run progress is reported, whether a run can be resumed, and whether the <code>run</code> operation copies eagerly or lazily and what it names the record. All three are settled below with their reasoning.</p>
+          <p>Four existing facts shape everything that follows.</p>
+          <ul>
+            <li>
+              <p><strong><code>review/unverified-requirement</code> cannot see a run record.</strong> Its rule body returns early unless the document's kind is <code>specification</code>, and measurement 2 forces a run record to be <code>tasks</code>. So the two forced facts point in opposite directions, and <strong>a run record whose copied requirement no verification names reports nothing at all, at either strictness</strong> — <a href="evidence/the-shape-is-forced-2026-09-18.md">measured</a>. That gap is the conformance rule's whole subject, and without it this change would state a contract nothing checks, which is the shape <code>project-bootstrap</code> names.</p>
+            </li>
+            <li>
+              <p><strong>A reference resolves within one document only.</strong> <a href="evidence/the-shape-is-forced-2026-09-18.md">Measured again here</a>: a verification in <code>runs/&lt;record&gt;.html</code> naming a requirement in the runbook's <code>specification.html</code> fails <code>refs/unresolved</code>, an <em>error</em>. The copying is forced.</p>
+            </li>
+            <li>
+              <p><strong><code>ProjectRoot</code> is the only thing that knows the layout</strong>, and <code>RUNBOOKS</code> is already a private constant there with <code>runbooks()</code> and <code>runbook(name)</code> as its accessors. A fourth accessor joins them rather than any caller composing <code>runs</code>.</p>
+            </li>
+            <li>
+              <p><strong>The guard covers <code>runs/</code>, verified with a record on disk.</strong> Six routes and three known bypasses, all refused, runbook intact — <a href="evidence/the-guard-covers-runs-2026-09-18.md"><code>evidence/the-guard-covers-runs-2026-09-18.md</code></a>.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals</strong></p>
+          <ul>
+            <li>
+              <p>A runbook's specification can state what its runs must record, as ordinary requirement units.</p>
+            </li>
+            <li>
+              <p>A run record exists at <code>htmlspec/runbooks/&lt;name&gt;/runs/&lt;record&gt;.html</code>, created by an operation, and validates the moment it is written.</p>
+            </li>
+            <li>
+              <p>A project-level rule reports a run record that does not satisfy its runbook's log contract, at <code>review/*</code>, absent from <code>rules::ALL</code>.</p>
+            </li>
+            <li>
+              <p><code>fixtures/conformance/</code> pins the conforming record and the one whose verification is missing.</p>
+            </li>
+            <li>
+              <p>The three decisions the proposal leaves open are settled and stated.</p>
+            </li>
+          </ul>
+          <p><strong>Non-Goals</strong></p>
+          <ul>
+            <li>
+              <p>Machine requirements and preflight. <code>carry-a-runbook-to-another-machine</code>.</p>
+            </li>
+            <li>
+              <p>The aggregate — "this runbook has been run 47 times". <code>record-a-runbooks-history</code>.</p>
+            </li>
+            <li>
+              <p>Scheduling, triggering, or judging whether a recorded value is <em>correct</em>.</p>
+            </li>
+            <li>
+              <p>A workflow or a <code>/htmlspec:runbook</code> command. That fan-out takes the installed files from 45 to 50 and is its own change; everything below is reachable from <code>run</code>, <code>validate</code>, and <code>list</code>.</p>
+            </li>
+            <li>
+              <p>A new artifact kind, a new unit, or a schema change. The kind enum's guard test stays untouched.</p>
+            </li>
+            <li>
+              <p><strong>Inputs.</strong> Hit again, recorded again, not invented. See the last section.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-a-run-record-is-a-tasks-document">
+            <h3>A run record is a <code>tasks</code> document at <code>htmlspec/runbooks/&lt;name&gt;/runs/&lt;record&gt;.html</code></h3>
+            <pre><code>htmlspec/runbooks/&lt;name&gt;/
+  specification.html       what it is for, what its history taught, and what a run must record
+  tasks.html               the ordered procedure, states unstarted forever
+  runs/                    the records, one file per run                             (new)
+    &lt;record&gt;.html          kind=tasks: the procedure advanced, plus the log</code></pre>
+            <p>A flat directory of files rather than a directory per run. A run is one document, and a directory holding one file is a directory a reader opens twice. The <code>runs/</code> directory itself is named in <code>project.rs</code>:</p>
+            <pre><code>/// Where a runbook keeps the records of its runs.
+const RUNS: &amp;str = "runs";
+
+impl ProjectRoot {
+    /// Where the records of a runbook's runs live.
+    pub fn runs(&amp;self, runbook: &amp;str) -&gt; PathBuf { self.runbook(runbook).join(RUNS) }
+}</code></pre>
+            <p>Private constant, public accessor, exactly the shape the other four have. <strong>Nothing composes <code>"runs"</code> outside this module</strong>, which is what makes the location one statement rather than several that agree until the day it moves.</p>
+            <p><strong><code>runs/</code> is created by the <code>run</code> operation rather than at bootstrap</strong>, and this is the one place this change departs from the predecessor's reasoning. <code>establish-a-runbook</code> argues that <code>htmlspec/runbooks/</code> is created at bootstrap because <em>a place that does not exist until something is in it is not a place a contributor can find</em> — and that argument is about the project's places, of which there are four and which a contributor looks for. <code>runs/</code> is not a fifth place; it is per-runbook, so creating it at bootstrap is impossible (there is no runbook yet) and creating it when a runbook is created would mean the create-a-runbook operation this change does not have. The operation that writes a record creates the directory, with <code>create_dir_all</code>, which is idempotent.</p>
+            <p><strong>Asset references resolve at this depth with nothing added</strong>, <a href="evidence/the-shape-is-forced-2026-09-18.md">measured</a>: <code>htmlspec new document tasks htmlspec/runbooks/release/runs/probe.html</code> writes <code>href="../../../assets/sha256-…"</code>, three levels, correctly. The store is derived from the project, so a run record shares the one store and <code>asset/duplicate</code> has nothing to report.</p>
+          </section>
+          <section id="hs-decision-1">
+            <h3>Decision 1: run progress is the <code>run</code> operation's own report, and <code>status</code> is left alone</h3>
+            <p><strong><code>htmlspec status --change</code> keeps its subject. Run progress is reported by <code>htmlspec run</code>, which has a runbook in view.</strong> <code>htmlspec list --runbooks</code> gains nothing.</p>
+            <p>The proposal says this is a decision this change must make rather than inherit, and <a href="../2026-09-18-establish-a-runbook/evidence/the-status-gap-2026-09-17.md"><code>the-status-gap-2026-09-17.md</code></a> measured the gap precisely enough that the decision follows from the measurement. What it found, in a scratch project:</p>
+            <ul>
+              <li>
+                <p><code>status --change chocolate-chip-cookies</code> — refused, exit 2. A name resolves against <code>project.changes()</code> and nowhere else.</p>
+              </li>
+              <li>
+                <p><code>status --change htmlspec/runbooks/chocolate-chip-cookies</code> — <strong>worked</strong>, and the proposal was wrong to say it would not. <code>resolve_change</code> accepted the directory and the counting logic ran correctly: <code>0 of 9 task(s) done or dropped</code>.</p>
+              </li>
+            </ul>
+            <p>That second reading is what decides it. The counting logic is reusable and reaches a runbook today; what is wrong is the <em>shape of the report around it</em>. <code>status</code> reports against <code>CHANGE_DOCUMENTS</code> plus <code>CHANGE_SPECIFICATION</code>, so it says <code>absent proposal.html</code> and <code>absent design.html</code> about documents a runbook never has. Teaching it a second shape means a branch on what its argument turned out to be, and then the operation's name — <code>--change</code> — is false for half its inputs.</p>
+            <p><strong><code>workflow-reporting</code> governs, and it decides against the branch.</strong> <em><a href="../../../specs/workflow-reporting/spec.html#req-a-report-answers-the-contributor-in-their-own-terms">A report answers the contributor in their own terms</a></em>, and its scenario: a report whose first claim names a directory or a document count is wrong, because none of that tells the contributor whether their request was understood. A contributor who asks about a run asks "did the release run, and what did it record" — not "which of four documents exist". The <code>run</code> operation's own report can answer in those terms because it knows it is reporting on a run; <code>status</code> cannot, because it would have to discover which question it was asked.</p>
+            <p>There is a second reason, and it is the stronger one. <strong>The report a run needs is not a completion fraction.</strong> A run record's tasks <em>are</em> advanced, so the fraction is meaningful where the canonical procedure's is not — but the fraction is not what a reader of a run wants. They want the outcomes: which log requirements this run verified and what it recorded. That is a different report, produced from different units, and it is the conformance rule's output. So the two reports are not one report with a branch; they are two reports, and the run one does not exist yet.</p>
+            <p><code>status</code> is therefore <strong>unchanged</strong>, and its refusal of a runbook path stands as the predecessor built it. The guard already refuses <code>runs/</code> too, <a href="evidence/the-guard-covers-runs-2026-09-18.md">measured</a>. Note what this leaves open and does not close: <strong><code>status --change</code> pointed at a runbook by name is still a refusal</strong>, and that is still the form a contributor or a workflow would reach for. Recorded rather than narrowed, on the same terms the predecessor recorded it.</p>
+          </section>
+          <section id="hs-decision-2">
+            <h3>Decision 2: a run can be resumed, and a record is therefore edited after it is written</h3>
+            <p><strong>A run is one record from start to finish, and picking it up an hour later continues that record rather than starting a second one.</strong></p>
+            <p>The proposal names this open and says the answer decides whether a run record is ever edited after it is written. The answer is yes, and the reasoning is that <strong>the alternative contradicts the document's own kind.</strong> A <code>tasks</code> document's task units carry four states — <code>todo</code>, <code>in-progress</code>, <code>done</code>, <code>dropped</code> — and <code>in-progress</code> exists to describe work that is under way and not finished. A record written once and never touched could never carry <code>in-progress</code> on a step honestly: it would mean "this step was in progress at the instant the file was written and nobody knows what happened next". A model in which that state is unreachable is a model that should not have four states.</p>
+            <p>The batch abandoned at step 6 is exactly the case. <strong>Two records would each be wrong about the batch:</strong> the first says six steps done and four <code>todo</code>, which reads as a run that stopped; the second says four steps done and six what? It cannot say <code>done</code>, because this record did not do them, and it cannot say <code>todo</code>, because they are finished. The step states in a copy of a procedure are a fact about the work, and splitting one piece of work across two documents makes both of them lie.</p>
+            <p><strong>The cost, stated rather than discovered later.</strong> A record that is edited is a record whose history is its own file's history — git, here — rather than the record. Two runs a week apart look identical on disk to one run interrupted for a week. Nothing in this change distinguishes them, and nothing needs to yet: the question "when did this run happen" is <code>record-a-runbooks-history</code>'s, which is also where the aggregate lives. <strong>This change deliberately records no timestamp</strong>, for <code>project-bootstrap</code>'s reason about a version no gate compares: a recorded time nothing reads is accuracy without authority, and the filesystem already has <code>mtime</code>.</p>
+            <p>The consequence for the conformance rule is what makes this load-bearing rather than philosophical: <strong>a run in progress legitimately has log requirements nothing has verified yet</strong>, which is exactly why the severity is <code>review/*</code> and cannot be promoted under <code>--strict</code>. If a run were immutable, an incomplete record would be a permanent defect and an error would be arguable. Because it is resumed, the report must never gate — an operator whose batch failed the rule halfway through the bake is an operator who learns to skip the rule.</p>
+          </section>
+          <section id="hs-decision-3">
+            <h3>Decision 3: <code>run</code> copies eagerly, and names the record from the contributor</h3>
+            <p><strong><code>htmlspec run &lt;runbook&gt; --as &lt;record&gt;</code> copies the whole procedure at the moment the run starts, and the record's name is the contributor's to give.</strong></p>
+            <p><strong>Eagerly, because a lazy copy has no honest content for the steps it has not reached.</strong> A record that grew a task unit as each step was worked would, between steps 2 and 3, be a document stating a three-step procedure — and a reader opening it would see a procedure, not a partial one, because nothing in a <code>tasks</code> document says "there is more". The whole point of copying the procedure rather than referencing it is that the record shows which version of the procedure ran; a partial copy shows a version that never existed. Eager copying also means the record validates the moment it is written, which is <code>document-template</code>'s standing requirement for anything the program creates, and which <code>new_document</code> already enforces by validating what it wrote.</p>
+            <p><strong>The name is the contributor's, with no default.</strong> Three candidates were available:</p>
+            <ol>
+              <li>
+                <p><strong>A date.</strong> <code>2026-09-18.html</code>. Rejected: two runs in one day collide, and <code>project-bootstrap</code> refuses to read a version out of a directory name for the same family of reason — a name that encodes a fact is a fact nothing enforces. It would also make the run record's name the one place a time is recorded, which decision 2 declines to do.</p>
+              </li>
+              <li>
+                <p><strong>A sequence number.</strong> <code>run-7.html</code>. Rejected for the sharper form of the same objection: <code>runbook-authority</code> states that nothing SHALL derive an ordering, a version, or a history from a runbook's name, and deriving the <em>next</em> number means reading an ordering out of the directory's contents. That is the maintained-list shape the contract refuses.</p>
+              </li>
+              <li>
+                <p><strong>The contributor's own word.</strong> Chosen. <code>--as 0.14.0</code> for a release run, <code>--as batch-a</code> for a batch of cookies. The name is what the run is <em>about</em>, which is the only thing a selector can use, and it is the same discipline a change's name already has: the name is the directory entry and nothing else records it.</p>
+              </li>
+            </ol>
+            <p><code>--as</code> is <strong>required</strong>, not defaulted. An operation that invented a name would be choosing on the contributor's behalf, and <code>artifact-kinds</code> requires a derived name to be reported so a contributor who disagrees can say so — which for a name means asking rather than reporting after the fact. The name is checked by <code>ProjectRoot::is_a_name</code>, which is the constructor the predecessor moved this invariant into after re-litigating it at three call sites; a <code>--as ../../sneaky</code> is refused there.</p>
+            <p><strong><code>run</code> refuses to overwrite an existing record.</strong> <a href="evidence/the-guard-covers-runs-2026-09-18.md">Measured</a>, on <code>new document</code>, because it is the same property: <code>already exists; new will not overwrite a document</code>, exit 2. A run that overwrote a previous run's record would destroy history, which is the family of defect this whole line of work exists around. <strong>Resuming a run is therefore editing the file, not re-running the operation</strong> — the operation starts a run, and an agent or a contributor advances the states. That is the same division as a change: <code>new change</code> writes the documents once and the work happens in them.</p>
+          </section>
+          <section id="hs-the-log-contract-is-requirement-units">
+            <h3>The log contract is requirement units in the runbook's specification</h3>
+            <p>Nothing new. A runbook's <code>specification.html</code> states what its runs must record as ordinary requirement units with scenarios, alongside the hazard requirements <code>establish-a-runbook</code> put there. <strong>The two are not distinguished in the markup, and that is deliberate:</strong> a hazard the procedure met and a value a run must record are both "what this runbook requires of a run", which is the sentence <code>runbook-authority</code> already uses. Distinguishing them would need a new attribute or a new unit, and the proposal forbids both.</p>
+            <p>The consequence is that <strong>every requirement in a runbook's specification is a log requirement</strong>, so the conformance rule's subject is all of them. That is the right reading rather than a simplification: <code>req-version-before-regenerate</code> states that a run MUST advance the version before regenerating, and a run record attesting to that is exactly what the archive's five copies of this procedure never had.</p>
+          </section>
+          <section id="hs-a-run-record-is-a-canonical-document">
+            <h3>A run record <em>is</em> a canonical document, so <code>unchanged</code> binds — and the reason is not filing</h3>
+            <p><code>runbook-authority</code> requires that <strong>a unit in a runbook's canonical documents SHALL declare that it is unchanged</strong>, and the proposal instructs this design to decide whether a run record is one of those documents. It is, and the measurement is what decides it rather than the word "canonical".</p>
+            <p><a href="evidence/the-shape-is-forced-2026-09-18.md">Re-measured here</a>: a copied requirement declared <code>added</code> rather than <code>unchanged</code> draws <code>review/stale-verification</code> — <em>"this verification records the outcome passed against req-version-before-regenerate, which this change marks added"</em>. The rule is right. <strong>A run record's verification records an outcome against an obligation that existed before the run started</strong>, which is the same fact as the runbook's own documents arriving at the same attribute, and for the same reason: a change state describes a unit's relationship to a change in progress, and a run is not a change.</p>
+            <p>So the delta states it once, for a runbook's documents <em>including</em> its run records, rather than adding a second clause. The <code>run</code> operation writes <code>unchanged</code> because it knows what it is writing — which is the thing <a href="../2026-09-18-establish-a-runbook/evidence/the-canonical-documents-change-state-2026-09-17.md"><code>the-canonical-documents-change-state-2026-09-17.md</code></a> says <code>new document</code> cannot know and a workflow would. <strong><code>run</code> is that operation for this one case</strong>, so the finding is narrowed by this change rather than closed: an author writing a run record by hand still meets the warnings, and an author writing a <em>runbook</em> by hand still does too.</p>
+          </section>
+          <section id="hs-the-conformance-rule-is-project-level">
+            <h3>The conformance rule is project-level, beside <code>topology.rs</code>, absent from <code>ALL</code></h3>
+            <p>A new module, <code>crates/htmlspec-validate/src/rules/runs.rs</code>, built the way <code>topology.rs</code> is built: a plain function over what a caller gathered, returning <code>Vec&lt;Diagnostic&gt;</code>, not a <code>crate::engine::Rule</code>.</p>
+            <pre><code>/// A run record does not satisfy its runbook's log contract.
+pub const UNRECORDED: RuleId = RuleId::new(Namespace::Review, "unrecorded-requirement");
+
+/// What one runbook and its runs state, gathered by the caller.
+pub struct RunbookUnderReview&lt;'a&gt; {
+    /// The runbook's name, for the report.
+    pub name: &amp;'a str,
+    /// Every requirement the runbook's specification states, by identifier.
+    pub required: &amp;'a [String],
+    /// Each run record: its own name, and the requirements its verifications name.
+    pub runs: &amp;'a [RecordedRun],
+}
+
+pub fn conformance(subject: &amp;RunbookUnderReview&lt;'_&gt;) -&gt; Vec&lt;Diagnostic&gt;;</code></pre>
+            <p><strong>The signature is the design.</strong> It takes gathered facts rather than paths, so the walk stays in the caller and the rule is a pure function — which is <code>topology::duplicates_across</code>'s exact shape, and its doc comment states why: <em>"Takes <code>(location, digest)</code> pairs already gathered from every store, so the walk stays in the caller and this stays a pure function over what the walk found."</em> <code>AGENTS.md</code> §6 is the governing clause: the rule needs no filesystem capability, so it is not given one.</p>
+            <p><strong>Absent from <code>rules::ALL</code></strong> for the reason <code>rules/mod.rs</code> documents about <code>topology</code>: the subject is a project rather than a document, and a per-document pass would report one violation once per document. Here it is sharper than for assets — the rule's subject is <em>a runbook and its runs together</em>, and no single file can decide it: the runbook's specification states the requirements and the run records state the outcomes, and neither document alone knows whether the contract was met. <code>every_rule_in_all_is_a_document_rule</code> keeps the two kinds from being confused, and the signature above cannot be coerced into a <code>Rule</code> so the compiler refuses the mistake first.</p>
+            <p><strong>Severity is <code>review/*</code>, which is the namespace rather than a choice per rule.</strong> <code>diagnostic.rs</code> states the policy: <code>review/*</code> is a warning that never gates and <code>is_promotable</code> returns false for it, so <code>--strict</code> cannot promote it. Decision 2 is why that is required rather than convenient: a run is resumed, so a record legitimately has unverified requirements while the work is under way.</p>
+            <p><strong>What it reports, and what it deliberately does not.</strong> One diagnostic per (run, unverified requirement) pair, naming both, because a reader told "this run is incomplete" has to find which requirement. It does <strong>not</strong> report:</p>
+            <ul>
+              <li>
+                <p>a runbook with no runs. A procedure nobody has run yet violates nothing, and reporting it would fire on every runbook from the moment it is created — which is the <code>0/9</code> column the predecessor refused to print, in diagnostic form.</p>
+              </li>
+              <li>
+                <p>a run record whose verification records <code>failed</code> or <code>blocked</code>. <strong>The obligation is that the run recorded an outcome, not that the outcome was good.</strong> A batch that reached 200°F when the recipe says 375°F is a bad batch and a perfectly valid record; the proposal reserves that reading for an agent, and <code>artifact-kinds</code> reserves judgment generally. A rule that reported <code>failed</code> would convert a run's honest record of a failure into a document defect, which teaches an operator to record <code>passed</code>.</p>
+              </li>
+              <li>
+                <p>a run record verifying something the runbook does not require. That is a run that recorded more than it owed, which is not a fault.</p>
+              </li>
+            </ul>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> The build goes past this section in one place. A requirement the runbook's specification declares <code>removed</code> is left out of what the rule requires, and out of the record <code>run</code> writes, because a verification naming a withdrawn requirement would be reported as the error <code>refs/removed-target</code> (document-schema's <em>Cross-references address units by identifier</em>). The review round decided the exclusion and applied it to both paths, as finding 11 in <a href="evidence/the-review-fixes-2026-09-20.md"><code>evidence/the-review-fixes-2026-09-20.md</code></a>. Nothing in this design names a withdrawn requirement.</p>
+            </aside>
+          </section>
+          <section id="hs-it-is-invoked-by-run-check">
+            <h3>It is invoked by <code>htmlspec run --check</code>, which is where a project is in view</h3>
+            <p><code>htmlspec assets</code> is the model the proposal names, and it is the right one: a project-subject rule needs a command that has a project in view. Rather than a second top-level command, the invocation is a mode of the operation that owns the subject:</p>
+            <ul>
+              <li>
+                <p><code>htmlspec run &lt;runbook&gt; --as &lt;record&gt;</code> — starts a run: copies the procedure, writes the log requirements and one <code>not-run</code> verification per requirement, reports where the record landed.</p>
+              </li>
+              <li>
+                <p><code>htmlspec run &lt;runbook&gt; --check</code> — writes nothing, gathers the runbook and its records, evaluates the conformance rule, and reports. Exit zero always, because the rule never gates.</p>
+              </li>
+            </ul>
+            <p><strong><code>--check</code> rather than a <code>runs</code> subcommand</strong>, matching <code>archive --check</code> and <code>migrate promote --check</code>, both of which mean "apply every condition and perform none of them". The vocabulary already exists and a second spelling would invent a second one.</p>
+            <p>The reason it is not a flag on <code>validate</code>: <code>assets</code>'s own doc comment states it exactly — folding a project-subject check into <code>validate</code> means <code>htmlspec validate one-document.html</code> either reports a violation the named document did not cause, or silently skips a check depending on the argument, and <em>a check whose presence depends on how the tool was invoked is the failure mode this change exists to remove.</em></p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li>
+              <p><strong>Forty runs means forty copies of the procedure and of the log requirements.</strong> The proposal states this as the honest cost and it is not closed here. A runbook edited after run forty leaves the earlier forty recording a contract that no longer exists, which is either an audit trail or dead weight depending on facts this project does not have. <code>establish-a-runbook</code> names it open and this change does not close it.</p>
+            </li>
+            <li>
+              <p><strong>The conformance rule is reachable only from <code>run --check</code>.</strong> So a project that never runs that command has the contract and no report of it — the same standing as <code>asset/duplicate</code>, which <code>scripts/check</code> runs and nothing else does. What closes it for <em>this</em> repository is a check stage, and this change does not add one, because this repository keeps its runbook at <code>runbooks/</code> rather than <code>htmlspec/runbooks/</code> and <code>run</code> resolves a runbook through the project. <strong>Stated rather than discovered:</strong> the rule is <a href="evidence/the-runbook-ran-2026-09-18.md">dogfooded in a scratch project</a> and pinned by fixtures, not by this repository's suite.</p>
+            </li>
+            <li>
+              <p><strong><code>status --change</code> pointed at a runbook by name is still a refusal.</strong> Decision 1 declines to change it and says why. A contributor who wants a run's progress uses <code>run --check</code>, and a contributor who guesses <code>status</code> gets a refusal naming <code>htmlspec list --runbooks</code>.</p>
+            </li>
+            <li>
+              <p><strong>A resumed run is indistinguishable on disk from a run that happened all at once.</strong> Decision 2 accepts this and declines to record a timestamp. <code>record-a-runbooks-history</code> is where a time would earn itself.</p>
+            </li>
+            <li>
+              <p><strong>Every requirement in a runbook's specification is a log requirement</strong>, because nothing distinguishes a hazard from a recorded value. Accepted, and it is the contract's own sentence — but it means a runbook whose specification states ten hazards obliges every run to record ten outcomes, and a runbook author who wanted five obligations and five notes has no way to say so. The mechanism that would distinguish them is a new attribute, which the proposal forbids.</p>
+            </li>
+            <li>
+              <p><strong><code>run</code> writes a document from gathered units rather than from a template</strong>, which is a shape <code>new_document</code> does not have. The mitigation is the one <code>new_document</code> already uses: validate what was written before reporting success, and fail loudly if the program produced an invalid document, because that is a defect in this program rather than in a contributor's project.</p>
+            </li>
+          </ul>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> The build departed from the last mitigation above. Written first and validated after, an invalid record landed on disk and the existing-record refusal then wedged the retry, so the review round reordered the operation to compose the record, validate it, and only then write it. Its failure message also stopped calling the fault a defect in the copy, because in every case the review produced the fault was in the runbook. Both are recorded in <a href="evidence/the-review-fixes-2026-09-20.md"><code>evidence/the-review-fixes-2026-09-20.md</code></a> and in <a href="tasks.html#task-11-2">task 11.2</a>.</p>
+          </aside>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p>Additive throughout. No existing document changes meaning, no fixture changes state, no diagnostic is reworded, no existing command's output changes. <code>status</code>, <code>sync</code>, <code>archive</code>, <code>list</code>, <code>validate</code>, and <code>format</code> behave exactly as they did — <code>validate</code> and <code>format</code> descend into <code>runs/</code> because they already descend into everything, which is <a href="evidence/the-shape-is-forced-2026-09-18.md">measured</a> and is the wanted behaviour.</p>
+          <p><code>document.schema.json</code>, the artifact-kind enum, <code>TEMPLATES</code>, and <code>assets/vendor.lock.json</code> are untouched. <code>rules::ALL</code> is untouched, which the proposal states as a checkable claim.</p>
+          <p>A project with no <code>runs/</code> directory is a project whose runbooks have not been run, and every operation reports that as none rather than as a fault — the same standing <code>runbooks()</code> itself has for a project bootstrapped before runbooks existed.</p>
+        </section>
+        <section id="hs-the-findings-this-change-hit-and-did-not-close">
+          <h2>The findings this change hit and did not close</h2>
+          <p><strong>Inputs, again.</strong> A run that consumed 1 cup of chocolate chips has nowhere to record that but a <code>method</code> paragraph on a verification, which is prose. The proposal says so, <code>establish-a-runbook</code> says so, and building the run record hit it a third time from a new angle: <strong>the <code>method</code> paragraph is where a recorded <em>value</em> goes, and it is the only place.</strong> A release run recording "advanced to 0.14.0, regenerated 45 files, <code>check-release</code> passed" puts three values in one prose paragraph, and nothing can read one of them out. That is the shape of the gap stated more precisely than before, and it is still not this change's to fill: the answer needs its own argument, and a machine requirement and an ingredient touch each other in a way <code>carry-a-runbook-to-another-machine</code> also records.</p>
+          <p><strong>The run record is invisible to <code>list --runbooks</code>.</strong> The enumeration reads which of <code>RUNBOOK_DOCUMENTS</code> a runbook holds, and <code>runs/</code> is neither of them, so a runbook with forty records lists identically to one with none. <a href="evidence/the-shape-is-forced-2026-09-18.md">Measured.</a> Not closed, and the reason is decision 1: a count of runs is the aggregate, which is <code>record-a-runbooks-history</code>'s. What <code>list --runbooks</code> owes is what a selector needs to choose between runbooks, and "has been run" is not yet established as that.</p>
+          <p><strong>A run record that is never finished is never reported as abandoned.</strong> A record whose steps sit at <code>in-progress</code> forever is a run somebody walked away from, and nothing says so. Decision 2 is what makes this reachable — an immutable record could not have the state — and closing it would need a notion of when a run is over, which is the same missing notion as when it began.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

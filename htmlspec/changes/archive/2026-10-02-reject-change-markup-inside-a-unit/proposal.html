@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Reject change markup inside a unit</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Reject change markup inside a unit</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Reject change markup inside a unit</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-02-reject-change-markup-inside-a-unit/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><strong>An author who marks an edit with HTML's own change markup silently writes a wrong contract.</strong> HTML has <code>del</code> for text an edit removed and <code>ins</code> for text it added. The projection does not know them. It treats each as an ordinary presentational element and keeps its text, and <code>validate</code> accepts the result. <a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a> measured it against HEAD:</p>
+          <ul>
+            <li>A requirement whose statement reads <code>… and &lt;del&gt;nothing else&lt;/del&gt;&lt;ins&gt;&lt;code&gt;store&lt;/code&gt;&lt;/ins&gt; SHALL name them.</code> projects the statement "… and nothing elsestore SHALL name them." The withdrawn words are in the normative statement, run together with the new one.</li>
+            <li><code>htmlspec validate</code> on that project exits 0. Its only diagnostic on the specification is a <code>review/stale-reference</code> warning that would be there without the markup. <code>--strict</code> and <code>--json</code> say the same.</li>
+            <li>A paragraph wrapped in <code>&lt;del&gt;</code> becomes a second statement of the requirement. A requirement wrapped whole in <code>&lt;del&gt;</code> projects as an <code>unchanged</code> requirement. A verification whose only link to a requirement is deleted still verifies it, and the same document with the words actually removed fails validation.</li>
+          </ul>
+          <p>The projection is doing what its specification says. <code>crates/htmlspec-schema/doc/projection.md</code> section 8.2 makes an element with no reserved class presentational, and its text contributes to the field around it. What is missing is a rule saying a document may not use change markup where it would change what a unit states.</p>
+          <p><strong>Why now.</strong> The project's migration out of OpenSpec is staged and waiting, and the 116 HTML documents it would promote become the project's own. <a href="evidence/the-measurement-2026-09-30.md">The measurement</a> found no change markup in any of them, or in any of the 122 HTML files the repository tracks, so a rule added now breaks nothing. Without it, this gap would be recorded as an open question in the migrated documents or worked around there, and a contributor who reached for <code>&lt;del&gt;</code> in one of them would get no warning.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong>Change markup inside a unit is an error.</strong> Validation reports every <code>ins</code> and every <code>del</code> element that sits inside a semantic unit, with a rule identifier of its own, naming the unit and the element and quoting the element's text. It is an error and not a warning, because the model is wrong rather than incomplete.</li>
+            <li><strong>Change markup around a unit is the same error.</strong> A <code>del</code> wrapping a whole unit leaves the unit projecting as current. A withdrawn unit already has its own statement, <code>data-change="removed"</code>.</li>
+            <li><strong><code>ins</code> is covered as well as <code>del</code>.</strong> An inserted word does the model no harm today. It is rejected because a unit that marks one side of an edit states half of a diff, and because the change planned to give the two elements meaning gives it to both together.</li>
+            <li><strong>Every unit, every kind, every declared version.</strong> The rule reaches tasks, decisions, and every other unit in all four kinds. A document cannot escape it by declaring <code>0.1.0</code> or <code>0.2.0</code>.</li>
+            <li><strong>The document contract moves to <code>0.3.0</code>.</strong> A document that validates today can stop validating. The versioning table puts that under a major bump, and its <code>0.x</code> clause permits it in a minor one. <code>0.1.0</code> and <code>0.2.0</code> stay accepted.</li>
+            <li><strong>Unchanged:</strong> the projection and every projected model. Change markup outside every unit is not reported: prose there projects into no unit's field, and a proposal may show a wording change with it. <code>s</code> and <code>strike</code> are not change markup and are not reported.</li>
+          </ul>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <section id="hs-new-capabilities">
+            <h3>New Capabilities</h3>
+            <p>None.</p>
+          </section>
+          <section id="hs-modified-capabilities">
+            <h3>Modified Capabilities</h3>
+            <ul>
+              <li><code>document-validation</code>: a new requirement, "<a href="specification.html#req-change-markup-in-or-around-a-semantic-unit-is-rejected">Change markup in or around a semantic unit is rejected</a>". It is added rather than folded into "<a href="../../../specs/document-validation/spec.html#req-structural-conformance-is-enforced">Structural conformance is enforced</a>", because that requirement lists element-contract violations in one sentence and has no room for this rule's reason or its boundary. The change that follows this one, <code>mark-the-words-a-modification-changed</code>, is planned to modify this requirement to allow the markup where it gains meaning. Folding the rule into the structural requirement would make that change restate every structural rule to relax one. "<a href="../../../specs/document-validation/spec.html#req-the-contract-rules-apply-to-every-kind">The contract rules apply to every kind</a>" is also left alone. It lists what makes a document open, and this rule is about what a document states. The new requirement states its own reach over every kind.</li>
+            </ul>
+            <p><code>document-schema</code> is <strong>not</strong> modified. Its requirement "<a href="../../../specs/document-schema/spec.html#req-the-html-to-model-projection-is-published-as-a-normative-specification">The HTML-to-model projection is published as a normative specification</a>" asks the projection specification to state "which elements and attributes create a semantic unit, and which are ignored" and "how presentational markup that carries no semantic unit is discarded". Section 8.2 already states both, and the projection's treatment of <code>del</code> follows it exactly. This change alters what validates, not what projects. The projection specification gains one clause in section 10.1, which lists the validator's rules that the projection does not decide, and that clause adds no numbered rule.</p>
+          </section>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li><code>crates/htmlspec-validate/src/rules/change_markup.rs</code>, new: the rule <code>schema/change-markup</code>. It reads the parse tree the projection carries, as <code>executable.rs</code> does, and recognizes a unit by the projection's own reserved-class test.</li>
+            <li><code>crates/htmlspec-validate/src/rules/mod.rs</code>: the rule joins <code>ALL</code>, and <code>every_namespace_has_a_live_rule</code> gains its source entry.</li>
+            <li><code>conformance/tests/conformance.rs</code>: <code>known_rules()</code> gains the rule.</li>
+            <li><code>conformance/src/bin/generate_fixtures.rs</code>: two fixtures, <code>invalid-schema-change-markup</code> and <code>valid-change-markup-outside-a-unit</code>. The generator also gains a table of the four hand-authored fixtures that its stale-fixture sweep deletes today, so running it deletes nothing.</li>
+            <li><code>crates/htmlspec-schema/doc/projection.md</code>: section 10.1 names the rule, and the header moves to <code>0.3.0</code>.</li>
+            <li>
+              <p>The contract version, <code>0.3.0</code>:</p>
+              <ul>
+                <li><code>CONTRACT_VERSION</code> in <code>crates/htmlspec-schema/src/lib.rs</code>;</li>
+                <li><code>schemaVersion</code> and <code>$id</code> in <code>crates/htmlspec-schema/schema/document.schema.json</code>;</li>
+                <li>an entry in <code>crates/htmlspec-schema/CHANGELOG.md</code>;</li>
+                <li>the four <code>assets/template-*.html</code> and their pins in <code>assets/vendor.lock.json</code>;</li>
+                <li><code>README.md</code>;</li>
+                <li>the version list in <code>crates/htmlspec-validate/tests/schema_rust_split.rs</code>.</li>
+              </ul>
+            </li>
+            <li>
+              <p><strong>Not in this change</strong>, and recorded so it is not assumed to follow:</p>
+              <ul>
+                <li>Giving <code>ins</code> and <code>del</code> meaning. That is planned as <code>mark-the-words-a-modification-changed</code>.</li>
+                <li><code>s</code> and <code>strike</code>, which draw a line through text without claiming an edit.</li>
+                <li>Change markup in the document's summary, a figure's caption, or a link's text outside every unit. The measurement shows each of these keeps the deleted words, and none of them states a contract. The design records this as the contributor's call.</li>
+                <li>The workflow instructions. The diagnostic states the fix, and the change that gives the markup meaning is the one that tells an agent how to use it.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

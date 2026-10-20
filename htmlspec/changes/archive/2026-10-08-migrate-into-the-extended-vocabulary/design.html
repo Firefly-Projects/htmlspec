@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Migrate into the extended vocabulary</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Migrate into the extended vocabulary</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Migrate into the extended vocabulary</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-08-migrate-into-the-extended-vocabulary/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>See <a href="proposal.html"><code>proposal.md</code></a> for why. The shape of the current system that the approach depends on, from <a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a> unless another source is named:</p>
+          <ul>
+            <li><strong>A migration has three exact parts, and the rest is an agent's reading.</strong> <code>migrate survey</code> enumerates, and <code>migrate promote</code> checks coverage, then checks the staged tree, then moves it. project-migration's "<a href="../../../specs/project-migration/spec.html#req-conversion-of-a-document-s-meaning-is-agent-driven">Conversion of a document's meaning is agent-driven</a>" forbids a program that emits documents. So the product side of this change is a contract, the survey, and the instructions in <code>crates/htmlspec-assets/instructions/migrate.md</code>.</li>
+            <li><strong>The survey reads no change's configuration.</strong> <code>Change</code> in <code>crates/htmlspec-cli/src/migrate.rs</code> (lines 197-215) holds <code>name</code>, <code>archived</code>, <code>version</code>, and <code>delta_sections</code>. <code>.openspec.yaml</code> is classified as <code>change-configuration</code> and never opened (section 1).</li>
+            <li><strong><code>migrate.md</code>'s mapping table has eight rows, and the rename row has a test.</strong> <code>a_renamed_section_is_surfaced_and_the_destination_can_express_it</code> in <code>crates/htmlspec-cli/tests/migrate.rs</code> reads <code>renamedFrom</code> from the published schema and asserts the row's wording. That test pattern is the precedent for the rows this change adds (section 2).</li>
+            <li><strong>The staged tree resolves as its own project.</strong> Promotion's <code>conformance</code> read 109 of the staged tree's 116 HTML files, because discovery resolved the staged project and excluded its evidence. <code>Staged::resolve</code> refuses a staging location that does not resolve to itself (section 6). <code>resolve-a-reference-across-its-change</code> derives a document's placement from <code>ProjectRoot</code>, and names promotion's <code>conformance</code> among the callers that go through the one validating function.</li>
+            <li><strong>This repository's migration is a working folder of scripts and a brief.</strong> <code>replay.py</code> replays every delta in archive order. <code>replay_vs_history.py</code> compares the replay with the accepted specification at every archival commit and finds 0 disagreements, with one entry in <code>KEPT_BY_MERGE</code> (<code>state-a-modified-requirement-whole</code>'s evidence, section 3). <code>build_packets.py</code> writes one packet per drafting assignment. <code>check_draft.py</code> checks each draft. The plan's decisions and conventions were reviewed on 2026-09-29 against a destination that had none of the new vocabulary.</li>
+            <li><strong>The nine earlier changes' vocabulary</strong> is as their specifications state it. Two of its names collided with existing terms, and both were renamed on 2026-10-01. A task's <code>outcome</code> sat beside a verification's <code>data-outcome</code>, and is now <code>deviation</code>. A risk's <code>data-disposition</code> sat beside a plan entity's disposition, which project-migration's "<a href="../../../specs/project-migration/spec.html#req-the-plan-accounts-for-every-surveyed-entity">The plan accounts for every surveyed entity</a>" defines as <code>converted</code>, <code>folded</code>, <code>carried</code>, or <code>dropped</code>, and is now <code>data-response</code>.</li>
+            <li><strong>No command records or reads a change's creation date.</strong> The change that would have recorded one was withdrawn on 2026-10-01, and its measurement is copied into this change as <a href="evidence/a-creation-date-no-command-reads-2026-09-30.md"><code>evidence/a-creation-date-no-command-reads-2026-09-30.md</code></a>.</li>
+          </ul>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong></p>
+          <ul>
+            <li>One rule that a migration maps what the destination can express, with every mapping it implies named and placed.</li>
+            <li>A migrated modified requirement that is whole, completed from the author's own merge, and marked where its words changed.</li>
+            <li>A survey that carries everything a stage needs from a change's configuration, so no stage reads the source a second time.</li>
+            <li>Instructions an agent can follow for each mapping, held to the schema by a test.</li>
+            <li>This repository's migration routines brought to the same rules, with a proof on drafts.</li>
+          </ul>
+          <p><strong>Non-Goals:</strong></p>
+          <ul>
+            <li>New vocabulary. Every value used here is added by the change whose subject it is.</li>
+            <li>A converter, or a program that writes change markup. The conversion stays an agent's reading.</li>
+            <li>Re-staging this repository's migration. That is the self-migration's next step.</li>
+            <li>A check in the program that the marks are complete, or that a staged <code>FOLLOWS</code> agrees with the survey.</li>
+            <li>A record of a change's creation date. The project decided not to keep one (decision 11).</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-decision-1">
+            <h3>1. The rule is generalized, and judged against the contract a migration stages against</h3>
+            <p>"<a href="specification.html#req-a-source-distinction-the-destination-cannot-express-is-recorded-as-open-not-mapped-to-the-nearest-state">A source distinction the destination cannot express is recorded as open, not mapped to the nearest state</a>" gains its other half. Once the destination can express a distinction, migration maps it and does not record it as open. The requirement lists each distinction the destination now expresses and names the requirement that maps it, the rename included. The paragraph that keeps settling the question out of scope for a migration stays word for word, so the migration still adds no value of its own.</p>
+            <p>Whether the destination can express a distinction is judged against the contract the migrated project is staged and checked against. That is this repository's case exactly: its plan was reviewed against a destination with none of this vocabulary, and staging has not finished.</p>
+            <p><strong>Considered: a sentence in each new requirement, as "<a href="../../../specs/project-migration/spec.html#req-a-source-rename-is-carried-as-the-heading-the-requirement-replaced">A source rename is carried as the heading the requirement replaced</a>" has.</strong> Rejected. Five exceptions to a rule that still said "record as open" would read as a rule contradicted five times. One general sentence, with a list that points at each requirement, states the rule once. The rename sentence stays, because it is still true and it was the first instance.</p>
+            <p><strong>Considered: judging against the contract the plan was written for.</strong> Rejected. A reviewed plan would then keep every workaround it was reviewed with, which is the state this change exists to end.</p>
+          </section>
+          <section class="decision" id="decision-five-added-requirements-one-for-each-mapped-fact" data-change="added" data-status="accepted" data-refs="req-migration-surveys-the-source-before-anything-is-read-or-written">
+            <h3>2. Five added requirements, one for each mapped fact <span class="hs-id">decision-five-added-requirements-one-for-each-mapped-fact</span></h3>
+            <p>The mappings are separate requirements: tasks, references, partial verifications, risks, and the change's configuration with its predecessor. Marking and completing a modified requirement go into the collapse requirement instead, because both are about what the collapsed specification states.</p>
+            <p data-field="rationale"><strong>Considered: one requirement, "A source change's records are carried in the destination's vocabulary".</strong> Rejected, for two reasons:</p>
+            <ul>
+              <li>
+                <p data-field="rationale">It would hold five subjects, with five reasons and nearly thirty scenarios, and a later reader could not cite the rule for tasks without citing the rule for risks.</p>
+              </li>
+              <li>
+                <p data-field="rationale">Each mapping depends on one earlier change's vocabulary. When that change's name moves at review, one requirement is re-based and the rest are not touched. Two names moved on 2026-10-01, as the context records, and each touched one requirement. When the creation-date record was withdrawn the same day, its requirement went, and no other changed.</p>
+              </li>
+            </ul>
+            <p data-field="rationale"><strong>Considered: folding tasks, references, and risks into the collapse requirement.</strong> Rejected. Only verifications live in the specification. Tasks live in the tasks document, a decision's references in the design, and risks in the design.</p>
+            <p data-field="rationale"><strong>Considered: putting the survey's reading of the configuration into "<a href="../../../specs/project-migration/spec.html#req-migration-surveys-the-source-before-anything-is-read-or-written">Migration surveys the source before anything is read or written</a>".</strong> Rejected. That requirement states what a survey is. The configuration requirement applies its rule on reading the fields a document carries to one file, and keeps the reading of that file beside what is done with it.</p>
+          </section>
+          <section id="hs-decision-3">
+            <h3>3. A partial <code>MODIFIED</code> block is completed from the source's own merge</h3>
+            <p>A migrated modified requirement is stated whole, as <code>state-a-modified-requirement-whole</code> requires of every change's specification. Where the source's block left out a scenario, the accepted specification as the source's merge left it decides: a scenario still held is <code>unchanged</code>, and one gone is <code>removed</code>. The before and after are read from the source's version history, at the commit that applied the change's contract. <code>state-a-modified-requirement-whole</code>'s evidence, appendix A, gives the method for finding that commit, and its section 3 finds three such blocks in this repository's archive. One kept both omitted scenarios, and two withdrew theirs.</p>
+            <p>Where the history does not hold the accepted text, the omission goes to the plan's review. Migration neither keeps nor withdraws the scenario on its own reading.</p>
+            <p><strong>Considered: OpenSpec's reading, that an omitted scenario is withdrawn.</strong> Rejected. It is wrong for <code>separate-artifact-kinds</code>, whose merge kept "<a href="../../../specs/toolchain-packaging/spec.html#scenario-unknown-subcommand">Unknown subcommand</a>" and "<a href="../../../specs/toolchain-packaging/spec.html#scenario-discoverable-help">Discoverable help</a>". The replay applied this reading until <code>replay_vs_history.py</code> found the one disagreement.</p>
+            <p><strong>Considered: reading an omission as kept.</strong> Rejected. It is wrong for "Status visible to a reviewer" and "One identity per workflow", which were withdrawn.</p>
+            <p><strong>Considered: putting every omission to review.</strong> Rejected where the history answers it. The merge is the author's own record of what they meant, and a review's time belongs to questions only a person can answer.</p>
+            <p>In this repository, <code>replay.py</code> with <code>KEPT_BY_MERGE</code> is how the rule is applied, and <code>replay_vs_history.py</code> is its check. Convention 4 of the plan, "The source archive is the evidence, not git history", is amended to say that the archival commit decides where the two differ.</p>
+            <p><strong>A stated scenario carries its accepted counterpart's identifier</strong>, as artifact-kinds' "<a href="../../../specs/artifact-kinds/spec.html#req-a-change-s-specification-states-a-modified-requirement-whole">A change's specification states a modified requirement whole</a>" requires: <code>state-a-modified-requirement-whole</code> kept that sentence when it was archived, with its scenario "<a href="../../../specs/artifact-kinds/spec.html#scenario-a-scenario-keeps-its-identifier">A scenario keeps its identifier</a>". For a migrated change, the counterpart is the scenario the migrated accepted specification holds under the same requirement with the same heading. The plan's decision 2 qualifies a scenario's identifier only in a document where it has a twin, and so gives one scenario two identifiers. Section 9 of the measurement finds one such scenario among 189: "An invalid specification", <code>unchanged</code> in <code>record-a-renamed-requirement</code>, whose accepted counterpart is qualified. The plan's decision 2 is amended so that a scenario carried forward takes its counterpart's identifier.</p>
+            <p><code>show-what-a-modification-changed</code> pairs a stated scenario with its accepted counterpart by this identifier, so a scenario that kept the wrong one would show as withdrawn and added.</p>
+            <p><strong>Considered: leaving decision 2 as reviewed.</strong> Rejected while the sentence stands. The one scenario would then be the same obligation under two identifiers, which is what "<a href="../../../specs/project-migration/spec.html#req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation">Identifiers are derived once and every reference resolves through that derivation</a>" exists to prevent for requirements.</p>
+          </section>
+          <section id="hs-decision-4">
+            <h3>4. The changed words are marked, by the agent, against the text they replaced</h3>
+            <p>Every requirement and scenario a migrated specification marks <code>modified</code> carries <code>ins</code> and <code>del</code> for the words the change added and deleted, against the accepted text the change modified. How finely to mark is the agent's decision, and a paragraph rewritten throughout may be deleted and added whole, as <code>mark-the-words-a-modification-changed</code>'s instructions tell an author.</p>
+            <p><strong>Considered: permitting the marks, as <code>mark-the-words-a-modification-changed</code> does for an author.</strong> Rejected, for three reasons:</p>
+            <ul>
+              <li>The migration already holds the changed words. It compares each modified requirement with the text it replaced in order to state each scenario's change state, which a whole statement requires. The replay does this for 34 requirements, and finds that 33 changed their statement text.</li>
+              <li>No later reader can recover them. The accepted specification an archived change modified has since moved on, so a comparison with it shows every later change's edits as well. <code>show-what-a-modification-changed</code> refuses an archived change for this reason, and says that none of the staged migration's 24 archived changes is served by its view.</li>
+              <li>Without marks, which words moved survives only where a summary narrates it, and five of this repository's drafted summaries already do.</li>
+            </ul>
+            <p><strong>Considered: a program that emits the marks from a computed diff.</strong> Rejected. It is a converter by another name, which "<a href="../../../specs/project-migration/spec.html#req-conversion-of-a-document-s-meaning-is-agent-driven">Conversion of a document's meaning is agent-driven</a>" forbids. Its output would also be worse. Which words form one edit, and when a paragraph reads better deleted and added whole, is a reading. The comparison is evidence the agent reads: in this repository, each packet carries the previous text, and <code>check_draft.py</code> checks the marks against it.</p>
+            <p><strong>Considered: taking the previous text from <code>htmlspec show &lt;change&gt; --diff</code>.</strong> Rejected as the source of the marks. <code>show-what-a-modification-changed</code> refuses an archived change, because compared with today's accepted text it shows nothing or a later change's edit reversed, and "The text the accepted specification held then is recorded only in git" (its proposal). Its view is still useful as a second check. Task 6.3 rebuilds one of <code>finish-the-archival</code>'s modified requirements the way that change's task 7.1 rebuilds <code>sync-a-change-into-the-accepted-contract</code>, as an active change beside the text it modified, and compares the view's word marks with the draft's.</p>
+            <p>The replay's "previous statement" is the previous delta's text, not the accepted text at the merge. The two agree for every requirement in this archive, because <code>replay_vs_history.py</code> finds 0 disagreements, so the replay may supply the previous text here. The requirement names the accepted text, so a source whose replay and history disagree is decided by its history.</p>
+          </section>
+          <section id="hs-decision-5">
+            <h3>5. A task keeps the state its record supports, and the brief's contradiction goes</h3>
+            <p>The brief's tasks rule and its convention 2 disagree about a task ticked and struck through with a stated reason. The rule makes it <code>dropped</code>, and the convention keeps it <code>done</code> with a note. The rule wins: <code>[~]</code>, or a task struck through, is <code>dropped</code> with the source's reason, whichever box was ticked. Convention 2 is amended to say so, and a task done another way is <code>done</code> with a deviation in place of a note. A task whose result nothing records stays <code>done</code>, with its note, because a deviation states what was done.</p>
+            <p>Where the account of a difference is the task's own text, as "<strong>Amended during implementation.</strong>" is, that account is the deviation, in the author's words. Where the account is elsewhere, the deviation says what was done and names where that is shown: a carried record, which it links, or the source at a named commit. Several of the 33 notes rest on code at an archival commit, so a carried record alone would not cover them. In this repository, a deviation written in the migration's words opens with "Migration note:", because the brief marks everything the migration wrote.</p>
+            <p>An abandoned task with no stated reason goes to the plan's review. If the review supplies none, the task takes the state OpenSpec reads from its checkbox, with a note, and the plan records it. This repository has no such task: all four abandoned tasks state their reason.</p>
+            <p><strong>Considered: a reason paragraph saying that the source gave none.</strong> Rejected. It is a sentinel in a field whose job is to say why, and validation would accept it as a reason.</p>
+            <p><strong>Considered: keeping convention 2.</strong> Rejected. It is the nearest state that validates, and <code>list</code> would count every one of the 33 tasks as done as written.</p>
+            <p><strong>Considered: striking the words through with <code>del</code>.</strong> Rejected, as settled for this set of changes. A task never carries change markup, and <code>dropped</code> already says its words were given up. The staged drafts carry the strike as <code>s</code>, which is presentational and stays permitted.</p>
+          </section>
+          <section id="hs-decision-6">
+            <h3>6. A unit the author's words name becomes a reference, and its link stays</h3>
+            <p>A task or decision that names a requirement or scenario in its author's words gains <code>data-refs</code> for it, where document-schema's "<a href="../../../specs/document-schema/spec.html#req-cross-references-address-units-by-identifier">Cross-references address units by identifier</a>" reaches the unit from that document. The link around the author's words stays. <code>resolve-a-reference-across-its-change</code>'s task 5.3 measured what this does to the staged tree: 55 of the 56 linking units resolve, 30 in their change's specification and 25 in the accepted specifications. Two of the 25 link to another change's specification, and resolve because the accepted specifications declare the same identifiers. Task 5.1 of <code>distinguish-command-names-from-skill-names</code> names a withdrawn scenario and reports <code>refs/removed-target</code>, so it alone stays a link.</p>
+            <p><strong>Corrected on 2026-10-08.</strong> This paragraph said 53 resolve, and that the two units naming another change's requirement stay links. That was task 5.3's expectation as written, and the measurement recorded in that change's archive found it wrong (<a href="evidence/the-measurement-repeated-2026-10-08.md"><code>evidence/the-measurement-repeated-2026-10-08.md</code></a>, section 1.0). Reachability is decided by identifier, as validation decides it, so the rule here gives those two a reference. Whether it should is put to the contributor at review.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> The question this correction puts to the contributor was settled at review. <a href="tasks.html#task-8-1">Task 8.1</a> records that on 2026-10-08 the contributor kept it as built: a task linking to another change's specification carries <code>data-refs</code> where the accepted specifications declare the identifier.</p>
+            </aside>
+            <p><strong>Considered: replacing the link with the reference.</strong> Rejected. A reference is not a hyperlink, and a reader of the page would lose the way to the unit.</p>
+            <p><strong>Considered: a reference for every linked unit, reachable or not.</strong> Rejected. Each unreachable one fails <code>refs/unresolved</code> or <code>refs/removed-target</code>, and <code>resolve-a-reference-across-its-change</code> keeps references between changes out on purpose.</p>
+            <p><strong>Considered: references inferred from a task's subject or its capability.</strong> Rejected. The model would then hold relationships the author never stated. The rule that the author's words name the unit is the brief's rule for links, and <code>check_draft.py</code> enforces it by flagging any <code>data-refs</code> entry that no link in the same unit points at.</p>
+          </section>
+          <section id="hs-decision-7">
+            <h3>7. Placement resolves inside a staged tree, so nothing in staging changes</h3>
+            <p>Section 6 of the measurement shows how. <code>Staged::resolve</code> refuses a staging location unless <code>ProjectRoot::resolve</code> finds that location itself, and conformance runs only after it passes. From any staged document, <code>ProjectRoot::resolve</code> reaches the staged root before any <code>.git</code>. <code>resolve-a-reference-across-its-change</code> derives placement from <code>ProjectRoot</code>, positionally and on canonical paths, and promotion's conformance reaches it through the one validating function. The staged tree's paths are the destination's, because promotion is a move. So a document's placement in staging is its placement after promotion, and a staged reference reaches the staged change's specification and the staged accepted specifications.</p>
+            <p><strong>This is not a gap in the code, and it is a gap in what is tested.</strong> No test puts a cross-document reference into a staged tree. Task 2.4 adds one to <code>crates/htmlspec-cli/tests/promote.rs</code>: one staged task whose reference resolves in its change's staged specification, and one whose reference resolves nowhere, run through <code>migrate promote --check</code>.</p>
+            <p><strong>Considered: a requirement of its own for placement in staging.</strong> Rejected. The scenario "<a href="../../../specs/project-migration/spec.html#scenario-checks-run-in-the-staging-location">Checks run in the staging location</a>" in "<a href="../../../specs/project-migration/spec.html#req-the-migrated-project-is-assembled-in-a-staging-location-and-promoted-in-one-step">The migrated project is assembled in a staging location and promoted in one step</a>" already requires the staged tree to be checked "as they would after promotion". The references requirement names the case, and the test holds it.</p>
+          </section>
+          <section class="decision" id="decision-a-partial-check-is-recorded-as-partial-and-nothing-else-widens" data-change="added" data-status="accepted">
+            <h3>8. A partial check is recorded as <code>partial</code>, and nothing else widens <span class="hs-id">decision-a-partial-check-is-recorded-as-partial-and-nothing-else-widens</span></h3>
+            <p>Where a carried record shows a check that reached part of what the verification names, the verification records <code>partial</code>, with an <code>unchecked</code> paragraph for each part the record does not show, in the scenario's own words. Where a check reached something else, no unit is written, as before. In this repository that restores the two units review removed and corrects the two staged as <code>passed</code>. <code>record-a-partial-verification</code>'s section 4 reads five more declined checks as partial. The re-stage decides each against its record.</p>
+            <p data-field="rationale"><strong>Considered: re-auditing every <code>passed</code> unit here.</strong> Rejected. It is a review of 90 judgments, not a mapping, and nothing measured says more of them are partial.</p>
+          </section>
+          <section id="hs-decision-9">
+            <h3>9. A risk's stated settlement becomes its response, and the shape rule stays</h3>
+            <p>A risk becomes a unit only where the source gave it a heading and put its statement and any measure in paragraphs of their own. The response changes one thing: an accepted risk needs no mitigation, so a headed accepted risk with no measure now has that shape. <code>record-how-a-risk-was-settled</code>'s section 6 counts five such risks, and the one drafted unit, which is accepted with a partial measure.</p>
+            <p>Migration declares a response only where the source states one. "Not mitigated" is <code>accepted</code>: <code>record-how-a-risk-was-settled</code> defines an accepted risk as one the change bears as it stands, and names its own release runbook's "Not mitigated" risks as the case. A risk that states a mitigation and no settlement takes the default.</p>
+            <p><strong>Considered: declaring <code>mitigated</code> on every carried risk.</strong> Rejected. It adds a word the author did not write, and the default already reads it.</p>
+            <p><strong>Considered: recording "not mitigated" as open.</strong> Rejected. It is the meaning <code>accepted</code> has, not the nearest value to it.</p>
+            <p><code>migrate.md</code> writes "a risk's response" or "a risk's <code>data-response</code>", and never calls it a disposition. In <code>migrate.md</code> and project-migration, a disposition is what the plan decides about an entity, and that collision is why the attribute, first named <code>data-disposition</code>, was renamed on 2026-10-01.</p>
+          </section>
+          <section id="hs-decision-10">
+            <h3>10. The survey reads each change's configuration, and the value of <code>follows:</code> only</h3>
+            <p><code>Change</code> gains <code>configuration: Option&lt;ChangeConfiguration&gt;</code>. <code>None</code> means the change has no <code>.openspec.yaml</code>, and it is serialized as <code>null</code>, not omitted, for the reason <code>version</code> gives: "this change recorded none" is a fact the plan carries.</p>
+            <pre><code>pub struct ChangeConfiguration {
+    /// Every key the file sets, in the order a reader meets them.
+    pub keys: Vec&lt;String&gt;,
+    /// `follows:`, as the author wrote it, where the file states one.
+    pub follows: Option&lt;String&gt;,
+}</code></pre>
+            <p>The payload is <code>"configuration": {"keys": [...], "follows": "..."}</code>. Keys are read by the rule <code>read_configuration</code> already applies to <code>config.yaml</code>. A value is the text after the first colon, with a trailing <code> #</code> comment removed, trimmed, and one pair of matching quotes removed.</p>
+            <p><strong>The survey reads the value of <code>follows:</code> and of no other key.</strong> <code>follows:</code> feeds <code>FOLLOWS</code>, which the stager writes and the program reads. <code>created:</code> would feed nothing, because the project records no creation date (decision 11), and a survey field nothing consumes is the case project-bootstrap's sentence, quoted there, excludes. The <code>created</code> key is still reported among <code>keys</code>, so the plan accounts for it as it accounts for <code>schema:</code>.</p>
+            <p><strong>Considered: the stager reading the file again, as <code>stage_carry.py</code> does.</strong> Rejected. "<a href="../../../specs/project-migration/spec.html#req-migration-surveys-the-source-before-anything-is-read-or-written">Migration surveys the source before anything is read or written</a>" makes the survey the list a stage is checked against, and a second reading escapes that.</p>
+            <p><strong>Considered: reading <code>created:</code> as well, as a date or as unreadable text.</strong> Rejected. Its one consumer would have been a creation-date record, and the project decided not to keep one. A value the survey parses and reports with nothing to receive it is the field project-bootstrap's sentence excludes, and a malformed date it reported would be a fault nobody could act on, in a file that crosses byte-identical anyway.</p>
+            <p><code>follows:</code> is carried as text. Whether it names a change is resolution, which <code>FOLLOWS</code>'s reader already reports as archived, active, or unmatched.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, two things differ from this decision, and the design was not corrected for either. <code>None</code> also means a file that cannot be opened, as <code>Change::version</code> reads its file: <a href="tasks.html#task-3-1">task 3.1</a>'s record gives the doc comment that says so, and <a href="evidence/what-the-implementation-revealed-2026-10-08.md"><code>evidence/what-the-implementation-revealed-2026-10-08.md</code></a> records it among what the work found. And the value rule is not the one stated above: the code review of PR #52, taken in <a href="tasks.html#task-8-1">task 8.1</a>, found that it read <code>follows:</code> more simply than YAML does, and <code>value_of</code> now reads a quoted value to its closing quote and ends a plain one at a <code>#</code> after whitespace of either kind, and <code>settings</code> strips a leading byte-order mark.</p>
+            </aside>
+          </section>
+          <section id="hs-decision-11">
+            <h3>11. The creation date stays in carried evidence</h3>
+            <p>No migrated change gets a creation-date record, and <code>created:</code> maps to nothing. The date crosses where it already does. Every <code>.openspec.yaml</code> is carried byte-identical into its change's <code>evidence/</code>, as the plan's reviewed decision 1 carries all 15 files, and the staged tree holds them. So the creation date is neither a mapped distinction nor an open question.</p>
+            <p><strong>The reason is the project's refusal, not a gap in the destination.</strong> On 2026-10-01 the project decided not to record a creation date, because no command depends on one. The contract judges a recorded value by what depends on it, and project-bootstrap's "<a href="../../../specs/project-bootstrap/spec.html#req-a-project-declares-its-name-version-and-expected-toolchain">A project declares its name, version, and expected toolchain</a>" states the test: "At least one command SHALL depend on the declaration. A declaration no command reads states nothing that can be wrong, so nothing reports it when it is". The withdrawn change's design applied that test, and three others, to every reader a date could have, and concluded: "So, by the contract's own measure, the date is accuracy without authority." Its measurement, copied as <a href="evidence/a-creation-date-no-command-reads-2026-09-30.md"><code>evidence/a-creation-date-no-command-reads-2026-09-30.md</code></a>, gives the facts the verdict rests on. OpenSpec itself reads <code>created:</code> nowhere except to check its form (section 5), and this repository's migration already carries all 15 dates in evidence (section 3).</p>
+            <p>That is why the date is not recorded as open under decision 1's rule. An open question names the change that would settle it, and that change was proposed, measured, and withdrawn. A question the project has answered is not open, and asking it again in every migrated change would be the question nobody needs to answer that decision 1 retires.</p>
+            <p><strong>The file crosses into <code>evidence/</code> in this repository, as reviewed.</strong> It is the only record of the date, and of its <code>schema:</code> key, which has no destination. The product requirement leaves the choice to the plan, says the contract is silent on it, and asks a plan that drops the file to say that the date goes with it. In <code>make_decisions.py</code>, decision 1's rationale changes from "The destination has no field for a start date" to the project's refusal: on 2026-10-01 the project decided not to record a creation date, because no command depends on one. Each entity's reason stops restating its date, which the carried file states, and the rules-table row stops saying "a <code>FOLLOWS</code> file, or none".</p>
+            <p><strong>Considered: mapping <code>created:</code> to a record of its own.</strong> Rejected. The project withdrew that record, so there is nothing to map to, and a migration that wrote one would extend the vocabulary, which decision 1 forbids.</p>
+            <p><strong>Considered: folding the file into <code>FOLLOWS</code>, and dropping it.</strong> Rejected. It reverses a reviewed decision to save a file of 40 to 77 bytes a change, and it loses the only record of the date.</p>
+          </section>
+          <section id="hs-decision-12">
+            <h3>12. <code>migrate.md</code> maps each fact, and a test holds the rows to the schema</h3>
+            <p>The table gains four rows:</p>
+            <ul>
+              <li><code>## MODIFIED Requirements</code>: stated whole, with a partial block completed from the merge, and the changed words marked.</li>
+              <li><code>## REMOVED Requirements</code>: <code>data-change="removed"</code>, holding what the requirement held before, with the delta's Reason and Migration as notes. The brief already does this, and document-schema's "<a href="../../../specs/document-schema/spec.html#req-semantic-units-declare-a-change-state">Semantic units declare a change state</a>" keeps a withdrawn unit present.</li>
+              <li>a task's checkbox.</li>
+              <li><code>.openspec.yaml</code>: <code>follows:</code> as <code>FOLLOWS</code>, the file as a plan entity, and <code>created:</code> as a key with no record of its own, which crosses only inside the file.</li>
+            </ul>
+            <p>The guidance gains a short section for each subject: modified requirements, tasks, references, verifications, risks, and the configuration. Each cites its requirement by heading. Stage 3 also gathers the text each modification replaced. "What to report" asks which distinctions were mapped, so that a mapped distinction is not presented as open, or the reverse.</p>
+            <p>A new test, beside the rename test, reads <code>deviation</code>, <code>partial</code>, <code>unchecked</code>, and <code>response</code> from the published schema, and asserts that each new row names its vocabulary and none says "open question". <strong>Corrected on 2026-10-08: it is two tests.</strong> This change was built on a branch whose schema held none of the three changes' fields, so the schema half, <code>the_destination_expresses_each_distinction_migrate_md_maps</code>, was marked <code>#[ignore]</code> until the stack below it was assembled, and runs since, and the rows half, <code>each_distinction_the_destination_expresses_has_a_row</code>, runs on its own. Another asserts that the survey's payload carries every archived <code>.openspec.yaml</code>'s keys and <code>follows:</code> value, compared with an independent reading of the files. It states a property, as the file's own header asks, so it keeps passing as the archive grows.</p>
+          </section>
+          <section id="hs-decision-13">
+            <h3>13. The working folder is changed file by file, and reviewed decisions are amended</h3>
+            <p>The tasks name each file and what changes in it. <code>make_decisions.py</code> records each decision as it was put in review, beside its answer, because the plan is carried as evidence. So decision 1's question and answer stay as they are, and a dated amendment goes beside them. The same holds for conventions 2, 4, and 7. The revised conventions go to the contributor at the plan's next review, which is part of the re-stage.</p>
+            <p><code>make_decisions.py</code> reads <code>follows:</code> from the survey's payload instead of <code>change-config.tsv</code>, and stops restating each <code>created:</code> value, which the carried file already states. <code>stage_carry.py</code> writes <code>FOLLOWS</code> from the payload. That closes the second reading decision 10 names. <code>stage_carry.py</code> also stops refusing a target that already holds the same bytes, so it can run over the tree it staged before.</p>
+          </section>
+          <section id="hs-decision-14">
+            <h3>14. The proof re-drafts the pilots, and three packets the pilots do not reach</h3>
+            <p>The three pilots exercise change markup, deviations, references, and a predecessor. They hold no partial check, no risk unit, and no scenario a merge kept (measurement, section 7). A proof that never exercised those three would prove nothing about them. So the proof also re-drafts:</p>
+            <ul>
+              <li><code>2026-08-13-content-address-runtime-assets</code>, for its two partial checks;</li>
+              <li><code>2026-08-14-separate-artifact-kinds</code>, for its two kept scenarios;</li>
+              <li><code>2026-09-06-distinguish-a-requirement-from-an-example</code>, for its drafted risk unit and a headed accepted risk with no measure.</li>
+            </ul>
+            <p><strong>This goes past "the three pilots", and the contributor confirmed it on 2026-10-01.</strong> The routines run on a copy of the source extracted from the plan's commit, <code>6a591bd</code>, with <code>git archive</code>, and the drafts go into a scratch copy of the staged tree. The reviewed plan predates the ten new archives, and the staged tree is left for the re-stage to redo whole.</p>
+            <p><strong>Considered: the full re-stage here.</strong> Rejected. It is 37 assignments plus the ten new archives, and it is the self-migration's next step, not this change's subject.</p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>[Marks are only as right as the previous text.]</strong> → The replay agrees with the accepted specification at every archival commit, and <code>check_draft.py</code> checks each unit's marks against it both ways. With <code>del</code> unwrapped and <code>ins</code> dropped, the text must give the previous text. With <code>ins</code> unwrapped and <code>del</code> dropped, it must give the current one.</li>
+            <li><strong>[An agent marks a rewritten paragraph phrase by phrase until it cannot be read.]</strong> → <code>migrate.md</code> and the brief say to delete and add such a paragraph whole.</li>
+            <li><strong>[A deviation written in the migration's words reads as the author's.]</strong> → It opens "Migration note:" and names where the fact is shown.</li>
+            <li><strong>[A name moves at review: <code>unchecked</code>, <code>partial</code>, <code>deletions</code>, or another.]</strong> → Two already have, as the context records, and this change uses the new names. Task 1.0 re-reads every name from the archived changes. The new tests read field names from the schema, so a rename fails them rather than passing them.</li>
+            <li><strong>[Reviewed conventions change after review.]</strong> → They are amended beside the reviewed text, dated, and put to the contributor at the next review.</li>
+            <li><strong>[The proof covers 6 of 37 assignments.]</strong> → Task 6.5 runs the revised <code>check_draft.py</code> over every other existing draft and records what it finds, by kind, as the re-stage's worklist. Those drafts predate the revised brief, so the findings are expected.</li>
+            <li><strong>[A reference is added where the author named nothing.]</strong> → <code>check_draft.py</code> flags each <code>data-refs</code> entry that no link in its unit points at.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <ul>
+            <li><strong>Contract version.</strong> No unit, field, attribute, or projection rule is added, so the document contract does not move. It stays where <code>record-how-a-risk-was-settled</code> leaves it. Under the bump table in <code>crates/htmlspec-schema/CHANGELOG.md</code>, nothing this change edits is versioned there.</li>
+            <li><strong>The survey's payload</strong> gains one key on each change, <code>configuration</code>. Nothing is renamed or removed. <code>crate::plan::surveyed_paths</code> and the coverage gate read <code>entities</code> only, so a survey written before this change still checks a plan.</li>
+            <li><strong>Existing projects.</strong> Nothing to do. A migration planned before this change is re-planned under decision 1 before its affected documents are staged.</li>
+            <li><strong>Rollback.</strong> Revert. The payload loses the key, and <code>migrate.md</code> loses the rows.</li>
+            <li><strong>Release.</strong> Expected to be <code>0.28.0</code>, the next minor increment after <code>record-how-a-risk-was-settled</code>'s <code>0.27.0</code>. The survey reports more, and the migration contract changes. The contributor confirms the increment at the release task.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

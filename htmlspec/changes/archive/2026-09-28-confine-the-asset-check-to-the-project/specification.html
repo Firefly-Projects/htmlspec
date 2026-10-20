@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Confine the asset check to the project</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Confine the asset check to the project</h1>
+        <p>Under "A project must not store one asset's bytes more than once", a project's stores are the asset stores within its own <code>htmlspec/</code> directory, and the comparison across stores is made among those stores alone. A store outside that directory is still checked on its own and compared with no other store, and the report states which stores it treated as the project's and which it checked on their own.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Confine the asset check to the project</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-28-confine-the-asset-check-to-the-project/specs/document-validation/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-document-validation">document-validation</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-document-validation">
+          <h2>document-validation</h2>
+          <section class="requirement" id="req-a-project-must-not-store-one-asset-s-bytes-more-than-once" data-change="modified">
+            <h3>A project must not store one asset's bytes more than once <span class="hs-id">req-a-project-must-not-store-one-asset-s-bytes-more-than-once</span></h3>
+            <p>Validation SHALL reject a project that stores identical asset bytes at more than one location. The report SHALL name every location holding the duplicated bytes, so a contributor can tell which copy to remove.</p>
+            <p>Two assets whose bytes differ SHALL NOT be reported as duplicates, however similar their names, versions, or purposes.</p>
+            <p>This rule takes a project as its subject rather than a document, so it SHALL be evaluated where a project is in view. A directory holding no asset store has nothing to duplicate, and SHALL NOT be reported.</p>
+            <ins>
+              <p><strong>A project's stores SHALL be the asset stores within the project's own directory, <code>htmlspec/</code>, and no others.</strong> The comparison across stores SHALL be made among those stores alone. A repository holding a project can hold other stores that are not the project's — a conformance fixture that is a project of its own, a toolchain's source copy of the runtime, a vendored copy another tool reads — and bytes those stores share with the project's are not the project storing its bytes twice. The subject of this rule is one project, and a comparison that reaches past the project's directory has changed its subject to the repository.</p>
+            </ins>
+            <ins>
+              <p>A store outside the project's directory SHALL still be checked on its own, so a store that holds identical bytes at two of its own locations is reported wherever it lives. It SHALL NOT be compared with the project's stores or with any other store.</p>
+            </ins>
+            <ins>
+              <p>The report SHALL state which stores it treated as the project's and which it checked on their own, so a contributor can tell a duplication that is not the project's from a check that did not run.</p>
+            </ins>
+            <ins>
+              <p>Where no project is in view, every store SHALL be checked on its own, as before.</p>
+            </ins>
+            <article class="scenario" id="scenario-duplicate-copies-of-one-library" data-change="unchanged">
+              <h4>Duplicate copies of one library</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project storing the same library bytes in two locations</dd>
+                <dt>When</dt>
+                <dd>the project is validated</dd>
+                <dt>Then</dt>
+                <dd>validation fails and names both locations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-copy-per-document-is-rejected" data-change="unchanged">
+              <h4>A copy per document is rejected</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project in which each document carries its own copy of the runtime</dd>
+                <dt>When</dt>
+                <dd>the project is validated</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the shared-runtime obligation is violated</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-different-revisions-are-not-duplicates" data-change="unchanged">
+              <h4>Different revisions are not duplicates</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project storing two revisions of one stylesheet whose bytes differ</dd>
+                <dt>When</dt>
+                <dd>the project is validated</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds, because distinct bytes are not a duplicate</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-one-store-serving-many-documents" data-change="unchanged">
+              <h4>One store serving many documents</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>many documents referencing one stored copy of each library</dd>
+                <dt>When</dt>
+                <dd>the project is validated</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-project-beside-a-fixture-that-carries-its-own-store" data-change="added">
+              <h4>A project beside a fixture that carries its own store</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a repository holding a project, and a conformance fixture elsewhere in the repository whose store holds bytes identical to the project's</dd>
+                <dt>When</dt>
+                <dd>the project's asset topology is checked</dd>
+                <dt>Then</dt>
+                <dd>no duplication is reported, and the report names the fixture's store as checked on its own</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-project-beside-a-toolchain-s-source-copy-of-the-runtime" data-change="added">
+              <h4>A project beside a toolchain's source copy of the runtime</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a repository whose root holds a store of the runtime outside the project's directory, and a project whose store holds the same bytes</dd>
+                <dt>When</dt>
+                <dd>the project's asset topology is checked</dd>
+                <dt>Then</dt>
+                <dd>no duplication is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-stores-inside-the-project" data-change="added">
+              <h4>Two stores inside the project</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose own directory holds two stores with identical bytes, such as one beside a change's documents</dd>
+                <dt>When</dt>
+                <dd>the project's asset topology is checked</dd>
+                <dt>Then</dt>
+                <dd>the duplication is reported and names both locations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-store-outside-the-project-that-duplicates-within-itself" data-change="added">
+              <h4>A store outside the project that duplicates within itself</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a store outside the project's directory holding identical bytes at two of its own locations</dd>
+                <dt>When</dt>
+                <dd>the project's asset topology is checked</dd>
+                <dt>Then</dt>
+                <dd>that duplication is reported, and the store is not compared with the project's</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Every evidence and verification unit in this section and the next was written when this document was migrated. Each summarizes a record carried unchanged in this change's <code>evidence/</code>, as project-migration's "Evidence crosses unchanged" requires, and links it, and the record is the authority.</p>
+          </aside>
+          <section class="evidence" id="evidence-the-measurement-2026-09-27" data-change="added" data-refs="req-a-project-must-not-store-one-asset-s-bytes-more-than-once">
+            <h3>The measurement, repeated before anything changed <span class="hs-id">evidence-the-measurement-2026-09-27</span></h3>
+            <p>Tasks 1.1, 1.2, and 4.2, run in a <code>git clone</code> of <code>51c5aea</code>, the merge of #35 and 0.16.0 (<a href="evidence/the-measurement-2026-09-27.md"><code>evidence/the-measurement-2026-09-27.md</code></a>). With <code>htmlspec 0.16.0</code>, before <code>init</code>, <code>htmlspec assets .</code> checked 14 stored assets in 5 stores, each on its own, and found each once. After <code>htmlspec init --tools none</code>, it checked 22 in 6 stores, reported 9 duplicated assets, and exited 1: eight runtime files in both <code>./assets/</code> and <code>./htmlspec/assets/</code>, and one stylesheet two conformance fixtures both carry. With and without the <code>htmlspec/</code> and <code>spec.nix</code> that <code>init</code> created, every document stage of <code>scripts/check</code> and a validation of every fixture document gave identical results, and the one difference was <code>validate htmlspec</code>, whose path did not exist without them. With the binary built from this change, the same tree reported 1 store within the project's <code>htmlspec/</code> and 5 outside it, each checked on its own, found each stored asset once, and exited 0, with <code>"projectStores": ["./htmlspec/assets"]</code>, the five others under <code>"otherStores"</code>, <code>"stores": 6</code>, and <code>"storedAssets": 22</code>. A copy of <code>htmlspec/assets/</code> at <code>htmlspec/changes/a-change/assets/</code> reported 8 duplicated assets and exited 1. A store is now named by its <code>assets/</code> directory, a readability fix made on the way.</p>
+          </section>
+          <section class="evidence" id="evidence-mutation-testing-2026-09-27" data-change="added" data-refs="req-a-project-must-not-store-one-asset-s-bytes-more-than-once">
+            <h3>Mutation testing the partition <span class="hs-id">evidence-mutation-testing-2026-09-27</span></h3>
+            <p>Task 5.1 (<a href="evidence/mutation-testing-2026-09-27.md"><code>evidence/mutation-testing-2026-09-27.md</code></a>). Each of three mutations edited <code>partition</code> in <code>crates/htmlspec-cli/src/topology.rs</code> alone, ran <code>cargo test -q --no-fail-fast -p htmlspec-cli</code>, and restored the file. "Every store is the project's", the behavior before this change, was caught by five named tests, among them <code>a_project_beside_a_fixture_store_is_not_a_duplicate_of_it</code> and <code>a_project_beside_a_toolchain_source_store_is_not_a_duplicate_of_it</code>. "No store is the project's" was caught by <code>two_stores_inside_the_project_are_still_compared</code>, the older <code>the_asset_check_reports_duplication_between_two_stores</code>, two more named tests, and three <code>topology::tests</code>. Paths compared without resolving symbolic links were caught by <code>a_project_reached_through_a_symbolic_link_keeps_its_stores</code> alone, which exists because macOS reaches the temporary directory through <code>/var</code> → <code>/private/var</code>.</p>
+          </section>
+          <section class="evidence" id="evidence-what-the-implementation-revealed-2026-09-27" data-change="added" data-refs="req-a-project-must-not-store-one-asset-s-bytes-more-than-once">
+            <h3>What the implementation revealed <span class="hs-id">evidence-what-the-implementation-revealed-2026-09-27</span></h3>
+            <p>Task 5.3's seven findings (<a href="evidence/what-the-implementation-revealed-2026-09-27.md"><code>evidence/what-the-implementation-revealed-2026-09-27.md</code></a>). One of task 1.1's nine duplicates was between two conformance fixtures, with no project store involved: once any project resolved, every store was compared with every other. Only the topology check depends on the project's existence. The partition compares canonical paths, falls back to the absolute path where a path cannot be resolved, and one test fails without it. A store is named in the report by its <code>assets/</code> directory. The partition is stated whenever a project is in view, including "No store outside it was found", and the structured payload always carries both lists. Promotion resolves the staged tree as a project and passes the staged root to the same <code>topology::check</code> as <code>assets</code>, and <code>the_asset_check_and_promotion_give_one_verdict</code> keeps the two from drifting. The proposal's non-goals remain.</p>
+          </section>
+          <section class="evidence" id="evidence-the-runbook-ran-2026-09-27" data-change="added" data-refs="req-a-project-must-not-store-one-asset-s-bytes-more-than-once">
+            <h3>The release runbook's run for 0.17.0 <span class="hs-id">evidence-the-runbook-ran-2026-09-27</span></h3>
+            <p>Tasks 6.1 to 6.3, against the release runbook at version <code>0.1.0</code> (<a href="evidence/the-runbook-ran-2026-09-27.md"><code>evidence/the-runbook-ran-2026-09-27.md</code></a>). The increment, <code>0.16.0</code> to <code>0.17.0</code>, was a minor one, confirmed by the contributor before the version moved. With the stray <code>htmlspec/</code> and <code>spec.nix</code> that <code>init</code> bootstrapped present, <code>htmlspec assets .</code> exited 0, reporting 1 store within the project's <code>htmlspec/</code> and 5 outside it, each checked on its own, where before this change it reported nine duplicates. With both removed, <code>scripts/check</code> passed all 13 stages. After archival, <code>scripts/check-release</code> reported 23 archived changes recording a version and 17 versions in the changelog, and exited 0.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-the-toolchain-copy-in-this-repository" data-change="added" data-outcome="passed" data-refs="scenario-a-project-beside-a-toolchain-s-source-copy-of-the-runtime">
+            <h3>The toolchain's source copy beside a project, in a clone of this repository <span class="hs-id">verify-the-toolchain-copy-in-this-repository</span></h3>
+            <p data-field="method">In a <code>git clone</code> of <code>51c5aea</code>, after <code>htmlspec init --tools none</code>, <code>htmlspec assets .</code> was run with the binary built from this change (task 4.2). Section 1.1 of the same record shows that clone's root store, <code>./assets/</code>, holding the eight runtime files that <code>init</code> stored in <code>./htmlspec/assets/</code>.</p>
+            <p>It reported "each stored asset appears once" and exited 0, naming <code>./assets</code> among the 5 stores outside the project's <code>htmlspec/</code> that were each checked on their own (<a href="evidence/the-measurement-2026-09-27.md"><code>evidence/the-measurement-2026-09-27.md</code></a>, section 4.2).</p>
+          </section>
+          <section class="verification" id="verify-the-behavior-before-this-change-restored-by-mutation" data-change="added" data-outcome="passed" data-refs="scenario-a-project-beside-a-fixture-that-carries-its-own-store scenario-a-project-beside-a-toolchain-s-source-copy-of-the-runtime">
+            <h3>The behavior before this change, restored by mutation <span class="hs-id">verify-the-behavior-before-this-change-restored-by-mutation</span></h3>
+            <p data-field="method">Task 5.1 made <code>partition</code> in <code>crates/htmlspec-cli/src/topology.rs</code> return every store as the project's, which is the behavior before this change, ran <code>cargo test -q --no-fail-fast -p htmlspec-cli</code>, and restored the file. The record gives each test that caught it by name only. Two of them were read at <code>dfb2b04</code>, in <code>crates/htmlspec-cli/tests/cli.rs</code>, when this document was migrated. <code>a_project_beside_a_fixture_store_is_not_a_duplicate_of_it</code> copies the project's store into a store under <code>fixtures/conformance/a-fixture/</code>, runs <code>assets</code>, and asserts that it exits 0 and that its report names the fixture's store as checked on its own. <code>a_project_beside_a_toolchain_source_store_is_not_a_duplicate_of_it</code> copies the project's store into a root <code>assets/</code> beside <code>htmlspec/</code>, runs <code>assets</code>, and asserts that it exits 0.</p>
+            <p>Both tests caught the mutation, as did three more the record names (<a href="evidence/mutation-testing-2026-09-27.md"><code>evidence/mutation-testing-2026-09-27.md</code></a>). In the release run, <code>scripts/check</code>, whose <code>test</code> stage at <code>dfb2b04</code> runs <code>cargo test --workspace --all-targets --locked</code>, passed all 13 stages (<a href="evidence/the-runbook-ran-2026-09-27.md"><code>evidence/the-runbook-ran-2026-09-27.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-a-partition-that-excuses-every-store-restored-by-mutation" data-change="added" data-outcome="passed" data-refs="scenario-two-stores-inside-the-project scenario-duplicate-copies-of-one-library">
+            <h3>A partition that excuses every store, restored by mutation <span class="hs-id">verify-a-partition-that-excuses-every-store-restored-by-mutation</span></h3>
+            <p data-field="method">Task 5.1 made <code>partition</code> return no store as the project's, so that nothing is compared across stores, and ran the same tests. The record gives each test that caught it by name only. Two of them were read at <code>dfb2b04</code>, in <code>crates/htmlspec-cli/tests/cli.rs</code>, when this document was migrated. <code>two_stores_inside_the_project_are_still_compared</code> copies the project's store to <code>htmlspec/changes/a-change/assets</code>, runs <code>assets</code>, and asserts that it exits with the code for a document violation and that its report names both <code>htmlspec/changes/a-change/assets</code> and <code>htmlspec/assets/</code>. <code>the_asset_check_reports_duplication_between_two_stores</code> writes the same <code>runtime.js</code> bytes into the stores of two changes in a project, runs <code>assets</code>, and asserts that it exits with the code for a document violation and that its report names both stores.</p>
+            <p>Both tests caught the mutation, as did five more the record names (<a href="evidence/mutation-testing-2026-09-27.md"><code>evidence/mutation-testing-2026-09-27.md</code></a>). In the release run, <code>scripts/check</code>, whose <code>test</code> stage at <code>dfb2b04</code> runs <code>cargo test --workspace --all-targets --locked</code>, passed all 13 stages (<a href="evidence/the-runbook-ran-2026-09-27.md"><code>evidence/the-runbook-ran-2026-09-27.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-a-second-store-planted-inside-the-project" data-change="added" data-outcome="partial" data-refs="scenario-two-stores-inside-the-project">
+            <h3>A second store planted inside the project, in a clone of this repository <span class="hs-id">verify-a-second-store-planted-inside-the-project</span></h3>
+            <p data-field="method">In the same clone, with the binary built from this change, a copy of <code>htmlspec/assets/</code> was put beside a change's documents, at <code>htmlspec/changes/a-change/assets/</code>, and <code>htmlspec assets .</code> was run. The record gives the count of duplicated assets and the exit code, and not the locations the report named.</p>
+            <p>It reported <code>8 duplicated asset(s)</code> and exited 1 (<a href="evidence/the-measurement-2026-09-27.md"><code>evidence/the-measurement-2026-09-27.md</code></a>, section 4.2).</p>
+            <p data-field="unchecked">names both locations</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

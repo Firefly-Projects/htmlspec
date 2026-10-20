@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Reject change markup inside a unit</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Reject change markup inside a unit</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Reject change markup inside a unit</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-02-reject-change-markup-inside-a-unit/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-re-measure-before-changing-anything">1. Re-measure before changing anything</a></li>
+          <li><a href="#hs-2-tests-first">2. Tests first</a></li>
+          <li><a href="#hs-3-the-rule">3. The rule</a></li>
+          <li><a href="#hs-4-the-contract-version">4. The contract version</a></li>
+          <li><a href="#hs-5-prove-it">5. Prove it</a></li>
+          <li><a href="#hs-6-release">6. Release</a></li>
+          <li><a href="#hs-7-review">7. Review</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-re-measure-before-changing-anything">
+          <h2>1. Re-measure before changing anything</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 In a scratch project built with <code>htmlspec init --tools none</code>, reproduce sections 1, 2, 3, and 5 of <a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a> against HEAD, using the documents quoted there.</h3>
+              <p>Record the requirement's <code>statements</code> as <code>project-model</code> prints them, the exit status and every diagnostic of <code>htmlspec validate</code> over the project, the block-level <code>&lt;del&gt;&lt;p&gt;</code>, the deleted link with its control, the wrapped requirement, and the four places outside every unit. Record any difference from the evidence before going on</p>
+              <ul>
+                <li>
+                  <p><strong>Every result reproduces.</strong> Three details the evidence does not quote were settled by the diagnostics it records, and the script is now in the evidence's appendix. <a href="evidence/the-measurement-repeated-2026-10-01.md"><code>evidence/the-measurement-repeated-2026-10-01.md</code></a></p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Repeat the count in section 4 over <code>git ls-files '*.html'</code> and over every <code>.html</code> file in the staged migration, wherever it is staged by then.</h3>
+              <p>The contract bump in group 4 assumes the count is zero, so a nonzero count stops the work until the contributor decides what those documents should say</p>
+              <ul>
+                <li>
+                  <p><strong>Zero in every set</strong>: 121 tracked files besides <code>README.html</code>, <code>README.html</code> itself, and the 116 staged ones</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-tests-first">
+          <h2>2. Tests first</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Create <code>crates/htmlspec-validate/src/rules/change_markup.rs</code> with the rule identifier <code>schema/change-markup</code> and a <code>validate</code> that reports nothing.</h3>
+              <p>Register it in <code>rules::ALL</code> directly after <code>renames::validate</code>, and add its entry to the source list in <code>every_namespace_has_a_live_rule</code>. Check that <code>cargo test -p htmlspec-validate</code> passes, so the tests that follow fail for the rule's absence and not for a build error</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Add unit tests in that module, one for each scenario in <a href="specification.html#hs-document-validation"><code>specs/document-validation/spec.md</code></a>, and these besides: <code>del</code> nested in inline markup (<code>&lt;p&gt;&lt;strong&gt;&lt;del&gt;…&lt;/del&gt;&lt;/strong&gt;&lt;/p&gt;</code>); a <code>del</code> in a unit's heading; a <code>del</code> around a whole requirement, reported at the requirement; a requirement in a <code>proposal</code> and one in a <code>design</code>; one diagnostic per element, each quoting its text; change markup in the document's <code>header</code> summary, reported by nothing; <code>strike</code> inside a requirement, reported by nothing; and a <code>del</code> inside an element whose class is <code>requirements</code>, reported by nothing, because that is not a reserved token.</h3>
+              <p>Check that every test asserting a report fails against the empty rule and every test asserting silence passes, and record which is which</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Before running the conformance generator, add to <code>conformance/src/bin/generate_fixtures.rs</code> a table of the four hand-authored fixtures (<code>valid-runbook-machine-requirements</code>, <code>valid-runbook-machine-requirements-unsatisfiable</code>, <code>valid-summary-quoting-the-placeholder</code>, and <code>warning-review-placeholder-summary</code>), which its stale-fixture sweep keeps and never writes.</h3>
+              <p>Check by running <code>cargo run -p htmlspec-conformance --bin generate_fixtures</code> with no other edit and seeing <code>git status --porcelain fixtures/conformance/</code> print nothing</p>
+              <ul>
+                <li>
+                  <p data-field="deviation"><strong>The command needs <code>--features generate-fixtures</code></strong>, because the binary is kept out of a default build. The generator's header now says so. With the table in place, a run left <code>fixtures/conformance/</code> untouched</p>
+                </li>
+              </ul>
+              <p data-field="note">Migration note: beyond its words, the table also refuses a name that is in both tables, which would write over a committed fixture, and a listed fixture whose <code>input.html</code> is missing, as <a href="evidence/what-the-implementation-revealed-2026-10-01.md"><code>evidence/what-the-implementation-revealed-2026-10-01.md</code></a> records. The same record, and task 7.1, record that the check of <code>expected.json</code> was added at review.</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Add two generator entries.</h3>
+              <p><code>invalid-schema-change-markup</code> puts a <code>del</code> and an <code>ins</code> into the base requirement's statement and declares <code>schema/change-markup</code>. <code>valid-change-markup-outside-a-unit</code> puts the same markup in a paragraph between the "Requirements" heading and the requirement, outside every unit. Add the rule to <code>known_rules()</code> in <code>conformance/tests/conformance.rs</code>. Run the generator and check that <code>git status --porcelain fixtures/conformance/</code> lists exactly the two new directories. Then check that <code>cargo test -p htmlspec-conformance</code> fails on the invalid fixture and on nothing else</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-the-rule">
+          <h2>3. The rule</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Implement <code>change_markup::validate</code> as design decisions 2 and 3 state.</h3>
+              <p>Read the tree from <code>subject.projection.document</code>. For each <code>ins</code> and <code>del</code> element, report one error when a unit encloses it or it encloses a unit, located at the nearest enclosing unit's identifier, or else at the first enclosed unit's. The message names the element, quotes its normalized text (the opening words, where it is long), and says what to write instead: the text as it now reads in a unit marked <code>modified</code>, or, for a unit wrapped whole, <code>data-change="removed"</code> or <code>"added"</code> on the unit itself. Recognize a unit with <code>htmlspec_parse::UnitKind::from_class</code> over the whitespace-separated tokens of <code>class</code>. Check that every test from 2.2 and 2.4 passes</p>
+              <p data-field="deviation">Migration note: the message's fix for markup inside a unit was first written as these words give it, and then changed, because it was wrong for a unit a change adds, which has no earlier text. It now says to write the text as it now reads, without the element, and that a requirement whose words this change edits is marked <code>data-change="modified"</code>, so it states when a unit is marked <code>modified</code> instead of ordering it. <a href="evidence/what-the-implementation-revealed-2026-10-01.md"><code>evidence/what-the-implementation-revealed-2026-10-01.md</code></a> records why, and <a href="evidence/the-rule-measured-2026-10-01.md"><code>evidence/the-rule-measured-2026-10-01.md</code></a> quotes the messages. The review later added a case this location rule lacks, as task 7.1 records: a change element whose own class names a unit is reported at itself, before its ancestors or descendants are asked, and only HTML-namespace elements are change markup.</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Check that <code>cargo test -p htmlspec-validate --test schema_rust_split</code> passes, so the rule spells no schema-owned literal, and that <code>the_kind_namespace_has_exactly_two_rules_and_constrains_no_upstream_kind</code> and <code>every_rule_runs_over_a_minimal_document</code> in <code>rules/mod.rs</code> still pass</h3>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 In <code>crates/htmlspec-schema/doc/projection.md</code> section 10.1, add change markup in or around a unit to the validator rules the projection does not decide.</h3>
+              <p>Add no numbered rule, and check that <code>cargo test -p htmlspec-parse --test mapping</code> passes with no new mapping fixture</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-the-contract-version">
+          <h2>4. The contract version</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Move the contract to <code>0.3.0</code> in each place that states it: <code>CONTRACT_VERSION</code> in <code>crates/htmlspec-schema/src/lib.rs</code>; <code>0.3.0</code> appended to <code>schemaVersion</code>'s enumeration, and the version in <code>$id</code>, in <code>crates/htmlspec-schema/schema/document.schema.json</code>; the header of <code>doc/projection.md</code>; the <code>htmlspec-version</code> meta element and the masthead's Contract line in each of the four <code>assets/template-*.html</code>, with their sha256 pins in <code>assets/vendor.lock.json</code>; the contract sentence in <code>README.md</code>; and <code>("0.3.0", "properties.schemaVersion.enum")</code> in <code>SCHEMA_OWNED_LITERALS</code> in <code>crates/htmlspec-validate/tests/schema_rust_split.rs</code>.</h3>
+              <p>Keep <code>0.1.0</code> and <code>0.2.0</code> in the enumeration. Check with <code>cargo test -p htmlspec-schema -p htmlspec-assets -p htmlspec-validate</code></p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Add a <code>## 0.3.0</code> entry, dated the day it lands, to <code>crates/htmlspec-schema/CHANGELOG.md</code>.</h3>
+              <p>Its first line says that the bump is minor under the <code>0.x</code> clause although a document can stop validating, and which document. It names the rule and the two elements, gives the fix, says why <code>0.1.0</code> and <code>0.2.0</code> stay accepted, and records task 1.2's count. Check that <code>the_changelog_records_the_current_version_with_the_date_it_landed</code> and <code>the_changelog_records_every_accepted_version</code> pass</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Run the generator again after the bump and check that <code>git status --porcelain fixtures/conformance/</code> still lists only the two new directories.</h3>
+              <p>The generator's base keeps declaring <code>0.1.0</code>, so no committed fixture changes</p>
+              <ul>
+                <li>
+                  <p data-field="deviation"><strong>The expected result was wrong.</strong> The twelve <code>schema/rename-*</code> fixtures declare the newest version through <code>declaring_the_current_version</code>, so the bump moved each from <code>0.2.0</code> to <code>0.3.0</code>, in its version meta element and its masthead and nothing else. The regenerated fixtures are kept, and every later bump will move them the same way. <a href="evidence/what-the-implementation-revealed-2026-10-01.md"><code>evidence/what-the-implementation-revealed-2026-10-01.md</code></a></p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-prove-it">
+          <h2>5. Prove it</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Repeat task 1.1 against the built change and record the results in <code>evidence/</code>.</h3>
+              <p>The expected result is that the documents in sections 1, 3, and 5 that carry markup in or around a unit fail with <code>schema/change-markup</code>, that the proposal with markup only outside every unit reports nothing, and that every <code>statements</code> array <code>project-model</code> prints is unchanged, because the projection is unchanged</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Mutation-test the rule, one mutation at a time, and record which test catches each.</h3>
+              <p>The mutations are: match <code>del</code> only; match <code>ins</code> only; look at ancestors only; look at descendants only; drop the unit test, so every change element is reported; match a reserved class by substring; look at the parent only instead of every ancestor; skip documents declaring an earlier version; report in <code>review/*</code>; and remove the rule from <code>ALL</code>. A mutation that no test catches needs a test before this task is done</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Run <code>cargo test --workspace --all-targets</code>, then <code>scripts/check</code>, with every stage green</h3>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Record what the implementation revealed in <code>evidence/</code></h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-release">
+          <h2>6. Release</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Run the release runbook at <code>runbooks/release/tasks.html</code>, and report whether it worked as written</h3>
+              <ul>
+                <li>
+                  <p><strong>It worked as written, in its order.</strong> Step 1 moved the workspace to <code>0.19.0</code> and relocked the seven workspace members offline, and nothing else. Step 2 ran from <code>./target/debug/htmlspec</code> rebuilt at 0.19.0, changed only the <code>generatedBy</code> stamp in each of the 45 installed files, and created the stray <code>htmlspec/</code> and <code>spec.nix</code>, which were removed. Step 3 wrote the entry. Step 4 passes for the declared version, and <code>scripts/check</code> passes every stage. <a href="evidence/the-runbook-ran-2026-10-01.md"><code>evidence/the-runbook-ran-2026-10-01.md</code></a></p>
+                </li>
+                <li>
+                  <p><strong>The gap recorded before is still open</strong>: the runbook does not say that archival here also needs a hand-written <code>runbooks.json</code> beside <code>VERSION</code>. Task 6.3 writes both</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Choose the increment, state the reasoning, and flag it for the contributor's confirmation.</h3>
+              <p>The expected increment is <code>0.19.0</code>, a minor one, because a new validation error changes what <code>validate</code> accepts and the contract moves to <code>0.3.0</code></p>
+              <ul>
+                <li>
+                  <p><strong>0.19.0, confirmed by the contributor.</strong> <code>validate</code> reports a new error and so rejects documents it accepted, and the contract moves to <code>0.3.0</code>. That is a change to what the product accepts, which is what 0.17.0 and 0.18.0 were minor for</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Check that <code>scripts/check-release</code> passes after archival writes <code>VERSION</code> and the hand-written <code>runbooks.json</code> beside it</h3>
+              <ul>
+                <li>
+                  <p><strong>Passes</strong>: 25 archived changes record a version, 19 versions are in the changelog, and the declared <code>0.19.0</code> has an entry. <code>VERSION</code> reads <code>0.19.0</code>. <code>runbooks.json</code> is byte-identical to the previous archive's, because the release runbook is unchanged at <code>0.1.0</code>: its two recorded digests equal <code>shasum -a 256</code> of <code>specification.html</code> and <code>tasks.html</code>, and its changelog equals <code>runbooks/release/CHANGELOG.md</code>. The contract's <code>0.3.0</code> entry is dated 2026-10-02, the day of archival, as task 4.2 asks</p>
+                </li>
+                <li>
+                  <p>Archival ran after #39 merged, in a follow-up pull request with the review's fixes, because #39 merged before they were pushed</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-review">
+          <h2>7. Review</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Resolve what a review of the pull request found, and record what was and was not taken</h3>
+              <ul>
+                <li>
+                  <p><strong>Taken: a change element that is itself a unit passed.</strong> <code>&lt;del class="decision" …&gt;</code> in a design was accepted with no diagnostics, because the rule asked only the element's ancestors and descendants, and the projection makes the element a unit. The rule now asks the element first, reports it at itself, and gives the fix of putting the unit on an element that is not change markup. The spec delta gains the case and a scenario. Covered by two tests and mutation N1</p>
+                </li>
+                <li>
+                  <p><strong>Taken: the <code>ins</code> reason was wrong beside a <code>del</code>.</strong> It said a reader cannot see what the inserted words replaced, which is false in the spec's own headline case. It now says the projection keeps the inserted words as ordinary text, so the edit the page shows is in no field the model holds. Covered by <code>each_change_element_gives_its_own_reason</code></p>
+                </li>
+                <li>
+                  <p><strong>Taken: markup in one unit around another named no fix for the unit it wraps.</strong> It is still located at the enclosing unit, as design decision 3 states, and its fix is now the wrapped unit's change state. Covered by <code>markup_in_a_unit_around_another_names_the_unit_it_wraps</code></p>
+                </li>
+                <li>
+                  <p><strong>Taken: SVG and MathML elements named <code>del</code> or <code>ins</code> were reported.</strong> Only HTML-namespace elements are change markup now</p>
+                </li>
+                <li>
+                  <p><strong>Taken: five wrong implementations survived the tests</strong>: enclosed before enclosing, direct children only, case-insensitive classes, swapped reasons, and quoting split on spaces. Each now has a test that catches it, and the ten original mutations are still caught. <a href="evidence/mutation-testing-2026-10-01.md"><code>evidence/mutation-testing-2026-10-01.md</code></a></p>
+                </li>
+                <li>
+                  <p><strong>Taken: three statements of the version policy still said a minor bump invalidates no document</strong>, in <code>CONTRACT_VERSION</code>'s comment, the schema's <code>schemaVersion</code> description, and the contract changelog. Each now gives the reason that still holds. The changelog's fix wording, which still ordered <code>modified</code> for every unit, now matches the message. Both changelogs' "no tracked file carries the markup" now says "before this release", because the two new fixtures carry it</p>
+                </li>
+                <li>
+                  <p><strong>Taken: the hand-authored table checked only <code>input.html</code>.</strong> It now checks <code>expected.json</code> too</p>
+                </li>
+                <li>
+                  <p><strong>Not taken: the policy table's Minor row.</strong> It states what a minor bump means once the vocabulary is committed, and the <code>0.x</code> clause directly below it covers this release</p>
+                </li>
+                <li>
+                  <p><strong>Not taken: <code>&lt;del&gt;&lt;ins&gt;&lt;section class="requirement"&gt;</code> draws two fixes, <code>removed</code> and <code>added</code>, at one unit.</strong> Each element is its own edit, and the two contradict because the document does. One diagnostic per element is design decision 3</p>
+                </li>
+                <li>
+                  <p><strong>Not taken: a task wrapped in <code>del</code> is told <code>data-change="removed"</code> and not <code>data-state="dropped"</code>.</strong> The two say different things. <code>removed</code> withdraws the task from what the change states, and <code>dropped</code> records work that was planned and not done, with a reason. The markup cannot say which the author meant, and both validate</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

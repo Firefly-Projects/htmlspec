@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Distinguish command names from skill names</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Distinguish command names from skill names</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Distinguish command names from skill names</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-21-distinguish-command-names-from-skill-names/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p><code>htmlspec init</code> writes seven skill files and seven command files for each tool with <code>Delivery::SkillsAndCommands</code> — Claude Code, Cursor, and Pi. Both writers put a <code>name:</code> key in the frontmatter, and since <code>4972234</code> both take it from <code>workflow.directory</code>. The values are therefore equal, per workflow, per tool: <a href="evidence/duplicate-identity-2026-08-20.md">21 command files declaring a name their sibling skill file already declares</a>.</p>
+          <p>A loader that reads both directories sees each workflow twice. The observed symptom is a doubled listing — <a href="evidence/duplicate-identity-2026-08-20.md">fourteen entries for seven workflows on a Pi session load</a> — not a refusal.</p>
+          <p>The previous change reached this state deliberately. It needed a well-formed replacement for <code>tool.invocation(workflow.name)</code>, considered <code>workflow.name</code> and <code>workflow.directory</code>, and chose the directory partly <em>because</em> it matched the skill file, recording that as "one identity per workflow" and writing it into the contract as a scenario. The reasoning was sound about workflows and wrong about the field: two files agreeing on which workflow they belong to is good, and two files claiming the same registry key is a collision. The contract now asserts the collision, which is why the existing test suite is green.</p>
+        </section>
+        <section id="hs-goals">
+          <h2>Goals</h2>
+          <ul>
+            <li>A tool never receives two generated files declaring the same name.</li>
+            <li>The contract states distinctness rather than sameness, so the mistake is not re-derivable from it.</li>
+            <li>A test that fails on a repeat, since the character check cannot see one.</li>
+          </ul>
+        </section>
+        <section id="hs-non-goals">
+          <h2>Non-Goals</h2>
+          <ul>
+            <li>Changing what a contributor types. Unchanged, and for the reason the previous change verified by loading: the file path determines the invocation.</li>
+            <li>Reverting the previous change. Its test and its finding both stand.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-a-command-file-declares-no-name">
+            <h3>A command file declares no name</h3>
+            <p>Three ways to break the tie:</p>
+            <p><strong>Give the command a distinct name</strong> — <code>htmlspec-apply-command</code>, say. This keeps a field whose only job would be to differ from another field. It also has to differ <em>per tool</em>, since each tool's command directory is its own namespace, and inventing a spelling for a key nothing reads is how the invocation ended up in there the first time.</p>
+            <p><strong>Drop <code>name:</code> from command files.</strong> <a href="evidence/loading-after-omission-2026-08-20.md">Ten <code>.pi/prompts/opsx-*.md</code> files in this repository omit it and load.</a> The previous change already established that the file path determines the invocation — it verified this by regenerating and loading, and by the <code>opsx</code> comparison where <code>name: "OPSX: Apply"</code> registers as <code>/opsx:apply</code>. A field that does not determine the invocation, that a working installation omits, and whose presence causes a collision has no remaining argument for existing.</p>
+            <p><strong>Stop writing command files for tools that also get skills.</strong> Rejected outright: it changes what a contributor types, which every version of this work has held fixed.</p>
+            <p>Taking the second. <a href="evidence/loading-after-omission-2026-08-20.md">The command file keeps <code>description</code>, <code>allowed-tools</code>, and <code>generatedBy</code></a> — <code>description</code> is what a tool displays, and <code>generatedBy</code> is required by an accepted requirement about recording the generating version.</p>
+            <p>One consequence to state plainly: <code>.claude/commands/opsx/*.md</code> <strong>do</strong> carry a name, so omitting it is not universal practice. It is permitted practice, which is the weaker claim this decision needs. The strictly safer option is available if a loader turns out to want the field — give it a per-tool distinct value — and the test added here would keep that honest.</p>
+          </section>
+          <section id="hs-the-scenario-is-withdrawn-not-reworded">
+            <h3>The scenario is withdrawn, not reworded</h3>
+            <p>"<a href="specification.html#scenario-one-identity-per-workflow">One identity per workflow</a>" is satisfiable only by the behavior being removed, so editing its wording would leave a scenario that no longer describes anything the program does. It is withdrawn and a distinctness scenario added.</p>
+            <p>This is the first withdrawal in this capability. The archive workflow names it as the one case where deleting from an accepted spec is correct, and requires it be deliberate rather than a side effect of rewriting a file — hence a task that names it and no other change to the surrounding requirement.</p>
+            <p>The requirement's prose keeps its claim that a workflow has one generated identity, because that remains true and is the useful idea. What changes is the sentence asserting the same identity is written into every file kind.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <p><strong>A loader may require <code>name:</code> in a command file.</strong> Mitigated by the <code>opsx</code> Pi prompts, which omit it across ten files and load. <a href="evidence/loading-after-omission-2026-08-20.md">Unverified for Cursor, whose command loader was not tested here</a> — this is the same inference-from-one-observation the previous change flagged in its own non-goals, and it is recorded rather than resolved. If Cursor turns out to require the field, the fallback is a distinct per-tool name, and the distinctness test added by this change is what would keep that from re-colliding.</p>
+          <p><strong>The doubled listing may be cosmetic.</strong> <a href="evidence/loading-after-omission-2026-08-20.md">Nothing observed proves a loader <em>rejects</em> the duplicate rather than listing it twice.</a> The change is still worth making — a name field nothing reads, duplicating a sibling's key, is not defensible on the grounds that the harness tolerates it. That is the argument the previous change made about <code>/htmlspec:apply</code> working under one loader, and it applies here unchanged.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

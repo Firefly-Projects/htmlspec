@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Project bootstrap CLI</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Project bootstrap CLI</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Project bootstrap CLI</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-17-project-bootstrap-cli/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-the-project-root-as-a-type">1. The project root as a type</a></li>
+          <li><a href="#hs-2-point-the-existing-commands-at-the-project">2. Point the existing commands at the project</a></li>
+          <li><a href="#hs-3-rename-init-to-new">3. Rename init to new</a></li>
+          <li><a href="#hs-4-the-tool-table">4. The tool table</a></li>
+          <li><a href="#hs-5-bootstrap-with-no-terminal-in-it">5. Bootstrap, with no terminal in it</a></li>
+          <li><a href="#hs-6-instruction-content-compiled-in">6. Instruction content, compiled in</a></li>
+          <li><a href="#hs-7-the-prompt-layer">7. The prompt layer</a></li>
+          <li><a href="#hs-8-the-project-declaration">8. The project declaration</a></li>
+          <li><a href="#hs-9-the-version-gate">9. The version gate</a></li>
+          <li><a href="#hs-10-close-the-orphaned-reference-gap">10. Close the orphaned-reference gap</a></li>
+          <li><a href="#hs-11-the-closing-message">11. The closing message</a></li>
+          <li><a href="#hs-12-reconcile-the-project-with-itself">12. Reconcile the project with itself</a></li>
+          <li><a href="#hs-13-evidence">13. Evidence</a></li>
+          <li><a href="#hs-14-close-the-empty-install-path">14. Close the empty-install path</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-the-project-root-as-a-type">
+          <h2>1. The project root as a type</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Add <code>crates/htmlspec-cli/src/project.rs</code> with <code>ProjectRoot</code>, whose only constructors are the resolver and the bootstrap that just created one.</h3>
+              <p>The inner path stays private, so a <code>&amp;Path</code> cannot be widened into a project by a caller who did not check</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Give <code>ProjectRoot</code> the accessors that derive the project's shape — <code>htmlspec()</code>, <code>specs()</code>, <code>changes()</code>, <code>archive()</code>, <code>assets()</code>.</h3>
+              <p>The store location must be derived from the root here and nowhere else, because deriving it from the document's directory is <a href="evidence/asset-footprint.md">the defect that gives each change its own 6 MB copy</a></p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Add <code>resolve(from: &amp;Path) -&gt; Result&lt;ProjectRoot, NotAProject&gt;</code> walking upward for a child <code>htmlspec/</code>, stopping at a filesystem root or a <code>.git</code> directory.</h3>
+              <p>Return a structured error naming the directory searched from, not a bare <code>Option</code></p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Test that resolution succeeds from a nested subdirectory, and separately that it stops at <code>.git</code>: construct a repository with no project nested inside a directory that has one, and assert the outer project is not resolved.</h3>
+              <p>That case is the reason the boundary exists</p>
+            </li>
+            <li class="task" id="task-1-5" data-change="added" data-state="done">
+              <h3>1.5 Test that <code>assets()</code> returns the same path regardless of which subdirectory resolution started from, which is the property that makes one store per project true by construction</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-point-the-existing-commands-at-the-project">
+          <h2>2. Point the existing commands at the project</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Change <code>commands::validate</code> and <code>commands::format</code> to resolve a project when given no path, keeping the single-file and single-directory cases as they are — a contributor naming one file means that file, and requiring a project for it would be a regression</h3>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Change <code>commands::assets</code> to take a <code>ProjectRoot</code> and <a href="evidence/asset-footprint.md">check the whole project</a>.</h3>
+              <p>This is where the duplication defect closes: today it calls <code>Store::discover</code> on the directory named and <a href="evidence/current-cli-behavior.md">reports <code>no asset store under .</code> while two 6 MB stores sit two directories down</a></p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Add a test that establishes two changes with their own stores, runs the asset check from the project root, and <a href="evidence/asset-footprint.md">asserts the duplication is reported</a>.</h3>
+              <p>Written against the defect as measured, so it fails before task 3 and passes after</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Change <code>commands::archive_check</code> to resolve the project and accept a change by name as well as by path, since a change's location is now derived rather than typed</h3>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done">
+              <h3>2.5 Add the missing-project report: what was searched for, from where, and that <code>htmlspec init</code> creates one.</h3>
+              <p>Exit <code>OperationalFailure</code></p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-rename-init-to-new">
+          <h2>3. Rename init to new</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Restructure the clap definition: <code>Init</code> takes no positional argument, and a new <code>New</code> subcommand takes <code>new change &lt;name&gt;</code> and <code>new &lt;kind&gt; &lt;path&gt;</code>.</h3>
+              <p>Model the two forms as a nested subcommand rather than a flag, because <code>--change</code> conflicting with <code>--kind</code> is the current shape and it encodes a sum type as two flags</p>
+              <p data-field="deviation">Migration note: the document form was built as <code>new document &lt;kind&gt; &lt;path&gt;</code> rather than <code>new &lt;kind&gt; &lt;path&gt;</code>, and <code>init</code> still accepts a path argument, so that it can name the replacement rather than print a bare usage line. <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("The withdrawn spelling") records both: <code>htmlspec init doc.html</code> exits 2, naming <code>htmlspec new document proposal doc.html</code> as the way to create one document.</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Move the body of <code>commands::init</code> to <code>commands::new_document</code> and <code>commands::init_change</code> to <code>commands::new_change</code>, both taking a <code>ProjectRoot</code> and both referencing the project's store rather than establishing one per document</h3>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Make <code>new change &lt;name&gt;</code> place the change under the project's <code>changes/</code> unconditionally and report the resolved path.</h3>
+              <p>Resolves the design's first open question in favor of the unconditional form: a path argument would let a change be created outside <code>changes/</code>, which makes the root pointless</p>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 Add the withdrawn-spelling error: <code>init &lt;path&gt;</code> reports that document creation moved to <code>new</code> and names the equivalent invocation.</h3>
+              <p>clap's unknown-argument error is not sufficient, because this spelling was valid yesterday and the reader needs the replacement rather than a usage line</p>
+            </li>
+            <li class="task" id="task-3-5" data-change="added" data-state="done">
+              <h3>3.5 Update <code>crates/htmlspec-cli/tests/cli.rs</code> and <code>tests/archive.rs</code>, which pin the old argument shape directly</h3>
+            </li>
+            <li class="task" id="task-3-6" data-change="added" data-state="done">
+              <h3>3.6 Assert in the help test that <code>init</code> takes no required argument, which is the property the proposal's first reported defect was about</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-the-tool-table">
+          <h2>4. The tool table</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Add <code>crates/htmlspec-cli/src/tools.rs</code> with <code>ToolId</code> as a closed enum, <code>Tool</code> as the table row, and <code>Delivery</code> as a sum type over <code>SkillsAndCommands</code>, <code>SkillsOnly</code>, and <code>SingleFile</code>.</h3>
+              <p><code>Delivery</code> must be a sum type rather than a set of booleans: <a href="evidence/current-cli-behavior.md">OpenSpec resolves the same question with four predicate functions</a> and can represent a tool that receives nothing, which it handles by printing an apology at the end of <code>init</code></p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Populate the table with Claude Code, Codex, Cursor, Pi, and AGENTS.md, each with its directory, detection paths, and delivery</h3>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Add <code>detect(root: &amp;Path) -&gt; Vec&lt;ToolId&gt;</code> checking each tool's detection paths.</h3>
+              <p>A detection path may be a file or a directory, so test existence rather than directory-ness — the check that recognizes <code>.github/copilot-instructions.md</code> and a bare <code>.claude/</code> with the same code</p>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 Add a test asserting every table entry's detection paths include its own directory, so a tool cannot be added that installs into a directory it would never detect</h3>
+            </li>
+            <li class="task" id="task-4-5" data-change="added" data-state="done">
+              <h3>4.5 Add <code>--tools</code> parsing over <code>all</code>, <code>none</code>, and a comma-separated list, rejecting an unknown name with the supported list and rejecting <code>all</code> or <code>none</code> combined with a name.</h3>
+              <p>Reject before anything is written</p>
+            </li>
+            <li class="task" id="task-4-6" data-change="added" data-state="done">
+              <h3>4.6 Test that a <code>Selection</code> naming no tool is valid and distinct from an absent flag, since <code>--tools none</code> is a legitimate answer and the absence of the flag is a question not yet asked</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-bootstrap-with-no-terminal-in-it">
+          <h2>5. Bootstrap, with no terminal in it</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Add <code>Selection</code> as plain data — the tools and the flags a prompt would collect — and <code>bootstrap(&amp;ProjectRoot, &amp;Selection, &amp;mut Streams) -&gt; Outcome</code>.</h3>
+              <p><code>bootstrap</code> must not reference <code>inquire</code> or read a keypress; every case worth testing is a constructed <code>Selection</code></p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Create the directory shape and establish the one asset store at the project root.</h3>
+              <p>Reuse <code>establish_assets</code>, whose per-document call site is what task 3.2 removed</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Implement extend mode: <code>htmlspec/</code> already existing means refresh instructions, create missing directories, and leave <code>specs/</code>, <code>changes/</code>, and <code>archive/</code> alone.</h3>
+              <p>Nothing is deleted — the project has shipped nothing that could be stale, and a deletion path with no case to exercise it is a deletion path with no test</p>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Verify an existing store against the pinned lockfile and report a discrepancy rather than overwriting.</h3>
+              <p><code>htmlspec_assets::verify_vendored_assets</code> already produces the violations</p>
+            </li>
+            <li class="task" id="task-5-5" data-change="added" data-state="done">
+              <h3>5.5 Test first-run and re-run against the same directory, asserting a re-run rewrites skills, leaves a hand-edited document under <code>changes/</code> byte-identical, and does not grow the store</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-instruction-content-compiled-in">
+          <h2>6. Instruction content, compiled in</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Move <code>.claude/skills/htmlspec-archive-change/SKILL.md</code> into the assets crate as the source of the archive skill and <code>include_str!</code> it.</h3>
+              <p>Reading skill files from disk at runtime is not available: the standalone-artifact requirement means the packaged binary runs with no checkout, which is the same reason <code>build.rs</code> uses <code>include_bytes!</code> for assets</p>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Add the skill table — one entry per workflow — carrying the workflow name, the installed directory name, and the content.</h3>
+              <p>Ship the <code>archive</code> skill's content in this change; the remaining workflows are named as non-goals</p>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Write skills with frontmatter recording the generating version, so an installation predating its instructions is identifiable</h3>
+            </li>
+            <li class="task" id="task-6-4" data-change="added" data-state="done">
+              <h3>6.4 Implement the three <code>Delivery</code> cases.</h3>
+              <p><code>SkillsAndCommands</code> writes a skill directory and a command file per workflow; <code>SkillsOnly</code> writes skills alone; <code>SingleFile</code> writes a marked region</p>
+            </li>
+            <li class="task" id="task-6-5" data-change="added" data-state="done">
+              <h3>6.5 Implement the marked region: absent means append, present means replace between the markers, opened-but-not-closed means report and write nothing to that file.</h3>
+              <p>Test all three — the third is the one that would otherwise delete a contributor's prose</p>
+            </li>
+            <li class="task" id="task-6-6" data-change="added" data-state="done">
+              <h3>6.6 Test that a <code>SkillsOnly</code> tool receives no command file, and that every tool in the table receives at least one artifact.</h3>
+              <p>The second is the state the sum type is supposed to make unreachable, asserted rather than assumed</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-the-prompt-layer">
+          <h2>7. The prompt layer</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Add <code>inquire</code> pinned exactly in <code>Cargo.toml</code> workspace dependencies and to <code>htmlspec-cli</code></h3>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done">
+              <h3>7.2 Add <code>prompt(...) -&gt; Result&lt;Selection, Cancelled&gt;</code> as the only module referencing <code>inquire</code>.</h3>
+              <p>Its whole job is producing a <code>Selection</code>; it writes no files</p>
+            </li>
+            <li class="task" id="task-7-3" data-change="added" data-state="done">
+              <h3>7.3 Implement the interactivity test: stdin is a terminal, stdout is a terminal, no <code>--tools</code>, and no <code>--json</code>.</h3>
+              <p>Any one missing means proceed with detected tools and no prompt. <code>--tools</code> suppressing the prompt is deliberate — a user who named their tools has already answered</p>
+            </li>
+            <li class="task" id="task-7-4" data-change="added" data-state="done">
+              <h3>7.4 Make <code>--json</code> imply non-interactive, since a prompt writes to the stream structured output promises to occupy alone</h3>
+            </li>
+            <li class="task" id="task-7-5" data-change="added" data-state="done">
+              <h3>7.5 Add <code>Outcome::Cancelled</code> with a distinct code, and extend <code>each_outcome_has_a_distinct_code_and_only_success_is_zero</code> to cover it.</h3>
+              <p>Return it through the normal return path: nothing in the prompt layer calls <code>process::exit</code>, which is the shortcut OpenSpec takes in its cleanup prompt and the one this program's single exit point exists to avoid</p>
+            </li>
+            <li class="task" id="task-7-6" data-change="added" data-state="done">
+              <h3>7.6 Restore the terminal on interrupt before returning <code>Cancelled</code></h3>
+            </li>
+            <li class="task" id="task-7-7" data-change="added" data-state="done">
+              <h3>7.7 Test the non-interactive path end to end with no terminal attached, <a href="evidence/first-run.md">asserting it completes without blocking</a> — the property that makes <code>init</code> safe in continuous integration</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-8-the-project-declaration">
+          <h2>8. The project declaration</h2>
+          <ul>
+            <li class="task" id="task-8-1" data-change="added" data-state="done">
+              <h3>8.1 Add <code>spec.nix</code> generation to <code>bootstrap</code>, carrying the project name, a starting version, and a pinned reference to the <code>htmlspec</code> binary.</h3>
+              <p>Write it only when absent — task 5.3's rule that an existing configuration survives applies to this file, and a contributor who edited the pin meant it</p>
+              <p data-field="deviation">Migration note: the pinned reference is written as <code>htmlspec = null;</code>, which pins no binary, and no command reads it. <a href="evidence/testing-state-2026-08-17.md"><code>evidence/testing-state-2026-08-17.md</code></a>, section 6, item 4, records this and says the pin was deferred deliberately.</p>
+            </li>
+            <li class="task" id="task-8-2" data-change="added" data-state="done">
+              <h3>8.2 Add a reader that evaluates <code>spec.nix</code> and returns a parsed declaration.</h3>
+              <p>Evaluate through the existing Nix toolchain rather than pattern-matching the file as text: a hand-rolled parser accepts files Nix rejects, and then the build and the program disagree about the project</p>
+              <p data-field="deviation">Migration note: the reader does not evaluate through Nix. It parses a strict subset of Nix itself, top-level <code>key = "value";</code> and <code>key = null;</code> in one brace-delimited set, and reports anything else, as the module documentation of <code>crates/htmlspec-cli/src/declaration.rs</code> at <code>d88ca93</code> states. <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("The packaged artifact") records the packaged binary reading <code>spec.nix</code> with no Nix present at runtime, and says that evaluating through Nix would have broken <code>archive</code> on exactly the machines the standalone-artifact requirement exists to serve; that requirement is toolchain-packaging's <em>The program is distributable as a standalone artifact</em>.</p>
+            </li>
+            <li class="task" id="task-8-3" data-change="added" data-state="done">
+              <h3>8.3 Make the reader's result a type whose construction proves the three fields are present, so a caller cannot read a version from a declaration that has none</h3>
+            </li>
+            <li class="task" id="task-8-4" data-change="added" data-state="done">
+              <h3>8.4 Derive the default project name from the project root's directory name, and write <code>0.0.0</code> as the starting version from a single named constant.</h3>
+              <p><code>0.0.0</code> is what makes the version comparison total — a project always has a version on record, so there is no absent-previous-version case for the gate to special-case</p>
+            </li>
+            <li class="task" id="task-8-5" data-change="added" data-state="done">
+              <h3>8.5 Test that a re-run leaves an edited <code>spec.nix</code> byte-identical, which is the requirement's second scenario and the one a careless <code>write</code> breaks</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-9-the-version-gate">
+          <h2>9. The version gate</h2>
+          <ul>
+            <li class="task" id="task-9-1" data-change="added" data-state="done">
+              <h3>9.1 Record the archived version alongside each archived change, so archival has a previous value to compare against.</h3>
+              <p>Decide and document where it lives — the archive directory's name is one option and a field in the archived change is another</p>
+              <p data-field="deviation">Migration note: the place was decided and documented as the archive directory's name, in the documentation of <code>last_archived_version</code> in <code>crates/htmlspec-cli/src/commands.rs</code> at <code>d88ca93</code>, and no version was recorded there: no archived change's directory name carries one, this change's own included, so the gate compared every declared version against <code>0.0.0</code>. <a href="../2026-08-30-finish-the-archival/evidence/the-version-gate-never-fired-2026-08-30.md">The record 2026-08-30-finish-the-archival made of the gate</a> shows that fallback, and that change made the gate read the version each archived change records in its <code>VERSION</code> file.</p>
+            </li>
+            <li class="task" id="task-9-2" data-change="added" data-state="done">
+              <h3>9.2 Make the previous version total: with no archived change present, it is the initial <code>0.0.0</code> from task 8.4 rather than an absent value.</h3>
+              <p>This is the one place the totality is established, so it is the place a reader looks for it, and a <code>None</code> reaching the comparison is a defect rather than a case to handle</p>
+            </li>
+            <li class="task" id="task-9-3" data-change="added" data-state="done">
+              <h3>9.3 Add a <code>Version</code> type parsed from three dot-separated numbers and ordered componentwise, with parsing at the boundary so an unorderable version is rejected once rather than compared as a string.</h3>
+              <p>A string comparison would order <code>0.10.0</code> before <code>0.9.0</code></p>
+            </li>
+            <li class="task" id="task-9-4" data-change="added" data-state="done">
+              <h3>9.4 Extend <code>commands::archive_check</code> to read the declaration and refuse unless the declared version is ordered after the last archived one.</h3>
+              <p>Report three outcomes distinctly: unchanged, ordered backwards, and unparseable. A difference test would accept a downgrade, which is why this is an ordering</p>
+            </li>
+            <li class="task" id="task-9-5" data-change="added" data-state="done">
+              <h3>9.5 Assert that <code>archive_check</code> does not write.</h3>
+              <p>Add a test that snapshots <code>spec.nix</code> before and after both a refusal and a success, because the requirement says the program compares and never edits — and a test is the only thing that keeps a convenience bump from being added later</p>
+            </li>
+            <li class="task" id="task-9-6" data-change="added" data-state="done">
+              <h3>9.6 Handle the absent declaration: report it and name <code>htmlspec init</code>, exiting <code>OperationalFailure</code> rather than passing the gate by default</h3>
+            </li>
+            <li class="task" id="task-9-7" data-change="added" data-state="done">
+              <h3>9.7 Assert the first archival is not a special case: bootstrap a project, archive its first change without advancing from <code>0.0.0</code>, and confirm the refusal is the same one a later archival gives.</h3>
+              <p>Assert separately that no branch reads an absent previous version, since such a branch would run once per project and be tested once</p>
+            </li>
+            <li class="task" id="task-9-8" data-change="added" data-state="done">
+              <h3>9.8 Update the archive skill to state that the agent advances the version before running <code>htmlspec archive</code>, since the program checks and does not write</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-10-close-the-orphaned-reference-gap">
+          <h2>10. Close the orphaned-reference gap</h2>
+          <ul>
+            <li class="task" id="task-10-1" data-change="added" data-state="done">
+              <h3>10.1 Add an ascent test to the asset rules: a reference containing <code>../</code> asserts a store above the document.</h3>
+              <p>Reading the reference string rather than the filesystem keeps the rule a property of the document</p>
+            </li>
+            <li class="task" id="task-10-2" data-change="added" data-state="done">
+              <h3>10.2 Report an ascending reference when no store is found in any directory above the document.</h3>
+              <p><code>store_for</code> already walks upward, so the walk's failure is the signal — what is missing is treating that failure as suspicious rather than as out of scope</p>
+            </li>
+            <li class="task" id="task-10-3" data-change="added" data-state="done">
+              <h3>10.3 Keep the existing early return for non-ascending references, and assert all 41 conformance fixtures still pass.</h3>
+              <p><a href="evidence/relocation-and-orphans.md">None of their 341 asset references ascends</a>, which is the measured fact the rule's scope rests on</p>
+            </li>
+            <li class="task" id="task-10-4" data-change="added" data-state="done">
+              <h3>10.4 Add a conformance fixture for the ascending-reference case, so the rule is pinned by the same mechanism as every other rule</h3>
+            </li>
+            <li class="task" id="task-10-5" data-change="added" data-state="done">
+              <h3>10.5 Add a regression test built from <a href="evidence/relocation-and-orphans.md">the measured defect</a>: create a project, copy one change out of it, and assert strict validation now reports rather than accepting with zero diagnostics</h3>
+            </li>
+            <li class="task" id="task-10-6" data-change="added" data-state="done">
+              <h3>10.6 Assert that reference shape cannot exempt a document — a reference edited to stop ascending no longer resolves, so the escape hatch breaks the thing it would hide</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-11-the-closing-message">
+          <h2>11. The closing message</h2>
+          <ul>
+            <li class="task" id="task-11-1" data-change="added" data-state="done">
+              <h3>11.1 Report what was installed, where, and whether each tool was newly configured or refreshed</h3>
+            </li>
+            <li class="task" id="task-11-2" data-change="added" data-state="done">
+              <h3>11.2 Name the literal next command per selected tool, one line per distinct spelling with the tools it applies to.</h3>
+              <p>A canonical form no selected tool answers to teaches a command that does not work, which is why this is printed after the selection is known rather than in a banner</p>
+            </li>
+            <li class="task" id="task-11-3" data-change="added" data-state="done">
+              <h3>11.3 With no tools selected, report the project was established and name no command</h3>
+            </li>
+            <li class="task" id="task-11-4" data-change="added" data-state="done">
+              <h3>11.4 Add the banner as hand-rolled ANSI, suppressed when not a terminal, when <code>NO_COLOR</code> is set, and when the terminal is too narrow</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-12-reconcile-the-project-with-itself">
+          <h2>12. Reconcile the project with itself</h2>
+          <ul>
+            <li class="task" id="task-12-1" data-change="added" data-state="done">
+              <h3>12.1 Regenerate this repository's <code>.claude/skills/htmlspec-archive-change/</code> by running <code>htmlspec init --tools claude</code>, and confirm the result matches what was moved in 6.1.</h3>
+              <p>A skill that is only ever hand-copied is never verified to be what the tool installs</p>
+            </li>
+            <li class="task" id="task-12-2" data-change="added" data-state="done">
+              <h3>12.2 Update <code>README.md</code>: the workflow example, the project layout, and every <code>init</code> invocation</h3>
+            </li>
+            <li class="task" id="task-12-3" data-change="added" data-state="done">
+              <h3>12.3 Update <code>AGENTS.md</code> and the archive skill for <code>new</code> and for the resolved change location</h3>
+            </li>
+            <li class="task" id="task-12-4" data-change="added" data-state="done">
+              <h3>12.4 Regenerate the flake's vendored dependencies for <code>inquire</code> and its four transitive crates, and confirm the reproducible-build check still passes.</h3>
+              <p>This is the vendoring obligation the dependency was accepted with</p>
+            </li>
+            <li class="task" id="task-12-5" data-change="added" data-state="done">
+              <h3>12.5 Run the full check suite, and separately <a href="evidence/first-run.md">confirm the first-run experience by hand in an empty repository</a>: <code>git init</code>, <code>htmlspec init</code>, then the command the output names.</h3>
+              <p>The defect this change exists to fix is a first impression, and no test asserts a first impression</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-13-evidence">
+          <h2>13. Evidence</h2>
+          <ul>
+            <li class="task" id="task-13-1" data-change="added" data-state="done">
+              <h3>13.1 Record the before-and-after asset footprint for a project with two changes — measured at 6.0 MB each before — in <a href="evidence/asset-footprint.md"><code>evidence/asset-footprint.md</code></a></h3>
+            </li>
+            <li class="task" id="task-13-2" data-change="added" data-state="done">
+              <h3>13.2 Record the first-run transcript from 12.5 in <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a>, so the experience this change is judged on is written down rather than remembered</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-14-close-the-empty-install-path">
+          <h2>14. Close the empty-install path</h2>
+          <p>Found by using the tool rather than by testing it: <a href="evidence/testing-state-2026-08-17.md"><code>init</code> in a fresh repository reported <code>the project is ready</code> having installed nothing</a>, because nothing was detected, the list opened unchecked, and confirming it succeeded. Task 12.5 confirmed the first run by hand and did not catch this, because the person running it knew which tools they wanted and checked them.</p>
+          <ul>
+            <li class="task" id="task-14-1" data-change="added" data-state="done">
+              <h3>14.1 Preselect every tool where detection finds nothing.</h3>
+              <p>An absent detection means a project nobody has configured, which is where a default carries the most weight. Note in the code that this is contingent on the table staying small — <a href="evidence/openspec-divergence.md">OpenSpec preselects nothing here and at 34 tools that is correct</a></p>
+            </li>
+            <li class="task" id="task-14-2" data-change="added" data-state="done">
+              <h3>14.2 Refuse an interactive selection of no tools and ask again, naming the argument that means no tool.</h3>
+              <p>Keep <code>--tools none</code> succeeding: an argument is an answer, and an empty confirmation is usually a question not read</p>
+            </li>
+            <li class="task" id="task-14-3" data-change="added" data-state="done">
+              <h3>14.3 Add <code>scripts/check-prompt</code>, driving the real prompt through a pseudo-terminal, and add it to <code>scripts/check</code>.</h3>
+              <p>A script rather than a <code>cargo test</code> because <code>openpty</code> is an unsafe FFI call and this workspace forbids unsafe code</p>
+            </li>
+            <li class="task" id="task-14-4" data-change="added" data-state="done">
+              <h3>14.4 Cover cancellation's exit code in that check.</h3>
+              <p><a href="evidence/testing-state-2026-08-17.md">Three of the four exit codes had integration tests that read a real process status</a>, and the code this change added was the fourth</p>
+            </li>
+            <li class="task" id="task-14-5" data-change="added" data-state="done">
+              <h3>14.5 Confirm the check fails with either guard removed.</h3>
+              <p>A guard whose test passes without it is not testing the guard</p>
+            </li>
+            <li class="task" id="task-14-6" data-change="added" data-state="done">
+              <h3>14.6 Record the divergences from <code>openspec init</code> in <a href="evidence/openspec-divergence.md"><code>evidence/openspec-divergence.md</code></a>, including the configured-against-detected distinction the tool table cannot express</h3>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

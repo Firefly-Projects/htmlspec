@@ -1,0 +1,280 @@
+/*
+ * Print styling for an HTMLSpec document.
+ *
+ * A separate file rather than an `@media print` block inside the screen
+ * stylesheet, so that the print rules can be read as a whole. A reviewer asking
+ * "what does this look like on paper?" should not have to assemble the answer from
+ * fragments scattered through six hundred lines of screen rules.
+ *
+ * This file answers the design's two open questions about print typography. Each
+ * answer is recorded at the rule that implements it, with the reasoning, because
+ * the reasoning is the part that decides whether a later change may revisit it.
+ */
+
+@media print {
+  /* -------------------------------------------------------------------------
+   * ANSWERED (design Open Questions): page margins.
+   *
+   * 2cm on every side, and a named page size is deliberately NOT set.
+   *
+   * 2cm clears the unprintable margin of every common consumer printer with room
+   * left for a reader's pen, which is what a specification review actually
+   * involves. Larger wastes paper on a dense document; smaller risks clipping,
+   * and the requirement is that content is never truncated.
+   *
+   * No `size:` declaration, because A4 and US Letter differ and hard-coding
+   * either one would produce scaled or clipped output for half the world. The
+   * layout below is measured in relative units and reflows to whichever the
+   * printer holds.
+   * ---------------------------------------------------------------------- */
+  @page {
+    margin: 2cm;
+  }
+
+  /* Backgrounds are dropped rather than forced. A ground that reads as a faint
+   * tint on screen prints as grey wash that costs toner and legibility, so
+   * printed distinctions are carried by rules and type instead. */
+  :root {
+    --hs-paper: #fff;
+    --hs-highlight: #fff;
+    --hs-ink: #000;
+    --hs-ink-muted: #333;
+    --hs-ink-faint: #444;
+    --hs-rule: #999;
+    --hs-rule-strong: #555;
+    --hs-accent: #000;
+  }
+
+  html {
+    /* 11pt body: the density the screen layout aims for, at a size that stays
+     * readable in a stack of printed specifications. */
+    font-size: 11pt;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  /* -------------------------------------------------------------------------
+   * Navigation chrome and interactive controls are omitted.
+   *
+   * The navigation is a screen affordance: its links cannot be followed on
+   * paper, and printing them wastes a column. The document's own headings are the
+   * table of contents on paper.
+   * ---------------------------------------------------------------------- */
+  .hs-nav,
+  .hs-skip-link,
+  [data-hs-control] {
+    display: none;
+  }
+
+  /* One column at full width, since the sidebar is gone. */
+  .hs-page {
+    display: block;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .hs-main {
+    max-width: none;
+  }
+
+  /* The measure is relaxed on paper: the page width is already fixed by the
+   * sheet, so holding text to a 34rem column would leave a wide empty margin. */
+  p,
+  li,
+  dd,
+  blockquote,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  figcaption {
+    max-width: none;
+  }
+
+  /* -------------------------------------------------------------------------
+   * ANSWERED (design Open Questions): link targets appear as inline
+   * parentheticals, not footnotes.
+   *
+   * A footnote needs a counter, a marker, and a block at the foot of the page
+   * that CSS cannot reliably place across browsers — `float: footnote` is not
+   * implemented where these documents are read. An inline parenthetical needs
+   * one `::after` rule and works everywhere.
+   *
+   * The cost is that a long URL interrupts a sentence. That is accepted, because
+   * the alternative on offer is not a working footnote but a broken one, and an
+   * unresolvable link on paper is the failure the requirement names.
+   *
+   * Only *external* references are expanded. A fragment link points inside the
+   * document a reader is already holding, so printing `(#req-theme-selection)`
+   * after its own link text would add noise and no information — the identifier
+   * is shown beside each unit already.
+   * ---------------------------------------------------------------------- */
+  a[href^="http://"]::after,
+  a[href^="https://"]::after,
+  a[href^="mailto:"]::after {
+    content: " (" attr(href) ")";
+    font-family: var(--hs-ui-font);
+    font-size: 0.82em;
+    color: #333;
+    /* A URL has no spaces to break at, so breaking anywhere is what keeps it on
+     * the page instead of running off the edge. */
+    word-break: break-all;
+  }
+
+  /* A link to another document in the project resolves relative to the file, so
+   * the relative path is what a reader needs to find it. */
+  a[href$=".html"]:not([href^="http"])::after {
+    content: " (" attr(href) ")";
+    font-family: var(--hs-ui-font);
+    font-size: 0.82em;
+    color: #333;
+  }
+
+  a {
+    color: #000;
+    /* Underlining every link on paper turns a cross-referenced document into a
+     * thicket. The parenthetical above is the signal. */
+    text-decoration: none;
+  }
+
+  /* -------------------------------------------------------------------------
+   * Content is not truncated at page boundaries.
+   *
+   * Three separate failures to prevent: a heading stranded at the foot of a page,
+   * a unit split mid-thought, and a diagram clipped by a page break.
+   * ---------------------------------------------------------------------- */
+
+  /* A heading never ends a page. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    break-after: avoid;
+    break-inside: avoid;
+  }
+
+  /* A unit stays whole where it fits on one page. `avoid` rather than
+   * `avoid-page`: a unit longer than a page must still break, and forbidding
+   * that outright would clip it, which is the thing being prevented. */
+  .requirement,
+  .decision,
+  .task,
+  .evidence,
+  .risk,
+  .verification,
+  .scenario {
+    break-inside: avoid;
+  }
+
+  /* A figure is the case most at risk: a diagram split across a page fold is
+   * unreadable, and one scaled past the page width is clipped. */
+  figure {
+    break-inside: avoid;
+  }
+
+  figcaption {
+    break-after: avoid;
+  }
+
+  /* Nothing scrolls on paper, so anything that scrolled on screen must wrap or
+   * shrink instead of being cut off at the sheet edge. */
+  pre,
+  .hs-figure-render,
+  table {
+    overflow: visible;
+    max-width: 100%;
+  }
+
+  pre {
+    /* Code wraps rather than clipping. A wrapped code line is imperfect and a
+     * clipped one has lost content, so this is the lesser harm — and the
+     * `pre-wrap` keeps every other whitespace character intact. */
+    white-space: pre-wrap;
+    word-break: break-word;
+    border-left: 1pt solid #999;
+    background: #fff;
+    font-size: 8.5pt;
+  }
+
+  .hs-figure-render svg,
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Orphans and widows: at least two lines of a paragraph on each side of a
+   * break, so a page never ends or begins with a single stranded line. */
+  p,
+  li,
+  dd {
+    orphans: 2;
+    widows: 2;
+  }
+
+  /* -------------------------------------------------------------------------
+   * A collapsed source is expanded for print.
+   *
+   * The enhancement layer collapses a figure's source once it has rendered the
+   * figure. On paper the rendering is a static image and the source is the part a
+   * reviewer annotates, so `details` is forced open. This is why the source is
+   * ordinary content rather than a script block: there is something to open.
+   * ---------------------------------------------------------------------- */
+  details {
+    display: block;
+  }
+
+  details > *:not(summary) {
+    display: revert;
+  }
+
+  summary {
+    /* The disclosure triangle is an interactive control and means nothing on
+     * paper; the label it carries still identifies what follows. */
+    list-style: none;
+    color: #444;
+    font-weight: 600;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* -------------------------------------------------------------------------
+   * Change state on paper.
+   *
+   * The text label and the border style are the two channels that survive
+   * greyscale, and both are already in the screen stylesheet. Colors collapse to
+   * black here, so the printed document is carried entirely by the two
+   * non-color channels — which is the test the visual-system requirement sets.
+   * ---------------------------------------------------------------------- */
+  [data-change] > h2::after,
+  [data-change] > h3::after,
+  [data-state] > h2::after,
+  [data-state] > h3::after,
+  [data-status] > h2::after,
+  [data-status] > h3::after,
+  [data-outcome] > h2::after,
+  [data-outcome] > h3::after {
+    color: #000;
+    border-color: #000;
+  }
+
+  /* The masthead's kind label likewise. */
+  .hs-kind {
+    color: #000;
+    border-color: #000;
+  }
+
+  /* The masthead prints once, at the top, and does not repeat. */
+  .hs-masthead {
+    break-after: avoid;
+    border-bottom: 1.5pt solid #000;
+  }
+}

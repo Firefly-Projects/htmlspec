@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Check release hygiene</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Check release hygiene</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Check release hygiene</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-21-check-release-hygiene/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-the-check-before-anything-satisfies-it">1. The check, before anything satisfies it</a></li>
+          <li><a href="#hs-2-record-a-version-per-archived-change">2. Record a version per archived change</a></li>
+          <li><a href="#hs-3-the-changelog">3. The changelog</a></li>
+          <li><a href="#hs-4-wire-it-into-the-suite">4. Wire it into the suite</a></li>
+          <li><a href="#hs-5-prove-it-in-the-sandbox-not-just-locally">5. Prove it in the sandbox, not just locally</a></li>
+          <li><a href="#hs-6-prove-it-catches-the-thing-it-exists-for">6. Prove it catches the thing it exists for</a></li>
+          <li><a href="#hs-7-the-contract">7. The contract</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-the-check-before-anything-satisfies-it">
+          <h2>1. The check, before anything satisfies it</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Write <code>scripts/check-release</code> in Python, standard library only, with <code>#!/usr/bin/env python3</code> so <code>patchShebangs</code> rewrites it.</h3>
+              <p>Follow <code>scripts/check-prompt</code> as the precedent — including its habit of explaining in the file why it is a script</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Have it read three things from files and nothing from git: the workspace version from <code>Cargo.toml</code>, a recorded version per archived change, and the version headings in <code>CHANGELOG.md</code>.</h3>
+              <p><a href="evidence/unbumped-history-2026-08-21.md"><code>flake.nix:39</code> gives the derivation a snapshot with no <code>.git</code></a>, so a check using <code>git log</code> would pass locally and fail in CI</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Assert three properties of the <strong>archive</strong>, not of the working change: every archived change records a version, every recorded version is distinct, and every recorded version has a changelog entry.</h3>
+              <p>A rule about work in progress cannot work in a stage with no warning level</p>
+              <p data-field="deviation">Migration note: the check also requires a changelog heading for the version <code>Cargo.toml</code> declares, not only for each version an archive records, as the second of the design's Goals states ("The suite fails when the current version has no changelog entry"). This is <code>wanted.add(declared)</code> in <code>scripts/check-release</code> at commit <code>41310f8</code>, and <a href="evidence/failing-check-2026-08-21.md"><code>evidence/failing-check-2026-08-21.md</code></a> shows it: with no archive recording a version, the run still reports that no heading names <code>0.1.0</code>, the declared version.</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Make each failure name the archive directory, the version it recorded, and which of the three properties failed.</h3>
+              <p>Across seven archives "release hygiene failed" is not actionable</p>
+              <p data-field="deviation">Migration note: each failure names part of that. A failure for an archive with no recorded version names the archive directory and no version, a failure for a version with no changelog entry names the version and no archive directory, and a distinctness failure names both archives and the version they share. The transcripts in <a href="evidence/failing-check-2026-08-21.md"><code>evidence/failing-check-2026-08-21.md</code></a> and <a href="evidence/each-rule-observed-failing-2026-08-21.md"><code>evidence/each-rule-observed-failing-2026-08-21.md</code></a> show every form.</p>
+            </li>
+            <li class="task" id="task-1-5" data-change="added" data-state="done">
+              <h3>1.5 Run it and <a href="evidence/failing-check-2026-08-21.md"><strong>watch it fail</strong></a> on all three properties: no archive records a version, so nothing is distinct and nothing has an entry.</h3>
+              <p>This is the only moment the check can be seen working against a repository that violates every rule</p>
+              <p data-field="deviation">Migration note: the run failed on two of the three properties. It reported nine faults and exited 1: seven for the archives recording no version, one because the changelog was absent, and one because no heading named <code>0.1.0</code>. The distinctness rule reported nothing, because with no recorded versions there was nothing to compare, and task 6.2 exercised it separately. <a href="evidence/failing-check-2026-08-21.md"><code>evidence/failing-check-2026-08-21.md</code></a> records the run and attributes the faults.</p>
+            </li>
+            <li class="task" id="task-1-6" data-change="added" data-state="done">
+              <h3>1.6 <a href="evidence/failing-check-2026-08-21.md">Record the failure output as evidence</a></h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-record-a-version-per-archived-change">
+          <h2>2. Record a version per archived change</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Record a version inside each archived change directory rather than in its name.</h3>
+              <p>It survives a rename and does not compete with the date prefix for position</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Record <code>0.1.0</code> for all seven existing archives, which is the truth — they all shipped under that version.</h3>
+              <p>Do not invent <code>0.1.0</code> through <code>0.7.0</code>: that writes a release history that never happened</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Do <strong>not</strong> rename the seven archive directories.</h3>
+              <p>Their names stay as they are</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Do <strong>not</strong> adopt the shipped program's <code>2026-08-14-0.2.0-name</code> convention.</h3>
+              <p>That convention is read by <code>last_archived_version</code> for projects <code>htmlspec init</code> bootstraps, and <a href="evidence/unbumped-history-2026-08-21.md">this repository has no <code>spec.nix</code> for that gate to read</a> — matching it here would copy the product's shape into its own repository for no benefit</p>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="dropped">
+              <h3>2.5 <strong>Dropped.</strong> State in <code>archive.md</code> that archiving records the version.</h3>
+              <p data-field="reason"><code>archive.md</code> is <code>crates/htmlspec-assets/instructions/archive.md</code> — shipped prose compiled into the binary and installed into every project by <code>init</code> — so doing this breaks task 6.5, which requires no crate to change. It would also instruct every consumer to record a <code>VERSION</code> file, a convention invented for this repository that their own <code>htmlspec archive</code> does not read: the shipped gate recovers the version from the archive directory name. The boundary this marks is worth stating in the specification produced at archival — an obligation on this repository must not be written into prose the product ships</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-the-changelog">
+          <h2>3. The changelog</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Write <code>CHANGELOG.md</code> at the repository root, one entry per version, each heading naming its version so the check can locate it</h3>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Write the <code>0.1.0</code> entry as a <strong>baseline</strong> naming the seven changes it contains, and say in the entry that it is a reconstruction written from what the archives record.</h3>
+              <p>A reconstruction labelled as one beats an absence and beats a confident fiction</p>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Have the check treat versions at or below the baseline as one release rather than seven, so recording the truth about the seven does not fail the distinctness rule</h3>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 Comment that special case in the script as self-retiring: it stops applying the moment the version advances past <code>0.1.0</code>, and a later reader must not delete it while the seven archives exist</h3>
+            </li>
+            <li class="task" id="task-3-5" data-change="added" data-state="done">
+              <h3>3.5 Keep the entry prose.</h3>
+              <p>The check locates a heading and reads nothing inside it</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-wire-it-into-the-suite">
+          <h2>4. Wire it into the suite</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Add the stage to <code>scripts/check</code> as <code>release</code>, <strong>not</strong> <code>lint</code>.</h3>
+              <p>That name is <code>cargo clippy</code>, and a second one would make <code>FAILED: lint</code> ambiguous</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Place it last, after <code>prompt</code>.</h3>
+              <p>The script's ordering comment says cheapest-first so a contributor hears about a missing newline quickly, and this stage is fast but least likely to be what someone is iterating on</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Confirm it needs <strong>no new build input</strong>: <code>pkgs.python3</code> is already in <code>nativeBuildInputs</code> for <code>check-prompt</code>.</h3>
+              <p>The last stage added to this suite took CI red for five merges over a missing input</p>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 Confirm <code>patchShebangs</code> covers it.</h3>
+              <p>The derivation names each script explicitly, so a new one must be added to that list — this is the same fault that hid the <code>check-prompt</code> failure one level in</p>
+            </li>
+            <li class="task" id="task-4-5" data-change="added" data-state="done">
+              <h3>4.5 Re-run the check from task 1 and confirm it now passes</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-prove-it-in-the-sandbox-not-just-locally">
+          <h2>5. Prove it in the sandbox, not just locally</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Run <code>nix build .#checks.aarch64-darwin.suite</code> and confirm it exits 0</h3>
+              <p data-field="deviation">Migration note: the sandbox run surfaced two faults a local run had not. <code>scripts/check-release</code> was untracked, so it was absent from the flake's source snapshot, and <code>VERSION</code> carries no extension, so the source filter rejected it. This change fixed both, by tracking the script and by widening <code>srcFilter</code> in <code>flake.nix</code> to admit <code>VERSION</code>, which corrects what <a href="evidence/unbumped-history-2026-08-21.md"><code>evidence/unbumped-history-2026-08-21.md</code></a> records under "Two things the filter does keep". Shown in the source at commit <code>41310f8</code>, whose <code>flake.nix</code> adds <code>isVersion</code> to the filter and whose message records both faults and says that the contract now states that a file a stage reads must be both tracked and admitted.</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Read the build log and confirm <code>=== release ===</code> appears and the stage ran.</h3>
+              <p>A stage that silently does nothing also exits 0, which is the failure mode this project has already met once</p>
+              <p data-field="note">Migration note: nothing this change carries records the build log. The message of the archive commit, <code>afc2bdc</code>, says that the suite passes all 9 stages.</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Confirm the suite reports nine checks rather than eight</h3>
+              <p data-field="note">Migration note: nothing this change carries records the count. The message of the archive commit, <code>afc2bdc</code>, says that the suite passes all 9 stages.</p>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Run <code>./scripts/check</code> locally and confirm the same result, since a stage that disagrees between the two is the divergence this suite exists to prevent</h3>
+              <p data-field="note">Migration note: nothing this change carries records this run.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-prove-it-catches-the-thing-it-exists-for">
+          <h2>6. Prove it catches the thing it exists for</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Temporarily remove a changelog entry and <a href="evidence/each-rule-observed-failing-2026-08-21.md">confirm the stage fails naming the version with no entry</a>.</h3>
+              <p>Restore it</p>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Temporarily record a duplicate version on two archives above the baseline and <a href="evidence/each-rule-observed-failing-2026-08-21.md">confirm the distinctness rule fails</a>.</h3>
+              <p>Restore them</p>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Temporarily remove a recorded version and <a href="evidence/each-rule-observed-failing-2026-08-21.md">confirm the stage fails naming that archive</a>.</h3>
+              <p>Restore it</p>
+            </li>
+            <li class="task" id="task-6-4" data-change="added" data-state="done">
+              <h3>6.4 <a href="evidence/each-rule-observed-failing-2026-08-21.md">Record all three as evidence.</a></h3>
+              <p>A check whose failures were never observed is a check that has only been seen passing</p>
+            </li>
+            <li class="task" id="task-6-5" data-change="added" data-state="done">
+              <h3>6.5 Confirm no crate changed: <code>git diff --stat crates/</code> is empty.</h3>
+              <p>This change touches the repository's suite and not the shipped program</p>
+              <p data-field="note">Migration note: nothing this change carries records this run. Commit <code>41310f8</code>, which landed the work, changes no file under <code>crates/</code>, and neither does the archive commit, <code>afc2bdc</code>.</p>
+            </li>
+            <li class="task" id="task-6-6" data-change="added" data-state="done">
+              <h3>6.6 Run <code>cargo test</code> and confirm nothing regressed</h3>
+              <p data-field="note">Migration note: nothing this change carries records this run.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-the-contract">
+          <h2>7. The contract</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Add to <a href="../../../specs/toolchain-packaging/spec.html"><code>openspec/specs/toolchain-packaging/spec.md</code></a> the obligation that the project's own suite checks release hygiene: an archived change records its version, recorded versions are distinct, and each has a changelog entry</h3>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done">
+              <h3>7.2 State that the suite's checks read the working tree rather than git history, because the sandbox the suite runs in receives a source snapshot with no repository.</h3>
+              <p>This is a constraint on every future stage, not only this one</p>
+            </li>
+            <li class="task" id="task-7-3" data-change="added" data-state="done">
+              <h3>7.3 State that the project keeps a changelog with one entry per version.</h3>
+              <p>This is an obligation on this repository, and it is separate from anything the shipped program requires of a project it bootstraps</p>
+            </li>
+            <li class="task" id="task-7-4" data-change="added" data-state="done">
+              <h3>7.4 Apply as a partial update, leaving every requirement this change does not name intact, and run <code>openspec validate --all</code></h3>
+              <p data-field="note">Migration note: nothing this change carries records the validation. The message of the archive commit, <code>afc2bdc</code>, says that <code>openspec validate --all</code> passes 8 items.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

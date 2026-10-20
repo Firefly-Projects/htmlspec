@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+#
+# Refuse to push to `main`, and refuse any push from the private working repository to the
+# public one.
+#
+# Why a hook as well as a ruleset
+# -------------------------------
+# A branch ruleset on `main` requires a pull request, and it is the control: GitHub refuses
+# the push. This hook is the earlier half. It stops the push before it leaves the machine,
+# which is the only point at which the mistake is free to undo, and it protects only the
+# clones that installed it and yields to `--no-verify`. That is not a defect to be engineered
+# around. A pre-push hook is a guard rail, not a lock, and a guard rail that cannot be stepped
+# over is a lock somebody will eventually need to break in an emergency.
+#
+# Install it with `scripts/install-hooks`, which points `core.hooksPath` here. Git does
+# not install hooks from a clone on its own, and nothing can make it — a repository that
+# ran code out of its own working tree on clone would be a remote execution vector.
+#
+# The public repository
+# ---------------------
+# The project is published from a private working repository, the one that holds
+# `publish/export`, into a public one that shares none of its history. A push from the
+# private repository to the public one would carry that history with it, whatever ref it
+# named: a tag pushes every commit behind it. So from a checkout holding `publish/export`,
+# every push to the public repository is refused, with no override. The export pushes from
+# a scratch repository of its own, which this hook never sees, and a release tag is made on
+# GitHub on the public repository's own commit. In the public repository there is no
+# `publish/export`, and this rule does nothing.
+#
+# The address is compared by the repository it names, not by its spelling. Git accepts one
+# repository under many: with or without a user, a password, a port, `.git`, or a trailing
+# slash, in the scp form with or without a slash after the colon, in any case, and
+# percent-encoded. A list of spellings missed three of them. The host is not compared,
+# because an ssh `Host` alias names github.com by another word, and no host holds a copy of
+# the public repository that this checkout may push to. A local path names no repository
+# elsewhere, and passes.
+#
+# Deliberate override of the `main` rule, for a repository whose `main` has no ruleset:
+#
+#   HTMLSPEC_ALLOW_MAIN_PUSH=1 git push origin main
+#
+# It exists so the escape is visible. `--no-verify` skips every hook silently and leaves
+# no trace of intent; an environment variable named for exactly this is a decision
+# someone made on purpose, and the ruleset still decides whether the push is accepted.
+
+set -euo pipefail
+
+protected="refs/heads/main"
+remote_url="${2:-}"
+
+# The owner and name of the repository an address names, lower-cased, as `owner/name`, or
+# nothing for a local path. The scheme, the user and password, the host and its port, repeated
+# and trailing slashes, and a trailing `.git` all go, and percent-encoding is decoded.
+repository_of() {
+  local url="$1" path
+  case "$url" in
+    [Ff][Ii][Ll][Ee]://*) return 0 ;;
+    *://*)
+      url="${url#*://}"
+      case "$url" in
+        */*) path="${url#*/}" ;;
+        *) path="" ;;
+      esac
+      ;;
+    *:*)
+      # The scp form, `[user@]host:path`, which git reads only when no slash comes before the
+      # first colon. Otherwise the address is a local path.
+      case "${url%%:*}" in
+        */*) return 0 ;;
+      esac
+      path="${url#*:}"
+      ;;
+    *) return 0 ;;
+  esac
+  path="$(printf '%b' "${path//%/\\x}")"
+  path="$(printf '%s' "$path" | tr -s '/' | tr '[:upper:]' '[:lower:]')"
+  path="${path#/}"
+  path="${path%/}"
+  path="${path%.git}"
+  path="${path%/}"
+  printf '%s' "$path"
+}
+
+toplevel="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+case "$(repository_of "$remote_url")" in
+  firefly-projects/htmlspec)
+    if [ -n "$toplevel" ] && [ -e "$toplevel/publish/export" ]; then
+      cat >&2 <<'MESSAGE'
+
+pre-push: refusing every push from the private working repository to the public one.
+
+A push from here carries this repository's history, whatever it names: a tag pushes every
+commit behind it. The public repository receives only exports, built in a scratch
+repository that shares none of this history:
+
+  publish/export --ref <ref>                       # review the exact export locally
+  publish/export --ref <ref> --push --reviewed <tree>
+
+A release tag is made on GitHub, on the public repository's own merge commit, never pushed
+from here. There is no override.
+
+MESSAGE
+      exit 1
+    fi
+    ;;
+esac
+
+if [ "${HTMLSPEC_ALLOW_MAIN_PUSH:-}" = "1" ]; then
+  printf 'pre-push: HTMLSPEC_ALLOW_MAIN_PUSH=1 — not checking for main.\n' >&2
+  exit 0
+fi
+
+# Git feeds one line per ref being pushed:
+#   <local ref> <local sha> <remote ref> <remote sha>
+# A deletion arrives with the all-zero local sha, which is refused too: deleting `main`
+# is not a smaller version of pushing to it.
+refused=0
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  [ -z "${remote_ref:-}" ] && continue
+  if [ "$remote_ref" = "$protected" ]; then
+    refused=1
+  fi
+done
+
+if [ "$refused" -eq 1 ]; then
+  cat >&2 <<'MESSAGE'
+
+pre-push: refusing to push to main.
+
+Everything lands on main through a pull request, so that it is reviewed and so that
+the check suite has run against it. Open one instead:
+
+  git switch -c a-branch-naming-the-change
+  git push -u origin HEAD
+  gh pr create
+
+The pull request's title becomes the squash commit's subject, and pr-guard checks it
+against this project's convention — imperative prose, under 72 characters, with a
+CHANGELOG.md entry in the diff. Rehearse it before pushing:
+
+  scripts/check-pull-request --title "Your title here"
+
+If this really does belong on main, and the repository has no ruleset that refuses it:
+
+  HTMLSPEC_ALLOW_MAIN_PUSH=1 git push origin main
+
+MESSAGE
+  exit 1
+fi
+
+exit 0

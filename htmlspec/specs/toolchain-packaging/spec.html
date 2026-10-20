@@ -1,0 +1,2334 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>toolchain-packaging</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>toolchain-packaging</h1>
+        <p>Defines the command-line surface contributors and agents use to work with HTMLSpec documents, and the reproducible packaging that ensures everyone — including continuous integration — builds and runs the same toolchain.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>toolchain-packaging</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/specs/toolchain-packaging/spec.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-requirements">Requirements</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-requirements">
+          <h2>Requirements</h2>
+          <section class="requirement" id="req-exit-codes-distinguish-outcomes" data-change="unchanged">
+            <h3>Exit codes distinguish outcomes <span class="hs-id">req-exit-codes-distinguish-outcomes</span></h3>
+            <p>The program SHALL exit zero when the requested operation succeeds, and nonzero when it does not. A document that fails validation SHALL be distinguishable by exit code from a failure to run the operation at all, such as an unreadable file or an invalid invocation.</p>
+            <p>An operation a contributor declined or interrupted SHALL be distinguishable by exit code from both success and a failure to run. It is neither: nothing went wrong, and nothing was done.</p>
+            <article class="scenario" id="scenario-clean-validation" data-change="unchanged">
+              <h4>Clean validation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>validation finds no errors</dd>
+                <dt>Then</dt>
+                <dd>the program exits zero</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-validation-failure" data-change="unchanged">
+              <h4>Validation failure</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>validation finds at least one error</dd>
+                <dt>Then</dt>
+                <dd>the program exits nonzero with the code designated for document violations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-operational-failure" data-change="unchanged">
+              <h4>Operational failure</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specified file does not exist</dd>
+                <dt>Then</dt>
+                <dd>the program exits nonzero with a code distinct from that used for document violations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-cancelled-operation" data-change="unchanged">
+              <h4>Cancelled operation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor declines or interrupts an interactive operation</dd>
+                <dt>Then</dt>
+                <dd>the program exits with a code distinct from success, from document violations, and from operational failure</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-continuous-integration-gate" data-change="unchanged">
+              <h4>Continuous integration gate</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a continuous integration job that runs validation</dd>
+                <dt>When</dt>
+                <dd>any document in the project is invalid</dd>
+                <dt>Then</dt>
+                <dd>the job fails</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-output-is-available-in-human-and-machine-forms" data-change="unchanged">
+            <h3>Output is available in human and machine forms <span class="hs-id">req-output-is-available-in-human-and-machine-forms</span></h3>
+            <p>The program SHALL produce human-readable output by default and structured machine-readable output on request. Structured output SHALL be written to standard output, and SHALL contain nothing but the structured payload so it can be consumed directly.</p>
+            <p>Requesting structured output SHALL suppress every interactive prompt. A prompt writes to the stream the payload is promised to occupy alone, so the two cannot both be honored.</p>
+            <article class="scenario" id="scenario-agent-consumes-structured-output" data-change="unchanged">
+              <h4>Agent consumes structured output</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent runs validation requesting structured output</dd>
+                <dt>Then</dt>
+                <dd>standard output contains only a well-formed structured payload of diagnostics</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-progress-does-not-corrupt-structured-output" data-change="unchanged">
+              <h4>Progress does not corrupt structured output</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested</dd>
+                <dt>Then</dt>
+                <dd>progress messages, warnings, and errors about the run itself go to standard error, leaving standard output parseable</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-structured-output-suppresses-prompts" data-change="unchanged">
+              <h4>Structured output suppresses prompts</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an operation that would prompt is run with structured output requested</dd>
+                <dt>Then</dt>
+                <dd>it does not prompt, and standard output contains only the payload</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-default-output-is-for-people" data-change="unchanged">
+              <h4>Default output is for people</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs validation without requesting structured output</dd>
+                <dt>Then</dt>
+                <dd>the output is formatted for reading in a terminal</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-formatting-can-check-without-writing" data-change="unchanged">
+            <h3>Formatting can check without writing <span class="hs-id">req-formatting-can-check-without-writing</span></h3>
+            <p>The format subcommand SHALL support a mode that reports whether documents are canonically formatted without modifying any file, exiting nonzero if any document would change.</p>
+            <article class="scenario" id="scenario-check-mode-on-formatted-files" data-change="unchanged">
+              <h4>Check mode on formatted files</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>check mode runs against canonically formatted documents</dd>
+                <dt>Then</dt>
+                <dd>the program exits zero and no file is modified</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-check-mode-on-unformatted-files" data-change="unchanged">
+              <h4>Check mode on unformatted files</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>check mode runs against an unformatted document</dd>
+                <dt>Then</dt>
+                <dd>the program exits nonzero, names the document, and modifies nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-write-mode" data-change="unchanged">
+              <h4>Write mode</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the format subcommand runs in its default write mode</dd>
+                <dt>Then</dt>
+                <dd>documents that are not canonically formatted are rewritten, and documents already canonical are left byte-identical</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-toolchain-builds-reproducibly-from-pinned-inputs" data-change="unchanged">
+            <h3>The toolchain builds reproducibly from pinned inputs <span class="hs-id">req-the-toolchain-builds-reproducibly-from-pinned-inputs</span></h3>
+            <p>The project SHALL be buildable from fully pinned inputs, including the compiler toolchain, every dependency, and every vendored browser-side library. Building the same revision SHALL produce equivalent results regardless of what is already installed on the machine.</p>
+            <article class="scenario" id="scenario-clean-machine-build" data-change="unchanged">
+              <h4>Clean machine build</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a machine with no project toolchain installed beyond the packaging tool</dd>
+                <dt>When</dt>
+                <dd>a contributor builds the project</dd>
+                <dt>Then</dt>
+                <dd>the build succeeds without installing dependencies by hand</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-machines-agree" data-change="unchanged">
+              <h4>Two machines agree</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>two machines building the same revision</dd>
+                <dt>When</dt>
+                <dd>each runs the toolchain against the same document</dd>
+                <dt>Then</dt>
+                <dd>the validation results and formatted output are identical</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unpinned-dependency-rejected" data-change="unchanged">
+              <h4>Unpinned dependency rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a dependency is introduced without a pinned version and integrity hash</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks fail</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-development-environment-is-provided" data-change="unchanged">
+            <h3>A development environment is provided <span class="hs-id">req-a-development-environment-is-provided</span></h3>
+            <p>The project SHALL provide a reproducible development environment containing the compiler, test tooling, and any auxiliary tools needed to work on the project, entered with a single command.</p>
+            <article class="scenario" id="scenario-entering-the-environment" data-change="unchanged">
+              <h4>Entering the environment</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor enters the development environment</dd>
+                <dt>Then</dt>
+                <dd>the compiler, test runner, and project tooling are available at their pinned versions</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-environment-matches-the-build" data-change="unchanged">
+              <h4>Environment matches the build</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the project's checks inside the development environment</dd>
+                <dt>Then</dt>
+                <dd>the results match those produced by the packaged build</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-project-checks-are-runnable-as-one-command" data-change="unchanged">
+            <h3>Project checks are runnable as one command <span class="hs-id">req-project-checks-are-runnable-as-one-command</span></h3>
+            <p>The project SHALL expose a single command that runs its full check suite — the conformance fixtures, the unit tests, the formatting check, and the project's release hygiene — so that contributors and continuous integration verify the same thing.</p>
+            <p>Every stage of the suite SHALL read the working tree rather than a repository's history. The build sandbox the suite runs in receives a filtered source snapshot with no repository, so a stage using version control history would pass on a contributor's machine and fail in continuous integration — the divergence a single shared suite exists to prevent. This SHALL constrain every stage the suite gains, not only the ones it has.</p>
+            <p>Every file a stage reads SHALL be present in that snapshot, which requires both that the source filter admit it and that version control track it. An untracked file and a file the filter excludes are indistinguishable from an absent one inside the sandbox, and both produce a stage that passes locally and fails in continuous integration. A stage that reads a file whose name the filter does not already admit SHALL be accompanied by the filter change that admits it, in the same change.</p>
+            <p>A stage SHALL either pass or fail, because the suite has no advisory level. A rule whose violation is a legitimate state for work in progress SHALL therefore be stated as a property of a settled record rather than of work under way, so that the rule has a correct answer at every moment. A stage that would report on unfinished work has no way to do so without failing, and a stage that fails throughout a change's life is one contributors learn to disregard.</p>
+            <p>A stage's name SHALL be distinct from every other stage's, so that a reported failure names one stage unambiguously.</p>
+            <article class="scenario" id="scenario-full-check-suite" data-change="unchanged">
+              <h4>Full check suite</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the check command runs on a healthy revision</dd>
+                <dt>Then</dt>
+                <dd>conformance fixtures, tests, the formatting check, and the release check all pass and the command exits zero</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-conformance-regression" data-change="unchanged">
+              <h4>Conformance regression</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a code change causes a valid conformance fixture to be rejected or an invalid one to be accepted</dd>
+                <dt>Then</dt>
+                <dd>the check command fails and identifies the fixture and the expected rule</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-continuous-integration-parity" data-change="unchanged">
+              <h4>Continuous integration parity</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>continuous integration runs</dd>
+                <dt>Then</dt>
+                <dd>it invokes the same check command a contributor would run locally, rather than a separately maintained list of steps</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-stage-that-would-need-history" data-change="unchanged">
+              <h4>A stage that would need history</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a stage would answer its question by reading commits or diffs</dd>
+                <dt>Then</dt>
+                <dd>it is stated against the working tree instead, because the sandbox has no repository to read</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rule-that-cannot-fail-cleanly-on-work-in-progress" data-change="unchanged">
+              <h4>A rule that cannot fail cleanly on work in progress</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a rule's violation is a legitimate state part-way through a change</dd>
+                <dt>Then</dt>
+                <dd>the stage asks it of a settled record rather than of the working change, since the suite offers no way to report without failing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-file-the-source-filter-excludes" data-change="unchanged">
+              <h4>A file the source filter excludes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a stage reads a file whose name the source filter does not admit</dd>
+                <dt>Then</dt>
+                <dd>the stage fails in the sandbox while passing locally, so the filter change that admits the file belongs to the same change as the stage</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-program-is-distributable-as-a-standalone-artifact" data-change="unchanged">
+            <h3>The program is distributable as a standalone artifact <span class="hs-id">req-the-program-is-distributable-as-a-standalone-artifact</span></h3>
+            <p>The toolchain SHALL be packageable as an executable artifact that runs without a source checkout and without the packaging tool present at runtime.</p>
+            <article class="scenario" id="scenario-running-the-packaged-program" data-change="unchanged">
+              <h4>Running the packaged program</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a machine with only the packaged artifact</dd>
+                <dt>When</dt>
+                <dd>a user runs the validate subcommand against a document</dd>
+                <dt>Then</dt>
+                <dd>it works without a source checkout or a development environment</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-version-reporting" data-change="unchanged">
+              <h4>Version reporting</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a user asks the program for its version</dd>
+                <dt>Then</dt>
+                <dd>it reports a version identifying the revision it was built from, so a diagnostic can be traced to a specific build</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-archival-produces-the-specification-and-updates-the-accepted-contract" data-change="unchanged">
+            <h3>Archival produces the specification and updates the accepted contract <span class="hs-id">req-archival-produces-the-specification-and-updates-the-accepted-contract</span></h3>
+            <p>The command surface SHALL provide an archival operation that produces a change's specification artifact from its proposal, design, and tasks, validates it, and then applies its contract changes to the project's accepted specifications.</p>
+            <p>There SHALL be one specification artifact per change, and it SHALL be the same file as that change's as-built record. The project's accepted specifications SHALL be a separate destination outside the change directory.</p>
+            <p>The production SHALL be performed by an agent following stated instructions rather than by a deterministic extractor in the program. The program's part SHALL be the checking: it validates the produced document and reports what is wrong with it. That division is deliberate — the judgment of what a design's prose obliges is not derivable by rule, while whether the result conforms is exactly what a validator determines.</p>
+            <p>The project SHALL NOT ship a command that parses a proposal or a design and emits requirements. Those kinds carry no imposed structure, so there is nothing for such a command to parse reliably, and one written anyway would produce a specification that passes every check and misstates what the change established.</p>
+            <p>Archival SHALL NOT complete while the produced specification reports an error. A change archived with an invalid specification would leave the accepted contract in a state the project's own tools reject.</p>
+            <p>The archival command SHALL complete the operation it is named for. On success the change directory SHALL have been moved into the project's archive, and the change SHALL have recorded the version the project declared. An archival that reports success while the change remains among the project's active changes SHALL NOT be considered to have archived it.</p>
+            <p>Archival SHALL be atomic with respect to the project. Where archival refuses, or where a contributor declines to proceed, the project SHALL be left exactly as archival found it: no change moved, no accepted specification altered, and no version recorded.</p>
+            <p>Archival SHALL keep every relative reference in the change's documents reaching the file it reached before the move. A reference that would reach a different file from the archive SHALL be rewritten to reach the same one. A reference within the change, a URL, an absolute path, a bare fragment, and an author's quotation of a reference in text SHALL be left as written, and the change's evidence SHALL NOT be rewritten.</p>
+            <p>The rewrite SHALL be part of archival's transaction. A refusal, or an interruption before the change moves, SHALL leave every document as it was, and an interruption after the move SHALL be completed by the next archival.</p>
+            <article class="scenario" id="scenario-archiving-a-completed-change" data-change="unchanged">
+              <h4>Archiving a completed change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor archives a change whose tasks are complete</dd>
+                <dt>Then</dt>
+                <dd>its specification artifact is produced, validated, applied to the project's accepted specifications, and archived alongside the change's other documents</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-change-s-documents-survive" data-change="unchanged">
+              <h4>The change's documents survive</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival completes</dd>
+                <dt>Then</dt>
+                <dd>the change's proposal, design, tasks, and specification are all still readable in the archive</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archiving-with-an-invalid-specification" data-change="unchanged">
+              <h4>Archiving with an invalid specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the produced specification reports an error</dd>
+                <dt>Then</dt>
+                <dd>archival does not complete, and the error is reported for reconciliation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-tool-does-not-extract-requirements-itself" data-change="unchanged">
+              <h4>The tool does not extract requirements itself</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the archival operation runs</dd>
+                <dt>Then</dt>
+                <dd>the program validates the specification an agent wrote rather than deriving requirements from the source documents by rule</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-completed-archival" data-change="unchanged">
+              <h4>A completed archival</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival succeeds for a change</dd>
+                <dt>Then</dt>
+                <dd>the change directory is in the archive, it records the declared version, and it is no longer among the active changes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-refused-archival-leaves-nothing-behind" data-change="unchanged">
+              <h4>A refused archival leaves nothing behind</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival refuses</dd>
+                <dt>Then</dt>
+                <dd>the change remains among the active changes, unmoved and unmodified</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-archived-document-reaches-what-it-reached" data-change="unchanged">
+              <h4>An archived document reaches what it reached</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose documents reference the project's store and an accepted specification by relative paths</dd>
+                <dt>When</dt>
+                <dd>the change is archived</dd>
+                <dt>Then</dt>
+                <dd>each of those references reaches the same file from the archive, so the archived document loads its stylesheet and scripts and its links lead where they led</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reference-within-the-change-moves-with-it" data-change="unchanged">
+              <h4>A reference within the change moves with it</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document references its change's evidence, or a sibling document, by a relative path within the change, or carries a URL or quotes a reference in text</dd>
+                <dt>Then</dt>
+                <dd>archival leaves each as written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-evidence-is-not-rewritten" data-change="unchanged">
+              <h4>Evidence is not rewritten</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence carries relative references</dd>
+                <dt>When</dt>
+                <dd>the change is archived</dd>
+                <dt>Then</dt>
+                <dd>every file beneath its evidence is byte-identical to what it was</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-interruption-before-the-move" data-change="unchanged">
+              <h4>An interruption before the move</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an archival interrupted before the change moved, with some documents already rewritten into staged copies</dd>
+                <dt>When</dt>
+                <dd>archival runs again</dd>
+                <dt>Then</dt>
+                <dd>every staged copy is removed, whatever it holds, and every document is as it was</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-interruption-after-the-move" data-change="unchanged">
+              <h4>An interruption after the move</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an archival interrupted after the change moved and before every rewritten document took its place</dd>
+                <dt>When</dt>
+                <dd>archival runs again</dd>
+                <dt>Then</dt>
+                <dd>it puts the remaining rewritten documents in place, and refuses a staged copy edited since it was written</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-single-command-exposes-validate-format-and-init" data-change="unchanged">
+            <h3>The command surface names its operations as OpenSpec names them <span class="hs-id">req-a-single-command-exposes-validate-format-and-init</span></h3>
+            <p>The project SHALL provide one command-line program offering, at minimum, a subcommand to validate documents, a subcommand to format documents, a subcommand to bootstrap a project, and a subcommand to create documents. Each subcommand SHALL be usable without configuration in a conforming project.</p>
+            <p><strong>Where an operation corresponds to one OpenSpec provides, it SHALL carry OpenSpec's name for it.</strong> This holds for the subcommand and for the options that select what it acts on. Every plausible adopter arrives from OpenSpec — HTMLSpec is a spinoff and its README says so — and a contributor who has learned one surface SHALL NOT have to learn a second spelling for the same operation. An operation OpenSpec does not provide takes the name this project chooses for it.</p>
+            <p>The spellings are therefore fixed rather than left to an implementer: <code>validate</code>, <code>archive</code>, <code>init</code>, <code>new</code>, <code>list</code>, <code>status</code>, <code>sync</code>, <code>show</code>, <code>instructions</code>, and <code>store</code> name the operations OpenSpec also provides. <code>format</code> and <code>assets</code> name operations it does not. The selectors <code>--json</code>, <code>--specs</code>, <code>--change</code>, <code>--store</code>, and <code>--diff</code> carry OpenSpec's spellings for the same reason.</p>
+            <p>Fixing a spelling in the contract is not decoration. A requirement that describes an operation by role alone — <em>an operation that enumerates a project's active changes</em> — is satisfied by a subcommand called <code>changes</code>, or <code>ls</code>, and the instructions written against it would then name a command that does not exist. The workflow instructions this project installs invoke these commands by name, so the name is part of the contract they depend on.</p>
+            <p><strong>Each operation SHALL also answer to a request-verb spelling, which says what the operation does to the files it acts on.</strong> The verb is one of htmx's five request keywords without their <code>hx-</code> prefix, <code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, and <code>delete</code>, and it carries the meaning HTTP gives it: <code>get</code> for an operation that never writes, <code>post</code> for one that creates something that was not there, <code>put</code> for one that creates or replaces a whole thing and leaves it as one run did when run again, <code>patch</code> for one that changes something that exists, and <code>delete</code> for one that removes something. The verb is followed by the operation's object. These spellings are fixed as the OpenSpec spellings are: <code>get validity</code>, <code>get list</code>, <code>get status</code>, <code>get sync</code>, <code>get show</code>, <code>get assets</code>, <code>get preflight</code>, <code>get instructions</code>, <code>get registrations</code>, and <code>get survey</code>; <code>post change</code>, <code>post document</code>, <code>post registration</code>, <code>post run</code>, and <code>post promotion</code>; <code>put project</code> and <code>put format</code>; <code>patch archive</code>; and <code>delete registration</code>. The verb names the most the operation writes in any invocation, so <code>get</code> spells only an operation that never writes, and an operation that writes only with an option takes the verb of that write. An option keeps its meaning under both spellings: <code>put format --check</code> writes nothing, as <code>format --check</code> does.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Verb</th>
+                  <th>Meaning</th>
+                  <th>Spellings</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>get</code></td>
+                  <td>for an operation that never writes</td>
+                  <td><code>get validity</code>, <code>get list</code>, <code>get status</code>, <code>get sync</code>, <code>get show</code>, <code>get assets</code>, <code>get preflight</code>, <code>get instructions</code>, <code>get registrations</code>, and <code>get survey</code></td>
+                </tr>
+                <tr>
+                  <td><code>post</code></td>
+                  <td>for one that creates something that was not there</td>
+                  <td><code>post change</code>, <code>post document</code>, <code>post registration</code>, <code>post run</code>, and <code>post promotion</code></td>
+                </tr>
+                <tr>
+                  <td><code>put</code></td>
+                  <td>for one that creates or replaces a whole thing and leaves it as one run did when run again</td>
+                  <td><code>put project</code> and <code>put format</code></td>
+                </tr>
+                <tr>
+                  <td><code>patch</code></td>
+                  <td>for one that changes something that exists</td>
+                  <td><code>patch archive</code></td>
+                </tr>
+                <tr>
+                  <td><code>delete</code></td>
+                  <td>for one that removes something</td>
+                  <td><code>delete registration</code></td>
+                </tr>
+              </tbody>
+            </table>
+            <p><strong>A request-verb spelling SHALL be a second spelling of an operation and never its replacement.</strong> It SHALL run the operation its OpenSpec spelling runs, with the same arguments and options, and SHALL produce the same output and exit status. The OpenSpec spellings stay the ones this requirement fixes above, and the program's own messages and the workflow instructions it installs SHALL name them, so a contributor who arrives from OpenSpec still has one spelling to learn. A name says what an operation is about, and a verb says whether it can change the tree, which the names do not say and which differs between the two tools for two of them: OpenSpec's sync and archive write the accepted specifications, and this program's <code>sync</code> and <code>archive</code> never do. The verbs are vocabulary only. No operation sends a request, and none needs a server or a network.</p>
+            <p>The bootstrap subcommand's subject SHALL be a project and it SHALL require no arguments, because the operation a contributor needs first is the one that establishes the project they are standing in. The creation subcommand's subject SHALL be a document or a change.</p>
+            <p>These SHALL be distinct subcommands. One subcommand meaning both "establish this project" and "write this file" would leave a contributor unable to ask for either without also specifying which they meant.</p>
+            <p>Creation SHALL take the artifact kind of the document to create, and SHALL produce a document already shaped for that kind. A <code>proposal</code> SHALL be initialized as a page of prose with no unit scaffolding at all, and a <code>specification</code> SHALL be initialized with the units its kind expects.</p>
+            <p>The asymmetry is the requirement. A proposal that arrived full of empty requirement scaffolding would push its author toward stating a contract at the stage meant for arguing about one, and the emptiest possible starting point is the correct one for a document whose structure is the author's to choose.</p>
+            <p>Creation SHALL be able to create a whole change — the directory and its documents — rather than one document at a time, because a change is a directory of kinded documents. A change created in a project SHALL be placed where that project keeps its active changes, and the resolved location SHALL be reported.</p>
+            <p>Documents SHALL be created referencing the project's asset store rather than establishing one of their own.</p>
+            <article class="scenario" id="scenario-validating-a-project" data-change="unchanged">
+              <h4>Validating a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand in a project with no arguments</dd>
+                <dt>Then</dt>
+                <dd>every document in the project is validated and the results are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-validating-one-document" data-change="unchanged">
+              <h4>Validating one document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand against a single file path</dd>
+                <dt>Then</dt>
+                <dd>only that document is validated and reported on, and the other documents its references can reach are read only for the identifiers they declare</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-bootstrapping-with-no-arguments" data-change="unchanged">
+              <h4>Bootstrapping with no arguments</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the bootstrap subcommand with no arguments</dd>
+                <dt>Then</dt>
+                <dd>it establishes a project in the current repository rather than reporting a missing argument</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-proposal" data-change="unchanged">
+              <h4>Creating a proposal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document of the proposal kind</dd>
+                <dt>Then</dt>
+                <dd>it opens as a readable page of prose, with no semantic unit scaffolding to fill in</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-specification" data-change="unchanged">
+              <h4>Creating a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document of the specification kind</dd>
+                <dt>Then</dt>
+                <dd>it arrives with the units that kind expects, because its shape is not the author's to invent</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-change" data-change="unchanged">
+              <h4>Creating a change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a new change in a project</dd>
+                <dt>Then</dt>
+                <dd>its directory is created where the project keeps active changes, holding the documents that stage needs, each declaring its kind and each valid immediately, and its location is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-created-document-uses-the-project-s-store" data-change="unchanged">
+              <h4>A created document uses the project's store</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document in a project</dd>
+                <dt>Then</dt>
+                <dd>it references the project's existing asset store and no second store is established</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-change-outside-a-project" data-change="unchanged">
+              <h4>Creating a change outside a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a change where no project exists</dd>
+                <dt>Then</dt>
+                <dd>the program reports that no project was found and names the bootstrap subcommand</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unknown-subcommand" data-change="unchanged">
+              <h4>Unknown subcommand</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes a subcommand that does not exist</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error, lists the available subcommands, and exits with a failure status</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-withdrawn-spelling-names-its-replacement" data-change="unchanged">
+              <h4>A withdrawn spelling names its replacement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes the bootstrap subcommand with the arguments creation formerly took</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error and names the subcommand that now performs it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-proposal" data-change="unchanged">
+              <h4>Initializing a proposal</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>that initialization formerly created one document and its subject is now the project</dd>
+                <dt>When</dt>
+                <dd>a contributor names a document path on the bootstrap subcommand</dd>
+                <dt>Then</dt>
+                <dd>the program refuses, states that the subject is the project, and names the creation subcommand that writes one document</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-specification" data-change="unchanged">
+              <h4>Initializing a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor names a document path on the bootstrap subcommand for any artifact kind</dd>
+                <dt>Then</dt>
+                <dd>the refusal is the same regardless of kind, because the subject changed rather than the kind vocabulary</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-change" data-change="unchanged">
+              <h4>Initializing a change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor names a path on the bootstrap subcommand intending to create a change</dd>
+                <dt>Then</dt>
+                <dd>the program refuses and names the creation subcommand for a change, so a contributor who used the withdrawn spelling is not left guessing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-discoverable-help" data-change="unchanged">
+              <h4>Discoverable help</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests help</dd>
+                <dt>Then</dt>
+                <dd>every subcommand and option is documented in the output</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-operation-openspec-also-provides" data-change="unchanged">
+              <h4>An operation OpenSpec also provides</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the command surface offers an operation that enumerates a project's changes, reports a change's completion, emits workflow instructions, registers a standalone project, or shows a change's modified requirements beside the accepted ones</dd>
+                <dt>Then</dt>
+                <dd>it is named <code>list</code>, <code>status</code>, <code>instructions</code>, <code>store</code>, and <code>show</code> respectively, because those are OpenSpec's names for those operations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-selectors-carry-openspec-s-spellings" data-change="unchanged">
+              <h4>The selectors carry OpenSpec's spellings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor asks for structured output, for specifications rather than changes, for one named change, for a registered standalone project, or for a change's modified requirements beside the accepted ones</dd>
+                <dt>Then</dt>
+                <dd>the options are <code>--json</code>, <code>--specs</code>, <code>--change</code>, <code>--store</code>, and <code>--diff</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-operation-openspec-does-not-provide" data-change="unchanged">
+              <h4>An operation OpenSpec does not provide</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the command surface offers an operation with no OpenSpec counterpart</dd>
+                <dt>Then</dt>
+                <dd>it takes the name this project chooses for it, as <code>format</code> and <code>assets</code> do</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-renamed-operation-breaks-the-installed-instructions" data-change="unchanged">
+              <h4>A renamed operation breaks the installed instructions</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>workflow instructions that invoke a subcommand by name</dd>
+                <dt>When</dt>
+                <dd>that subcommand is spelled differently from what the instructions name</dd>
+                <dt>Then</dt>
+                <dd>the instructions name a command that does not exist, which is why the spellings are fixed in the contract rather than left to an implementer</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-request-verb-spelling-runs-the-same-operation" data-change="unchanged">
+              <h4>A request-verb spelling runs the same operation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec get validity</code> in a project with no arguments</dd>
+                <dt>Then</dt>
+                <dd>every document in the project is validated and reported exactly as <code>htmlspec validate</code> reports them, with the same exit status</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-get-operation-writes-nothing" data-change="unchanged">
+              <h4>A get operation writes nothing</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs any operation through a <code>get</code> spelling, with any of the options it accepts</dd>
+                <dt>Then</dt>
+                <dd>no file is created, changed, or removed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-option-keeps-its-meaning-under-the-verb" data-change="unchanged">
+              <h4>An option keeps its meaning under the verb</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec put format --check</code> on a document that is not canonical</dd>
+                <dt>Then</dt>
+                <dd>nothing is written, and the report and exit status are those of <code>htmlspec format --check</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-program-names-the-openspec-spelling" data-change="unchanged">
+              <h4>The program names the OpenSpec spelling</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the program tells a contributor which operation to run, as it does when no project is found</dd>
+                <dt>Then</dt>
+                <dd>it names the OpenSpec spelling, such as <code>init</code>, and not the request-verb spelling</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-operation-has-both-spellings" data-change="unchanged">
+              <h4>Every operation has both spellings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor reads the program's help</dd>
+                <dt>Then</dt>
+                <dd>every operation it lists has one request-verb spelling, and every request-verb spelling runs exactly one operation it lists</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence" data-change="unchanged">
+            <h3>An operation over a directory collects documents and not a change's evidence <span class="hs-id">req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence</span></h3>
+            <p>When <code>validate</code> or <code>format</code>, in either its writing or its checking mode, is given a directory or no path at all, it SHALL operate on every <code>.html</code> file beneath that directory, except files beneath a change's evidence as artifact-kinds' "A change's evidence is kept in the change and is not one of its documents" places it. Every other operation that collects a project's documents by walking a directory SHALL make the same exclusion from the same definition.</p>
+            <p><strong>A path the contributor names SHALL be checked as named.</strong> A file means that file. A directory that is itself a change's evidence directory, or lies beneath one, means that directory, and <code>validate</code> and <code>format --check</code> SHALL check every <code>.html</code> file beneath it. The exclusion applies to what a walk comes across and never to what a contributor asked for. A contributor who wants to know whether a record still conforms can ask, and the answer is the ordinary one.</p>
+            <p><strong>Checking is not writing.</strong> <code>format</code> in its writing mode SHALL NOT write a file beneath a change's evidence, including one a contributor names, because artifact-kinds states that no operation rewrites one. Given such a path, it SHALL name each record, write nothing at all, and exit with the status for an operation that could not run. It SHALL NOT write the other documents and skip the records. A partial write would report success for a request it half ignored.</p>
+            <p>Where the walked directory is not within a project, no directory is a change's evidence, and every <code>.html</code> file beneath it SHALL be operated on. A conformance fixture and a loose directory of documents keep the behavior they have.</p>
+            <p>The exclusion SHALL be defined once and reached by every such operation. It SHALL NOT be restated per command. A second definition that drifts from the first would have <code>validate</code> and <code>format</code> disagree about which files are documents. That is the fault this requirement exists to remove, arriving by another route.</p>
+            <article class="scenario" id="scenario-validating-a-project-that-holds-html-evidence" data-change="unchanged">
+              <h4>Validating a project that holds HTML evidence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose documents all conform, and a change whose evidence holds an HTML file that does not</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code> with no path</dd>
+                <dt>Then</dt>
+                <dd>it succeeds and reports no diagnostic naming the evidence file</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-formatting-leaves-evidence-untouched" data-change="unchanged">
+              <h4>Formatting leaves evidence untouched</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file that is not in canonical form</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>format</code> over the project, and then <code>format --check</code></dd>
+                <dt>Then</dt>
+                <dd>the evidence file is byte-identical to what it was, and the check succeeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-naming-an-evidence-file-checks-it" data-change="unchanged">
+              <h4>Naming an evidence file checks it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file that does not conform</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code> naming that file</dd>
+                <dt>Then</dt>
+                <dd>the file is validated and its diagnostics are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-naming-the-evidence-directory-checks-what-it-holds" data-change="unchanged">
+              <h4>Naming the evidence directory checks what it holds</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file that does not conform</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code> naming the change's evidence directory</dd>
+                <dt>Then</dt>
+                <dd>the file is validated and its diagnostics are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-formatting-a-named-record-is-refused" data-change="unchanged">
+              <h4>Formatting a named record is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file that is not in canonical form</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>format</code> naming that file, or the evidence directory holding it</dd>
+                <dt>Then</dt>
+                <dd>nothing is written, each record is named, and the exit is the one for an operation that could not run, while <code>format --check</code> naming the same path still reports the file</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-outside-a-project-every-file-is-a-document" data-change="unchanged">
+              <h4>Outside a project every file is a document</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a directory that is not within a project, holding <code>evidence/a-record.html</code></dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code> naming that directory</dd>
+                <dt>Then</dt>
+                <dd>the file is validated, because outside a project there is no change for it to be the evidence of</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-project-records-what-changed-in-each-version-it-ships" data-change="unchanged">
+            <h3>The project records what changed in each version it ships <span class="hs-id">req-the-project-records-what-changed-in-each-version-it-ships</span></h3>
+            <p>The project SHALL keep a changelog with one entry per version it has shipped, and each entry's heading SHALL name its version so that a check can locate it.</p>
+            <p>An entry's prose SHALL remain the author's. A check SHALL establish that an entry for a version exists and SHALL NOT impose a structure on what the entry says, because a changelog exists to be read by a person.</p>
+            <p>An entry reconstructed after the fact SHALL say that it is a reconstruction. A history assembled from records by someone who was not present is more useful labelled than unlabelled, and more honest than a confident account.</p>
+            <p>This obligation is on this repository. It SHALL be distinguishable from any obligation the program places on a project it bootstraps, and satisfying one SHALL NOT be taken to satisfy the other.</p>
+            <article class="scenario" id="scenario-a-version-with-no-entry" data-change="unchanged">
+              <h4>A version with no entry</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the project has shipped a version the changelog does not name</dd>
+                <dt>Then</dt>
+                <dd>the release check fails and names that version</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-entry-s-contents" data-change="unchanged">
+              <h4>An entry's contents</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release check locates an entry for a version</dd>
+                <dt>Then</dt>
+                <dd>it reads the entry's presence and applies no rule to the entry's prose</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reconstructed-entry" data-change="unchanged">
+              <h4>A reconstructed entry</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an entry is written after the fact from archived records</dd>
+                <dt>Then</dt>
+                <dd>the entry states that it is a reconstruction</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-an-archived-change-records-the-version-it-shipped-in" data-change="unchanged">
+            <h3>An archived change records the version it shipped in <span class="hs-id">req-an-archived-change-records-the-version-it-shipped-in</span></h3>
+            <p>Each archived change SHALL record the version the project declared when it was archived, in a form the project's own suite can read without version control history.</p>
+            <p>Recorded versions SHALL be distinct, so that each release names the change that produced it. Where the project has archived several changes under one version before this obligation existed, the changelog SHALL carry a single baseline entry naming them, and the suite SHALL treat that baseline as one release. The baseline SHALL cease to apply once the version advances past it, so it is a statement about a known past rather than a permanent exception.</p>
+            <p>Versions SHALL NOT be invented to satisfy distinctness. Assigning a separate version to each of several changes that shipped together records releases that never existed, which is worse than recording the shared version honestly.</p>
+            <article class="scenario" id="scenario-an-archive-with-no-recorded-version" data-change="unchanged">
+              <h4>An archive with no recorded version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an archived change records no version</dd>
+                <dt>Then</dt>
+                <dd>the release check fails and names that change</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-archives-claiming-one-version" data-change="unchanged">
+              <h4>Two archives claiming one version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>two archived changes above the baseline record the same version</dd>
+                <dt>Then</dt>
+                <dd>the release check fails, because a version names the change that produced it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-baseline" data-change="unchanged">
+              <h4>The baseline</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>several changes were archived under one version before this obligation existed</dd>
+                <dt>Then</dt>
+                <dd>one changelog entry names them all and the suite treats them as one release</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-baseline-retires" data-change="unchanged">
+              <h4>The baseline retires</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the project's version advances past the baseline</dd>
+                <dt>Then</dt>
+                <dd>every subsequent change is checked for a distinct version of its own</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-archival-refuses-on-the-contract-and-asks-about-the-work" data-change="unchanged">
+            <h3>Archival refuses on the contract and asks about the work <span class="hs-id">req-archival-refuses-on-the-contract-and-asks-about-the-work</span></h3>
+            <p>Archival SHALL distinguish conditions that refuse from conditions that inform.</p>
+            <p>Archival SHALL refuse, without offering to proceed, when the declared version does not advance, when the change has no specification artifact, when that artifact declares a kind other than specification, or when validating it reports an error. These concern the contract, which archival makes permanent and against which the rest of the project is checked.</p>
+            <p>Archival SHALL report, and SHALL offer to proceed, when a change has incomplete tasks, or when the change's contract has not reached the accepted specifications as "The command surface reports whether a change reached the accepted contract" judges it: a requirement the change adds, modifies, or carries forward that appears in no accepted specification, or a rename, a requirement's content, or a removal that the accepted specifications have not taken. These concern the work. A contributor SHALL be able to archive over both, because a dropped task is a legitimate outcome, and whether a part of the contract that did not arrive was left out on purpose is a judgment <code>artifact-kinds</code> reserves for an agent.</p>
+            <p>A report that offers to proceed SHALL name what it found rather than cautioning generally. It SHALL state the count of incomplete tasks and SHALL name each requirement identifier it did not locate, and each requirement whose rename, content, or removal the accepted specifications have not taken.</p>
+            <p><strong>A requirement the change marks <code>removed</code> that no accepted specification holds SHALL NOT be reported.</strong> The change withdraws it, and its absence is the merge having done what the change asked. Reported as a requirement archival did not locate, it asks a contributor to archive over a withdrawal that was applied correctly, and says the change has not been synced when it has.</p>
+            <article class="scenario" id="scenario-archival-refuses-on-the-contract-and-asks-about-the-work-an-invalid-specification" data-change="unchanged">
+              <h4>An invalid specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the change's specification reports an error</dd>
+                <dt>Then</dt>
+                <dd>archival refuses and does not offer to proceed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-incomplete-tasks" data-change="unchanged">
+              <h4>Incomplete tasks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change has incomplete tasks and is otherwise ready</dd>
+                <dt>Then</dt>
+                <dd>archival reports how many and offers to proceed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-that-reached-no-accepted-specification" data-change="unchanged">
+              <h4>A requirement that reached no accepted specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the change's specification states a requirement it adds, modifies, or carries forward, and that requirement appears in no accepted specification</dd>
+                <dt>Then</dt>
+                <dd>archival names that requirement's identifier and offers to proceed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-declining-the-offer" data-change="unchanged">
+              <h4>Declining the offer</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor declines to proceed</dd>
+                <dt>Then</dt>
+                <dd>nothing is moved and the project is unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-whose-content-did-not-arrive" data-change="unchanged">
+              <h4>A requirement whose content did not arrive</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an accepted specification holds a requirement the change modifies, and its statement lacks a word the change's specification adds</dd>
+                <dt>Then</dt>
+                <dd>archival names that requirement's identifier and offers to proceed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-withdrawal-the-merge-applied" data-change="unchanged">
+              <h4>A withdrawal the merge applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification marks a requirement <code>removed</code></dd>
+                <dt>When</dt>
+                <dd>no accepted specification holds that requirement</dd>
+                <dt>Then</dt>
+                <dd>archival reports nothing about it and does not ask on its account</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-archival-assesses-the-merge-and-never-performs-it" data-change="unchanged">
+            <h3>Archival assesses the merge and never performs it <span class="hs-id">req-archival-assesses-the-merge-and-never-performs-it</span></h3>
+            <p>Archival SHALL determine whether the change's contract reached the accepted specifications, and SHALL do so by comparing requirement identifiers, for a renamed requirement its heading, and for a requirement the change adds or modifies its statements and scenarios as text, rather than by reading requirements for meaning. This SHALL be the comparison the reporting operation makes, derived from one source, including its treatment of a rename, a requirement's content, and a removal that the accepted specifications have not taken.</p>
+            <p>Archival SHALL NOT edit an accepted specification, SHALL NOT propose the text of a merge, and SHALL NOT treat an absent identifier, or any other part of the contract that has not arrived, as an error. Whether an absent requirement was abandoned deliberately or omitted by mistake is a judgment, and <code>artifact-kinds</code> reserves it for an agent. A requirement the change marks <code>removed</code> is not such a case: the change states the withdrawal, and its absence is what reaching the contract means for it.</p>
+            <p><strong>Where the assessment finds the contract has not reached the accepted specifications, archival SHALL report that the change has not been synced and SHALL name the operation that reports what remains.</strong> The report SHALL name the operation as it is invoked, rather than describing it. The prior wording told a contributor to apply the change's contract at a time when no operation did so, and a report that names a step without naming the command behind it leaves the reader searching the command surface for a name they must guess.</p>
+            <p>Where archival asks whether to proceed over its findings, and the change has not been synced, <strong>the question SHALL say so and SHALL state that declining leaves the project unchanged.</strong> A question that asks only whether to archive anyway invites the answer that archives a change whose contract never reached the project's specifications; a contributor deciding that should be told what proceeding skips and that declining costs them nothing.</p>
+            <p>The structured payload SHALL state whether the change has not been synced, as a value rather than as something derivable from the reported identifiers. An agent driving archival cannot answer the question a contributor is asked, so the condition that question is about SHALL be readable without inference.</p>
+            <p>Archival SHALL NOT perform the merge it names, and the report SHALL NOT be taken as authority to. This is the same prohibition stated above, restated because naming an operation is where a reader would expect an offer to run it.</p>
+            <p>Where the assessment finds the contract has reached the accepted specifications, archival SHALL NOT report anything about syncing. A report that appears whether or not it applies is one a reader learns to pass over, and the occasion it mattered would be passed over with it.</p>
+            <article class="scenario" id="scenario-the-assessment-is-a-comparison-of-identifiers" data-change="unchanged">
+              <h4>The assessment is a comparison of identifiers</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival assesses whether a merge occurred</dd>
+                <dt>Then</dt>
+                <dd>it compares the identifiers the change's specification states against those the accepted specifications hold, the headings of a stated rename, and the text of each requirement the change adds or modifies, and reads neither for meaning</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archival-does-not-write-the-accepted-specifications" data-change="unchanged">
+              <h4>Archival does not write the accepted specifications</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival completes</dd>
+                <dt>Then</dt>
+                <dd>no accepted specification was modified by the program</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-contract-has-not-been-synced" data-change="unchanged">
+              <h4>A change whose contract has not been synced</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change stating a requirement it does not mark <code>removed</code>, which no accepted specification holds</dd>
+                <dt>When</dt>
+                <dd>archival reports its findings</dd>
+                <dt>Then</dt>
+                <dd>it reports that the change has not been synced and names the operation that reports what remains, as it is invoked</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-question-asked-about-an-unsynced-change" data-change="unchanged">
+              <h4>The question asked about an unsynced change</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose contract has not reached the accepted specifications</dd>
+                <dt>When</dt>
+                <dd>archival asks whether to proceed over its findings</dd>
+                <dt>Then</dt>
+                <dd>the question states that the change has not been synced and that declining leaves the project unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-contract-was-applied" data-change="unchanged">
+              <h4>A change whose contract was applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change every one of whose stated requirements has reached the accepted specifications, as the reporting operation judges it</dd>
+                <dt>When</dt>
+                <dd>archival reports its findings</dd>
+                <dt>Then</dt>
+                <dd>nothing about syncing is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-agent-reads-the-condition-rather-than-inferring-it" data-change="unchanged">
+              <h4>An agent reads the condition rather than inferring it</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival emits its structured payload</dd>
+                <dt>Then</dt>
+                <dd>whether the change has not been synced is stated as a value in the payload</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-only-unapplied-work-is-a-rename" data-change="unchanged">
+              <h4>A change whose only unapplied work is a rename</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change every one of whose stated identifiers an accepted specification holds, one of which the change renames and the accepted specification still holds under the previous heading</dd>
+                <dt>When</dt>
+                <dd>archival reports its findings</dd>
+                <dt>Then</dt>
+                <dd>it reports that the change has not been synced, names the untaken rename, and names the operation that reports what remains</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-only-unapplied-work-is-a-word" data-change="unchanged">
+              <h4>A change whose only unapplied work is a word</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change every one of whose stated identifiers an accepted specification holds, one of which the change modifies by adding a word to a statement that the accepted requirement does not carry</dd>
+                <dt>When</dt>
+                <dd>archival reports its findings</dd>
+                <dt>Then</dt>
+                <dd>it reports that the change has not been synced, names the requirement, and names the operation that reports what remains</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-only-unapplied-work-is-a-withdrawal" data-change="unchanged">
+              <h4>A change whose only unapplied work is a withdrawal</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose contract has otherwise reached the accepted specifications, and which marks <code>removed</code> a requirement that an accepted specification still holds</dd>
+                <dt>When</dt>
+                <dd>archival reports its findings</dd>
+                <dt>Then</dt>
+                <dd>it reports that the change has not been synced, names the requirement, and names the operation that reports what remains</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-an-archived-change-is-named-for-its-date-and-refuses-to-collide" data-change="unchanged">
+            <h3>An archived change is named for its date and refuses to collide <span class="hs-id">req-an-archived-change-is-named-for-its-date-and-refuses-to-collide</span></h3>
+            <p>Archival SHALL name the archived directory for the date of archival followed by the change's name. Where the change's name already begins with a date, archival SHALL NOT prepend a second one.</p>
+            <p>Where the target name already exists, archival SHALL refuse and SHALL name the existing archive. It SHALL NOT write into it, merge with it, overwrite it, or derive an alternative name. A collision means the change was already archived, or that two changes share a name on one day, and both want a contributor.</p>
+            <article class="scenario" id="scenario-a-change-whose-name-carries-a-date" data-change="unchanged">
+              <h4>A change whose name carries a date</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change already named with a leading date is archived</dd>
+                <dt>Then</dt>
+                <dd>the archived directory carries one date rather than two</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-occupied-target" data-change="unchanged">
+              <h4>An occupied target</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the archive already holds a directory of the target name</dd>
+                <dt>Then</dt>
+                <dd>archival refuses, names the existing archive, and moves nothing</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-archival-is-drivable-without-a-person-present" data-change="unchanged">
+            <h3>Archival is drivable without a person present <span class="hs-id">req-archival-is-drivable-without-a-person-present</span></h3>
+            <p>The offer to proceed SHALL be presented only where the operation can receive an answer. Where archival runs without an interactive stream, it SHALL NOT wait for one.</p>
+            <p>Archival SHALL accept an explicit instruction to proceed over its reports, so that an operation that would otherwise ask can be driven to completion by an agent. Absent that instruction, an archival carrying reports that would have been offered SHALL exit with a failing status having moved nothing.</p>
+            <p>Under structured output archival SHALL emit its reports and SHALL state whether the change was moved, so that a caller determines the outcome from the payload rather than from the exit status alone.</p>
+            <article class="scenario" id="scenario-a-warned-run-with-no-instruction-to-proceed" data-change="unchanged">
+              <h4>A warned run with no instruction to proceed</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change with incomplete tasks</dd>
+                <dt>When</dt>
+                <dd>archival runs without an interactive stream and without an instruction to proceed</dd>
+                <dt>Then</dt>
+                <dd>it exits with a failing status and moves nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-warned-run-instructed-to-proceed" data-change="unchanged">
+              <h4>A warned run instructed to proceed</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>the same change</dd>
+                <dt>When</dt>
+                <dd>archival runs with an explicit instruction to proceed</dd>
+                <dt>Then</dt>
+                <dd>it archives the change and reports what it archived over</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-structured-payload-states-the-outcome" data-change="unchanged">
+              <h4>The structured payload states the outcome</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival emits structured output</dd>
+                <dt>Then</dt>
+                <dd>the payload carries its reports and states whether the change was moved</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-archival-supports-a-mode-that-checks-without-performing" data-change="unchanged">
+            <h3>Archival supports a mode that checks without performing <span class="hs-id">req-archival-supports-a-mode-that-checks-without-performing</span></h3>
+            <p>The archival operation SHALL support a mode that reports whether a change is ready to be archived without moving it, without recording a version, and without altering the project in any way.</p>
+            <p>The mode SHALL apply every condition archival applies: the version comparison, the presence of the specification artifact, its declared kind, and its validation. It SHALL also report what archival would report at its offer to proceed, so that a contributor learns before archiving what they would otherwise learn during it.</p>
+            <p>The mode SHALL exit with a failing status exactly where archival would refuse, so that it serves as a continuous-integration gate. Where archival would proceed, or would offer to proceed, the mode SHALL exit successfully and SHALL distinguish the two in what it reports. A condition archival treats as a question about the work is not a condition this mode fails on, because the two would otherwise disagree about what readiness means.</p>
+            <p>This is the form the project already uses where one operation both performs and checks: the format subcommand states the same obligation, and a mode rather than a second command is what keeps the conditions from drifting apart. An operation that changed from checking to performing without offering this would take away a contributor's ability to ask the question, leaving finding out by doing as the only way to answer it.</p>
+            <article class="scenario" id="scenario-checking-a-change-that-is-ready" data-change="unchanged">
+              <h4>Checking a change that is ready</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the mode runs against a change archival would archive</dd>
+                <dt>Then</dt>
+                <dd>it reports the change as ready, exits successfully, and the change remains among the active changes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-checking-a-change-archival-would-refuse" data-change="unchanged">
+              <h4>Checking a change archival would refuse</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the mode runs against a change whose specification reports an error</dd>
+                <dt>Then</dt>
+                <dd>it exits with a failing status and reports the same refusal archival would</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-checking-a-change-archival-would-ask-about" data-change="unchanged">
+              <h4>Checking a change archival would ask about</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the mode runs against a change with incomplete tasks and no other finding</dd>
+                <dt>Then</dt>
+                <dd>it exits successfully, and reports that archival would ask rather than reporting the change as ready without qualification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-mode-writes-nothing" data-change="unchanged">
+              <h4>The mode writes nothing</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the mode runs, whatever it reports</dd>
+                <dt>Then</dt>
+                <dd>the project is unchanged: no change moved, no version recorded, and no accepted specification altered</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-command-surface-reports-what-a-project-holds" data-change="unchanged">
+            <h3>The command surface reports what a project holds <span class="hs-id">req-the-command-surface-reports-what-a-project-holds</span></h3>
+            <p>The command surface SHALL provide an operation that enumerates a project's active changes, and SHALL be able to enumerate its accepted specifications instead. The enumeration SHALL be available as a structured payload.</p>
+            <p>This is the operation that lets a workflow select what it acts on. A workflow that cannot enumerate a project's changes must have its subject named for it every time, and instructions written against such a surface omit the selection step rather than performing it.</p>
+            <p><strong>Because it exists for selection, the enumeration of active changes SHALL carry how much of each change's work is complete.</strong> A list of names is not something a workflow or a contributor can select from on any basis other than order, and a selection made at the moment of archiving is made about a directory that is about to move and a contract that is about to be rewritten.</p>
+            <p>The completion carried SHALL be a count of the change's tasks in each state the contract defines, rather than a single fraction. A fraction cannot separate a change nobody has started from one whose every task is under way, nor a change whose outstanding tasks were abandoned from one whose outstanding tasks remain to be done; those are different situations and a selection is made between them.</p>
+            <p><strong>Beside those counts, the enumeration SHALL carry how many of the change's <code>done</code> tasks state a deviation</strong>, as document-schema's "A task declares completion state" defines one: the tasks done another way than their words say. Such a task SHALL be counted as <code>done</code>, in the count of that state and in any fraction, and SHALL NOT be subtracted from either. Its work happened, and a report that left it out would show finished work as outstanding. The count SHALL be carried apart from the per-state counts, and those SHALL still account for every task exactly once, because a deviation is not a state.</p>
+            <p>The count exists because a count of states cannot show it. A change that did every task as its words say and a change that did half of them another way both read as finished, and a reviewer choosing which change to check, or what to read before archiving one, is choosing between exactly those two.</p>
+            <p>Only a task whose state is <code>done</code> SHALL be counted as done differently. A task that declares another state and carries a deviation is a document that does not satisfy the schema, and counting it as done differently would attribute to it a state it never declared. This is the reading this requirement already takes for a task that declares no state.</p>
+            <p>Where the enumeration renders a change's completion for people as a fraction, the numerator SHALL remain every <code>done</code> task and the denominator every task, as they are without this count. The count of tasks done differently SHALL be shown in the change's row where it is not zero, and SHALL NOT be shown where it is zero. Most changes do every task as written, and a figure that reads zero on nearly every row teaches a reader to pass over it.</p>
+            <p>The counts, including the count of tasks done differently, SHALL be derived from the same source as the operation that reports a change's completion, so that the enumeration, that operation, and archival cannot disagree about one change. A second traversal that recounted the same tasks would be a second answer to one question, and the disagreement would be invisible to a test written against either operation alone.</p>
+            <p>A task that declares no state SHALL be counted apart from the states the contract defines, and SHALL be counted as outstanding wherever outstanding work is reported. The document schema requires a state, so such a task is a document that does not satisfy it; the counts are read from projections rather than from validated documents, and reporting an undeclared task under a state it never declared would attribute to a document something it does not say. Counting it as outstanding is the reading the report about incomplete work already takes, and the two SHALL NOT differ.</p>
+            <p>A change whose tasks document is absent SHALL be enumerated with its completion absent, rather than reported as a count of zero. A zero fraction reads as a change with no work outstanding, which is the opposite of what an unwritten tasks document means.</p>
+            <p>The enumeration of accepted specifications is unaffected by the above, which governs changes only.</p>
+            <p>The order of the enumeration SHALL NOT depend on the completion it carries. A listing that reorders itself as work progresses cannot be selected from twice.</p>
+            <p><strong>The enumeration of active changes SHALL also carry each change's stated predecessor and whether that predecessor is resolved.</strong> The strongest reason not to select a change is that the change it follows is unfinished, and a listing that reports a change as ready to work on while its predecessor is open reports the opposite of what the selection needs.</p>
+            <p>The order of the enumeration SHALL NOT depend on the ordering it reports, for the same reason it does not depend on the completion it carries. A dependency order is additionally unstable in a way name order is not: a cycle has no such order at all.</p>
+            <article class="scenario" id="scenario-enumerating-active-changes" data-change="unchanged">
+              <h4>Enumerating active changes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>each active change is named, and archived changes are not among them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-enumerating-accepted-specifications" data-change="unchanged">
+              <h4>Enumerating accepted specifications</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a project's accepted specifications are enumerated</dd>
+                <dt>Then</dt>
+                <dd>each is named</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-structured-enumeration" data-change="unchanged">
+              <h4>A structured enumeration</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested</dd>
+                <dt>Then</dt>
+                <dd>the enumeration is emitted as a payload a workflow can select from</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-s-progress-is-visible-in-the-listing" data-change="unchanged">
+              <h4>A change's progress is visible in the listing</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change some of whose tasks are done</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the change is named and how much of its work is complete is reported beside it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-changes-at-the-same-fraction-in-different-states" data-change="unchanged">
+              <h4>Two changes at the same fraction in different states</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>one change whose tasks are all <code>todo</code> and another the same size whose tasks are all <code>in-progress</code></dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the two are distinguishable from the enumeration alone</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-outstanding-work-that-was-abandoned" data-change="unchanged">
+              <h4>Outstanding work that was abandoned</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose remaining tasks are all <code>dropped</code></dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>it is distinguishable from a change whose remaining tasks are still to be done</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-command-surface-reports-what-a-project-holds-a-change-with-a-task-done-differently" data-change="unchanged">
+              <h4>A change with a task done differently</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change of four tasks, two of them <code>done</code>, one of which states a deviation</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>two of four tasks are reported done, and one task is reported as done differently, apart from the per-state counts</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deviation-leaves-the-per-state-counts-whole" data-change="unchanged">
+              <h4>A deviation leaves the per-state counts whole</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change one of whose <code>done</code> tasks states a deviation</dd>
+                <dt>When</dt>
+                <dd>the enumeration is requested as a structured payload</dd>
+                <dt>Then</dt>
+                <dd>the per-state counts sum to the total, and the count of tasks done differently is carried apart from them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-every-task-was-done-as-written" data-change="unchanged">
+              <h4>A change whose every task was done as written</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change none of whose tasks states a deviation</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated for people</dd>
+                <dt>Then</dt>
+                <dd>the change's row shows no count of tasks done differently, and the structured payload reports that count as zero</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deviation-on-a-task-that-is-not-done" data-change="unchanged">
+              <h4>A deviation on a task that is not done</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change one of whose <code>todo</code> tasks carries a deviation</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>that task is counted as <code>todo</code>, and not as done differently</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-task-that-declares-no-state" data-change="unchanged">
+              <h4>A task that declares no state</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change one of whose tasks declares no state</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>that task is counted apart from the defined states, and the change does not read as though its work were resolved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-enumeration-and-the-completion-report-agree" data-change="unchanged">
+              <h4>The enumeration and the completion report agree</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>any active change</dd>
+                <dt>When</dt>
+                <dd>its completion is read from the enumeration and from the operation that reports a change's completion</dd>
+                <dt>Then</dt>
+                <dd>the two report the same counts, including how many tasks were done differently</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-with-no-tasks-document" data-change="unchanged">
+              <h4>A change with no tasks document</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change whose tasks document is absent</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the change is named and its completion is reported as absent rather than as zero</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-order-does-not-follow-progress" data-change="unchanged">
+              <h4>Order does not follow progress</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose changes are at differing stages of completion</dd>
+                <dt>When</dt>
+                <dd>the changes are enumerated twice, with work completed in between</dd>
+                <dt>Then</dt>
+                <dd>the order is unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-predecessor-is-unfinished" data-change="unchanged">
+              <h4>A change whose predecessor is unfinished</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change that follows another active change</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the predecessor is named beside it and reported as unresolved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-predecessor-is-done" data-change="unchanged">
+              <h4>A change whose predecessor is done</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change whose stated predecessor is archived</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the predecessor is named beside it and reported as resolved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-order-does-not-follow-the-stated-sequence" data-change="unchanged">
+              <h4>Order does not follow the stated sequence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose changes state predecessors</dd>
+                <dt>When</dt>
+                <dd>the changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the order is by name and does not follow the stated sequence</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-command-surface-reports-a-change-s-completion" data-change="unchanged">
+            <h3>The command surface reports a change's completion <span class="hs-id">req-the-command-surface-reports-a-change-s-completion</span></h3>
+            <p>The command surface SHALL provide an operation that reports, for one change, which of its artifacts are present and how many of its tasks are complete. The report SHALL be available as a structured payload.</p>
+            <p><strong>The report SHALL also state how many of the change's <code>done</code> tasks state a deviation, and SHALL name each one.</strong> For such a task the deviation, not its words, is the claim about what was done, so a reviewer checking the change before archival compares each deviation with the work. A count alone would leave them searching the tasks document for the tasks it counts. The count SHALL be the one the enumeration of changes carries, derived from the same source.</p>
+            <p>Archival SHALL derive its report about incomplete work from this same operation, so that a contributor who checks a change before archiving it and the archival that follows cannot disagree about what the change holds.</p>
+            <article class="scenario" id="scenario-a-change-mid-implementation" data-change="unchanged">
+              <h4>A change mid-implementation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>completion is reported for a change with a proposal, a design, tasks, and no specification</dd>
+                <dt>Then</dt>
+                <dd>the report names the specification as absent and states how many tasks remain</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archival-and-the-report-agree" data-change="unchanged">
+              <h4>Archival and the report agree</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival reports incomplete work for a change</dd>
+                <dt>Then</dt>
+                <dd>the count it reports is the count the completion operation reports for that change</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-command-surface-reports-a-change-s-completion-a-change-with-a-task-done-differently" data-change="unchanged">
+              <h4>A change with a task done differently</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change one of whose <code>done</code> tasks states a deviation</dd>
+                <dt>When</dt>
+                <dd>completion is reported for that change</dd>
+                <dt>Then</dt>
+                <dd>the task is counted as complete, and the report states that one task was done differently and names it</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract" data-change="unchanged">
+            <h3>The command surface reports whether a change reached the accepted contract <span class="hs-id">req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract</span></h3>
+            <p>The command surface SHALL provide an operation that reports, for one change, whether the requirements its specification states have reached the project's accepted specifications. The report SHALL be available as a structured payload.</p>
+            <p>The operation SHALL determine this by comparing requirement identifiers; for a renamed requirement, headings; and for a requirement the change adds or modifies, its statements and scenarios as text. It SHALL read neither the change's specification nor the accepted specifications for meaning. This is the same comparison archival makes, and both SHALL derive it from one source, so that a contributor who runs the operation and the archival that follows cannot disagree about which requirements reached the contract.</p>
+            <p>The report SHALL distinguish three sets: the requirement identifiers the change states, those that have reached the accepted specifications, and those absent from them that the change does not withdraw. The third SHALL be reported although a caller could derive it, because it is the answer the operation exists to give.</p>
+            <p><strong>Each requirement SHALL be judged by the change state the change declares on it</strong>, as document-schema's "Semantic units declare a change state" provides it. An identifier the accepted specifications hold says only that a requirement carrying it exists. Whether the change's part of that requirement arrived depends on what the change says it did to it:</p>
+            <ul>
+              <li>
+                <p><strong>A requirement the change marks <code>added</code> or <code>modified</code> SHALL have reached the contract only where an accepted specification holds its identifier with the content the change states for it.</strong> Its content, for this comparison, is its statements and its scenarios, less the scenarios the change marks <code>removed</code>, and the accepted requirement SHALL hold no scenario beyond those. Where the identifier is held and the content differs, the requirement SHALL be reported in a further set: content the accepted specifications have not taken. A modified requirement's identifier is held before the merge begins, so a comparison of identifiers alone reports every modification as reached whether or not anyone merged it. An added requirement is compared the same way, because its content is text the change establishes and the merge writes, as a modified requirement's is. The comparison means something because artifact-kinds' "A change's specification states a modified requirement whole" has the change state every statement and scenario the requirement will hold, so a difference from the accepted text is a difference, and not a part the change left out.</p>
+              </li>
+              <li>
+                <p><strong>A requirement the change marks <code>removed</code> SHALL have reached the contract where no accepted specification holds its identifier.</strong> Where one still does, the requirement SHALL be reported in a further set: removals the accepted specifications have not taken. It SHALL NOT be reported as absent. Its absence is what the change asks for, and a comparison that reports a correctly applied withdrawal as absent, and an unapplied one as reached, has both answers the wrong way round.</p>
+              </li>
+              <li>
+                <p><strong>A requirement the change marks <code>unchanged</code> SHALL be compared by its identifier alone</strong>, and by its heading where it states a rename. A requirement a change carries forward untouched may differ from the accepted text because another change modified it since, and comparing its text would report that change's work as this one's. A requirement marked <code>unchanged</code> that holds a scenario the change marks <code>added</code>, <code>modified</code>, or <code>removed</code> is not carried forward untouched: the change states content inside it, so it SHALL be compared as a requirement the change modifies is. Nothing else requires such a requirement to be marked <code>modified</code>, and judged by its own mark alone, a scenario added inside it would reach the contract unmerged.</p>
+              </li>
+            </ul>
+            <p><strong>The content SHALL be compared as text after whitespace normalization, which is an exact comparison and not a reading for meaning</strong>, as the heading comparison below is. The text SHALL be the text the requirement's projection holds, not its markup, so a merge that writes the same words with other presentational markup has taken them. The statements SHALL be compared in order, as one sequence of paragraphs, because each is read after the one before it, and moving one changes what the next refers to. The scenarios SHALL be compared as a collection, without regard to their order or their identifiers, each by its heading name and by its given, when, and then entries in order. A scenario is a unit a reader checks on its own, so its place among the others obliges nothing, and an identifier says which scenario a text belongs to, not whether the accepted requirement says it. A requirement's notes and its <code>renamed-from</code> paragraph are not content and SHALL NOT be compared. Neither is the requirement's own heading, which only a stated rename compares.</p>
+            <p><strong>A renamed requirement SHALL be compared by its heading as well as its identifier.</strong> A rename keeps the requirement's identifier, so a comparison of identifiers alone reports a rename the accepted specifications never took as reached. Where a requirement the change states carries a <code>renamed-from</code> paragraph, and the accepted specifications hold its identifier, the operation SHALL compare that requirement's heading with the heading of the accepted requirement carrying the same identifier. Where they differ, the requirement SHALL be reported in a further set: renames the accepted specifications have not taken. The comparison SHALL be of the two heading names — each heading without the identifier shown beside it, as document-schema's "A renamed requirement states the heading it replaced" defines — after whitespace normalization, which is an exact comparison and not a reading for meaning.</p>
+            <p>A renamed requirement whose identifier the accepted specifications do not hold SHALL be reported as absent, as any other requirement is, and SHALL NOT also be reported as an untaken rename. A requirement the change adds or modifies whose identifier is not held SHALL likewise be reported as absent, and SHALL NOT also be reported as content not taken. A requirement in any of the further sets SHALL be counted as not having reached the contract, so a change whose only unapplied work is a rename, a word, a scenario, or a withdrawal is reported as not synced. A requirement the change both renames and modifies SHALL be compared for both, and where the accepted specifications took neither it SHALL be reported in both sets, because the rename and the modification are two facts about one requirement, as artifact-kinds' "A rename reaches the accepted contract as a new heading on the same identifier" states.</p>
+            <p><strong>The operation SHALL NOT modify an accepted specification, and SHALL NOT propose the text of a merge.</strong> Deciding which accepted requirement a scenario belongs under is judgment, and <code>artifact-kinds</code> reserves it for an agent. This prohibition is stated rather than left implied: the operation carries OpenSpec's name for it, that name reads like an operation that writes, and a reader who assumes it does would be assuming the program edits the project's contract unattended.</p>
+            <p><strong>Each requirement in the content set SHALL be reported with where its content differs, and without the text of either side.</strong> The report SHALL name the first statement paragraph at which the change's statements and the accepted requirement's differ, counted from one, or state that the statements agree. It SHALL name each scenario the change states and does not mark <code>removed</code> that the accepted requirement does not hold, by the identifier it carries in the change's specification. And it SHALL name each scenario the accepted requirement holds that is not among those, by the identifier it carries in the accepted specification, or by its heading where it carries none. A position and an identifier say where to read. The text a merge would write is the change's to state and the agent's to apply, and a report that carried it would be proposing the merge this requirement forbids.</p>
+            <p>Every requirement that has not reached the contract SHALL be a finding and not an error, and the operation SHALL succeed while any remain. A change mid-implementation legitimately states requirements that have not reached the contract, and a requirement the change stated whose work went another way is absent permanently; an operation that failed on either would fail on the normal state of the work it is meant to be run during.</p>
+            <p>The operation SHALL refuse on a change that cannot be resolved, on an absent specification artifact, and on a specification that does not validate. A comparison made against an invalid contract has no meaning, and reporting it as though it did is worse than declining to report.</p>
+            <article class="scenario" id="scenario-a-change-whose-contract-has-not-been-applied" data-change="unchanged">
+              <h4>A change whose contract has not been applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states a requirement it does not mark <code>removed</code>, which no accepted specification holds</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd>the requirement is named as absent, the operation succeeds, and no accepted specification is modified</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-contract-has-been-applied" data-change="unchanged">
+              <h4>A change whose contract has been applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change every one of whose stated requirements appears in an accepted specification</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd>the absent set is empty</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-comparison-is-of-identifiers" data-change="unchanged">
+              <h4>The comparison is of identifiers</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operation determines whether a requirement reached the contract</dd>
+                <dt>Then</dt>
+                <dd>it compares identifiers, the headings of a stated rename, and the statements and scenarios of each requirement the change adds or modifies as text, and reads neither the change's specification nor the accepted specifications for meaning</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-operation-and-archival-agree" data-change="unchanged">
+              <h4>The operation and archival agree</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival reports that a change states requirements no accepted specification holds</dd>
+                <dt>Then</dt>
+                <dd>the identifiers it names are the identifiers the operation reports as absent for that change</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-structured-report" data-change="unchanged">
+              <h4>A structured report</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested</dd>
+                <dt>Then</dt>
+                <dd>the stated, reached, and absent identifier sets, and the untaken renames, content, and removals, are emitted as a payload</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-command-surface-reports-whether-a-change-reached-the-accepted-contract-an-invalid-specification" data-change="unchanged">
+              <h4>An invalid specification</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification does not validate</dd>
+                <dt>When</dt>
+                <dd>the operation is run against it</dd>
+                <dt>Then</dt>
+                <dd>it refuses and reports why, and reports no comparison</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-accepted-specifications-are-never-written" data-change="unchanged">
+              <h4>The accepted specifications are never written</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operation completes, for any change and any outcome</dd>
+                <dt>Then</dt>
+                <dd>no accepted specification was modified by the program</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-the-accepted-specifications-have-not-taken" data-change="unchanged">
+              <h4>A rename the accepted specifications have not taken</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states <code>req-x</code> under a new heading with a <code>renamed-from</code> paragraph, and an accepted specification holding <code>req-x</code> under the previous heading</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is reported as a rename the accepted specifications have not taken, not as reached, and the operation succeeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-the-accepted-specifications-have-taken" data-change="unchanged">
+              <h4>A rename the accepted specifications have taken</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted specification holding <code>req-x</code> under the heading the change renames it to</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is reported as reached and in no other set</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-renamed-requirement-whose-identifier-is-not-held" data-change="unchanged">
+              <h4>A renamed requirement whose identifier is not held</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change stating a renamed requirement whose identifier no accepted specification holds</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd>the requirement is reported as absent and not as an untaken rename</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-structured-report-carries-the-untaken-renames" data-change="unchanged">
+              <h4>A structured report carries the untaken renames</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested</dd>
+                <dt>Then</dt>
+                <dd>the untaken renames are emitted as their own set, each naming the identifier, the heading the change states, and the heading the accepted specification holds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-word-the-accepted-specifications-have-not-taken" data-change="unchanged">
+              <h4>A word the accepted specifications have not taken</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states <code>req-x</code> marked <code>modified</code>, with one word added to its first statement paragraph, and an accepted specification holding <code>req-x</code> without that word</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is reported as content the accepted specifications have not taken, differing from its first statement paragraph, and not as reached, and the operation succeeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-scenario-the-accepted-specifications-have-not-taken" data-change="unchanged">
+              <h4>A scenario the accepted specifications have not taken</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states <code>req-x</code> marked <code>modified</code>, with a scenario marked <code>added</code> that the accepted <code>req-x</code> does not hold</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is reported as content the accepted specifications have not taken, naming that scenario by the identifier it carries in the change's specification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-withdrawn-scenario-the-accepted-requirement-still-holds" data-change="unchanged">
+              <h4>A withdrawn scenario the accepted requirement still holds</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states <code>req-x</code> marked <code>modified</code>, with a scenario marked <code>removed</code> that the accepted <code>req-x</code> still holds</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is reported as content the accepted specifications have not taken, naming that scenario by the identifier it carries in the accepted specification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-modification-the-accepted-specifications-have-taken" data-change="unchanged">
+              <h4>A modification the accepted specifications have taken</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted <code>req-x</code> holding the statements the change states, in the change's order, and the scenarios the change states less those it marks <code>removed</code>, in another order and beside a note the change does not state</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is reported as reached and in no other set</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-statements-in-another-order" data-change="unchanged">
+              <h4>Statements in another order</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted <code>req-x</code> holding the statements the change states, with two of them in the other order</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is reported as content the accepted specifications have not taken</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-added-requirement-merged-with-other-content" data-change="unchanged">
+              <h4>An added requirement merged with other content</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states <code>req-new</code> marked <code>added</code>, and an accepted specification holding <code>req-new</code> without one of the scenarios the change states for it</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-new</code> is reported as content the accepted specifications have not taken, and not as reached</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-carried-forward-is-compared-by-its-identifier" data-change="unchanged">
+              <h4>A requirement carried forward is compared by its identifier</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states <code>req-z</code> marked <code>unchanged</code>, and an accepted <code>req-z</code> whose statements differ from the ones the change states</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-z</code> is reported as reached and in no other set</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-scenario-changed-inside-a-requirement-marked-unchanged" data-change="unchanged">
+              <h4>A scenario changed inside a requirement marked unchanged</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states <code>req-x</code> marked <code>unchanged</code>, holding a scenario marked <code>added</code> that the accepted <code>req-x</code> does not hold</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is reported as content the accepted specifications have not taken, naming that scenario, and not as reached</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-removal-the-accepted-specifications-have-taken" data-change="unchanged">
+              <h4>A removal the accepted specifications have taken</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states <code>req-y</code> marked <code>removed</code>, and no accepted specification holding <code>req-y</code></dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-y</code> is reported as reached, and not as absent</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-removal-the-accepted-specifications-have-not-taken" data-change="unchanged">
+              <h4>A removal the accepted specifications have not taken</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states <code>req-y</code> marked <code>removed</code>, and an accepted specification that still holds <code>req-y</code></dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-y</code> is reported as a removal the accepted specifications have not taken, and not as reached</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-and-a-modification-neither-taken" data-change="unchanged">
+              <h4>A rename and a modification, neither taken</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states <code>req-x</code> marked <code>modified</code> with a <code>renamed-from</code> paragraph, and an accepted <code>req-x</code> holding neither the new heading nor the new content</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is reported both as a rename and as content the accepted specifications have not taken, and not as reached</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-report-says-where-the-content-differs-not-what-it-says" data-change="unchanged">
+              <h4>The report says where the content differs, not what it says</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested for a change with a requirement whose content was not taken</dd>
+                <dt>Then</dt>
+                <dd>that requirement's entry names its identifier, the first statement paragraph that differs or none, and each differing scenario by identifier, and carries no statement or scenario text from either side</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-operation-and-archival-agree-about-what-did-not-arrive" data-change="unchanged">
+              <h4>The operation and archival agree about what did not arrive</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival reports a rename, a requirement's content, or a removal that the accepted specifications have not taken</dd>
+                <dt>Then</dt>
+                <dd>the requirements it names are the ones the operation reports in the same set for that change</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-workflow-instructions-are-available-from-the-command-surface" data-change="unchanged">
+            <h3>The workflow instructions are available from the command surface <span class="hs-id">req-the-workflow-instructions-are-available-from-the-command-surface</span></h3>
+            <p>The command surface SHALL emit the workflow instructions for a named stage on demand, as the same text the bootstrap operation installs.</p>
+            <p>An agent obtains the instructions without knowing which tool's directory holds them, and without the risk of reading a copy installed by an earlier version of the toolchain. A stage's instructions and the installed copy SHALL come from one source, so the two cannot state different things.</p>
+            <article class="scenario" id="scenario-instructions-for-a-stage" data-change="unchanged">
+              <h4>Instructions for a stage</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the instructions for archival are requested</dd>
+                <dt>Then</dt>
+                <dd>the workflow instructions for archival are emitted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-one-source" data-change="unchanged">
+              <h4>One source</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the emitted instructions and the installed instructions for one stage are compared</dd>
+                <dt>Then</dt>
+                <dd>they are the same text</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-workflow-instructions-carry-a-stage-for-applying-a-change-s-contract" data-change="unchanged">
+            <h3>The workflow instructions carry a stage for applying a change's contract <span class="hs-id">req-the-workflow-instructions-carry-a-stage-for-applying-a-change-s-contract</span></h3>
+            <p>The workflow instructions SHALL carry a stage for merging a change's stated requirements into the project's accepted specifications, available from the command surface as every other stage is and installed by the bootstrap operation from the same source.</p>
+            <p>The stage's instructions SHALL state that the merge is the agent's work: that both the change's specification and the accepted specifications are read for meaning before anything is written, that a change's specification is never copied into an accepted specification wholesale, and that the reporting operation is run again afterwards to confirm that the absent set is empty and that no rename, content, or removal remains untaken.</p>
+            <p>The instructions SHALL state that a requirement the change stated whose work went another way is left absent and reported to the contributor as abandoned, rather than merged to empty the report. They SHALL state that a requirement the change marks <code>removed</code> is withdrawn by deleting it from the accepted specification that holds it, and that the reporting operation then counts it as reached.</p>
+            <p><strong>The instructions SHALL say what to do about every set the reporting operation's structured payload carries.</strong> A set the payload carries and the instructions never mention is work an agent is shown and not told how to do.</p>
+            <p>The obligations on the <em>program</em> live in the requirement above. This one governs the text an agent reads, because the half of the operation that requires judgment cannot be stated as a rule the program enforces.</p>
+            <article class="scenario" id="scenario-the-stage-is-available" data-change="unchanged">
+              <h4>The stage is available</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the workflow instructions for the stage are requested from the command surface</dd>
+                <dt>Then</dt>
+                <dd>they are emitted, as the same text the bootstrap operation installs</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-stage-is-installed" data-change="unchanged">
+              <h4>The stage is installed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a project is bootstrapped</dd>
+                <dt>Then</dt>
+                <dd>the stage's instructions are installed for each supported tool alongside the other stages</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-reported-set-is-worked" data-change="unchanged">
+              <h4>Every reported set is worked</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the stage's instructions are read beside the reporting operation's structured payload</dd>
+                <dt>Then</dt>
+                <dd>every set the payload carries is named in the instructions, with what the agent does about it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-withdrawal-is-merged-by-deleting" data-change="unchanged">
+              <h4>A withdrawal is merged by deleting</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification marks a requirement <code>removed</code></dd>
+                <dt>When</dt>
+                <dd>an agent follows the stage's instructions</dd>
+                <dt>Then</dt>
+                <dd>it deletes that requirement from the accepted specification holding it, and the reporting operation then reports it as reached</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-specifications-can-live-in-a-repository-other-than-the-one-being-worked-on" data-change="unchanged">
+            <h3>Specifications can live in a repository other than the one being worked on <span class="hs-id">req-specifications-can-live-in-a-repository-other-than-the-one-being-worked-on</span></h3>
+            <p>The command surface SHALL allow an HTMLSpec project held in a standalone repository to be registered on a machine under an identifier, and SHALL allow the operations that read and write specifications and changes to act on a registered project instead of the one containing the working directory.</p>
+            <p>A registration SHALL be machine-level rather than part of any project, because a project that recorded where other projects live would make one repository's contents depend on another's location.</p>
+            <p>Where a selection names no registered project, operations SHALL act on the project containing the working directory. Where a registration names a location that no longer holds a project, operations SHALL report that registration as unresolvable and SHALL NOT fall back to the working directory, because silently acting on a different project than the one named is the failure this reports.</p>
+            <article class="scenario" id="scenario-acting-on-a-registered-project" data-change="unchanged">
+              <h4>Acting on a registered project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an operation is directed at a registered project</dd>
+                <dt>Then</dt>
+                <dd>it reads and writes that project's specifications and changes rather than those of the project containing the working directory</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-selection" data-change="unchanged">
+              <h4>No selection</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an operation names no registered project</dd>
+                <dt>Then</dt>
+                <dd>it acts on the project containing the working directory</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-registration-whose-project-is-gone" data-change="unchanged">
+              <h4>A registration whose project is gone</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an operation is directed at a registration whose location no longer holds a project</dd>
+                <dt>Then</dt>
+                <dd>it reports the registration as unresolvable and acts on nothing</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-command-surface-checks-a-runbook-s-machine-prerequisites" data-change="unchanged">
+            <h3>The command surface checks a runbook's machine prerequisites <span class="hs-id">req-the-command-surface-checks-a-runbook-s-machine-prerequisites</span></h3>
+            <p>The command <code>htmlspec preflight &lt;runbook&gt;</code> SHALL report whether the selected runbook can start in the invocation's working environment. It SHALL support the existing <code>--store</code> and <code>--json</code> selectors. Store selection SHALL locate the runbook and its records, while machine requirements SHALL be evaluated against the invocation's working directory and environment, not the store's directory. Names SHALL follow the existing runbook-name rules.</p>
+            <p>The report SHALL identify the runbook, carried version, source location, working directory, aggregate readiness, and each checked requirement with its expected condition, observation, outcome, and remedy for a refusal. Results SHALL follow document order. Human output SHALL lead with readiness. JSON output SHALL contain one structured report with no probe output interleaved.</p>
+            <p>A completed preflight with unmet requirements SHALL exit 1, a successful one SHALL exit 0, an invalid invocation, invalid contract, or operational failure SHALL exit 2, and cancellation SHALL exit 3. Unknown observations such as an unavailable manifest environment or a timed-out probe SHALL be reported as unmet readiness rather than as success. An invalid declaration SHALL remain distinguishable from a valid check whose condition is false.</p>
+            <p><code>htmlspec run &lt;runbook&gt; --as &lt;record&gt;</code> SHALL apply the same checks and exit distinctions before creating a run. <code>htmlspec run &lt;runbook&gt; --check</code> SHALL continue to report existing run conformance without checking the present machine. Existing JSON fields on successful run creation SHALL be preserved, with version and preflight information added.</p>
+            <article class="scenario" id="scenario-an-agent-inspects-readiness" data-change="unchanged">
+              <h4>An agent inspects readiness</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operator requests preflight with <code>--json</code></dd>
+                <dt>Then</dt>
+                <dd>standard output is one parseable readiness report, no prompt occurs, and probe output stays inside the report</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-selected-store-differs-from-the-working-directory" data-change="unchanged">
+              <h4>The selected store differs from the working directory</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a stored runbook is checked from a separate target checkout</dd>
+                <dt>Then</dt>
+                <dd>the report identifies both locations and evaluates working-tree assumptions in the target checkout</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-several-prerequisites-fail" data-change="unchanged">
+              <h4>Several prerequisites fail</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>several valid checks report unsatisfied conditions</dd>
+                <dt>Then</dt>
+                <dd>one report names all of them in document order and the command exits 1</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-contract-is-malformed" data-change="unchanged">
+              <h4>The contract is malformed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a selected runbook contains an invalid machine declaration</dd>
+                <dt>Then</dt>
+                <dd>the command exits 2 and identifies the requirement and invalid field</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reviewing-existing-records" data-change="unchanged">
+              <h4>Reviewing existing records</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operator runs <code>htmlspec run &lt;runbook&gt; --check</code> on a machine missing a prerequisite</dd>
+                <dt>Then</dt>
+                <dd>it reports run conformance under its existing advisory contract</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-command-surface-shows-a-modified-requirement-beside-the-accepted-one" data-change="unchanged">
+            <h3>The command surface shows a modified requirement beside the accepted one <span class="hs-id">req-the-command-surface-shows-a-modified-requirement-beside-the-accepted-one</span></h3>
+            <p>The command surface SHALL provide <code>htmlspec show &lt;change&gt; --diff</code>. For each requirement whose content "The command surface reports whether a change reached the accepted contract" compares — one the change's specification marks <code>added</code> or <code>modified</code>, and one it marks <code>unchanged</code> that holds a scenario the change marks <code>added</code>, <code>modified</code>, or <code>removed</code> — it SHALL show what the change states beside what the accepted specifications hold for the requirement carrying the same identifier, paragraph by paragraph and scenario by scenario. The view SHALL be available in human form and as a structured payload.</p>
+            <p>The reason is the reviewer. artifact-kinds' "A change's specification states a modified requirement whole" has a change restate every statement and scenario of a requirement it modifies, and such a requirement can run to fifteen paragraphs and eighteen scenarios. A reviewer who sees <code>modified</code> on it otherwise has to find the edit alone, and an edit of one word looks like no edit at all. An added requirement is compared too, because the reporting operation compares it. Before its merge no accepted specification holds it, and after a merge that took it the accepted text holds it as stated, so each is one line. Where an accepted requirement already carries its identifier with other text, the merge took something else, or the identifier names another obligation, and both texts are what an agent needs to tell which.</p>
+            <p><strong>The view SHALL read and SHALL NOT write.</strong> It SHALL NOT modify the change, an accepted specification, or any other file. A view that wrote would be a merge under another name, and artifact-kinds reserves the merge for an agent.</p>
+            <p><strong>The view SHALL pair and compare as "The command surface reports whether a change reached the accepted contract" does, from the same source.</strong> The accepted requirement it shows SHALL be the one that operation compares the change's requirement with, and the view SHALL show a requirement as differing exactly where that operation reports its content as not taken. Two comparisons of one pair of texts drift apart, and a view that showed a difference the reporting operation did not report, or hid one it did, would give a contributor two answers to one question.</p>
+            <p><strong>Statements SHALL be shown paragraph by paragraph.</strong> A paragraph both sides hold, in the same order, SHALL be shown as held by both and SHALL NOT be reprinted. The paragraphs that remain SHALL be paired, without crossing and as many as can be, where a paragraph the change states and one the accepted requirement holds share at least half of each one's words. Each pair SHALL be shown as both texts, with the words only one side holds marked on that side. A paragraph with no partner SHALL be shown whole, as stated only by the change or held only by the accepted specification. A pair that shares fewer than half its words would be marked more than it is kept, and reads better as two whole paragraphs.</p>
+            <p>A word SHALL be a run of the projected text between whitespace. So presentational markup is neither compared nor shown, as the reporting operation compares text and not markup. Where the heading the change states differs from the accepted heading, both headings SHALL be shown.</p>
+            <p><strong>Marks an author wrote SHALL be shown as written wherever they account for the whole difference.</strong> A requirement or scenario marked <code>modified</code> in a change's specification may carry <code>ins</code> and <code>del</code> elements, as document-validation's "Change markup in or around a semantic unit is rejected" permits. Where a requirement's statements, or a scenario's entries, carry them, and that text read with each deletion kept and each insertion left out equals the accepted text, the view SHALL mark the words the author marked, where the author marked them. Where it does not equal the accepted text, the view SHALL mark words by its own comparison and SHALL say that the author's marks do not account for the difference. An author's marks say which words the edit meant, and a computed alignment can pair the same words differently. But a mark claims only what it marks, and only the accepted text shows what an author left unmarked, so the view shows the author's marks where the accepted text confirms them and nowhere else.</p>
+            <p><strong>Scenarios SHALL be shown scenario by scenario.</strong> A scenario whose text the accepted requirement holds SHALL be shown as held by both. A scenario the change states that differs from its accepted counterpart SHALL be paired with it by identifier, as artifact-kinds' "A change's specification states a modified requirement whole" has every scenario a change carries forward, alters, or withdraws keep its accepted identifier, and its heading and entries SHALL be shown as statements are. A scenario the change marks <code>removed</code> SHALL be shown as withdrawn by the change, saying whether the accepted requirement still holds it. A scenario the change states with no accepted counterpart SHALL be shown whole as stated only by the change, and an accepted scenario the change neither states nor marks <code>removed</code> SHALL be shown whole as held only by the accepted specification. A scenario is checked on its own, so it is paired by what it is rather than by where it sits.</p>
+            <p>A requirement the view compares whose identifier no accepted specification holds SHALL be shown as held by none, with nothing compared. One the accepted specification holds as the change states it SHALL be shown as held as stated, with no text. The first is the reporting operation's absent requirement, and the second is content the merge already took.</p>
+            <p><strong>A requirement the change marks <code>removed</code>, and one it marks <code>unchanged</code> whose every scenario it marks <code>unchanged</code>, SHALL be listed with its identifier, its heading, and the state the change declares on it, and SHALL NOT be compared.</strong> The reporting operation compares neither by its content. A removed requirement is withdrawn whole, and whether it is gone is that operation's question. One carried forward declares that it states the accepted text, and where the two differ, the difference is another change's later edit, which is not this change's to show. Listing them keeps the view an account of every requirement the change states, so that none is passed over without a word.</p>
+            <p><strong>Nothing the view shows SHALL read as the text of a merge.</strong> Every text SHALL be labelled with the document that holds it, as what the change states or what the accepted specification holds. No text SHALL combine the two sides, and none SHALL be labelled as a result, a replacement, or something to apply. The human form SHALL NOT be a patch: it SHALL carry no hunk header and no file header, and it SHALL NOT mark a whole line as added or removed. The reporting operation and archival each "SHALL NOT propose the text of a merge", because what the accepted specification says next is an agent's judgment. A view is a different thing. It restates two texts that already exist, each labelled with where it is, and states no third. A patch is exactly a third text: the edit, in a form a tool applies. So the view may carry both texts, and SHALL NOT carry the edit.</p>
+            <p><strong><code>htmlspec show &lt;change&gt;</code> without <code>--diff</code> SHALL refuse as an invalid invocation, and SHALL name <code>--diff</code>.</strong> OpenSpec's <code>show</code> prints a change's proposal when given no view. Here a proposal is a page a browser already renders, and <code>status</code> already reports what a change holds. A default view added now would be an output nobody has asked for and a contract to keep. Refusing leaves the bare form free for a later change to define, without changing what any caller already receives.</p>
+            <p><strong>An archived change SHALL be refused</strong>, with a report that says it is archived and why the view does not apply to it. The accepted specifications hold an archived change's edit together with every later change's. A comparison with them shows nothing where no later change touched the requirement, and shows a later change's edit, reversed, where one did. Neither is what the archived change modified.</p>
+            <p>The view SHALL refuse on a change that cannot be resolved, on an absent specification artifact, and on a specification that does not validate, as the reporting operation does and for its reason. Under "Exit codes distinguish outcomes", it SHALL exit zero whenever it shows the view, whatever the view shows. It SHALL exit with the code for a document violation where the change's specification does not validate, and with the code for an operation that could not run on every other refusal, the missing <code>--diff</code> and an archived change included. A difference is not a failure. A change's modified requirements differ from the accepted text for the whole of the change's life before its merge, and a view that failed on that would fail on the state it exists to show.</p>
+            <p>Structured output SHALL follow "Output is available in human and machine forms": standard output SHALL hold the payload and nothing else. With <code>--store</code>, the view SHALL read the registered project's change and accepted specifications, as "Specifications can live in a repository other than the one being worked on" provides.</p>
+            <article class="scenario" id="scenario-a-one-word-modification" data-change="unchanged">
+              <h4>A one-word modification</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification marks <code>req-x</code> <code>modified</code>, stating ten statement paragraphs and eighteen scenarios, and an accepted <code>req-x</code> whose third paragraph lacks one word the change's third paragraph holds</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec show &lt;change&gt; --diff</code></dd>
+                <dt>Then</dt>
+                <dd>the view shows nine paragraphs and eighteen scenarios as held by both, and the third paragraph as the accepted text beside the change's text with that word marked on the change's side, and it exits zero</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-view-writes-nothing" data-change="unchanged">
+              <h4>The view writes nothing</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the view runs, for any change and any outcome</dd>
+                <dt>Then</dt>
+                <dd>no file in the project was modified</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-paragraph-rewritten-throughout" data-change="unchanged">
+              <h4>A paragraph rewritten throughout</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a modified requirement whose change text replaces one paragraph with a paragraph that shares fewer than half its words</dd>
+                <dt>When</dt>
+                <dd>the view is shown</dd>
+                <dt>Then</dt>
+                <dd>the accepted paragraph is shown whole as held only by the accepted specification, and the change's paragraph whole as stated only by the change, with no word marked inside either</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-paragraph-added-beside-an-edited-one" data-change="unchanged">
+              <h4>A paragraph added beside an edited one</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a modified requirement whose change text adds a paragraph immediately before a paragraph it edits by one word</dd>
+                <dt>When</dt>
+                <dd>the view is shown</dd>
+                <dt>Then</dt>
+                <dd>the added paragraph is shown whole as stated only by the change, and the edited paragraph is paired with its accepted counterpart with the word marked</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-author-s-marks-account-for-the-difference" data-change="unchanged">
+              <h4>The author's marks account for the difference</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a modified requirement whose change text marks an inserted word with <code>ins</code> and a deleted phrase with <code>del</code>, and whose text read with the deletion kept and the insertion left out equals the accepted text</dd>
+                <dt>When</dt>
+                <dd>the view is shown</dd>
+                <dt>Then</dt>
+                <dd>the words marked are the ones the author marked, and the view says the marks are the author's</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-author-s-marks-leave-part-of-the-difference-unmarked" data-change="unchanged">
+              <h4>The author's marks leave part of the difference unmarked</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a modified requirement whose change text marks one inserted word with <code>ins</code>, and also leaves out a word the accepted text holds without marking it</dd>
+                <dt>When</dt>
+                <dd>the view is shown</dd>
+                <dt>Then</dt>
+                <dd>the words marked are found by the view's own comparison, both words among them, and the view says the author's marks do not account for the difference</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-scenario-the-change-alters" data-change="unchanged">
+              <h4>A scenario the change alters</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a modified requirement stating a scenario marked <code>modified</code> that carries its accepted counterpart's identifier and differs from it by one word of its THEN entry</dd>
+                <dt>When</dt>
+                <dd>the view is shown</dd>
+                <dt>Then</dt>
+                <dd>that scenario is paired with its accepted counterpart with the word marked in the THEN entry, and every other scenario both hold is shown as held by both</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-scenarios-added-withdrawn-and-left-out" data-change="unchanged">
+              <h4>Scenarios added, withdrawn, and left out</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a modified requirement stating a scenario with no accepted counterpart and a scenario marked <code>removed</code>, and an accepted requirement that also holds a scenario the change neither states nor marks <code>removed</code></dd>
+                <dt>When</dt>
+                <dd>the view is shown</dd>
+                <dt>Then</dt>
+                <dd>the first is shown as stated only by the change, the second as withdrawn by the change and still held by the accepted specification, and the third as held only by the accepted specification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-view-and-the-reporting-operation-agree" data-change="unchanged">
+              <h4>The view and the reporting operation agree</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the view and the reporting operation are run against the same change</dd>
+                <dt>Then</dt>
+                <dd>the requirements the view shows as differing are exactly those the operation reports as content not taken, and for each of them the first paragraph the view does not show as held by both is the first differing paragraph the operation names, or neither names one</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-modification-the-accepted-specification-already-holds" data-change="unchanged">
+              <h4>A modification the accepted specification already holds</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted <code>req-x</code> holding the statements and scenarios the change states for it</dd>
+                <dt>When</dt>
+                <dd>the view is shown</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is shown as held as stated, with no text and no marks</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-modified-requirement-no-accepted-specification-holds" data-change="unchanged">
+              <h4>A modified requirement no accepted specification holds</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change marking <code>req-x</code> <code>modified</code>, and no accepted specification holding <code>req-x</code></dd>
+                <dt>When</dt>
+                <dd>the view is shown</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is shown as held by no accepted specification, nothing is compared, and the view exits zero</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-renamed-requirement" data-change="unchanged">
+              <h4>A renamed requirement</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a modified requirement stating a new heading with a <code>renamed-from</code> paragraph, and an accepted requirement holding the previous heading</dd>
+                <dt>When</dt>
+                <dd>the view is shown</dd>
+                <dt>Then</dt>
+                <dd>both headings are shown, each labelled with the document that holds it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-added-requirement-the-accepted-specification-holds-otherwise" data-change="unchanged">
+              <h4>An added requirement the accepted specification holds otherwise</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification marks <code>req-x</code> <code>added</code>, and an accepted <code>req-x</code> whose statement lacks one word the change's holds</dd>
+                <dt>When</dt>
+                <dd>the view is shown</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is shown with its declared state, <code>added</code>, and compared as a modified requirement is, with that word marked on the change's side</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-scenario-changed-inside-an-unchanged-requirement" data-change="unchanged">
+              <h4>A scenario changed inside an unchanged requirement</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a requirement marked <code>unchanged</code> that holds a scenario marked <code>modified</code>, which differs from its accepted counterpart by one word of its THEN entry</dd>
+                <dt>When</dt>
+                <dd>the view is shown</dd>
+                <dt>Then</dt>
+                <dd>the requirement is shown with its declared state, <code>unchanged</code>, and compared, and that scenario is paired with its accepted counterpart with the word marked</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-requirements-that-are-not-compared" data-change="unchanged">
+              <h4>Requirements that are not compared</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification also states a requirement marked <code>removed</code>, and one marked <code>unchanged</code> whose every scenario is marked <code>unchanged</code></dd>
+                <dt>When</dt>
+                <dd>the view is shown</dd>
+                <dt>Then</dt>
+                <dd>each is listed with its identifier, its heading, and its declared state, and neither is compared</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-nothing-reads-as-merge-text" data-change="unchanged">
+              <h4>Nothing reads as merge text</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the view is shown, in either form</dd>
+                <dt>Then</dt>
+                <dd>every text is labelled as what the change states or what the accepted specification holds, no text combines the two, and the human form carries no hunk header and no file header, and marks no whole line as added or removed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-showing-a-change-without-a-view" data-change="unchanged">
+              <h4>Showing a change without a view</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec show &lt;change&gt;</code> without <code>--diff</code></dd>
+                <dt>Then</dt>
+                <dd>the program shows nothing, names <code>--diff</code>, and exits with the code for an operation that could not run</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-archived-change" data-change="unchanged">
+              <h4>An archived change</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change that has been archived</dd>
+                <dt>When</dt>
+                <dd>a contributor runs the view against its directory</dd>
+                <dt>Then</dt>
+                <dd>it refuses, says that the change is archived and why the view does not apply to it, and exits with the code for an operation that could not run</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-command-surface-shows-a-modified-requirement-beside-the-accepted-one-an-invalid-specification" data-change="unchanged">
+              <h4>An invalid specification</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification does not validate</dd>
+                <dt>When</dt>
+                <dd>the view is run against it</dd>
+                <dt>Then</dt>
+                <dd>it refuses and reports why, shows no comparison, and exits with the code for a document violation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-structured-view" data-change="unchanged">
+              <h4>A structured view</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested</dd>
+                <dt>Then</dt>
+                <dd>standard output holds only a payload that lists each requirement the change states with its declared state, and, for each requirement it compares, the accepted specification it was compared with and each of its paragraphs and scenarios as held by both, paired, or held by one side, with the text of each that is not held by both and the words only one side holds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-registered-standalone-project" data-change="unchanged">
+              <h4>A registered standalone project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the view is run with <code>--store</code> naming a registered project</dd>
+                <dt>Then</dt>
+                <dd>it reads that project's change and accepted specifications, and nothing of the project containing the working directory</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-public-repository-receives-only-reviewed-exports" data-change="unchanged">
+            <h3>The public repository receives only reviewed exports of the private one <span class="hs-id">req-the-public-repository-receives-only-reviewed-exports</span></h3>
+            <p>The project's public repository SHALL receive only trees exported from its private working repository. Each tree SHALL come from a committed ref of the private repository, through the allowlist of paths that may cross, with every rewrite applied at the count it expects, found clean by the scan against the private pattern file, passed by the project's full suite run inside the exported tree, and reviewed by a person as the exact tree that is pushed.</p>
+            <p>A tree SHALL reach the public repository only from a commit the private repository's <code>main</code> holds, so that the reads of its paths and the contributor's sign-off it is delivered under are ones a reviewed pull request landed. A read SHALL name the content it covers, so that it survives the squash merge that lands it, and every file under an allowlisted path whose content differs from the content its read names, added or changed since, SHALL be refused, each one named.</p>
+            <p>Each export SHALL arrive in a commit whose only parent is the public repository's own <code>main</code>, or with no parent for the first commit of an empty public repository, made by a GitHub noreply identity as author and committer, and naming its source ref and commit. No commit of the private repository's history SHALL reach the public repository, and the private repository SHALL refuse any push of its own to the public one, tags included, under any spelling of the public repository's address.</p>
+            <p>The publishing tooling, its allowlist, rewrites, pattern file, and tests, SHALL stay in the private repository and SHALL be absent from every export, because its tables name the material they guard against.</p>
+            <article class="scenario" id="scenario-a-planted-private-string-is-refused" data-change="unchanged">
+              <h4>A planted private string is refused at the scan</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an allowlisted file holding a string the private pattern file names</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the scan refuses, naming the file and the line, and nothing is committed or pushed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-vanished-rewrite-is-refused" data-change="unchanged">
+              <h4>A rewrite whose text is gone is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a rewrite whose expected text no longer appears the number of times it states</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the export stops, naming the file and the text it expected</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-failing-suite-is-refused" data-change="unchanged">
+              <h4>A failing suite is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an exported tree in which the project's suite fails</dd>
+                <dt>When</dt>
+                <dd>the export runs the suite inside it</dd>
+                <dt>Then</dt>
+                <dd>the export stops before anything is committed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unreviewed-tree-is-refused" data-change="unchanged">
+              <h4>An unreviewed tree is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a push or a bootstrap is asked for without naming the tree a person reviewed, or names a different one</dd>
+                <dt>Then</dt>
+                <dd>it refuses, and nothing reaches the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unread-path-or-changed-image-is-refused" data-change="unchanged">
+              <h4>An unread path, a newly added file, or a changed image is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an allowlisted path nobody recorded as read, a file added or changed beneath an allowlisted path since the content its read names, or an image whose bytes differ from the blob a person read</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the export refuses, naming each one, however many there are</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-personal-identity-is-refused" data-change="unchanged">
+              <h4>A commit identity that is not a GitHub noreply address is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the export is to commit with an author or committer that is not a GitHub noreply address</dd>
+                <dt>Then</dt>
+                <dd>it refuses before anything reaches the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-private-history-reaches-the-public-repository" data-change="unchanged">
+              <h4>No commit of the private history reaches the public repository</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a first commit is bootstrapped into an empty public repository and a later export is pushed</dd>
+                <dt>Then</dt>
+                <dd>the first commit has no parent, the later one has only the public repository's main as its parent, and no commit or blob that only the private history holds is in the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-tooling-never-crosses" data-change="unchanged">
+              <h4>The publishing tooling never crosses</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>any tree is exported</dd>
+                <dt>Then</dt>
+                <dd>it holds nothing of the publishing tooling or of the workflow that tests it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-push-from-the-private-repository-is-refused" data-change="unchanged">
+              <h4>A push from the private repository to the public one is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the private working repository pushes anything, a branch or a tag, to the public repository, under any spelling of its address</dd>
+                <dt>Then</dt>
+                <dd>its pre-push hook refuses, because the push would carry the private history</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-read-survives-the-squash-merge-that-lands-it" data-change="unchanged">
+              <h4>A read survives the squash merge that lands it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a read recorded on a branch, naming the content it read</dd>
+                <dt>When</dt>
+                <dd>the branch is squash-merged into <code>main</code> and deleted, and its commits are gone</dd>
+                <dt>Then</dt>
+                <dd>the export of <code>main</code> accepts the read, because <code>main</code> holds the content it names</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-delivery-of-a-commit-main-does-not-hold-is-refused" data-change="unchanged">
+              <h4>A delivery of a commit main does not hold is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a commit the private repository's <code>main</code> does not hold, carrying a signed readiness record</dd>
+                <dt>When</dt>
+                <dd>a push or a bootstrap exports it</dd>
+                <dt>Then</dt>
+                <dd>it refuses, naming the commit, and nothing reaches the public repository</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-release-reaches-every-channel-from-one-tag" data-change="unchanged">
+            <h3>A release reaches every channel from one tag <span class="hs-id">req-a-release-reaches-every-channel-from-one-tag</span></h3>
+            <p>Every release SHALL be cut from one tag, <code>vX.Y.Z</code>, whose version equals the version the workspace declares, and the binaries, the crates, and the Homebrew formula the release produces SHALL each name that version. The release SHALL refuse a tag that names another version before it builds anything.</p>
+            <p>Publication SHALL begin only from a version tag in the public repository, <code>Firefly-Projects/htmlspec</code>, only for a commit that repository's <code>main</code> holds, and only after the check suite has passed on that commit. A tag in any other repository SHALL publish nothing. A release SHALL publish only from a run in which the binary of every target it releases was built and the formula passed its check, though runs elsewhere leave some of those jobs out.</p>
+            <p>A publication interrupted partway SHALL finish when run again, and SHALL NOT publish any version twice: the crates publish one at a time, a version the registry already holds is skipped, and a rate limit is waited out within a stated budget, after which the run stops and names the crates that remain. Every request the release makes to crates.io SHALL carry a fixed User-Agent that names the project, and no personal information.</p>
+            <article class="scenario" id="scenario-a-tag-naming-another-version" data-change="unchanged">
+              <h4>A tag naming another version</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a workspace that declares 0.33.0</dd>
+                <dt>When</dt>
+                <dd>the release runs on the tag <code>v9.9.9</code></dd>
+                <dt>Then</dt>
+                <dd>it refuses before any build, naming both versions</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tag-in-another-repository" data-change="unchanged">
+              <h4>A tag in another repository</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a version tag is pushed to a repository other than the public one</dd>
+                <dt>Then</dt>
+                <dd>the workflow verifies and builds, and its release, crates, and tap jobs publish nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tag-on-a-commit-main-does-not-hold" data-change="unchanged">
+              <h4>A tag on a commit main does not hold</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a version tag in the public repository names a commit that its <code>main</code> does not hold</dd>
+                <dt>Then</dt>
+                <dd>the release refuses it, and nothing publishes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-artifact-names-the-version" data-change="unchanged">
+              <h4>Every artifact names the version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release builds from a tag</dd>
+                <dt>Then</dt>
+                <dd>each binary reports that version, each crate is packaged at it, and the formula installs it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-formula-matches-the-release" data-change="unchanged">
+              <h4>The formula matches the release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the formula is rendered for a release</dd>
+                <dt>Then</dt>
+                <dd>each target's digest is the one the release's <code>SHA256SUMS</code> records, and the rendered formula passes Homebrew's strict audit, installs, and passes its test in a local tap</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-publication-stopped-by-the-rate-limit" data-change="unchanged">
+              <h4>A publication stopped by the rate limit</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a crates publication that published some crates and stopped on the registry's rate limit</dd>
+                <dt>When</dt>
+                <dd>it runs again</dd>
+                <dt>Then</dt>
+                <dd>it skips the crates already published, publishes the rest, and publishes nothing twice</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-request-names-the-project" data-change="unchanged">
+              <h4>Every request names the project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release sends a request to crates.io</dd>
+                <dt>Then</dt>
+                <dd>its User-Agent names the project and its public repository, and no header carries personal information</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-missing-a-target-publishes-nothing" data-change="unchanged">
+              <h4>A run missing a target publishes nothing</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a run on a version tag in the public repository in which a build failed, the formula's check did not pass, or <code>SHA256SUMS</code> names no tarball for one of the four targets</dd>
+                <dt>When</dt>
+                <dd>the run reaches the release</dd>
+                <dt>Then</dt>
+                <dd>the release job is skipped, or its first step refuses, and nothing publishes</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-command-surface-is-stable-within-a-major-version" data-change="unchanged">
+            <h3>The command surface is stable within a major version <span class="hs-id">req-the-command-surface-is-stable-within-a-major-version</span></h3>
+            <p>Within a major version, every operation SHALL keep its name in both spellings, the OpenSpec spelling and the request-verb spelling, and every alias it accepts. Every flag SHALL keep its name, its short form, its aliases, and its meaning, and an optional argument SHALL stay optional. Every exit code SHALL keep its value and its meaning. Every field of every <code>--json</code> payload SHALL keep its name, its type, and its meaning, a field always present SHALL stay present, and a value an enumeration admits SHALL stay admitted. <code>--help</code>, <code>-h</code>, <code>--version</code>, <code>-V</code>, and the <code>help</code> subcommand SHALL stay. A minor release MAY add any of them, and only a major release removes or renames one. The wording of human-readable output is not covered.</p>
+            <p>Each operation that writes a payload SHALL publish a JSON Schema for it under <code>crates/htmlspec-cli/schema/payload/</code>, declaring every field it can emit. A published schema SHALL admit a property it does not declare, and SHALL say that a later release of its major can add one and that a consumer ignores a property it does not know. The program SHALL write no field its operation's schema does not declare. Where <code>run --as</code> starts no run because the machine falls short of a prerequisite, its payload SHALL be the preflight report, and run's schema SHALL state that shape.</p>
+            <p>The surface each released minor makes SHALL be recorded, read from the program's own parser, in <code>crates/htmlspec-cli/tests/surface/&lt;major&gt;.&lt;minor&gt;.json</code>. The project's checks SHALL fail when the program lacks anything a released surface of its major holds, when a later file of a major lacks anything an earlier one holds, when the declared version's minor has no file, when the current minor's file does not record the current surface, when the parser accepts a command no operation spells, and when a field a schema declares appears in no payload the tests produce.</p>
+            <article class="scenario" id="scenario-a-renamed-flag-fails-the-checks" data-change="unchanged">
+              <h4>A renamed flag fails the checks</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>release 1.0.0's recorded surface</dd>
+                <dt>When</dt>
+                <dd>a 1.x change renames <code>validate --strict</code> to <code>--strictly</code></dd>
+                <dt>Then</dt>
+                <dd>the checks fail and name each fact of <code>--strict</code> that the program no longer offers</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-changed-exit-code-fails-the-checks" data-change="unchanged">
+              <h4>A changed exit code fails the checks</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>release 1.0.0's recorded surface</dd>
+                <dt>When</dt>
+                <dd>a 1.x change makes a cancelled operation exit 4 rather than 3</dd>
+                <dt>Then</dt>
+                <dd>the checks fail naming the exit code that changed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-removed-payload-field-fails-the-checks" data-change="unchanged">
+              <h4>A removed payload field fails the checks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a 1.x change stops writing <code>openTasks</code> in <code>status</code>'s payload</dd>
+                <dt>Then</dt>
+                <dd>the tests that produce that payload fail on the required field, and the surface comparison names it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-addition-is-recorded-and-binds-later-releases" data-change="unchanged">
+              <h4>An addition is recorded and binds later releases</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a minor release adds a flag, a payload field, an alias, or an exit code</dd>
+                <dt>Then</dt>
+                <dd>the checks pass once the minor's surface file records it, and a later release of the major that drops it fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-writer-refuses-to-record-a-loss" data-change="unchanged">
+              <h4>The recorded surface is not rewritten to lose anything</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a program that no longer offers a flag the current minor's file records</dd>
+                <dt>When</dt>
+                <dd>a contributor runs the test that rewrites that file</dd>
+                <dt>Then</dt>
+                <dd>it refuses and names the loss, and the file is unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-consumer-accepts-a-later-minors-field" data-change="unchanged">
+              <h4>A consumer accepts a later minor's field</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a payload a later 1.x release writes, carrying a property the 1.0 schema does not declare</dd>
+                <dt>When</dt>
+                <dd>a consumer validates it against the published 1.0 schema</dd>
+                <dt>Then</dt>
+                <dd>the payload is valid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-undeclared-field-fails-the-test-that-produced-it" data-change="unchanged">
+              <h4>An undeclared field fails the test that produced it</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the program writes a payload field its schema does not declare</dd>
+                <dt>Then</dt>
+                <dd>the test that ran the binary fails, naming the field and the schema</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-refused-run-writes-the-preflight-report" data-change="unchanged">
+              <h4>A refused run writes the preflight report</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook declaring a prerequisite this machine does not meet</dd>
+                <dt>When</dt>
+                <dd><code>htmlspec --json run release --as second</code> runs</dd>
+                <dt>Then</dt>
+                <dd>it exits 1 with the preflight report on standard output, which run's published schema admits, and no record is created</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-major-release-is-compared-only-with-its-own-major" data-change="unchanged">
+              <h4>A major release is compared only with its own major</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>surfaces recorded for 1.0 and 1.1</dd>
+                <dt>When</dt>
+                <dd>release 2.0.0 removes a flag both recorded</dd>
+                <dt>Then</dt>
+                <dd>the comparison with 1.x does not fail it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-human-readable-wording-can-change" data-change="unchanged">
+              <h4>Human-readable wording can change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a release rewords a message, a help text, or a human-readable report</dd>
+                <dt>Then</dt>
+                <dd>no check of the surface fails</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

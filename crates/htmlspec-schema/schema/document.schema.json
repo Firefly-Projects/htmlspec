@@ -1,0 +1,676 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://html-spec.dev/schema/1.0.0/document.schema.json",
+  "title": "Document",
+  "description": "The projected model of an HTMLSpec document. This schema is the single source of truth for the vocabulary, the required structure, the identifier prefixes, and the permitted attribute values of the projected model. It describes the model, NOT the HTML that produces the model: see the normative projection specification at doc/projection.md, which is part of the public contract alongside this schema. Rules about relationships BETWEEN units - document-wide identifier uniqueness, prefix agreement with unit type, reference resolution, and references to removed units - are not expressible here and are enforced by the validator. The projection specification is published alongside this schema at doc/projection.md in the htmlspec-schema crate, and the conformance fixtures that pin the mapping are the third piece. A consumer that reads only one of the three has read part of the contract.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "subject",
+    "kind"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "description": "The contract version this document declares, as a semantic version. A document declares the version so that a later contract change is identifiable.\n\nThe version is semantic, not a date, because a date orders releases and says nothing about compatibility. A major bump withdraws or reshapes a unit, a field, or a projection rule. A minor bump adds vocabulary, and can add warnings and review findings. A patch bump changes wording and fixes defects. Within a major version from 1 on, a document one version accepts is accepted by every later version of that major: no later minor or patch reports an error on it that the earlier version did not, except where the earlier version accepted what a requirement stated at that version refused, a defect the release's CHANGELOG.md entry names. Warnings are outside that promise. While the major was 0 the vocabulary was provisional and any release could break a document, as 0.3.0 and 0.4.0 did. 1.0.0 is the 0.7.0 vocabulary, unchanged, and is the release that commits it.\n\nThe match is exact against this closed enumeration, the versions this contract accepts, oldest first. A document declaring any other version is invalid. The newest entry is the version a new document declares. A minor or patch bump adds its version here and keeps every earlier one, because a document declaring an earlier version is still an existing document, and an exact match against the newest version alone would invalidate them all. A major bump is where versions can leave the set, and 1.0.0 withdrew none: 0.1.0 to 0.7.0 stay accepted beside 1.x, because the vocabulary did not change at 1.0.0 and withdrawing them would invalidate every document written before it. The vocabulary accepted is the newest version's, so a document declaring an earlier version is checked against the fields that version's successors added too.\n\nThe set became a range at 0.2.0. Until then one version existed, and a compatibility range was a decision worth making when a second version existed and not before. CHANGELOG.md records the date each version landed, so a version stays orderable in time without encoding the date in the version itself.",
+      "type": "string",
+      "enum": [
+        "0.1.0",
+        "0.2.0",
+        "0.3.0",
+        "0.4.0",
+        "0.5.0",
+        "0.6.0",
+        "0.7.0",
+        "1.0.0"
+      ]
+    },
+    "subject": {
+      "description": "What the document is about. Projected from the document title.",
+      "$ref": "#/definitions/nonEmptyText"
+    },
+    "summary": {
+      "description": "What the document is for, in its own prose. Projected from the paragraphs of the document header, so that the argument a change rests on is addressable in the model rather than trapped in presentation.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/nonEmptyText"
+      },
+      "default": []
+    },
+    "kind": {
+      "description": "Which artifact this document is. A change is a directory of separate documents, and the kind identifies the role one of them plays.\n\nKind semantics:\n  proposal       argues the value, need, and scope of the change. The most human artifact, and not where the contract is stated\n  design         turns that argument into architecture and technical reasoning\n  tasks          enumerates the work to be done\n  specification  the settled contract the change established, as built\n\nA kind is fixed for a document's life. It replaces the per-document lifecycle status, which recorded a property of the *change* as it moved rather than of the file declaring it: a proposal is a proposal for its whole life, and a change's stage is derivable from which of its documents exist.\n\nThe set is CLOSED, and that is what makes per-kind rules possible. Two of the four constrain structure and two do not. `proposal` and `design` have no enforced structure at all: no unit is prohibited in them and none is required, because those stages need freedom in how they are written. `tasks` must carry at least one task unit, and `specification` must carry none — the vocabulary's one placement rule. Those three rules are relational and live in the validator; this enumeration is the part JSON Schema can express.\n\nIntended content guides an author and is never a validity boundary. A requirement unit inside a proposal is valid and is not authoritative: the contract is what a specification states, not what a proposal considered.\n\nSee the projection specification, section 9.3, for the metadata this projects from.",
+      "type": "string",
+      "enum": [
+        "proposal",
+        "design",
+        "tasks",
+        "specification"
+      ]
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/requirement"
+      },
+      "default": []
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/decision"
+      },
+      "default": []
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/task"
+      },
+      "default": []
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/evidence"
+      },
+      "default": []
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/risk"
+      },
+      "default": []
+    },
+    "verifications": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/verification"
+      },
+      "default": []
+    },
+    "figures": {
+      "description": "Every figure in the document, in document order. A figure is not a semantic unit and carries no identifier prefix of its own.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/figure"
+      },
+      "default": []
+    },
+    "links": {
+      "description": "Every internal fragment link in the document, in document order. Projected so that the validator can resolve them without a second pass over the tree.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/link"
+      },
+      "default": []
+    }
+  },
+  "definitions": {
+    "nonEmptyText": {
+      "description": "Text with at least one character. Whitespace-normalized by the projection unless the projection specification states otherwise.",
+      "type": "string",
+      "minLength": 1
+    },
+    "changeState": {
+      "description": "The lifecycle state of one semantic unit.\n\nChange-state semantics:\n  added      the unit does not exist in the accepted specs and this change introduces it\n  modified   the unit exists and this change alters what it means\n  removed    the unit exists and this change withdraws it. A removed unit STAYS in the document so a reviewer can see what is being withdrawn, and no reference may target it\n  unchanged  the unit's statements and scenarios are carried forward untouched. A requirement whose heading changed says so with a `renamed-from` paragraph, and stays unchanged when nothing else did. A unit that declares no state is unchanged, so the common case needs no attribute\n\nA change state is a report about a unit's relationship to the accepted specs. It is not a workflow phase and it gates nothing: the lifecycle loops, and an upstream edit marks dependents for review rather than blocking work.\n\nSee the projection specification, section 2, for the attribute this projects from.",
+      "type": "string",
+      "enum": [
+        "added",
+        "modified",
+        "removed",
+        "unchanged"
+      ],
+      "default": "unchanged"
+    },
+    "requirementId": {
+      "description": "Identifier of a requirement unit.",
+      "type": "string",
+      "pattern": "^req-[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "scenarioId": {
+      "description": "Identifier of a scenario unit.",
+      "type": "string",
+      "pattern": "^scenario-[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "decisionId": {
+      "description": "Identifier of a decision unit.",
+      "type": "string",
+      "pattern": "^decision-[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "taskId": {
+      "description": "Identifier of a task unit.",
+      "type": "string",
+      "pattern": "^task-[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "evidenceId": {
+      "description": "Identifier of an evidence unit.",
+      "type": "string",
+      "pattern": "^evidence-[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "riskId": {
+      "description": "Identifier of a risk unit.",
+      "type": "string",
+      "pattern": "^risk-[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "verificationId": {
+      "description": "Identifier of a verification unit.",
+      "type": "string",
+      "pattern": "^verify-[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "unitId": {
+      "description": "Any semantic-unit identifier.\n\nIdentifier prefix table. Each unit type reserves one prefix, and a prefix names exactly one unit type:\n  req-       requirement\n  scenario-  scenario\n  decision-  decision\n  task-      task\n  evidence-  evidence\n  risk-      risk\n  verify-    verification\n\nNote that `verify-` does not match its unit name, so a prefix must be read from this table rather than derived from the unit name. `figure-` is NOT in this table: a figure is not a semantic unit, so a figure identifier can be the target of a link and never the target of a reference.\n\nThis pattern accepts any of the seven prefixes. Two rules about a prefix are NOT expressible here and are enforced by the validator: that a unit's own identifier carries the prefix reserved for its type, and that a reference target exists.\n\nSee the projection specification, section 5, for how a reference enters the model.",
+      "type": "string",
+      "pattern": "^(req|scenario|decision|task|evidence|risk|verify)-[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "reference": {
+      "description": "One unit addressing another by identifier. `origin` records how the reference was written in the HTML, because the two forms carry the same meaning in the model and different meanings to a reader.",
+      "type": "object",
+      "required": [
+        "target",
+        "origin"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "$ref": "#/definitions/unitId"
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "attribute",
+            "link"
+          ]
+        }
+      }
+    },
+    "link": {
+      "description": "An internal fragment link. `target` is the fragment without its leading `#`.",
+      "type": "object",
+      "required": [
+        "target",
+        "text"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "figure": {
+      "description": "A figure and its caption. A visualization figure carries its source as visible content, so `source` is present in the markup rather than supplied by a script.",
+      "type": "object",
+      "required": [
+        "kind",
+        "caption"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/figureId"
+        },
+        "kind": {
+          "description": "`prose` covers a figure with no visualization source, such as a table or an image.",
+          "type": "string",
+          "enum": [
+            "mermaid",
+            "vega-lite",
+            "math",
+            "code",
+            "prose"
+          ]
+        },
+        "caption": {
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "source": {
+          "description": "The visualization source, preserved byte-for-byte by the projection. Absent for a `prose` figure.",
+          "type": "string"
+        }
+      }
+    },
+    "requirement": {
+      "description": "One normative obligation, its statement, and the scenarios that make it checkable.",
+      "type": "object",
+      "required": [
+        "unit",
+        "id",
+        "change",
+        "title",
+        "statements",
+        "scenarios"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "unit": {
+          "type": "string",
+          "const": "requirement"
+        },
+        "id": {
+          "$ref": "#/definitions/requirementId"
+        },
+        "change": {
+          "$ref": "#/definitions/changeState"
+        },
+        "title": {
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "statements": {
+          "description": "The normative prose, projected from unmarked paragraphs and from paragraphs marked `data-field=\"statement\"`. Each statement uses SHALL or MUST; the validator checks the modal vocabulary, because this schema cannot. Explanatory prose belongs in `notes`.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          }
+        },
+        "scenarios": {
+          "description": "At least one scenario. A scenario exists only inside a requirement.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/scenario"
+          }
+        },
+        "notes": {
+          "description": "Prose inside the unit that carries no field of its own, projected from paragraphs marked `data-field=\"note\"`. A note keeps explanatory prose addressable without making it normative.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          },
+          "default": []
+        },
+        "renamedFrom": {
+          "description": "The heading this requirement replaced, projected from its one paragraph marked `data-field=\"renamed-from\"`. Absent when the requirement was not renamed. The requirement's own `title` is its current name, so the pair is OpenSpec's FROM/TO rename stated on the unit.\n\nA rename is separate from `change`: `change` says what happened to the statements and scenarios, and this field says what happened to the heading. A requirement renamed and rewritten is `modified` with this field, and one renamed and otherwise untouched is `unchanged` with it. The identifier does not change with the heading.\n\nThe validator rejects this field on an `added` or `removed` requirement, a second `renamed-from` paragraph, an empty one, one in a unit that is not a requirement, and a previous heading equal to the requirement's own heading name. None of these are expressible here. See the projection specification, section 4.1.",
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "deletions": {
+          "description": "The text of each `del` element that belongs to this requirement and that no other `del` encloses, in document order: words a change deleted from the accepted text. Absent when the requirement records none. A `del`'s content supplies no other field, so the requirement's title, statements, and notes hold only the current text, and words an `ins` marks are current text, recorded in their field and not here.\n\nWhere change markup may appear at all is decided by validation, not by this field: the validator permits it only in a requirement or a scenario marked `modified` in a change's specification. See the projection specification, section 8.6.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          },
+          "default": []
+        }
+      }
+    },
+    "scenario": {
+      "description": "One condition-and-outcome pairing that makes a requirement checkable.",
+      "type": "object",
+      "required": [
+        "unit",
+        "id",
+        "change",
+        "title",
+        "when",
+        "then"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "unit": {
+          "type": "string",
+          "const": "scenario"
+        },
+        "id": {
+          "$ref": "#/definitions/scenarioId"
+        },
+        "change": {
+          "$ref": "#/definitions/changeState"
+        },
+        "title": {
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "given": {
+          "description": "Optional preconditions. May repeat.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          },
+          "default": []
+        },
+        "when": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          }
+        },
+        "then": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          }
+        },
+        "notes": {
+          "description": "Prose inside the unit that carries no field of its own, projected from paragraphs marked `data-field=\"note\"`. A note keeps explanatory prose addressable without making it normative.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          },
+          "default": []
+        },
+        "deletions": {
+          "description": "The text of each `del` element that belongs to this scenario and that no other `del` encloses, in document order: words a change deleted from the accepted text. Absent when the scenario records none. A `del`'s content supplies no other field, so the scenario's title, entries, and notes hold only the current text, and words an `ins` marks are current text, recorded in their field and not here.\n\nWhere change markup may appear at all is decided by validation, not by this field: the validator permits it only in a requirement or a scenario marked `modified` in a change's specification. See the projection specification, section 8.6.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          },
+          "default": []
+        }
+      }
+    },
+    "decision": {
+      "description": "A choice reached, why it was reached, and its standing. A superseded decision names its replacement; the validator checks that the replacement exists, and that a superseded decision does not omit it.",
+      "type": "object",
+      "required": [
+        "unit",
+        "id",
+        "change",
+        "title",
+        "statement",
+        "rationale",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "unit": {
+          "type": "string",
+          "const": "decision"
+        },
+        "id": {
+          "$ref": "#/definitions/decisionId"
+        },
+        "change": {
+          "$ref": "#/definitions/changeState"
+        },
+        "title": {
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "statement": {
+          "$ref": "#/definitions/nonEmptyText",
+          "description": "The decision reached, projected from the single unmarked paragraph or from `data-field=\"statement\"`."
+        },
+        "rationale": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          },
+          "description": "Why the decision was reached, projected from paragraphs marked `data-field=\"rationale\"`. Position does not decide the field."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "proposed",
+            "accepted",
+            "superseded"
+          ]
+        },
+        "supersededBy": {
+          "$ref": "#/definitions/decisionId"
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/reference"
+          },
+          "default": []
+        },
+        "notes": {
+          "description": "Prose inside the unit that carries no field of its own, projected from paragraphs marked `data-field=\"note\"`. A note keeps explanatory prose addressable without making it normative.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          },
+          "default": []
+        }
+      }
+    },
+    "task": {
+      "description": "One unit of work and its completion state. A dropped task states why, and only a done task may state a deviation; the validator checks both, because this schema keeps to a conservative subset with no conditional composition.",
+      "type": "object",
+      "required": [
+        "unit",
+        "id",
+        "change",
+        "title",
+        "state"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "unit": {
+          "type": "string",
+          "const": "task"
+        },
+        "id": {
+          "$ref": "#/definitions/taskId"
+        },
+        "change": {
+          "$ref": "#/definitions/changeState"
+        },
+        "title": {
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "state": {
+          "description": "Machine-readable completion state, projected from an attribute rather than from a rendered checkbox.",
+          "type": "string",
+          "enum": [
+            "todo",
+            "in-progress",
+            "done",
+            "dropped"
+          ]
+        },
+        "reason": {
+          "description": "Why a dropped task was dropped, projected from a paragraph marked `data-field=\"reason\"`. Required when `state` is `dropped`. An unmarked paragraph in a task is a note, not a reason.",
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "deviation": {
+          "description": "What was done, where that departs from the task's words, projected from a paragraph marked `data-field=\"deviation\"`. Permitted only when `state` is `done`, which the validator checks: a task still to do or under way has finished nothing that could differ from its words, and a dropped task's work did not happen. A `done` task with no deviation was done as its words say. The task's words stay as written, and a task states at most one deviation.",
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/reference"
+          },
+          "default": []
+        },
+        "notes": {
+          "description": "Prose inside the unit that carries no field of its own, projected from paragraphs marked `data-field=\"note\"`. A note keeps explanatory prose addressable without making it normative.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          },
+          "default": []
+        }
+      }
+    },
+    "evidence": {
+      "description": "A measurement or observation that supports a claim elsewhere in the document.",
+      "type": "object",
+      "required": [
+        "unit",
+        "id",
+        "change",
+        "title",
+        "summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "unit": {
+          "type": "string",
+          "const": "evidence"
+        },
+        "id": {
+          "$ref": "#/definitions/evidenceId"
+        },
+        "change": {
+          "$ref": "#/definitions/changeState"
+        },
+        "title": {
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "summary": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          },
+          "description": "What was measured or observed, projected from unmarked paragraphs and from `data-field=\"summary\"`."
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/reference"
+          },
+          "default": []
+        },
+        "notes": {
+          "description": "Prose inside the unit that carries no field of its own, projected from paragraphs marked `data-field=\"note\"`. A note keeps explanatory prose addressable without making it normative.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          },
+          "default": []
+        }
+      }
+    },
+    "risk": {
+      "description": "A way the change can fail, and how the change settled it: held down by a mitigation, or borne as it stands. A mitigated risk states its mitigation; the validator checks that, because this schema keeps to a conservative subset with no conditional composition.",
+      "type": "object",
+      "required": [
+        "unit",
+        "id",
+        "change",
+        "title",
+        "statement",
+        "response"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "unit": {
+          "type": "string",
+          "const": "risk"
+        },
+        "id": {
+          "$ref": "#/definitions/riskId"
+        },
+        "change": {
+          "$ref": "#/definitions/changeState"
+        },
+        "title": {
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "statement": {
+          "description": "How the change can fail, projected from the single unmarked paragraph or from `data-field=\"statement\"`.",
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "mitigation": {
+          "description": "What holds the risk down, projected from a paragraph marked `data-field=\"mitigation\"`. Required when `response` is `mitigated`, and where the measure does not reach all the way, this is where its extent is stated. An `accepted` risk needs none, and may state here the part of the risk that something does hold down. Absent when the risk carries no such paragraph.",
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "response": {
+          "description": "How the change settled the risk, projected from the `data-response` attribute.\n\nResponse semantics:\n  mitigated  the change holds the risk down, and `mitigation` states what holds it down. How far the measure reaches is stated in that paragraph and is not a value of its own\n  accepted   the change bears the risk as it stands. It needs no mitigation, and its statement and its notes say why it is borne\n\nA risk that declares no response is `mitigated`, because every risk written before this field existed had to state a mitigation, so each keeps its meaning and its validity. The projection always supplies the field, so a consumer never applies the default itself.\n\nThe response is separate from `change`: the change state says what a change does to the risk, and the response says how the risk is answered. Neither is inferred from the other, and the response is not inferred from whether a mitigation is present, because an accepted risk may carry one. See the projection specification, section 4.7.1.",
+          "type": "string",
+          "enum": [
+            "mitigated",
+            "accepted"
+          ],
+          "default": "mitigated"
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/reference"
+          },
+          "default": []
+        },
+        "notes": {
+          "description": "Prose inside the unit that carries no field of its own, projected from paragraphs marked `data-field=\"note\"`. A note keeps explanatory prose addressable without making it normative.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          },
+          "default": []
+        }
+      }
+    },
+    "verification": {
+      "description": "The recorded outcome of checking a requirement or scenario. A verification names what it covers, so at least one reference is required. A partial verification states what its check did not reach; the validator checks that, because this schema keeps to a conservative subset with no conditional composition.",
+      "type": "object",
+      "required": [
+        "unit",
+        "id",
+        "change",
+        "title",
+        "outcome",
+        "references"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "unit": {
+          "type": "string",
+          "const": "verification"
+        },
+        "id": {
+          "$ref": "#/definitions/verificationId"
+        },
+        "change": {
+          "$ref": "#/definitions/changeState"
+        },
+        "title": {
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "outcome": {
+          "description": "What the check found, projected from the `data-outcome` attribute. `partial` means the check ran against the requirement or scenario the verification names, reached part of it, and found that part to hold. A check whose covered part did not hold is `failed`, whatever else it did not reach. A check whose condition, subject, or trigger differs from the one a scenario states did not reach that scenario at all, and is not a partial verification of it.",
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed",
+            "blocked",
+            "not-run",
+            "partial"
+          ]
+        },
+        "method": {
+          "description": "How the check was performed, so a reader can repeat it. Projected from a paragraph marked `data-field=\"method\"`.",
+          "$ref": "#/definitions/nonEmptyText"
+        },
+        "unchecked": {
+          "description": "Each part of the requirement or scenario the check did not reach, projected from every paragraph marked `data-field=\"unchecked\"`, in document order. Required when `outcome` is `partial`, and accepted on every outcome, so that a check that failed or was blocked can state what it never reached. An unmarked paragraph in a verification is a note, not an unchecked part.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          },
+          "default": []
+        },
+        "references": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/reference"
+          }
+        },
+        "notes": {
+          "description": "Prose inside the unit that carries no field of its own, projected from paragraphs marked `data-field=\"note\"`. A note keeps explanatory prose addressable without making it normative.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/nonEmptyText"
+          },
+          "default": []
+        }
+      }
+    },
+    "figureId": {
+      "description": "Identifier of a figure. A figure is not a semantic unit, so `figure-` is not a unit prefix and a figure cannot be the target of a `references` entry. A link may resolve to it.",
+      "type": "string",
+      "pattern": "^figure-[a-z0-9]+(-[a-z0-9]+)*$"
+    }
+  }
+}

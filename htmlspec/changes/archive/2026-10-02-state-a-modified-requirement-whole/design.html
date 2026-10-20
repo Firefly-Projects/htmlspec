@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>State a modified requirement whole</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>State a modified requirement whole</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>State a modified requirement whole</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-02-state-a-modified-requirement-whole/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>See <a href="proposal.html">proposal.md</a> for why. The shape of the current system that the approach depends on:</p>
+          <ul>
+            <li><strong>The vocabulary already expresses a whole statement.</strong> document-schema's "<a href="../../../specs/document-schema/spec.html#req-semantic-units-declare-a-change-state">Semantic units declare a change state</a>" gives every unit, a scenario included, one of <code>added</code>, <code>modified</code>, <code>removed</code>, or <code>unchanged</code>, and a unit with none is <code>unchanged</code>. The model holds a requirement's <code>statements</code> as a list of text and its <code>scenarios</code> as units, each with its own <code>change</code> (<code>crates/htmlspec-parse/src/model.rs</code>, <code>Requirement</code> and <code>Scenario</code>). A scratch specification stating a <code>modified</code> requirement with scenarios <code>unchanged</code>, <code>unchanged</code>, <code>removed</code>, and <code>added</code> validates today and projects exactly those four states (<a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a>, section 5).</li>
+            <li><strong>Nothing reads a restatement against the accepted text.</strong> <code>sync</code> and archival compare identifiers and, for a rename, headings (toolchain-packaging's "<a href="../../../specs/toolchain-packaging/spec.html#req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract">The command surface reports whether a change reached the accepted contract</a>"). The same scratch project shows a partial restatement and a whole one both validating, and both reported as <code>reached</code>.</li>
+            <li><strong>Change states are not "material" when <code>unchanged</code>.</strong> <code>material_states</code> in <code>crates/htmlspec-validate/src/rules/review.rs</code> excludes <code>unchanged</code> and <code>removed</code>. So a scenario restated as <code>unchanged</code> inside a <code>modified</code> requirement raises no stale-reference warning of its own. A reference to a <code>removed</code> scenario is <code>refs/removed-target</code>, as it is today.</li>
+            <li><strong>The merge is instructions, not code.</strong> artifact-kinds' "<a href="specification.html#req-every-synthesis-and-every-contract-update-is-agent-driven">Every synthesis and every contract update is agent-driven</a>" makes the merge an agent's work. What an agent reads is <code>crates/htmlspec-assets/instructions/sync.md</code> and <code>archive.md</code>, served by <code>htmlspec instructions</code> and installed by <code>init</code>. Both tell an agent to apply partial updates today (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 6</a>).</li>
+            <li><strong>OpenSpec 1.13.1 took the same turn.</strong> Its <code>openspec-sync-specs</code> template now says "A MODIFIED block carries the whole requirement". Its <code>validate</code> and <code>archive</code> refuse a MODIFIED block that drops a scenario the main specification holds, matching by scenario name (<code>findMissingCurrentScenarios</code> in <code>dist/core/parsers/requirement-blocks.js</code>). It refused all three of this archive's partial blocks, including the two meant as withdrawals (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 4</a>).</li>
+          </ul>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong></p>
+          <ul>
+            <li>One rule for what a change's specification states about a requirement it modifies, stated in the contract with its reason, and the rejected rule recorded beside it.</li>
+            <li>A withdrawn scenario that is visible in the change's specification, and not inferred from an absence.</li>
+            <li>A merge whose result for a modified requirement is determined by the change's specification alone.</li>
+            <li>Instructions that say the same thing as the contract, in every place an agent reads them.</li>
+          </ul>
+          <p><strong>Non-Goals:</strong></p>
+          <ul>
+            <li><strong>A check.</strong> A single document does not hold the accepted requirement it restates. The comparison belongs to <code>sync</code> and archival, and it is <code>see-a-modification-the-merge-did-not-take</code>'s.</li>
+            <li><strong>Marking changed words inside a statement.</strong> A statement paragraph has no change state. Showing which words moved is <code>mark-the-words-a-modification-changed</code>'s <code>&lt;ins&gt;</code> and <code>&lt;del&gt;</code>.</li>
+            <li><strong>Notes, and the change states an accepted specification carries after a merge.</strong> The contract is silent on both today, for added requirements as well, and nothing compares either.</li>
+            <li><strong>Removed requirements.</strong> A withdrawn requirement is not asked to restate its content.</li>
+            <li><strong>Migration.</strong> Completing a source MODIFIED block from the git record is project-migration's subject.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-a-modified-requirement-is-stated-whole-on-purpose" data-change="added" data-status="accepted" data-refs="scenario-unknown-subcommand scenario-discoverable-help req-a-specification-states-the-settled-contract-as-built scenario-the-contract-read-without-the-change">
+            <h3>1. A modified requirement is stated whole, on purpose <span class="hs-id">decision-a-modified-requirement-is-stated-whole-on-purpose</span></h3>
+            <p>The requirement states every statement and every scenario it will hold once merged. Each scenario carries its own change state. A withdrawn scenario is stated as a unit marked <code>removed</code>, and the merge deletes it. The merge applies the requirement as stated.</p>
+            <p data-field="rationale">This is OpenSpec's schema rule, chosen deliberately and not by default. It is also the rule the archive already follows in 31 of 34 blocks, and the rule OpenSpec 1.13.1 enforces for scenarios.</p>
+            <p data-field="rationale"><strong>Considered: the partial rule, as the contract states it today.</strong> Rejected, for three reasons.</p>
+            <ul>
+              <li>
+                <p data-field="rationale">A scenario left out is either withdrawn or kept, and the text is the same for both. The archive holds both readings in one change on one day: <code>separate-artifact-kinds</code> withdrew "<a href="../2026-08-14-separate-artifact-kinds/specification.html#scenario-status-visible-to-a-reviewer">Status visible to a reviewer</a>" by leaving it out, and kept "<a href="../../../specs/toolchain-packaging/spec.html#scenario-unknown-subcommand">Unknown subcommand</a>" and "<a href="../../../specs/toolchain-packaging/spec.html#scenario-discoverable-help">Discoverable help</a>" after leaving them out.</p>
+              </li>
+              <li>
+                <p data-field="rationale">The merge result cannot be derived from the change's specification. A reader of an archived change cannot read the modified requirement as the change left it without the accepted specification of that day. "<a href="../../../specs/artifact-kinds/spec.html#req-a-specification-states-the-settled-contract-as-built">A specification states the settled contract as built</a>" asks for the opposite in its scenario "<a href="../../../specs/artifact-kinds/spec.html#scenario-the-contract-read-without-the-change">The contract read without the change</a>".</p>
+              </li>
+              <li>
+                <p data-field="rationale">A comparison of a modified requirement with the accepted text cannot mean anything, because a partial restatement always differs from it. That comparison is the next change's whole subject.</p>
+              </li>
+            </ul>
+            <p data-field="rationale"><strong>Considered: the partial rule plus <code>removed</code>.</strong> Here a scenario left out would mean "carried forward", and a withdrawn scenario would be stated as <code>removed</code>. That removes the ambiguity for scenarios, and it is the strongest alternative. Rejected, because it keeps the second and third reasons above, and because it has no answer for a statement. A paragraph is not a unit and carries no change state. A partial restatement of a requirement's statements cannot say which accepted paragraph a stated one replaces, or whether an unstated one is kept. Answering that would need an identity for each paragraph, which is new vocabulary and a contract bump. A whole statement needs none: the statements it states are the statements.</p>
+            <p data-field="rationale"><strong>Considered: OpenSpec 1.13.1's rule exactly, which is whole blocks with every omission refused.</strong> Adopted in substance, with one difference. OpenSpec's Markdown has no change state for a scenario, so a MODIFIED block cannot withdraw a scenario at all: 1.13.1 refused both of this archive's deliberate withdrawals. html-spec can state a withdrawal, and it does.</p>
+            <p data-field="rationale"><strong>Considered: omission means withdrawal</strong>, which is the schema's reading and the one the staged migration's replay first applied (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 3</a>). Rejected. It is how the ambiguity arose. It hides a withdrawn scenario's text from the reviewer that document-schema keeps it present for. And it turns an accidental omission into a silent deletion.</p>
+          </section>
+          <section id="hs-decision-2">
+            <h3>2. The rule is its own requirement</h3>
+            <p>"<a href="specification.html#req-a-change-s-specification-states-a-modified-requirement-whole">A change's specification states a modified requirement whole</a>" is added to artifact-kinds. "<a href="specification.html#req-every-synthesis-and-every-contract-update-is-agent-driven">Every synthesis and every contract update is agent-driven</a>" loses its partial paragraph and gains two sentences: the merge preserves what the change does not state, and applies a modified requirement as stated.</p>
+            <p><strong>Considered: folding the rule into "<a href="specification.html#req-every-synthesis-and-every-contract-update-is-agent-driven">Every synthesis and every contract update is agent-driven</a>"</strong>, where the partial clause sat. That keeps the reversal in the place a reader last saw the rule. It is rejected because the two are different subjects. That requirement is about who performs the four operations. This rule is about what a change's specification must contain, and it needs six scenarios of its own. The partial clause sat in the wrong requirement, as merge advice that actually governed what a specification may omit, which is part of why it contradicted OpenSpec's schema unnoticed. A requirement of its own gives <code>see-a-modification-the-merge-did-not-take</code> a heading to cite. It also keeps the overlap with <code>mark-the-words-a-modification-changed</code>, which modifies the same requirement later, to the one paragraph replaced here.</p>
+            <p><strong>Considered: folding it into "<a href="../../../specs/artifact-kinds/spec.html#req-a-specification-states-the-settled-contract-as-built">A specification states the settled contract as built</a>".</strong> Rejected. That requirement covers every specification, accepted ones included, and a change state means nothing in an accepted specification.</p>
+            <p>The scenario "<a href="specification.html#scenario-merging-a-scenario-into-an-existing-requirement">Merging a scenario into an existing requirement</a>" keeps its name and changes its outcome. OpenSpec 1.13.1 refuses a MODIFIED block that drops an accepted scenario's name, so this change's own delta could not withdraw it by omission. Keeping the example and changing the answer also shows the reversal plainly.</p>
+          </section>
+          <section class="decision" id="decision-an-accepted-scenario-left-out-is-reported-never-resolved" data-change="added" data-status="accepted" data-refs="scenario-unknown-subcommand scenario-discoverable-help req-archival-assesses-the-merge-and-never-performs-it">
+            <h3>3. An accepted scenario left out is reported, never resolved <span class="hs-id">decision-an-accepted-scenario-left-out-is-reported-never-resolved</span></h3>
+            <p>Where a modified requirement neither states an accepted scenario nor marks it <code>removed</code>, the merging agent reports it to the contributor, names the scenario, and does neither.</p>
+            <p data-field="rationale"><strong>Considered: default to keeping it.</strong> Rejected. It is wrong for "<a href="../2026-08-14-separate-artifact-kinds/specification.html#scenario-status-visible-to-a-reviewer">Status visible to a reviewer</a>" and "<a href="../2026-08-21-distinguish-command-names-from-skill-names/specification.html#scenario-one-identity-per-workflow">One identity per workflow</a>", which were withdrawn.</p>
+            <p data-field="rationale"><strong>Considered: default to deleting it.</strong> Rejected. It is wrong for "<a href="../../../specs/toolchain-packaging/spec.html#scenario-unknown-subcommand">Unknown subcommand</a>" and "<a href="../../../specs/toolchain-packaging/spec.html#scenario-discoverable-help">Discoverable help</a>", which were kept.</p>
+            <p data-field="rationale">Each default repeats a recorded error, and only the author knows which was meant. This is the same division "<a href="../../../specs/toolchain-packaging/spec.html#req-archival-assesses-the-merge-and-never-performs-it">Archival assesses the merge and never performs it</a>" draws for an absent requirement: whether it was withdrawn or omitted by mistake is a judgment for an agent.</p>
+          </section>
+          <section class="decision" id="decision-a-stated-scenario-carries-its-accepted-counterpart-s-identifier" data-change="added" data-status="accepted" data-refs="req-a-rename-reaches-the-accepted-contract-as-a-new-heading-on-the-same-identifier">
+            <h3>4. A stated scenario carries its accepted counterpart's identifier <span class="hs-id">decision-a-stated-scenario-carries-its-accepted-counterpart-s-identifier</span></h3>
+            <p>A scenario the change carries forward, alters, or withdraws keeps the identifier the accepted scenario has. That identifier is what makes the stated scenario and the accepted one the same scenario.</p>
+            <p data-field="rationale"><strong>Considered: matching by heading</strong>, as OpenSpec does. Rejected. A change that alters a scenario's heading would then look like it withdrew one scenario and added another. The identity question was settled the same way for requirements: "<a href="../../../specs/artifact-kinds/spec.html#req-a-rename-reaches-the-accepted-contract-as-a-new-heading-on-the-same-identifier">A rename reaches the accepted contract as a new heading on the same identifier</a>" finds the accepted requirement by identifier, never by heading. <strong>Confirm at review.</strong> This sentence goes one step past the rule itself. It is included because the next change's comparison needs to know which accepted scenario a stated one continues. That change could decide it instead, and the sentence would then move there.</p>
+            <p data-field="note">Migration note: this decision left itself to review, and <a href="tasks.html#task-6-1">task 6.1</a> records it settled. The contributor kept the sentence in this change, and the change's specification states it in "A change's specification states a modified requirement whole". The record gives the reason: the instructions this change writes already match each stated scenario to its accepted counterpart by identifier, so moving the sentence to <code>see-a-modification-the-merge-did-not-take</code> would have left them resting on a rule the contract did not yet state.</p>
+          </section>
+          <section id="hs-decision-5">
+            <h3>5. No validation rule</h3>
+            <p><strong>Considered: a <code>validate</code> rule that reads the accepted specifications and reports a restatement that is not whole.</strong> Rejected. A rule in <code>validate</code> would make a document's validity depend on time. An archived change's modified requirement matches the accepted text only until a later change modifies the same requirement. After that, the rule would report the archived change as incomplete, although nothing in it changed. The question "did this change state the requirement whole?" is asked at the moment the change is merged, and <code>sync</code> and archival are the operations that run then. Adding the comparison there is <code>see-a-modification-the-merge-did-not-take</code>'s subject.</p>
+          </section>
+          <section id="hs-decision-6">
+            <h3>6. The instructions are the implementation</h3>
+            <p>Nothing in the program changes. The rule is carried out by the agent that writes a specification at archival and merges it, so the edits are to <code>sync.md</code> and <code>archive.md</code>:</p>
+            <ul>
+              <li><code>sync.md</code> drops "Apply partial updates", and adds a section on merging a modified requirement. That section says to work from the change's specification, because a modified requirement's identifier is already held and so it appears in <code>reached</code> whether or not its text was merged. It says what applying "as stated" means, to report a scenario marked <code>unchanged</code> whose text differs from the accepted one, and to report an accepted scenario that is neither stated nor marked <code>removed</code>. The rename step's "as a partial update like any other" becomes "as the change states it".</li>
+              <li><code>archive.md</code> step 2 gains how to state a modified requirement, with a short example beside the one for a rename. Step 5 drops its quotation of OpenSpec's partial guidance and the bullet "must not restate the requirement".</li>
+            </ul>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, <code>sync.md</code> does more than report in both cases this decision names: it holds the whole modified requirement unmerged until the contributor answers, and says the answer belongs in the change's specification. <code>archive.md</code> step 5 also stops before archiving while a modified requirement is held. <a href="tasks.html#task-3-2">Task 3.2</a>'s deviation and <a href="tasks.html#task-6-1">task 6.1</a> record what was built, and <a href="evidence/what-the-implementation-revealed-2026-10-02.md"><code>evidence/what-the-implementation-revealed-2026-10-02.md</code></a> records why.</p>
+            </aside>
+            <p><strong>Considered: an example modified requirement in <code>assets/template-specification.html</code>.</strong> Rejected. The template's example units are placeholders that <code>review/example-content</code> asks the author to replace. A modified-requirement example would be one more to delete in every new specification, including those of changes that modify nothing. The template is also sha256-pinned in <code>assets/vendor.lock.json</code>, so editing it moves a pin for no gain. The guidance belongs where the specification is written, which is <code>archive.md</code> step 2.</p>
+            <p><strong>Considered: a <code>## MODIFIED Requirements</code> row in <code>migrate.md</code>.</strong> Rejected here. A migrated specification is bound by the new requirement like any other. But completing a source block that left a scenario out means reading the git record of the source's merge, and that is an obligation project-migration does not state today. It belongs to a change whose subject is migration.</p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>[A whole restatement is longer, and a reader must find what changed in it.]</strong> → Each scenario's change state says which scenarios moved. For statements, <code>mark-the-words-a-modification-changed</code> marks the changed words and <code>show-what-a-modification-changed</code> gives the diff. Until then, the change's proposal and design say what moved, as they do today.</li>
+            <li><strong>[A stale restatement reverts another change's edit.]</strong> A change written before another change modified the same requirement restates the old text. Merged as stated, it silently undoes the other change. Under the partial rule it overwrote only what it mentioned. → A scenario marked <code>unchanged</code> whose text differs from the accepted one is a visible mismatch, and <code>sync.md</code> tells the merging agent to report it rather than apply it. Statements have no such mark, so this project's overlap convention, a "1.0 Re-base" task in the later change, still carries that case. <code>see-a-modification-the-merge-did-not-take</code> then reports any difference at <code>sync</code> and archival. OpenSpec 1.13.1 carries the same risk, because its archive replaces the whole block.</li>
+            <li><strong>[An agent following this repository's installed OpenSpec skills still applies the partial rule.]</strong> → They are OpenSpec 1.7.0's generated files and govern this repository's OpenSpec-form work, not the product. This project's deltas are now written under a convention that restates a modified requirement whole, and OpenSpec 1.13.1's <code>validate --strict</code> refuses one that drops a scenario.</li>
+            <li><strong>[Documents in other projects state a modified requirement partially.]</strong> → They stay valid, because no rule is added. Reporting the difference at <code>sync</code> and archival is <code>see-a-modification-the-merge-did-not-take</code>'s subject.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p>No document changes meaning, and none stops validating. The document contract is untouched. No unit, field, attribute, or projection rule is added or reshaped, so under the bump table in <code>crates/htmlspec-schema/CHANGELOG.md</code> the contract version stays <code>0.3.0</code>, the version <code>reject-change-markup-inside-a-unit</code> set when it archived. <a href="evidence/the-measurement-repeated-2026-10-02.md">This design first said <code>0.2.0</code></a>, because it was written before that change landed. The new conformance fixture pins behavior the contract already has. Fixtures have been added before without moving the version: <code>0ce5ad5</code>, <code>16df91e</code>, and <code>5ea25e7</code> each added conformance fixtures, and the changelog has no entry for any of them.</p>
+          <p>The release is expected to be <code>0.20.0</code>, the minor increment after <code>reject-change-markup-inside-a-unit</code>'s <code>0.19.0</code>. A minor increment fits because an accepted requirement is added and the obligations on a change's specification change. A patch is arguable, because no program behavior changes. The contributor confirms the increment at the release task.</p>
+          <p>Rollback is a revert. It restores the partial clause and the instructions, and leaves every document as it was.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

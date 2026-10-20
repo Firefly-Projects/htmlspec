@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Record a renamed requirement</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Record a renamed requirement</h1>
+        <p>This change made the contract let a requirement state the heading it replaced, in a <code>renamed-from</code> paragraph kept separate from its change state (<em>A renamed requirement states the heading it replaced</em>), and made a merged rename reach the accepted contract as a new heading on the same identifier (<em>A rename reaches the accepted contract as a new heading on the same identifier</em>). It made <code>sync</code> and archival compare a renamed requirement's heading name with the accepted one and report a rename the accepted specifications have not taken (<em>The command surface reports whether a change reached the accepted contract</em>, <em>Archival assesses the merge and never performs it</em>). It made migration carry a source rename as the heading the requirement replaced, under the one identifier a chain of renames keeps (<em>A source rename is carried as the heading the requirement replaced</em>, <em>Identifiers are derived once and every reference resolves through that derivation</em>).</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Record a renamed requirement</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-26-record-a-renamed-requirement/specs/artifact-kinds/spec.md</code><br><code>openspec/changes/archive/2026-09-26-record-a-renamed-requirement/specs/document-schema/spec.md</code><br><code>openspec/changes/archive/2026-09-26-record-a-renamed-requirement/specs/project-migration/spec.md</code><br><code>openspec/changes/archive/2026-09-26-record-a-renamed-requirement/specs/toolchain-packaging/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-document-schema">document-schema</a></li>
+          <li><a href="#hs-artifact-kinds">artifact-kinds</a></li>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-project-migration">project-migration</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-document-schema">
+          <h2>document-schema</h2>
+          <section class="requirement" id="req-a-renamed-requirement-states-the-heading-it-replaced" data-change="added">
+            <h3>A renamed requirement states the heading it replaced <span class="hs-id">req-a-renamed-requirement-states-the-heading-it-replaced</span></h3>
+            <p>A requirement unit SHALL be able to state the heading it replaced, in one paragraph marked <code>data-field="renamed-from"</code> whose text is that previous heading. The requirement's own heading SHALL be its current name. The pair is OpenSpec's <code>FROM:</code>/<code>TO:</code> rename, expressed on the unit.</p>
+            <p>A rename SHALL be stated separately from the unit's change state. The change state SHALL describe what happened to the requirement's statements and scenarios, and the <code>renamed-from</code> paragraph SHALL describe what happened to its heading. A requirement that is renamed and rewritten in one change SHALL carry <code>data-change="modified"</code> and a <code>renamed-from</code> paragraph. A requirement that is renamed and otherwise untouched SHALL carry <code>data-change="unchanged"</code> and a <code>renamed-from</code> paragraph. Neither fact SHALL be inferred from the other.</p>
+            <p>The reason is that a rename and a modification are different facts, and a change can make either without the other. A single value that meant "renamed" would force a requirement that was renamed and rewritten to give up one of the two, and both of this project's own renames are that case.</p>
+            <p>A renamed requirement SHALL keep its identifier, as "Every semantic unit has a stable unique identifier" already requires. The <code>renamed-from</code> paragraph is what lets a reader who knows the previous heading find the requirement under its new one.</p>
+            <p>A <code>renamed-from</code> paragraph SHALL NOT supply the requirement's normative statement, and its text SHALL project into the requirement's <code>renamedFrom</code> field rather than into its statements.</p>
+            <p>The following SHALL make a document invalid:</p>
+            <ul>
+              <li>
+                <p>a <code>renamed-from</code> paragraph in any unit other than a requirement;</p>
+              </li>
+              <li>
+                <p>a <code>renamed-from</code> paragraph in a requirement whose change state is <code>added</code>, because a requirement this change introduces had no previous heading;</p>
+              </li>
+              <li>
+                <p>a <code>renamed-from</code> paragraph in a requirement whose change state is <code>removed</code>, because a withdrawn requirement is not also renamed, and OpenSpec rejects a rename and a removal of one requirement;</p>
+              </li>
+              <li>
+                <p>more than one <code>renamed-from</code> paragraph in one requirement;</p>
+              </li>
+              <li>
+                <p>a <code>renamed-from</code> paragraph whose text is empty after whitespace normalization;</p>
+              </li>
+              <li>
+                <p>a <code>renamed-from</code> paragraph whose text equals the requirement's own heading after whitespace normalization, because a rename to the same name renames nothing.</p>
+              </li>
+            </ul>
+            <p>A requirement's heading, for every comparison a rename makes, SHALL be its heading name: its projected title with the requirement's own identifier removed from the end, then trimmed. A heading commonly shows its identifier beside the name (<code>&lt;span class="hs-id"&gt;req-x&lt;/span&gt;</code>), and the projected title carries that text. A previous heading is stated as the name a reader read, without the identifier. So a comparison with the title itself would never find the two equal.</p>
+            <article class="scenario" id="scenario-a-requirement-renamed-and-rewritten" data-change="added">
+              <h4>A requirement renamed and rewritten</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement carries <code>data-change="modified"</code>, a new heading, and a <code>data-field="renamed-from"</code> paragraph naming its previous heading</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, and a consumer reads both that the content changed and the heading it replaced</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-renamed-and-otherwise-untouched" data-change="added">
+              <h4>A requirement renamed and otherwise untouched</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement carries <code>data-change="unchanged"</code> and a <code>data-field="renamed-from"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, and the requirement's statements and scenarios are understood as carried forward untouched under a new heading</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-previous-heading-is-a-field-not-a-statement" data-change="added">
+              <h4>The previous heading is a field, not a statement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement carries a <code>renamed-from</code> paragraph and one unmarked paragraph</dd>
+                <dt>Then</dt>
+                <dd>its statements are the unmarked paragraph alone, and its <code>renamedFrom</code> field is the previous heading</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-on-a-new-requirement" data-change="added">
+              <h4>A rename on a new requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement carrying <code>data-change="added"</code> contains a <code>renamed-from</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because a requirement this change introduces had no previous heading</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-on-a-withdrawn-requirement" data-change="added">
+              <h4>A rename on a withdrawn requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement carrying <code>data-change="removed"</code> contains a <code>renamed-from</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-outside-a-requirement" data-change="added">
+              <h4>A rename outside a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a scenario, decision, task, evidence, risk, or verification unit contains a <code>renamed-from</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-previous-headings" data-change="added">
+              <h4>Two previous headings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>one requirement contains two <code>renamed-from</code> paragraphs</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because one rename replaces one heading</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-to-the-same-name" data-change="added">
+              <h4>A rename to the same name</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's <code>renamed-from</code> paragraph states the requirement's own heading</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-heading-that-shows-its-identifier" data-change="added">
+              <h4>A heading that shows its identifier</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's heading is <code>The name &lt;span class="hs-id"&gt;req-x&lt;/span&gt;</code> and its <code>renamed-from</code> paragraph states <code>The name</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because the identifier shown beside a heading is not part of its name</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-with-no-rename" data-change="added">
+              <h4>A requirement with no rename</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement carries no <code>renamed-from</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>its <code>renamedFrom</code> field is absent, and the requirement means exactly what it meant before this capability existed</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-artifact-kinds">
+          <h2>artifact-kinds</h2>
+          <section class="requirement" id="req-a-rename-reaches-the-accepted-contract-as-a-new-heading-on-the-same-identifier" data-change="added">
+            <h3>A rename reaches the accepted contract as a new heading on the same identifier <span class="hs-id">req-a-rename-reaches-the-accepted-contract-as-a-new-heading-on-the-same-identifier</span></h3>
+            <p>Where a change's specification states that a requirement replaced a previous heading, applying that specification's contract to the project's accepted specifications SHALL give the accepted requirement carrying that identifier the new heading, and SHALL NOT change its identifier.</p>
+            <p>The accepted specification SHALL NOT carry the <code>renamed-from</code> paragraph. The accepted contract states what the project requires now, under the name it uses now, and the history of a heading belongs to the archived change that renamed it. This is the arrangement OpenSpec keeps: a main specification holds no RENAMED section, and the rename survives in the change that made it.</p>
+            <p>Where the change also modified the requirement, the merge SHALL apply the modification to the same accepted requirement. The rename and the modification SHALL be applied as two facts about one requirement, and neither SHALL be applied as a removal of the old requirement followed by the addition of a new one, because that would regenerate an identifier the schema requires to be stable.</p>
+            <p>Where the accepted requirement carrying that identifier already has the new heading, applying the rename SHALL change nothing. A rename applied before archival, by the operation that applies a change's contract, is the ordinary case, and archival SHALL NOT treat it as a conflict.</p>
+            <p>The merge remains the agent's work under "Every synthesis and every contract update is agent-driven". This requirement states what a correctly applied rename leaves behind, not a program that applies it.</p>
+            <article class="scenario" id="scenario-a-rename-applied-to-the-accepted-contract" data-change="added">
+              <h4>A rename applied to the accepted contract</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states requirement <code>req-x</code> under a new heading, with a <code>renamed-from</code> paragraph naming the heading the accepted specification holds</dd>
+                <dt>When</dt>
+                <dd>its contract is applied to the accepted specifications</dd>
+                <dt>Then</dt>
+                <dd>the accepted requirement <code>req-x</code> carries the new heading, keeps its identifier, and carries no <code>renamed-from</code> paragraph</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-and-a-modification-in-one-change" data-change="added">
+              <h4>A rename and a modification in one change</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change that renames and rewrites one requirement</dd>
+                <dt>When</dt>
+                <dd>its contract is applied</dd>
+                <dt>Then</dt>
+                <dd>the one accepted requirement takes both the new heading and the new content, and no requirement is removed or added</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-already-applied" data-change="added">
+              <h4>A rename already applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted requirement that already carries the heading a change renames it to</dd>
+                <dt>When</dt>
+                <dd>the change's contract is applied again</dd>
+                <dt>Then</dt>
+                <dd>nothing changes, and nothing is reported as a conflict</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-reaches-the-accepted-contract-as-a-new-heading-on-the-same-identifier-the-history-is-read-from-the-archive" data-change="added">
+              <h4>The history is read from the archive</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reader wants to know what an accepted requirement was previously called</dd>
+                <dt>Then</dt>
+                <dd>the archived change that renamed it states the previous heading, and the accepted specification does not</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-archival-assesses-the-merge-and-never-performs-it" data-change="modified">
+            <h3>Archival assesses the merge and never performs it <span class="hs-id">req-archival-assesses-the-merge-and-never-performs-it</span></h3>
+            <p>Archival SHALL determine whether the change's contract reached the accepted specifications, and SHALL do so by comparing requirement identifiers<ins>, and for a renamed requirement its heading,</ins> rather than by reading requirements for meaning.<ins> This SHALL be the comparison the reporting operation makes, derived from one source, including its treatment of a rename the accepted specifications have not taken.</ins></p>
+            <p>Archival SHALL NOT edit an accepted specification, SHALL NOT propose the text of a merge, and SHALL NOT treat an absent identifier as an error. Whether an absent requirement was withdrawn deliberately or omitted by mistake is a judgment, and <code>artifact-kinds</code> reserves it for an agent.</p>
+            <p><strong>Where the assessment finds the contract has not reached the accepted specifications, archival SHALL report that the change has not been synced and SHALL name the operation that reports what remains.</strong> The report SHALL name the operation as it is invoked, rather than describing it. The prior wording told a contributor to apply the change's contract at a time when no operation did so, and a report that names a step without naming the command behind it leaves the reader searching the command surface for a name they must guess.</p>
+            <p>Where archival asks whether to proceed over its findings, and the change has not been synced, <strong>the question SHALL say so and SHALL state that declining leaves the project unchanged.</strong> A question that asks only whether to archive anyway invites the answer that archives a change whose contract never reached the project's specifications; a contributor deciding that should be told what proceeding skips and that declining costs them nothing.</p>
+            <p>The structured payload SHALL state whether the change has not been synced, as a value rather than as something derivable from the reported identifiers. An agent driving archival cannot answer the question a contributor is asked, so the condition that question is about SHALL be readable without inference.</p>
+            <p>Archival SHALL NOT perform the merge it names, and the report SHALL NOT be taken as authority to. This is the same prohibition stated above, restated because naming an operation is where a reader would expect an offer to run it.</p>
+            <p>Where the assessment finds the contract has reached the accepted specifications, archival SHALL NOT report anything about syncing. A report that appears whether or not it applies is one a reader learns to pass over, and the occasion it mattered would be passed over with it.</p>
+            <article class="scenario" id="scenario-the-assessment-is-a-comparison-of-identifiers" data-change="unchanged">
+              <h4>The assessment is a comparison of identifiers</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival assesses whether a merge occurred</dd>
+                <dt>Then</dt>
+                <dd>it compares the identifiers the change's specification states against those the accepted specifications hold, and reads neither for meaning</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archival-does-not-write-the-accepted-specifications" data-change="unchanged">
+              <h4>Archival does not write the accepted specifications</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival completes</dd>
+                <dt>Then</dt>
+                <dd>no accepted specification was modified by the program</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-contract-has-not-been-synced" data-change="unchanged">
+              <h4>A change whose contract has not been synced</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change stating a requirement no accepted specification holds</dd>
+                <dt>When</dt>
+                <dd>archival reports its findings</dd>
+                <dt>Then</dt>
+                <dd>it reports that the change has not been synced and names the operation that reports what remains, as it is invoked</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-question-asked-about-an-unsynced-change" data-change="unchanged">
+              <h4>The question asked about an unsynced change</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose contract has not reached the accepted specifications</dd>
+                <dt>When</dt>
+                <dd>archival asks whether to proceed over its findings</dd>
+                <dt>Then</dt>
+                <dd>the question states that the change has not been synced and that declining leaves the project unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-contract-was-applied" data-change="unchanged">
+              <h4>A change whose contract was applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change every one of whose stated requirements an accepted specification holds</dd>
+                <dt>When</dt>
+                <dd>archival reports its findings</dd>
+                <dt>Then</dt>
+                <dd>nothing about syncing is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-agent-reads-the-condition-rather-than-inferring-it" data-change="unchanged">
+              <h4>An agent reads the condition rather than inferring it</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival emits its structured payload</dd>
+                <dt>Then</dt>
+                <dd>whether the change has not been synced is stated as a value in the payload</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-only-unapplied-work-is-a-rename" data-change="added">
+              <h4>A change whose only unapplied work is a rename</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change every one of whose stated identifiers an accepted specification holds, one of which the change renames and the accepted specification still holds under the previous heading</dd>
+                <dt>When</dt>
+                <dd>archival reports its findings</dd>
+                <dt>Then</dt>
+                <dd>it reports that the change has not been synced, names the untaken rename, and names the operation that reports what remains</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract" data-change="modified">
+            <h3>The command surface reports whether a change reached the accepted contract <span class="hs-id">req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract</span></h3>
+            <p>The command surface SHALL provide an operation that reports, for one change, whether the requirements its specification states have reached the project's accepted specifications. The report SHALL be available as a structured payload.</p>
+            <p>The operation SHALL determine this by comparing requirement identifiers, <ins>and, for a renamed requirement, headings, </ins>and SHALL read neither the change's specification nor the accepted specifications for meaning. This is the same comparison archival makes, and both SHALL derive it from one source, so that a contributor who runs the operation and the archival that follows cannot disagree about which requirements reached the contract.</p>
+            <p>The report SHALL distinguish three sets: the requirement identifiers the change states, those the accepted specifications already hold, and those absent from them. The third is derivable from the first two and SHALL be reported anyway, because it is the answer the operation exists to give.</p>
+            <ins>
+              <p><strong>A renamed requirement SHALL be compared by its heading as well as its identifier.</strong> A rename keeps the requirement's identifier, so a comparison of identifiers alone reports a rename the accepted specifications never took as reached. Where a requirement the change states carries a <code>renamed-from</code> paragraph, and the accepted specifications hold its identifier, the operation SHALL compare that requirement's heading with the heading of the accepted requirement carrying the same identifier. Where they differ, the requirement SHALL be reported in a fourth set: renames the accepted specifications have not taken. The comparison SHALL be of the two heading names — each heading without the identifier shown beside it, as document-schema's "A renamed requirement states the heading it replaced" defines — after whitespace normalization, which is an exact comparison and not a reading for meaning.</p>
+            </ins>
+            <ins>
+              <p>A renamed requirement whose identifier the accepted specifications do not hold SHALL be reported as absent, as any other requirement is, and SHALL NOT also be reported as an untaken rename. A requirement in the fourth set SHALL be counted as not having reached the contract, so a change whose only unapplied work is a rename is reported as not synced.</p>
+            </ins>
+            <p><strong>The operation SHALL NOT modify an accepted specification, and SHALL NOT propose the text of a merge.</strong> Deciding which accepted requirement a scenario belongs under is judgment, and <code>artifact-kinds</code> reserves it for an agent. This prohibition is stated rather than left implied: the operation carries OpenSpec's name for it, that name reads like an operation that writes, and a reader who assumes it does would be assuming the program edits the project's contract unattended.</p>
+            <p>An absent requirement SHALL be a finding and not an error, and the operation SHALL succeed while any remain. A change mid-implementation legitimately states requirements that have not reached the contract, and a requirement withdrawn deliberately is absent permanently; an operation that failed on either would fail on the normal state of the work it is meant to be run during.</p>
+            <p>The operation SHALL refuse on a change that cannot be resolved, on an absent specification artifact, and on a specification that does not validate. A comparison made against an invalid contract has no meaning, and reporting it as though it did is worse than declining to report.</p>
+            <article class="scenario" id="scenario-a-change-whose-contract-has-not-been-applied" data-change="unchanged">
+              <h4>A change whose contract has not been applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states a requirement that no accepted specification holds</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd>the requirement is named as absent, the operation succeeds, and no accepted specification is modified</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-contract-has-been-applied" data-change="unchanged">
+              <h4>A change whose contract has been applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change every one of whose stated requirements appears in an accepted specification</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd>the absent set is empty</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-comparison-is-of-identifiers" data-change="unchanged">
+              <h4>The comparison is of identifiers</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operation determines whether a requirement reached the contract</dd>
+                <dt>Then</dt>
+                <dd>it compares identifiers, and reads neither the change's specification nor the accepted specifications for meaning</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-operation-and-archival-agree" data-change="unchanged">
+              <h4>The operation and archival agree</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival reports that a change states requirements no accepted specification holds</dd>
+                <dt>Then</dt>
+                <dd>the identifiers it names are the identifiers the operation reports as absent for that change</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-structured-report" data-change="modified">
+              <h4>A structured report</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested</dd>
+                <dt>Then</dt>
+                <dd>the stated, accepted, and absent identifier sets<ins>, and the untaken renames,</ins> are emitted as a payload</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-command-surface-reports-whether-a-change-reached-the-accepted-contract-an-invalid-specification" data-change="unchanged">
+              <h4>An invalid specification</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification does not validate</dd>
+                <dt>When</dt>
+                <dd>the operation is run against it</dd>
+                <dt>Then</dt>
+                <dd>it refuses and reports why, and reports no comparison</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-accepted-specifications-are-never-written" data-change="unchanged">
+              <h4>The accepted specifications are never written</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operation completes, for any change and any outcome</dd>
+                <dt>Then</dt>
+                <dd>no accepted specification was modified by the program</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-the-accepted-specifications-have-not-taken" data-change="added">
+              <h4>A rename the accepted specifications have not taken</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states <code>req-x</code> under a new heading with a <code>renamed-from</code> paragraph, and an accepted specification holding <code>req-x</code> under the previous heading</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is reported as a rename the accepted specifications have not taken, not as reached, and the operation succeeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-the-accepted-specifications-have-taken" data-change="added">
+              <h4>A rename the accepted specifications have taken</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted specification holding <code>req-x</code> under the heading the change renames it to</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd><code>req-x</code> is reported as reached and in no other set</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-renamed-requirement-whose-identifier-is-not-held" data-change="added">
+              <h4>A renamed requirement whose identifier is not held</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change stating a renamed requirement whose identifier no accepted specification holds</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd>the requirement is reported as absent and not as an untaken rename</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-structured-report-carries-the-untaken-renames" data-change="added">
+              <h4>A structured report carries the untaken renames</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested</dd>
+                <dt>Then</dt>
+                <dd>the untaken renames are emitted as their own set, each naming the identifier, the heading the change states, and the heading the accepted specification holds</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-project-migration">
+          <h2>project-migration</h2>
+          <section class="requirement" id="req-a-source-rename-is-carried-as-the-heading-the-requirement-replaced" data-change="added">
+            <h3>A source rename is carried as the heading the requirement replaced <span class="hs-id">req-a-source-rename-is-carried-as-the-heading-the-requirement-replaced</span></h3>
+            <p>Where a source delta carries a <code>## RENAMED Requirements</code> section, migration SHALL carry each <code>FROM:</code>/<code>TO:</code> pair into the migrated change's specification as the renamed requirement's <code>renamed-from</code> paragraph, stating the <code>FROM:</code> heading, on the requirement whose heading is the <code>TO:</code> heading.</p>
+            <p>The requirement's change state SHALL be taken from the rest of the delta and not from the rename. Where the same delta also restates the requirement under its <code>MODIFIED Requirements</code> section — which is how OpenSpec records a rename and a rewrite together, the <code>MODIFIED</code> block naming the new heading — the requirement SHALL carry <code>data-change="modified"</code>. Where the delta renames the requirement and says nothing else about it, the requirement SHALL carry <code>data-change="unchanged"</code>, and its statements and scenarios SHALL be those the requirement held before the rename.</p>
+            <p>Any prose the source's RENAMED section carried beside its pairs — an explanation of why the heading changed — SHALL be carried into the migrated specification rather than dropped, because it is the author's reason for the rename and no field holds it.</p>
+            <p>A rename SHALL NOT be recorded as an open question once the destination can express it. The requirement "A source distinction the destination cannot express is recorded as open, not mapped to the nearest state" governs distinctions the destination has no value for, and a rename is no longer one.</p>
+            <article class="scenario" id="scenario-a-rename-with-a-rewrite" data-change="added">
+              <h4>A rename with a rewrite</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a source delta that renames a requirement in <code>## RENAMED Requirements</code> and restates it under the new heading in <code>## MODIFIED Requirements</code></dd>
+                <dt>When</dt>
+                <dd>the change is migrated</dd>
+                <dt>Then</dt>
+                <dd>the migrated requirement carries the new heading, <code>data-change="modified"</code>, the rewritten content, and a <code>renamed-from</code> paragraph stating the previous heading</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-alone" data-change="added">
+              <h4>A rename alone</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a source delta that renames a requirement and states nothing else about it</dd>
+                <dt>When</dt>
+                <dd>the change is migrated</dd>
+                <dt>Then</dt>
+                <dd>the migrated requirement carries the new heading, <code>data-change="unchanged"</code>, the content it held before, and a <code>renamed-from</code> paragraph</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-author-s-reason-for-a-rename" data-change="added">
+              <h4>The author's reason for a rename</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a RENAMED section carrying a paragraph that explains why the heading changed</dd>
+                <dt>When</dt>
+                <dd>the change is migrated</dd>
+                <dt>Then</dt>
+                <dd>that paragraph appears in the migrated specification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-is-not-an-open-question" data-change="added">
+              <h4>A rename is not an open question</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a migration plan accounts for a delta carrying a RENAMED section</dd>
+                <dt>Then</dt>
+                <dd>the plan records the rename's destination as a <code>renamed-from</code> paragraph, not as an open question</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-source-distinction-the-destination-cannot-express-is-recorded-as-open-not-mapped-to-the-nearest-state" data-change="modified">
+            <h3>A source distinction the destination cannot express is recorded as open, not mapped to the nearest state <span class="hs-id">req-a-source-distinction-the-destination-cannot-express-is-recorded-as-open-not-mapped-to-the-nearest-state</span></h3>
+            <p>Where a source entity carries a distinction the destination's contract has no value for, migration SHALL record it as an open question and SHALL name the change that would settle it. Migration SHALL NOT map the distinction onto the nearest available value.</p>
+            <p>The nearest available value is the tempting choice because it validates. A distinction mapped onto it is indistinguishable, afterwards, from a source that never made the distinction — so the information is not merely lost but unrecoverable, and no check can report it because the result conforms.</p>
+            <p>Settling the question instead SHALL be out of scope for a migration. Adding a value to the destination's vocabulary reaches validation, formatting, and presentation, and a migration decides it in bulk inside a change whose subject is something else. This is the same reason migration does not invent a layout where the contract is silent.</p>
+            <p>The plan SHALL record, for each such entity, what the source stated, that the destination has no value for it, and what migration did instead.</p>
+            <article class="scenario" id="scenario-a-change-state-the-destination-s-vocabulary-lacks" data-change="modified">
+              <h4>A change state the destination's vocabulary lacks</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a source <del>change recording that a requirement was renamed</del><ins>entity recording a distinction</ins>, and a destination whose change-state vocabulary has no value for <del>a rename</del><ins>it</ins></dd>
+                <dt>When</dt>
+                <dd>the <del>change</del><ins>entity</ins> is migrated</dd>
+                <dt>Then</dt>
+                <dd>the plan records <del>the rename</del><ins>what the source stated</ins>, records that the destination has no <del>state</del><ins>value</ins> for it, and names the change that would add one</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-nearest-state-is-not-substituted-silently" data-change="unchanged">
+              <h4>The nearest state is not substituted silently</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a source distinction has no destination value</dd>
+                <dt>Then</dt>
+                <dd>migration does not record it as the nearest available value and leave the plan silent, because the result would be indistinguishable from a source that never made the distinction</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-vocabulary-is-not-extended-by-the-migration" data-change="unchanged">
+              <h4>The vocabulary is not extended by the migration</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>migration finds a distinction the destination's vocabulary cannot express</dd>
+                <dt>Then</dt>
+                <dd>migration does not add a value to that vocabulary, and names the change that would</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation" data-change="modified">
+            <h3>Identifiers are derived once and every reference resolves through that derivation <span class="hs-id">req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation</span></h3>
+            <p>Migration SHALL derive each requirement's identifier once, and every reference to that requirement anywhere in the migrated project SHALL use the derived identifier. The derivation SHALL be recorded in the plan.</p>
+            <p>Deriving independently at each site produces different identifiers for one obligation, each locally valid, so nothing reports the divergence and cross-references silently fail to resolve.</p>
+            <p>The derivation SHALL be recorded against the source document that stated the heading, rather than against the heading alone. A source project can state one continuing obligation under different headings in different changes, because a change may rename a requirement, and each change's specification states what that change established rather than what the project later called it. A derivation keyed on the heading alone would either merge those statements — misrepresenting every change but the last — or report collisions where the source is consistent.</p>
+            <ins>
+              <p><strong>Where the source records a rename, the renamed requirement SHALL keep the identifier it already held.</strong> A requirement named in a source <code>## RENAMED Requirements</code> section is one obligation under a new heading, and document-schema's "Every semantic unit has a stable unique identifier" requires a renamed requirement to keep its identifier. So its identifier SHALL be the one derived from the heading under which the requirement was first established, and a chain of renames SHALL carry that one identifier through every change in the chain and into the accepted specification. The plan SHALL record, against the document that stated each rename, the heading it replaced, the heading it introduced, and the identifier both resolve to.</p>
+            </ins>
+            <ins>
+              <p>Where the source changed a heading without recording a rename — by removing one requirement and adding another — the two SHALL derive their identifiers independently. The source did not state that they are one obligation, and migration SHALL NOT infer it from their wording.</p>
+            </ins>
+            <p>The derivation SHALL read the heading in full. A derivation that shortens or normalizes a heading maps distinct obligations onto one identifier, which manufactures a collision the source did not contain and refers the contributor to a conflict that is an artifact of the rule.</p>
+            <p>Where two source requirements in one destination document derive the same identifier, migration SHALL report the collision rather than resolving it by suffixing. Two distinct obligations distinguished only by a trailing digit read as versions of one, which is a worse outcome than a migration that stops and asks. Collapsing several of a source change's specifications into one document SHALL be understood as the operation most likely to produce such a collision, because it is the one that brings requirements from different parts of the source into a single identifier namespace.</p>
+            <article class="scenario" id="scenario-one-requirement-referenced-from-several-documents" data-change="unchanged">
+              <h4>One requirement referenced from several documents</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement appears in an accepted specification and is referenced by an archived change</dd>
+                <dt>Then</dt>
+                <dd>both use the same derived identifier</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-derivation-recorded" data-change="unchanged">
+              <h4>A derivation recorded</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the plan is read</dd>
+                <dt>Then</dt>
+                <dd>each requirement's source heading, the document that stated it, and the identifier derived from it are all recorded</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-one-obligation-renamed-across-changes" data-change="modified">
+              <h4>One obligation renamed across changes</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a source project in which a later change renamed a requirement an earlier change established<ins>, and recorded the rename in a <code>## RENAMED Requirements</code> section</ins></dd>
+                <dt>When</dt>
+                <dd>both changes are migrated</dd>
+                <dt>Then</dt>
+                <dd><del>each change's specification carries</del><ins>both changes' specifications carry</ins> the identifier derived from the heading <del>that change stated</del><ins>the earlier change established, each states the heading that change used</ins>, and this is not reported as a collision</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-chain-of-renames" data-change="added">
+              <h4>A chain of renames</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a requirement renamed by one change and renamed again by a later one</dd>
+                <dt>When</dt>
+                <dd>the project is migrated</dd>
+                <dt>Then</dt>
+                <dd>every change in the chain and the accepted specification carry the identifier derived from the first heading</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-heading-changed-without-a-recorded-rename" data-change="added">
+              <h4>A heading changed without a recorded rename</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a source change that removes one requirement and adds another with a similar heading, and records no rename</dd>
+                <dt>When</dt>
+                <dd>it is migrated</dd>
+                <dt>Then</dt>
+                <dd>the two derive their identifiers independently, and migration does not treat them as one obligation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-requirements-deriving-one-identifier" data-change="unchanged">
+              <h4>Two requirements deriving one identifier</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>two source requirements' headings derive the same identifier within one destination document</dd>
+                <dt>Then</dt>
+                <dd>migration reports the collision and does not resolve it by adding a suffix</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-collision-the-derivation-rule-created" data-change="unchanged">
+              <h4>A collision the derivation rule created</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>two source requirements state distinct obligations whose full headings differ</dd>
+                <dt>Then</dt>
+                <dd>they derive distinct identifiers, because a rule that shortened them would report a collision the source did not contain</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each unit below summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links, and the record is the authority. The verification units that follow rest on the same records. Five of them also cite <a href="evidence/the-runbook-ran-2026-09-26.md"><code>evidence/the-runbook-ran-2026-09-26.md</code></a> for the run of the workspace's tests it records. That record is of the 0.16.0 release, names no requirement this specification states, and has no evidence unit.</p>
+          </aside>
+          <section class="evidence" id="evidence-the-premises-2026-09-26" data-change="added" data-refs="req-a-renamed-requirement-states-the-heading-it-replaced req-a-rename-reaches-the-accepted-contract-as-a-new-heading-on-the-same-identifier req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract req-archival-assesses-the-merge-and-never-performs-it">
+            <h3>The premises, checked before building on them <span class="hs-id">evidence-the-premises-2026-09-26</span></h3>
+            <p>Tasks 1.1 to 1.3, run against <code>17afc05</code> with the debug binary built from it, before anything was built: two of the design's premises hold and one does not. With an accepted specification holding <code>req-x</code> under "The old heading" and a change stating it under "The new heading", <code>htmlspec sync --change rename-x</code> reported 1 of 1 requirement reached and "the change's contract has been applied in full", which is the "before" state. A projected <code>title</code> carries the <code>hs-id</code> span's text, so <code>&lt;h3&gt;The old heading &lt;span class="hs-id"&gt;req-x&lt;/span&gt;&lt;/h3&gt;</code> projects <code>The old heading req-x</code>; <code>htmlspec format</code> does not reflow heading text, and normalization makes the title identical before and after formatting. A 17-row comparison of OpenSpec 1.13.1's rename rules against their counterparts here gives five rules no counterpart, deliberately, for one reason: OpenSpec finds the requirement a rename applies to by its heading, and html-spec finds it by its identifier. <a href="evidence/the-premises-2026-09-26.md"><code>evidence/the-premises-2026-09-26.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-implementation-2026-09-26" data-change="added" data-refs="req-a-renamed-requirement-states-the-heading-it-replaced req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation">
+            <h3>What the implementation checked, and what it found <span class="hs-id">evidence-the-implementation-2026-09-26</span></h3>
+            <p>Tasks 4.1 to 8.2, recorded as they were run. The six rules are errors with their own <code>schema/rename-*</code> codes; of their twelve tests, written first, nine failed against a <code>validate</code> that did nothing, and all twelve pass with the rules in place, as do the other 203 unit tests in the crate. Of twelve fixtures, one valid and one invalid per rule, each invalid one, run through the built binary, reports exactly its one error; the fixture generator deleted four hand-written fixtures rather than two, and all four were restored. Five documents carrying <code>renamed-from</code> paragraphs were formatted twice, and the second pass changed nothing. Its table finds <code>req-a-single-command-exposes-validate-format-and-init</code> in the five archived documents of this repository's <code>toolchain-packaging</code> rename chain and in the accepted specification, including <code>2026-08-31-sync-a-change-into-the-accepted-contract</code>, which restates the renamed heading without renaming it. It also records the new stylesheet revisions at <code>sha256-aac8967609f80d9f</code> and <code>sha256-04ac9a24fc436a87</code>, the lockfile's new <code>retained</code> list, and a render in headless Chrome 153 with styles, printed to PDF, and with the stylesheet links removed. <a href="evidence/the-implementation-2026-09-26.md"><code>evidence/the-implementation-2026-09-26.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-mutation-testing-2026-09-26" data-change="added" data-refs="req-a-renamed-requirement-states-the-heading-it-replaced req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract req-archival-assesses-the-merge-and-never-performs-it req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation">
+            <h3>Mutation testing: nineteen mutations, and a stale literal they found <span class="hs-id">evidence-mutation-testing-2026-09-26</span></h3>
+            <p>Task 9.1: each new rule, each projection behavior the rules depend on, and each part of the untaken-rename set was neutered on its own and the affected packages' tests run with <code>cargo test -q --no-fail-fast</code>, and every one of the nineteen mutations was caught. Mutations 1 to 10 neuter the six rename rules, the projection of a misplaced, empty, or statement-supplying <code>renamed-from</code> paragraph, and the heading name; mutations 11 to 18 neuter the untaken-rename set, <code>needsSync</code>, and <code>sync</code>'s "applied in full"; mutation 19 drops the destination from the plan's collision key. Mutations 12, 15, and 18 are each caught by exactly one test. The run also exposed a test in <code>crates/htmlspec-cli/tests/promote.rs</code> that named a stylesheet address task 8.1 had made stale. <a href="evidence/mutation-testing-2026-09-26.md"><code>evidence/mutation-testing-2026-09-26.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-what-the-implementation-revealed-2026-09-26" data-change="added" data-refs="req-a-renamed-requirement-states-the-heading-it-replaced req-a-rename-reaches-the-accepted-contract-as-a-new-heading-on-the-same-identifier req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation req-a-source-rename-is-carried-as-the-heading-the-requirement-replaced">
+            <h3>What the implementation revealed <span class="hs-id">evidence-what-the-implementation-revealed-2026-09-26</span></h3>
+            <p>Task 9.3's ledger. Two findings changed the design, and the contributor decided both: a rename is compared by a heading name, the title with the unit's own identifier removed from its end, rather than by changing projection section 3.1; and <code>schemaVersion</code> became a closed enumeration, so that documents declaring <code>0.1.0</code> stay valid beside <code>0.2.0</code>. It lists the five OpenSpec rename rules with no counterpart here, the changes made within the design, among them that a later change restating a renamed heading resolves through the chain and that <code>migrate.rs</code> no longer calls a rename an open question, and four items left open, among them that nothing checks that an accepted specification left out <code>renamed-from</code> after a merge. <a href="evidence/what-the-implementation-revealed-2026-09-26.md"><code>evidence/what-the-implementation-revealed-2026-09-26.md</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-rename-on-a-new-requirement" data-change="added" data-outcome="passed" data-refs="scenario-a-rename-on-a-new-requirement">
+            <h3>The rename-on-added fixture, run through the built binary <span class="hs-id">verify-a-rename-on-a-new-requirement</span></h3>
+            <p data-field="method">The conformance fixture <code>invalid-schema-rename-on-added</code>, whose renamed requirement is marked <code>added</code>, was run through the built binary.</p>
+            <p>It reported exactly its one error, <code>schema/rename-on-added</code>, beside only the ten <code>review/*</code> warnings that <code>valid-minimal</code> also reports (<a href="evidence/the-implementation-2026-09-26.md"><code>evidence/the-implementation-2026-09-26.md</code></a>, sections 4.1 and 4.2).</p>
+          </section>
+          <section class="verification" id="verify-a-rename-on-a-withdrawn-requirement" data-change="added" data-outcome="passed" data-refs="scenario-a-rename-on-a-withdrawn-requirement">
+            <h3>The rename-on-removed fixture, run through the built binary <span class="hs-id">verify-a-rename-on-a-withdrawn-requirement</span></h3>
+            <p data-field="method">The conformance fixture <code>invalid-schema-rename-on-removed</code>, whose renamed requirement is marked <code>removed</code>, was run through the built binary.</p>
+            <p>It reported exactly its one error, <code>schema/rename-on-removed</code>, and one more warning than the others, <code>review/unverified-requirement</code>, because its verification can no longer name a requirement being withdrawn (<a href="evidence/the-implementation-2026-09-26.md"><code>evidence/the-implementation-2026-09-26.md</code></a>, sections 4.1 and 4.2).</p>
+          </section>
+          <section class="verification" id="verify-a-rename-outside-a-requirement" data-change="added" data-outcome="passed" data-refs="scenario-a-rename-outside-a-requirement">
+            <h3>A rename in each of the six other units <span class="hs-id">verify-a-rename-outside-a-requirement</span></h3>
+            <p data-field="method">The unit test <code>a_rename_outside_a_requirement_is_reported_once_per_unit</code> asserts exactly one diagnostic for a <code>renamed-from</code> paragraph in each of the six other units, and the conformance fixture <code>invalid-schema-rename-outside-requirement</code>, a decision carrying the paragraph, was run through the built binary.</p>
+            <p>With the rules in place, all twelve of the rules' tests pass, and the fixture reported exactly its one error, <code>schema/rename-outside-requirement</code> (<a href="evidence/the-implementation-2026-09-26.md"><code>evidence/the-implementation-2026-09-26.md</code></a>, sections 4.1 and 4.2).</p>
+          </section>
+          <section class="verification" id="verify-two-previous-headings" data-change="added" data-outcome="passed" data-refs="scenario-two-previous-headings">
+            <h3>The repeated-rename fixture, run through the built binary <span class="hs-id">verify-two-previous-headings</span></h3>
+            <p data-field="method">The conformance fixture <code>invalid-schema-rename-repeated</code>, a requirement carrying two <code>renamed-from</code> paragraphs, was run through the built binary.</p>
+            <p>It reported exactly its one error, <code>schema/rename-repeated</code> (<a href="evidence/the-implementation-2026-09-26.md"><code>evidence/the-implementation-2026-09-26.md</code></a>, sections 4.1 and 4.2).</p>
+          </section>
+          <section class="verification" id="verify-a-rename-to-the-same-name" data-change="added" data-outcome="passed" data-refs="scenario-a-rename-to-the-same-name">
+            <h3>The same-name fixture, run through the built binary <span class="hs-id">verify-a-rename-to-the-same-name</span></h3>
+            <p data-field="method">The conformance fixture <code>invalid-schema-rename-to-same-name</code>, whose <code>renamed-from</code> paragraph states the heading's own name, was run through the built binary.</p>
+            <p>It reported exactly its one error, <code>schema/rename-to-same-name</code> (<a href="evidence/the-implementation-2026-09-26.md"><code>evidence/the-implementation-2026-09-26.md</code></a>, sections 4.1 and 4.2).</p>
+          </section>
+          <section class="verification" id="verify-a-heading-that-shows-its-identifier" data-change="added" data-outcome="passed" data-refs="scenario-a-heading-that-shows-its-identifier">
+            <h3>The same-name fixture's heading, which shows its identifier <span class="hs-id">verify-a-heading-that-shows-its-identifier</span></h3>
+            <p data-field="method">The same run of <code>invalid-schema-rename-to-same-name</code> through the built binary. Its input, read at <code>51c5aea</code> when this document was migrated, heads its requirement <code>The example requirement &lt;span class="hs-id"&gt;req-example&lt;/span&gt;</code> and states <code>The example requirement</code> in its <code>renamed-from</code> paragraph.</p>
+            <p>It reported exactly its one error, <code>schema/rename-to-same-name</code> (<a href="evidence/the-implementation-2026-09-26.md"><code>evidence/the-implementation-2026-09-26.md</code></a>, sections 4.1 and 4.2).</p>
+          </section>
+          <section class="verification" id="verify-a-rename-the-accepted-specifications-have-not-taken" data-change="added" data-outcome="passed" data-refs="scenario-a-rename-the-accepted-specifications-have-not-taken">
+            <h3>An untaken rename, reported by <code>sync</code> <span class="hs-id">verify-a-rename-the-accepted-specifications-have-not-taken</span></h3>
+            <p data-field="method">The CLI test <code>a_change_whose_only_unapplied_work_is_a_rename_has_not_been_synced</code>, which the mutation record names among the tests catching mutations 11, 14, 16, 17, and 18, was run in the workspace's tests. The test, read at <code>51c5aea</code> when this document was migrated, holds <code>req-established</code> in an accepted specification under "What the change established", states it in a change's specification under "What the change now establishes" with a <code>renamed-from</code> paragraph naming the previous heading, runs <code>htmlspec sync --change a-change</code>, and asserts exit 0, "0 of 1", no "applied in full", and a line naming <code>renamed  req-established</code> with both headings; with <code>--json</code>, it asserts <code>reached</code> empty and the one untaken rename.</p>
+            <p>Every mutation was caught (<a href="evidence/mutation-testing-2026-09-26.md"><code>evidence/mutation-testing-2026-09-26.md</code></a>), and <code>scripts/check</code>, whose <code>test</code> stage runs the workspace's tests, ran with all 13 stages green (<a href="evidence/the-runbook-ran-2026-09-26.md"><code>evidence/the-runbook-ran-2026-09-26.md</code></a>, step 2).</p>
+          </section>
+          <section class="verification" id="verify-a-rename-the-accepted-specifications-have-taken" data-change="added" data-outcome="passed" data-refs="scenario-a-rename-the-accepted-specifications-have-taken">
+            <h3>A taken rename, reported by <code>sync</code> <span class="hs-id">verify-a-rename-the-accepted-specifications-have-taken</span></h3>
+            <p data-field="method">The same CLI test, read at <code>51c5aea</code> when this document was migrated. After its untaken-rename assertions, it rewrites the accepted specification to hold <code>req-established</code> under "What the change now establishes", with no <code>renamed-from</code> paragraph, runs <code>htmlspec sync --change a-change</code> again, and asserts exit 0 and "applied in full", which <code>sync</code> prints only when no requirement is absent and no rename is untaken (<code>crates/htmlspec-cli/src/commands.rs</code> at <code>51c5aea</code>).</p>
+            <p><code>scripts/check</code>, whose <code>test</code> stage runs the workspace's tests, ran with all 13 stages green (<a href="evidence/the-runbook-ran-2026-09-26.md"><code>evidence/the-runbook-ran-2026-09-26.md</code></a>, step 2), and the mutation record names the test (<a href="evidence/mutation-testing-2026-09-26.md"><code>evidence/mutation-testing-2026-09-26.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-a-structured-report-carries-the-untaken-renames" data-change="added" data-outcome="passed" data-refs="scenario-a-structured-report-carries-the-untaken-renames">
+            <h3>The untaken rename in <code>sync</code>'s payload <span class="hs-id">verify-a-structured-report-carries-the-untaken-renames</span></h3>
+            <p data-field="method">The same CLI test, read at <code>51c5aea</code> when this document was migrated, runs <code>htmlspec sync --change a-change --json</code> and asserts that <code>untakenRenames</code> holds exactly one entry with <code>id</code> <code>req-established</code>, <code>heading</code> "What the change now establishes", and <code>acceptedHeading</code> "What the change established". The mutation record names it among the tests catching mutation 16, <code>needsSync</code> ignoring untaken renames.</p>
+            <p><code>scripts/check</code>, whose <code>test</code> stage runs the workspace's tests, ran with all 13 stages green (<a href="evidence/the-runbook-ran-2026-09-26.md"><code>evidence/the-runbook-ran-2026-09-26.md</code></a>, step 2; <a href="evidence/mutation-testing-2026-09-26.md"><code>evidence/mutation-testing-2026-09-26.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-a-structured-report" data-change="added" data-outcome="partial" data-refs="scenario-a-structured-report">
+            <h3>The sets in <code>sync</code>'s payload <span class="hs-id">verify-a-structured-report</span></h3>
+            <p data-field="method">The same <code>--json</code> run in the same CLI test, read at <code>51c5aea</code> when this document was migrated, asserts the payload's <code>reached</code> and <code>absent</code> sets, both empty, and its <code>untakenRenames</code>. It asserts nothing about the <code>stated</code> set.</p>
+            <p><code>scripts/check</code>, whose <code>test</code> stage runs the workspace's tests, ran with all 13 stages green (<a href="evidence/the-runbook-ran-2026-09-26.md"><code>evidence/the-runbook-ran-2026-09-26.md</code></a>, step 2; <a href="evidence/mutation-testing-2026-09-26.md"><code>evidence/mutation-testing-2026-09-26.md</code></a>).</p>
+            <p data-field="unchecked">the stated identifier set</p>
+          </section>
+          <section class="verification" id="verify-a-change-whose-only-unapplied-work-is-a-rename" data-change="added" data-outcome="passed" data-refs="scenario-a-change-whose-only-unapplied-work-is-a-rename">
+            <h3>A change whose only unapplied work is a rename, at archival <span class="hs-id">verify-a-change-whose-only-unapplied-work-is-a-rename</span></h3>
+            <p data-field="method">The same CLI test, which the mutation record names as the only test catching mutation 18, read at <code>51c5aea</code> when this document was migrated. With the accepted specification still holding <code>req-established</code> under its previous heading, it runs archival on the change and asserts that it reports "this change has not been synced" and names <code>req-established</code>, both headings, and <code>htmlspec sync --change a-change</code>; <code>archive --check --json</code> is asserted to carry <code>needsSync</code> true, no unmerged requirement, and the untaken rename.</p>
+            <p><code>scripts/check</code>, whose <code>test</code> stage runs the workspace's tests, ran with all 13 stages green (<a href="evidence/the-runbook-ran-2026-09-26.md"><code>evidence/the-runbook-ran-2026-09-26.md</code></a>, step 2; <a href="evidence/mutation-testing-2026-09-26.md"><code>evidence/mutation-testing-2026-09-26.md</code></a>).</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

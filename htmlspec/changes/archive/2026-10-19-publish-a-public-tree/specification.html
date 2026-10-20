@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Publish a public tree</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Publish a public tree</h1>
+        <p>What this change established. The project's public repository receives only trees exported from its private working repository through a road that can refuse at every step: an allowlist, counted rewrites, a scan against a private pattern file, the suite run inside the exported tree, and a person's review of the exact tree pushed, in commits that carry no history of the private repository and a GitHub noreply identity. The change also adds the MIT license held by Firefly Systems LLC and retires <code>main-guard.yml</code>, which a branch ruleset already replaced. Release 0.32.0.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Publish a public tree</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-not-a-requirement">What the change did that no requirement states</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-the-public-repository-receives-only-reviewed-exports" data-change="added">
+            <h3>The public repository receives only reviewed exports of the private one <span class="hs-id">req-the-public-repository-receives-only-reviewed-exports</span></h3>
+            <p>The project's public repository SHALL receive only trees exported from its private working repository. Each tree SHALL come from a committed ref of the private repository, through the allowlist of paths that may cross, with every rewrite applied at the count it expects, found clean by the scan against the private pattern file, passed by the project's full suite run inside the exported tree, and reviewed by a person as the exact tree that is pushed.</p>
+            <p>Each export SHALL arrive in a commit whose only parent is the public repository's own <code>main</code>, or with no parent for the first commit of an empty public repository, made by a GitHub noreply identity as author and committer, and naming its source ref and commit. No commit of the private repository's history SHALL reach the public repository, and the private repository SHALL refuse any push of its own to the public one, tags included.</p>
+            <p>The publishing tooling, its allowlist, rewrites, pattern file, and tests, SHALL stay in the private repository and SHALL be absent from every export, because its tables name the material they guard against.</p>
+            <article class="scenario" id="scenario-a-planted-private-string-is-refused" data-change="added">
+              <h4>A planted private string is refused at the scan</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an allowlisted file holding a string the private pattern file names</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the scan refuses, naming the file and the line, and nothing is committed or pushed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-vanished-rewrite-is-refused" data-change="added">
+              <h4>A rewrite whose text is gone is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a rewrite whose expected text no longer appears the number of times it states</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the export stops, naming the file and the text it expected</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-failing-suite-is-refused" data-change="added">
+              <h4>A failing suite is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an exported tree in which the project's suite fails</dd>
+                <dt>When</dt>
+                <dd>the export runs the suite inside it</dd>
+                <dt>Then</dt>
+                <dd>the export stops before anything is committed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unreviewed-tree-is-refused" data-change="added">
+              <h4>An unreviewed tree is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a push or a bootstrap is asked for without naming the tree a person reviewed, or names a different one</dd>
+                <dt>Then</dt>
+                <dd>it refuses, and nothing reaches the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unread-path-or-changed-image-is-refused" data-change="added">
+              <h4>An unread path, a newly added file, or a changed image is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an allowlisted path nobody recorded as read, a file added beneath an allowlisted directory since its read, or an image whose bytes differ from the blob a person read</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the export refuses, naming each one</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-personal-identity-is-refused" data-change="added">
+              <h4>A commit identity that is not a GitHub noreply address is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the export is to commit with an author or committer that is not a GitHub noreply address</dd>
+                <dt>Then</dt>
+                <dd>it refuses before anything reaches the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-private-history-reaches-the-public-repository" data-change="added">
+              <h4>No commit of the private history reaches the public repository</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a first commit is bootstrapped into an empty public repository and a later export is pushed</dd>
+                <dt>Then</dt>
+                <dd>the first commit has no parent, the later one has only the public repository's main as its parent, and no commit or blob that only the private history holds is in the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-tooling-never-crosses" data-change="added">
+              <h4>The publishing tooling never crosses</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>any tree is exported</dd>
+                <dt>Then</dt>
+                <dd>it holds nothing of the publishing tooling or of the workflow that tests it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-push-from-the-private-repository-is-refused" data-change="added">
+              <h4>A push from the private repository to the public one is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the private working repository pushes anything, a branch or a tag, to the public repository</dd>
+                <dt>Then</dt>
+                <dd>its pre-push hook refuses, because the push would carry the private history</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-not-a-requirement">
+          <h2>What the change did that no requirement states</h2>
+          <p>The repository gained an MIT <code>LICENSE</code>, <code>Copyright (c) 2026 Firefly Systems LLC</code>, the holder the contributor chose, which makes the <code>license = "MIT"</code> that <code>Cargo.toml</code> already declared true. <code>.github/workflows/main-guard.yml</code> is deleted, and the README and <code>.githooks/pre-push</code> no longer describe it, because a branch ruleset already protects the private repository's <code>main</code>. The contract is silent on both, and neither becomes a requirement here.</p>
+          <p>The rewrites apply to the exported copy only. The private repository's archive and the migration fixture stay as written, and the program in the private repository does not change: the public copy's instructions differ only in one example, which names a change of the private project and reads the neutral name there.</p>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-the-road-rehearsed-2026-10-18" data-change="added" data-refs="req-the-public-repository-receives-only-reviewed-exports">
+            <h3>The road, rehearsed against a scratch target <span class="hs-id">evidence-the-road-rehearsed-2026-10-18</span></h3>
+            <p>Against an empty local bare repository, with the sign-off of a throwaway branch marked as a rehearsal: an unsigned bootstrap was refused; the bootstrap made the target's first commit; the final push exported every allowlisted path, applied the rewrites, scanned clean, and passed all 13 stages of the suite inside the export. Reading the pushed tree found a second home directory of the contributor's that no pattern named, which the rewrites and the pattern file then covered. <a href="evidence/the-road-rehearsed-2026-10-18.md"><code>evidence/the-road-rehearsed-2026-10-18.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-road-rehearsed-again-2026-10-19" data-change="added" data-refs="req-the-public-repository-receives-only-reviewed-exports">
+            <h3>The road, rehearsed again after the plan's review <span class="hs-id">evidence-the-road-rehearsed-again-2026-10-19</span></h3>
+            <p>After the revisions the review of the plan asked for: a push or bootstrap without <code>--reviewed</code>, and a push naming the wrong tree, were refused with nothing pushed; the bootstrap pushed a parentless commit of <code>README.md</code> and <code>LICENSE</code>; the push landed a branch whose only parent was that commit; a second push of the same source replaced its branch. 1,477 files, 23 rewrites covering 212 occurrences, a clean scan with four images read at their blob ids, and 13 of 13 stages passing inside the export. The target held no commit of the source, no blob of the tooling, and only the noreply identity. <a href="evidence/the-road-rehearsed-again-2026-10-19.md"><code>evidence/the-road-rehearsed-again-2026-10-19.md</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-the-scan-refuses-a-planted-string" data-change="added" data-outcome="passed" data-refs="scenario-a-planted-private-string-is-refused">
+            <h3>The scan refuses a planted private string <span class="hs-id">verify-the-scan-refuses-a-planted-string</span></h3>
+            <p data-field="method">In <code>publish/test</code>: <code>test_a_planted_private_string_stops_the_export_at_the_scan</code>, <code>test_a_match_exits_one_naming_the_file_and_line_case_insensitively</code>, <code>test_an_allowed_occurrence_is_excused_and_no_other</code>, <code>test_a_png_text_chunk_is_scanned</code>, and <code>test_a_compressed_png_text_chunk_is_scanned</code>.</p>
+          </section>
+          <section class="verification" id="verify-a-vanished-rewrite-stops-the-export" data-change="added" data-outcome="passed" data-refs="scenario-a-vanished-rewrite-is-refused">
+            <h3>A vanished rewrite stops the export <span class="hs-id">verify-a-vanished-rewrite-stops-the-export</span></h3>
+            <p data-field="method"><code>test_a_rewrite_whose_text_is_gone_stops_the_export_naming_it</code> in <code>publish/test</code>.</p>
+          </section>
+          <section class="verification" id="verify-a-failing-suite-stops-the-export" data-change="added" data-outcome="passed" data-refs="scenario-a-failing-suite-is-refused">
+            <h3>A failing suite stops the export <span class="hs-id">verify-a-failing-suite-stops-the-export</span></h3>
+            <p data-field="method"><code>test_a_failing_suite_stops_the_export_before_the_commit</code> in <code>publish/test</code>.</p>
+          </section>
+          <section class="verification" id="verify-only-the-reviewed-tree-is-pushed" data-change="added" data-outcome="passed" data-refs="scenario-an-unreviewed-tree-is-refused">
+            <h3>Only the reviewed tree is pushed <span class="hs-id">verify-only-the-reviewed-tree-is-pushed</span></h3>
+            <p data-field="method">In <code>publish/test</code>: <code>test_a_push_needs_the_tree_a_person_reviewed</code>, <code>test_a_bootstrap_needs_the_tree_a_person_reviewed</code>, <code>test_a_push_needs_the_contributors_sign_off</code>, and <code>test_a_dry_run_writes_nothing_to_the_target</code>.</p>
+          </section>
+          <section class="verification" id="verify-unread-paths-and-changed-images-are-refused" data-change="added" data-outcome="passed" data-refs="scenario-an-unread-path-or-changed-image-is-refused">
+            <h3>Unread paths, added files, and changed images are refused <span class="hs-id">verify-unread-paths-and-changed-images-are-refused</span></h3>
+            <p data-field="method">In <code>publish/test</code>: <code>test_an_allowlisted_path_nobody_read_stops_the_export</code>, <code>test_a_file_added_under_an_allowlisted_directory_since_its_read_stops_the_export</code>, <code>test_a_read_at_a_commit_outside_the_refs_history_stops_the_export</code>, <code>test_an_unlisted_binary_stops_the_export</code>, <code>test_a_binary_replaced_since_its_read_stops_the_export</code>, <code>test_a_binary_signed_off_by_name_alone_is_refused</code>, and <code>test_a_binary_whose_bytes_changed_since_its_read_is_refused</code>.</p>
+          </section>
+          <section class="verification" id="verify-only-a-noreply-identity-commits" data-change="added" data-outcome="passed" data-refs="scenario-a-personal-identity-is-refused">
+            <h3>Only a noreply identity commits <span class="hs-id">verify-only-a-noreply-identity-commits</span></h3>
+            <p data-field="method"><code>test_an_identity_that_is_not_noreply_stops_the_export</code> and <code>test_only_a_noreply_address_is_accepted</code> in <code>publish/test</code>.</p>
+          </section>
+          <section class="verification" id="verify-no-private-history-crosses" data-change="added" data-outcome="passed" data-refs="scenario-no-private-history-reaches-the-public-repository">
+            <h3>No private history crosses <span class="hs-id">verify-no-private-history-crosses</span></h3>
+            <p data-field="method">In <code>publish/test</code>: <code>test_bootstrap_makes_the_first_commit_of_an_empty_target</code>, <code>test_push_lands_the_export_as_a_branch_on_top_of_main</code>, <code>test_no_export_commit_reaches_the_source_history</code>, which fails, naming the source commits, when the export is changed to build on the source, and <code>test_a_target_that_shares_history_with_this_repository_is_refused</code>.</p>
+          </section>
+          <section class="verification" id="verify-the-tooling-stays-home" data-change="added" data-outcome="passed" data-refs="scenario-the-tooling-never-crosses">
+            <h3>The tooling stays home <span class="hs-id">verify-the-tooling-stays-home</span></h3>
+            <p data-field="method"><code>test_bootstrap_makes_the_first_commit_of_an_empty_target</code> and <code>test_push_lands_the_export_as_a_branch_on_top_of_main</code> assert that no exported file lies under <code>publish/</code>. Both rehearsals read the pushed target and found no blob of the tooling and no <code>publish.yml</code>.</p>
+          </section>
+          <section class="verification" id="verify-the-hook-refuses-pushes-to-the-public-repository" data-change="added" data-outcome="passed" data-refs="scenario-a-push-from-the-private-repository-is-refused">
+            <h3>The hook refuses pushes to the public repository <span class="hs-id">verify-the-hook-refuses-pushes-to-the-public-repository</span></h3>
+            <p data-field="method">In <code>publish/test</code>: <code>test_a_private_checkout_cannot_push_anything_to_the_public_repository</code>, with <code>test_the_public_repository_pushes_to_itself_freely</code> and <code>test_a_private_checkout_pushes_branches_to_its_own_remote</code> holding what the hook must not refuse.</p>
+          </section>
+          <section class="verification" id="verify-the-suite-passes-here-and-in-the-export" data-change="added" data-outcome="passed" data-refs="req-the-public-repository-receives-only-reviewed-exports">
+            <h3>The suite passes here and inside the export <span class="hs-id">verify-the-suite-passes-here-and-in-the-export</span></h3>
+            <p data-field="method">Run <code>publish/test</code>: 36 tests pass. Run <code>scripts/check</code> in this repository and let the export run it inside the exported tree: all 13 stages pass in both, as the second rehearsal recorded for the exported tree. <code>.github/workflows/publish.yml</code> runs <code>publish/test</code> on every pull request in this repository.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

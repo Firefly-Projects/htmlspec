@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+#
+# Point this clone's hooks at the ones the repository tracks.
+#
+# Git never installs hooks from a clone by itself, and it is right not to: a repository
+# that executed code out of its own working tree the moment you cloned it would be a
+# remote execution vector wearing a version control system. `core.hooksPath` is the
+# supported way to opt in, and opting in is a decision a person makes once per clone.
+#
+# What it enables is `.githooks/pre-push`, which refuses a push to `main`. That hook
+# explains why it exists in place of a branch protection rule.
+#
+# Usage:
+#   scripts/install-hooks             install
+#   scripts/install-hooks --uninstall restore git's default (.git/hooks)
+#   scripts/install-hooks --status    report what this clone is configured to use
+
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+hooks_path=".githooks"
+
+case "${1:-}" in
+  "")
+    git config core.hooksPath "$hooks_path"
+    printf 'core.hooksPath = %s\n' "$(git config core.hooksPath)"
+    for hook in "$hooks_path"/*; do
+      printf 'installed: %s\n' "$(basename "$hook")"
+    done
+    ;;
+  --uninstall)
+    git config --unset core.hooksPath || true
+    printf 'core.hooksPath unset; git will use .git/hooks again\n'
+    ;;
+  --status)
+    current="$(git config core.hooksPath || true)"
+    if [ "$current" = "$hooks_path" ]; then
+      printf 'installed: core.hooksPath = %s\n' "$current"
+    elif [ -n "$current" ]; then
+      printf 'core.hooksPath = %s, which is not this repository'"'"'s %s\n' "$current" "$hooks_path"
+      exit 1
+    else
+      printf 'not installed: core.hooksPath is unset, so .git/hooks applies\n'
+      exit 1
+    fi
+    ;;
+  *)
+    printf 'usage: %s [--uninstall|--status]\n' "$0" >&2
+    exit 2
+    ;;
+esac

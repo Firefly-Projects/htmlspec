@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>runbook-authority</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>runbook-authority</h1>
+        <p>Defines what a runbook is, where a project keeps one, which of its documents carries authority,
+and what a runbook deliberately does not carry. It exists because the same procedural lesson was
+learned at <code>0.10.0</code> and rediscovered at <code>0.12.0</code>: a procedure that is run repeatedly is not a
+change and does not archive, so a lesson recorded in an archived <code>tasks.md</code> binds nothing and is
+read by nobody, and the generated instruction body that would be the other candidate home is
+overwritten on the next bootstrap.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>runbook-authority</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/specs/runbook-authority/spec.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-requirements">Requirements</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-requirements">
+          <h2>Requirements</h2>
+          <section class="requirement" id="req-a-project-keeps-its-procedures-in-a-fourth-place" data-change="unchanged">
+            <h3>A project keeps its procedures in a fourth place <span class="hs-id">req-a-project-keeps-its-procedures-in-a-fourth-place</span></h3>
+            <p>A project SHALL have a place for its runbooks, beneath the project root, distinct from its
+accepted specifications, its active changes, and its archive. A runbook SHALL be identified by a
+directory in that place, and the directory's name SHALL be the runbook's name.</p>
+            <p>A procedure that is run repeatedly SHALL NOT be represented as a change. A change is completed
+and archived once; a procedure is run again, so a representation that archives it after its first
+run destroys the thing being kept.</p>
+            <p>The place SHALL be created when a project is bootstrapped, rather than when a project's first
+runbook is created. A location that does not exist until something is in it is not a location a
+contributor can find, and the bootstrap operation is already required to produce the project's
+places rather than to acquire them on use.</p>
+            <p>The runbook's name SHALL NOT be recorded anywhere but in its directory name, and nothing SHALL
+derive an ordering, a version, or a history from that name. A runbook is renamed by moving its
+directory, exactly as a change is. This is narrower than the prohibition on deriving a version
+from a directory name and it is not in tension with it: a version is a value a gate compares, so
+reading one out of a display string depends on a convention nothing enforces, while a name is how
+a thing is addressed rather than something compared to anything.</p>
+            <p>A runbook's documents SHALL reference the project's one asset store, as every other document in
+the project does. A runbook SHALL NOT hold a store of its own.</p>
+            <article class="scenario" id="scenario-a-bootstrapped-project-has-the-place" data-change="unchanged">
+              <h4>A bootstrapped project has the place</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor bootstraps a project</dd>
+                <dt>Then</dt>
+                <dd>the place for its runbooks exists alongside the places for its specifications, its changes, and its archive</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-procedure-that-is-run-again" data-change="unchanged">
+              <h4>A procedure that is run again</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a procedure that has been run once</dd>
+                <dt>When</dt>
+                <dd>it is run a second time</dd>
+                <dt>Then</dt>
+                <dd>the procedure is still where it was, because a runbook is not archived after a run</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-renamed" data-change="unchanged">
+              <h4>A runbook renamed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's directory is moved to another name</dd>
+                <dt>Then</dt>
+                <dd>the runbook is the one at the new name, because nothing records the old one</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-s-documents-share-the-project-s-store" data-change="unchanged">
+              <h4>A runbook's documents share the project's store</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's document is opened from the filesystem</dd>
+                <dt>Then</dt>
+                <dd>it renders with no network access, because its asset references resolve to the project's one store</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-runbook-is-two-documents-of-existing-kinds" data-change="unchanged">
+            <h3>A runbook is two documents of existing kinds <span class="hs-id">req-a-runbook-is-two-documents-of-existing-kinds</span></h3>
+            <p>A runbook SHALL be a directory holding a <code>specification</code> document and a <code>tasks</code> document. The
+<code>specification</code> SHALL state what the runbook is for and what its history taught. The <code>tasks</code>
+document SHALL carry the ordered procedure, one task unit per step.</p>
+            <p>The set of artifact kinds SHALL NOT gain a kind for a runbook, and SHALL remain the closed four.
+A kind answers which stage of one change's argument a document is; a runbook is not a stage of an
+argument, it is a destination. The precedent is already in the project: an accepted
+specification is a top-level artifact outside any change directory whose documents are of kind
+<code>specification</code>, the same kind a change produces — so a document outside a change directory that
+changes flow into is a shape that needed no kind of its own.</p>
+            <p><strong>The split into two documents SHALL NOT be presented as a filing convention.</strong> A specification
+SHALL NOT carry task units, which is the only placement rule in the artifact-kind vocabulary and
+an error rather than a warning, so the procedure cannot live inside the canonical document. The
+split is forced by a rule that already exists.</p>
+            <p>A runbook's documents SHALL be validated by whatever validates a document of their kind, and no
+rule SHALL exist whose subject is that a document belongs to a runbook. A runbook's <code>tasks</code>
+document with no task unit SHALL be reported, because a procedure with no steps is not a
+procedure. A runbook's <code>specification</code> carrying a task unit SHALL be reported as an error,
+because the procedure drifting into the canonical document is the failure the split prevents.</p>
+            <article class="scenario" id="scenario-a-runbook-s-documents-declare-existing-kinds" data-change="unchanged">
+              <h4>A runbook's documents declare existing kinds</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's two documents are read</dd>
+                <dt>Then</dt>
+                <dd>one declares the specification kind and the other declares the tasks kind, and neither declares a kind outside the closed four</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-procedure-in-the-canonical-document" data-change="unchanged">
+              <h4>A procedure in the canonical document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's specification carries a task unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports an error, because a specification records obligations rather than steps</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-with-no-steps" data-change="unchanged">
+              <h4>A runbook with no steps</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's tasks document carries no task unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports it, because the document enumerates no procedure</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-validated-by-the-ordinary-path" data-change="unchanged">
+              <h4>A runbook validated by the ordinary path</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's documents are validated</dd>
+                <dt>Then</dt>
+                <dd>they are checked as documents of their kinds, with no rule reading the fact that they belong to a runbook</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-canonical-procedure-carries-no-completion-state" data-change="unchanged">
+            <h3>The canonical procedure carries no completion state <span class="hs-id">req-the-canonical-procedure-carries-no-completion-state</span></h3>
+            <p>A runbook's <code>tasks</code> document SHALL carry its steps in the state they have before anyone works
+them, and that state SHALL NOT advance as a consequence of the runbook being run. The states
+advance in the copy a run makes, exactly as they advance in a change.</p>
+            <p>Nothing SHALL report a runbook whose steps are all unstarted. That is the correct state of a
+canonical procedure at every moment, so a report of it would fire on every runbook always, which
+teaches a reader to ignore the report.</p>
+            <p>An enumeration of a project's runbooks SHALL NOT present a completion fraction for the canonical
+procedure. The fraction is derivable and it is the same value forever, and a column that never
+moves is read once and then not read.</p>
+            <p><strong>A unit in a runbook's canonical documents SHALL declare that it is unchanged.</strong> A change state
+describes a unit's relationship to a change in progress, and a runbook has none: its procedure
+exists and the hazards it records were measured before the document was written. This is the same
+fact as the preceding paragraphs rather than a second rule, arriving at a different attribute.</p>
+            <p><strong>A unit in the record of a run SHALL declare that it is unchanged for the same reason</strong>, and this
+is that sentence reaching the one other document a runbook holds rather than a new obligation. A
+run's record carries the requirements it verifies, copied from the runbook, and a verification
+recording an outcome against a requirement declared <code>added</code> is reported — correctly — as attesting
+to an obligation that is not there yet. The obligation a run attests to existed before the run
+started, so the copy declares itself unchanged.</p>
+            <p>The consequence is what makes it worth stating. A verification that records an outcome against a
+requirement declared as added is reported, correctly, as attesting to an obligation that is not
+there yet — so a runbook whose units are declared the way a change's units are declared reports
+warnings whose cause is one attribute, and nothing states which. The operation that creates a
+document SHALL NOT be expected to know the difference, because it cannot: whether a document
+belongs to a change or to a runbook is not a fact about the document being written.</p>
+            <p><strong>The operation that starts a run is the exception, and it SHALL declare the state correctly.</strong> It
+knows what it is writing — a copy of an existing procedure, attesting to obligations that already
+exist — so the reason the general document-creating operation cannot know does not apply to it.
+This narrows the preceding paragraph rather than contradicting it: an author writing a run record
+by hand still meets the warnings, and so does an author writing a runbook by hand.</p>
+            <article class="scenario" id="scenario-a-runbook-that-has-been-run" data-change="unchanged">
+              <h4>A runbook that has been run</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook whose procedure a person has carried out</dd>
+                <dt>When</dt>
+                <dd>the runbook's tasks document is read</dd>
+                <dt>Then</dt>
+                <dd>its steps are unstarted, because the run advanced a copy</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-enumeration-of-runbooks" data-change="unchanged">
+              <h4>An enumeration of runbooks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor enumerates the project's runbooks</dd>
+                <dt>Then</dt>
+                <dd>no completion fraction is presented for a canonical procedure</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-verification-in-a-runbook-s-specification" data-change="unchanged">
+              <h4>A verification in a runbook's specification</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook whose specification records a hazard measured before the runbook was written</dd>
+                <dt>When</dt>
+                <dd>a verification in it records that the hazard was checked</dd>
+                <dt>Then</dt>
+                <dd>nothing reports the record as attesting to an obligation that has moved, because the requirement is declared unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-s-documents-created-from-a-template" data-change="unchanged">
+              <h4>A runbook's documents created from a template</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's documents are created by the operation that creates a document</dd>
+                <dt>Then</dt>
+                <dd>the declared change states are the author's to settle, because the operation cannot know that the document belongs to a runbook</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-s-record-created-by-the-operation-that-starts-a-run" data-change="unchanged">
+              <h4>A run's record created by the operation that starts a run</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operation that starts a run writes the record</dd>
+                <dt>Then</dt>
+                <dd>every unit in it declares that it is unchanged, because that operation does know what it is writing</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-project-enumerates-the-runbooks-it-holds" data-change="unchanged">
+            <h3>The project enumerates the runbooks it holds <span class="hs-id">req-the-project-enumerates-the-runbooks-it-holds</span></h3>
+            <p>The operation that lists what a project holds SHALL be able to list its runbooks, as a selection
+alongside its changes and its accepted specifications. A separate top-level command SHALL NOT be
+introduced for it, because listing what the project holds is an operation that already exists and
+a second command would invent a second vocabulary for it.</p>
+            <p>The enumeration SHALL be derived from what the place holds rather than from a list a contributor
+maintains. A maintained list is the shape this project refuses when it forbids a gate from
+reading the last archived version out of a directory name: a value kept beside the facts it
+summarizes depends on a convention nothing enforces.</p>
+            <p>Each entry SHALL carry what a selector needs in order to choose between runbooks, rather than a
+name alone. A runbook whose procedure is absent is the case that matters, because a name alone
+cannot distinguish it from one that is complete.</p>
+            <p>The enumeration SHALL name a runbook once, whatever number of documents it holds. An enumeration
+that listed each document separately would present one runbook as two entries.</p>
+            <article class="scenario" id="scenario-listing-the-project-s-runbooks" data-change="unchanged">
+              <h4>Listing the project's runbooks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor lists the project's runbooks</dd>
+                <dt>Then</dt>
+                <dd>each runbook the place holds appears once, with what it holds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-whose-procedure-is-absent" data-change="unchanged">
+              <h4>A runbook whose procedure is absent</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook holds no tasks document</dd>
+                <dt>Then</dt>
+                <dd>the enumeration shows that it holds none, so a selector is not left to open it to find out</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-project-with-no-runbooks" data-change="unchanged">
+              <h4>A project with no runbooks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor lists the runbooks of a project holding none</dd>
+                <dt>Then</dt>
+                <dd>the operation succeeds and reports that there are none</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-enumeration-nobody-maintains" data-change="unchanged">
+              <h4>An enumeration nobody maintains</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook added to the project by creating its directory</dd>
+                <dt>When</dt>
+                <dd>the runbooks are enumerated</dd>
+                <dt>Then</dt>
+                <dd>it appears, because the enumeration reads the place rather than a list</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-runbook-records-what-its-history-taught" data-change="unchanged">
+            <h3>A runbook records what its history taught <span class="hs-id">req-a-runbook-records-what-its-history-taught</span></h3>
+            <p>A runbook's <code>specification</code> SHALL state the hazards its procedure has met, as requirements rather
+than as remarks. A hazard stated as a remark in a procedure's steps is what the project already
+had: an archived tasks document, which nothing reads and which binds nothing.</p>
+            <p>Where the order of a procedure's steps is constrained by a hazard rather than by convenience,
+that constraint SHALL be stated with the hazard that forces it. An order whose reason is unstated
+is an order the next person reverses.</p>
+            <p>A runbook SHALL NOT be treated as stating an obligation of the project. A runbook is a procedure
+the project keeps, and the project's contract is what its accepted specifications state. A
+requirement in a runbook's specification states what that runbook requires of a run, not what the
+project requires of itself.</p>
+            <p><strong>A runbook's <code>specification</code> SHALL state what its runs must record</strong>, as requirement units of the
+same kind the hazards are stated as. This is the runbook's logging contract, and it is stated where
+the runbook is authored because the person who knows a cookie run needs an oven temperature is the
+person writing the recipe. There is no single thing a run should record: a release run records the
+version it advanced to and whether the release check passed, and neither value means anything to a
+baker.</p>
+            <p><strong>A log requirement SHALL NOT be distinguished in the markup from a hazard requirement</strong>, and the
+consequence is that every requirement a runbook's specification states is one its runs must record.
+That reading is the correct one rather than a simplification, because the sentence above already
+covers both: a hazard the procedure met and a value a run must record are each <em>what this runbook
+requires of a run</em>. Distinguishing them would need an attribute or a unit the artifact vocabulary
+does not have, and the vocabulary is closed.</p>
+            <p>The honest cost of that, stated rather than discovered by an author: a runbook whose specification
+states ten hazards obliges every run to record ten outcomes, and an author who wanted five
+obligations and five notes has no way to say so. What is available is to state fewer requirements
+and put the rest in the prose the specification already carries.</p>
+            <p><strong>A runbook that states no log requirement SHALL NOT be reported.</strong> A procedure whose runs record
+nothing is a procedure nothing checks, which is a fact about that runbook rather than a fault in it
+— and a report firing on every runbook that has not yet stated a contract is one an author meets
+before they have anything to say.</p>
+            <article class="scenario" id="scenario-a-hazard-the-procedure-has-met" data-change="unchanged">
+              <h4>A hazard the procedure has met</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's history has taught that a step has a precondition or a consequence</dd>
+                <dt>Then</dt>
+                <dd>the runbook's specification states it as a requirement, rather than as a note beside the step</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-order-a-hazard-forces" data-change="unchanged">
+              <h4>An order a hazard forces</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>two steps must run in one order for a reason that is not obvious from the steps</dd>
+                <dt>Then</dt>
+                <dd>the reason is stated with the hazard, so the order is not reversed by someone reading only the steps</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-cited-as-a-project-obligation" data-change="unchanged">
+              <h4>A runbook cited as a project obligation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent cites a requirement in a runbook's specification as an obligation of the project</dd>
+                <dt>Then</dt>
+                <dd>the citation is incorrect, because the project's contract is what its accepted specifications state</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-stating-what-its-runs-record" data-change="unchanged">
+              <h4>A runbook stating what its runs record</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook is authored for a procedure whose runs produce values worth keeping</dd>
+                <dt>Then</dt>
+                <dd>its specification states each of those values as a requirement, so a run's record has something to attest to</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-that-states-nothing-about-its-runs" data-change="unchanged">
+              <h4>A runbook that states nothing about its runs</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook whose specification states no requirement</dd>
+                <dt>When</dt>
+                <dd>its runs are examined for conformance</dd>
+                <dt>Then</dt>
+                <dd>nothing is reported, because a runbook that states no contract has runs nothing checks</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-runbook-carries-an-independently-checked-release-version" data-change="unchanged">
+            <h3>A runbook carries an independently checked release version <span class="hs-id">req-a-runbook-carries-an-independently-checked-release-version</span></h3>
+            <p>Every runbook SHALL carry a <code>VERSION</code> containing three nonnegative dot-separated integers and a
+<code>CHANGELOG.md</code> whose headings identify its released versions. A release version SHALL be greater
+than <code>0.0.0</code>. The version SHALL identify the runbook's release independently of the project's
+version; it SHALL NOT be inferred from a directory name or an HTML schema-version declaration.</p>
+            <p>Version ordering and content changes SHALL be checked at source publication as specified by
+<code>project-bootstrap</code>. A version SHALL never identify two different released procedures or contracts
+for the same runbook. Distinctness SHALL be per runbook, so two different runbooks can each be at
+<code>0.1.0</code>. Changelog prose SHALL remain the author's, with one heading per runbook release and a
+reference to the source project release when published through a project archive.</p>
+            <p>Preflight and new run creation SHALL refuse a missing or malformed version or missing heading for
+the declared version. They SHALL NOT require access to the source archive to compare versions.
+A copied version identifies a release; it does not attest that the copy is authentic. Existing
+records created before this obligation SHALL remain reviewable without being rewritten.</p>
+            <article class="scenario" id="scenario-identifying-a-copy-without-the-archive" data-change="unchanged">
+              <h4>Identifying a copy without the archive</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operator checks a carried runbook's version</dd>
+                <dt>Then</dt>
+                <dd>the version and matching changelog entry identify its release without consulting the source project</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-independently-released-runbooks" data-change="unchanged">
+              <h4>Two independently released runbooks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>two different runbooks both declare <code>0.1.0</code></dd>
+                <dt>Then</dt>
+                <dd>neither is rejected for sharing a version number with the other</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unversioned-runbook-after-upgrading" data-change="unchanged">
+              <h4>Unversioned runbook after upgrading</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operator tries to start a runbook without its version declaration</dd>
+                <dt>Then</dt>
+                <dd>the operation refuses with migration guidance and writes no record</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reviewing-a-record-made-before-versioning" data-change="unchanged">
+              <h4>Reviewing a record made before versioning</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an older run record is reviewed</dd>
+                <dt>Then</dt>
+                <dd>the absence of a recorded runbook version does not prevent conformance reporting</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-machine-requirement-is-still-an-obligation-of-the-run" data-change="unchanged">
+            <h3>A machine requirement is still an obligation of the run <span class="hs-id">req-a-machine-requirement-is-still-an-obligation-of-the-run</span></h3>
+            <p>A runbook's specification SHALL state machine prerequisites beside its hazards and logging
+requirements, using the same requirement units. The check declaration described by
+<code>runbook-portability</code> SHALL select when and how a machine condition is checked; it SHALL NOT create
+a new unit kind, a new document kind, or an exemption from recording the requirement's outcome.</p>
+            <p>Ordinary document validation SHALL continue to validate the document's kind and schema without
+inspecting the host environment. Machine inspection SHALL occur only through preflight and new
+run creation. A failed preflight SHALL be a refusal to start; incomplete logging after a run
+starts SHALL remain an advisory conformance finding.</p>
+            <article class="scenario" id="scenario-checking-a-runbook-on-a-documentation-machine" data-change="unchanged">
+              <h4>Checking a runbook on a documentation machine</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>its documents are validated where a required tool is not installed</dd>
+                <dt>Then</dt>
+                <dd>document validation does not fail because of that machine's environment</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-preflight-evidence-joins-the-log" data-change="unchanged">
+              <h4>Preflight evidence joins the log</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a new run starts after its machine checks pass</dd>
+                <dt>Then</dt>
+                <dd>the record carries those requirements and their passed verifications along with its other logging obligations</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

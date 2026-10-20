@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Release a repository that is its own project</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Release a repository that is its own project</h1>
+        <p>The release runbook tells a run to delete this repository's project. Its step for regenerating the instruction files says to remove the <code>htmlspec/</code> and <code>spec.nix</code> that <code>htmlspec init</code> creates, and since #55 those are the project and its declaration. This change revises the runbook for a repository that is its own project, as its release 0.2.0, so that no step of it removes anything of the project. The program does not change.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Release a repository that is its own project</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>The runbook at <code>htmlspec/runbooks/release/</code> is 0.1.0, written when this repository kept its specifications in <code>openspec/</code> and was not an html-spec project. Pull request #55 promoted the project into <code>htmlspec/</code> at 0.29.0, and <code>govern-this-repository-from-htmlspec</code>, which this change follows, moved the runbook into it unchanged. Its 0.30.1 changelog entry says not to follow the regeneration step and names this change as the one that revises it. Nothing stops a run in between: <code>htmlspec list --runbooks</code> lists <code>release</code>, and <code>htmlspec run release</code> can start it.</p>
+          <p><a href="evidence/the-runbook-read-against-the-project-2026-10-14.md"><code>evidence/the-runbook-read-against-the-project-2026-10-14.md</code></a> read both documents against the repository and measured each step in a scratch copy:</p>
+          <ul>
+            <li><strong>The removal deletes the project.</strong> <code>htmlspec/</code> holds 504 files: 13 accepted specifications, 38 archived changes, this runbook, the asset store, and the change under way. After <code>rm -rf htmlspec spec.nix</code>, <code>scripts/check-release</code> and the <code>self-runbooks</code> stage exit 2, and the <code>self-assets</code> stage, which the step names as the one that catches a mistake, passes. A change under way that no commit holds is not recoverable.</li>
+            <li><strong>There is nothing to remove.</strong> <code>init</code> run from the root reports <q>extending the project</q> and <q>spec.nix already exists, so it was left as it is</q>, and writes only the installed instruction files.</li>
+            <li><strong>Its authority is a requirement whose premise is false.</strong> <code>req-init-bootstraps-a-stray-project</code> says a run MUST remove both, because <q>This repository governs itself with <code>openspec/</code> markdown, so it is not an html-spec project</q>. Its scenarios, its evidence of nine duplicate assets, its verification, the tasks document's input <q>A repository that is not already an html-spec project</q>, and a risk all say the same.</li>
+            <li><strong>The recorded version is described as the OpenSpec workflow made it.</strong> <code>req-the-recorded-version-waits-for-archival</code> has a run write the archived change's <code>VERSION</code> by hand at archival. <code>htmlspec archive</code> writes it, from <code>spec.nix</code>, which the runbook names nowhere, and nothing compares that version with the one <code>Cargo.toml</code> declares.</li>
+            <li><strong>Two counts are stale.</strong> The last step and a verification say <code>scripts/check-release</code> asks three questions of the archive. It has asked four since 0.15.0.</li>
+          </ul>
+        </section>
+        <section id="hs-what-working-looks-like">
+          <h2>What working looks like</h2>
+          <ol>
+            <li>No step, requirement, or scenario of the runbook tells a run to remove <code>htmlspec/</code>, <code>spec.nix</code>, or anything else. The regeneration step says to run <code>init</code> from the repository root, to remove nothing afterwards, to confirm that only the installed files under <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code> changed, and to stop if <code>init</code> reports that it created a project.</li>
+            <li>The specification states that hazard as a requirement with a new identifier, and the 0.1.0 requirement it replaces is gone. Its scenarios are the removal followed, <code>init</code> in the project, and <code>init</code> from another directory, each as measured.</li>
+            <li>The runbook says the archived change's <code>VERSION</code> is written by <code>htmlspec archive</code> from <code>spec.nix</code>, and that a run raises <code>spec.nix</code> at archival to the version it set in <code>Cargo.toml</code>.</li>
+            <li>Every statement the evidence found false is corrected, and every step it found right reads as it did.</li>
+            <li>The runbook's <code>VERSION</code> is 0.2.0, and its <code>CHANGELOG.md</code> has a <code>## 0.2.0</code> entry naming the project release that publishes it.</li>
+            <li>Both documents validate under default and strict strictness and are in canonical form, the <code>self-runbooks</code> stages pass, <code>htmlspec preflight release</code> passes inside <code>nix develop</code>, and <code>htmlspec run release --check</code> writes nothing.</li>
+            <li>Archiving this change after its predecessor, rehearsed in a scratch copy, publishes <code>release</code> at 0.2.0, and the same archival with the version left at 0.1.0 is refused.</li>
+            <li>This is release 0.30.2, and <code>scripts/check</code> passes.</li>
+          </ol>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <p><strong>The regeneration step removes nothing.</strong> The step and the requirement behind it say what <code>init</code> does in a repository that is its own project, what it says when it is not standing in that project, and that the run stops there rather than deleting anything.</p>
+          <p><strong>The recorded version is described as <code>htmlspec archive</code> writes it.</strong> The requirement and the last step name <code>spec.nix</code>, and say that the version a run sets in <code>Cargo.toml</code> is the one it raises <code>spec.nix</code> to at archival.</p>
+          <p><strong>What else the evidence found false is corrected.</strong> The specification's masthead, the consumed inputs, the risk about them, the release check's questions, and the evidence and verification of the replaced requirement. The risk that predicted a stale step gains what happened.</p>
+          <p><strong>The runbook is released as 0.2.0</strong>, and the program as 0.30.2, unchanged.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <p><strong>Revise the runbook inside <code>govern-this-repository-from-htmlspec</code>.</strong> Rejected. Its design decision 2 moves the runbook byte-identical, so that the move reviews as a rename and archival publishes it at 0.1.0 against 0.29.0's snapshot, which its rehearsal checked. A revision there would make that rehearsal wrong and the move unreviewable as a rename.</p>
+          <p><strong>Delete the removal sentence and nothing else, as a patch.</strong> Rejected. The step's authority is a requirement that says a run MUST remove both, with scenarios, evidence, and a verification, and the inputs and a risk repeat its premise. Deleting the sentence would leave the specification requiring what the procedure no longer does.</p>
+          <p><strong>Keep a removal, of what <code>init</code> creates when it creates a project.</strong> Rejected. By name, those paths are the project's, <code>htmlspec/</code> and <code>spec.nix</code>. Only whether git tracks them tells them apart, and that is a check a run would make by hand before an irreversible step. Stopping removes nothing and loses nothing.</p>
+          <p><strong>Make <code>init</code> refuse to establish a project beneath one.</strong> That would remove the hazard of running it from the wrong directory, and it is a change to the program. It is named under scope.</p>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <p><strong>In scope.</strong> The release runbook's <code>specification.html</code>, <code>tasks.html</code>, <code>VERSION</code>, and <code>CHANGELOG.md</code>. The 0.30.2 release: <code>Cargo.toml</code>, <code>Cargo.lock</code>, <code>CHANGELOG.md</code>, and the installed instruction files' <code>generatedBy</code> line. <code>spec.nix</code> waits for archival, as it did for the three releases before this.</p>
+          <p><strong>What still holds is kept as written.</strong> The version is advanced first, the increment is judgment, the changelog heading names the version, and the toolchain is the flake's. The history of the five releases before 0.1.0, and the 0.1.0 changelog entry, describe the procedure as it was, and they stay.</p>
+          <p><strong>The four Python stages failing inside <code>nix develop</code> on macOS is not addressed.</strong> Every release since promotion met it and ran them outside the shell. It is a fact about the machine rather than about the repository's layout, and it destroys nothing. This change corrects only the runbook's false statement that the shell supplies every input. Stating it as a hazard of the procedure is a change of its own.</p>
+          <p><strong><code>init</code> run beneath a project establishes a second one</strong>, measured from <code>crates/</code>. project-bootstrap's <a href="../../../specs/project-bootstrap/spec.html#req-commands-resolve-the-project-from-any-directory-beneath-it">"Commands resolve the project from any directory beneath it"</a> requires that search of "every command whose subject is a project", and the contract is silent on whether <code>init</code> is one. The runbook names the root. Settling it is a change to the program, <code>bootstrap-beneath-a-project</code>.</p>
+          <p><strong>The runbook's documents keep their contract version, 0.1.0.</strong> Moving them to a newer schema is not needed for any correction here, and it would change every line's meaning for a reviewer.</p>
+          <p><strong>Requirements.</strong> This change adds, modifies, and removes no accepted requirement. A runbook's requirements are what it requires of a run, and the runbook's own specification says so. The obligations it meets are runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-a-runbook-records-what-its-history-taught">"A runbook records what its history taught"</a>, which makes the inverted hazard a requirement rather than a remark, and <a href="../../../specs/runbook-authority/spec.html#req-the-canonical-procedure-carries-no-completion-state">"The canonical procedure carries no completion state"</a>, which keeps every new unit <code>unchanged</code> and every step <code>todo</code>. The contract is silent on whether <code>spec.nix</code> and <code>Cargo.toml</code> must declare the same version. The runbook preserves what the three releases since promotion did.</p>
+          <p><strong>The runbook's release.</strong> project-bootstrap's <a href="../../../specs/project-bootstrap/spec.html#req-archival-checks-the-versions-of-runbooks-it-publishes">"Archival checks the versions of runbooks it publishes"</a> requires a strictly greater version for changed documents and does not choose the increment, and runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-a-runbook-carries-an-independently-checked-release-version">"A runbook carries an independently checked release version"</a> requires a changelog heading per release that refers to the project release publishing it. The size is judgment, and the choice is mine: a minor, 0.2.0. A step now does the opposite of what it did, and a requirement is replaced, so a run of 0.2.0 does something a run of 0.1.0 did not. A patch would say the procedure is the same one, reworded.</p>
+          <p><strong>The program's release.</strong> As for <code>govern-this-repository-from-htmlspec</code>: archival needs the version to advance and to be distinct, and nothing exempts a change that ships no program change. The choice is mine: a patch, 0.30.2, with a changelog entry that says the program is unchanged.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Carry a runbook to another machine</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Carry a runbook to another machine</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Carry a runbook to another machine</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-26-carry-a-runbook-to-another-machine/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>See <a href="proposal.html"><code>proposal.md</code></a> for motivation and the four deltas under <a href="specification.html"><code>specs/</code></a> for observable behavior. The predecessor <code>log-a-runbook-run</code> is implemented but still active. Its logging requirements must be retained when these deltas are eventually synced; this change does not replace them.</p>
+          <p><code>runs::start</code> currently resolves a <code>ProjectRoot</code>, copies the procedure and every specification requirement, validates the composed record, and then writes it. <code>runs::check</code> and <code>htmlspec_validate::rules::runs::conformance</code> report missing outcomes without gating. There is no structured machine-prerequisite field: <code>Requirement</code> exposes statements, scenarios, and notes. Examples in HTML are inert. The proposal forbids changes to the schema and artifact vocabulary.</p>
+          <p><code>ProjectRoot</code> requires an <code>htmlspec/</code> directory, not an archive or <code>spec.nix</code>, to locate runbooks. The repository itself still uses OpenSpec planning and root-level <code>runbooks/</code>; production layout and this repository's release script therefore need distinct filesystem adapters. Existing <code>Version</code> parses three numeric components; archive versions are in <code>VERSION</code>. <code>scripts/check-release</code> reads files without Git because the Nix check source has no repository history.</p>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong> Put parsing, observation, readiness, and record publication behind separate typed boundaries. Preserve existing document validation and advisory run review. Make the authoring notation, package-manager boundary, receiving layout, and release comparison precise enough to implement without another product decision.</p>
+          <p><strong>Non-Goals:</strong> A general command runner, dependency solver, installer, transport command, history sync service, cryptographic authentication of releases, or enforcement while an operator manually edits an existing run. No machine-dependent rule enters the per-document validator.</p>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-decision-1">
+            <h3>1. Use one versioned check declaration in an existing requirement note</h3>
+            <p>The selected default is built-in probes. Free-form commands would grant a carried document the power to install software or run procedure steps during what the operator requested as inspection. Parsing English would make synonymous prose change behavior unpredictably.</p>
+            <p>A machine requirement contains one ordinary paragraph with <code>data-field="note"</code>. Its projected text starts with the exact marker <code>preflight/v1 </code> followed by a JSON object. For example:</p>
+            <pre><code>&lt;p data-field="statement"&gt;The run MUST start outside an existing HTMLSpec project.&lt;/p&gt;
+&lt;p data-field="note"&gt;preflight/v1 {"kind":"state","check":"outside-project"}&lt;/p&gt;</code></pre>
+            <p>This is an explicit, narrow use of an existing string as a wire format, required by the proposal's no-schema-change boundary. It is not an unstructured core representation. Deserialize immediately into a closed tagged enum, reject unknown fields, and retain requirement identity in every error. Do not give downstream code raw JSON maps or ask it to reparse notes. Ordinary notes are prose; any note beginning <code>preflight/</code> attempts a declaration and an unknown version is an error. Only one declaration is allowed per requirement. All declared checks are conjunctive.</p>
+            <p>The public v1 forms are:</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Kind</th>
+                  <th>Required fields beyond <code>kind</code></th>
+                  <th>Meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>tool</code></td>
+                  <td><code>program</code>, <code>version</code></td>
+                  <td>A bare executable name on the invocation's PATH, with an exact numeric <code>major.minor.patch</code> version</td>
+                </tr>
+                <tr>
+                  <td><code>toolchain</code></td>
+                  <td><code>manifest</code>, <code>shell</code>, <code>tools</code></td>
+                  <td>A local <code>flake.nix</code>, its named development shell, and a nonempty list of required executable names supplied by that environment</td>
+                </tr>
+                <tr>
+                  <td><code>skill</code></td>
+                  <td><code>scope</code>, <code>path</code></td>
+                  <td>A readable, nonempty <code>SKILL.md</code> in <code>home</code> or <code>workdir</code> scope, at the stated relative path</td>
+                </tr>
+                <tr>
+                  <td><code>state</code></td>
+                  <td><code>check</code></td>
+                  <td>Either <code>outside-project</code> or <code>clean-git-worktree</code></td>
+                </tr>
+              </tbody>
+            </table>
+            <p>Examples: <code>{"kind":"tool","program":"python3","version":"3.13.2"}</code>; <code>{"kind":"toolchain","manifest":"flake.nix","shell":"default","tools":["cargo","rustc"]}</code>; <code>{"kind":"skill","scope":"home","path":".agents/skills/example/SKILL.md"}</code>. Examples illustrate the format and do not prescribe a Python pin for the release runbook.</p>
+            <p>Relative paths reject absolute roots and <code>..</code>; program names reject separators and option-like spellings. Skill paths are resolved within their selected scope, including symlink containment; a global skill is not satisfied by a same-named file bundled beside the runbook. Manifest paths are relative to the invocation's working directory. No implicit search among agent installations or fallback from one scope to another occurs. Unsupported states need a later adapter, not an escape hatch for shell code. A normal requirement can still describe a manual obligation.</p>
+          </section>
+          <section id="hs-decision-2">
+            <h3>2. Distinguish facts from evaluation and readiness from publication</h3>
+            <p>Introduce CLI-local <code>preflight</code> and <code>runbook_release</code> modules. Reuse the parser and validator as boundaries; the schema model deliberately remains permissive so it can report malformed documents. Use private constructors for domain values after those checks. The important planned interfaces are these contracts, with support types defined before implementations:</p>
+            <pre><code>fn parse_contract(model: &amp;DocumentModel) -&gt; Result&lt;MachineContract, ContractErrors&gt;;
+fn observe(check: &amp;MachineCheck, host: &amp;mut impl HostProbe) -&gt; Observation;
+fn assess(contract: &amp;MachineContract, facts: Observations) -&gt; PreflightAssessment;
+fn prepare_run(source: ValidatedRunbook, host: &amp;mut impl HostProbe)
+    -&gt; Result&lt;ReadyRun, StartFailure&gt;;
+fn publish_run(run: ReadyRun, destination: VacantRecord) -&gt; Result&lt;StartedRun, PublishError&gt;;
+fn compare_release(previous: PreviousRelease, current: RunbookRelease)
+    -&gt; Result&lt;PublishableRelease, ReleaseFaults&gt;;</code></pre>
+            <p><code>MachineCheck</code> has <code>Tool</code>, <code>Toolchain</code>, <code>Skill</code>, and <code>State</code> variants. <code>WorkingState</code> has the two supported states. <code>RequirementId</code>, <code>ProgramName</code>, <code>ScopedRelativePath</code>, <code>RunbookVersion</code>, <code>ProjectVersion</code>, and <code>ContentDigest</code> have distinct validated representations. Wrap the existing <code>Version</code> for the two meanings rather than comparing raw strings or changing the shared parser.</p>
+            <p><code>Observation</code> distinguishes a measured fact from <code>Unavailable</code>, <code>TimedOut</code>, and <code>ProbeFailure</code>. <code>PreflightAssessment</code> is <code>Ready(PassedChecks)</code> or <code>NotReady(NonEmptyFindings)</code>; invalid contracts are a separate error. Every observation is bound to a check identity. Missing or duplicate facts cannot produce a ready result. <code>ReadyRun</code> owns the validated source snapshot, version, and passed evidence; its constructor is private and it is consumed on publication. A standalone readiness report exposes no constructor or persisted token that can create a <code>ReadyRun</code>.</p>
+            <p><code>HostProbe</code> supplies only scoped filesystem inspection, executable resolution, and the fixed probe operations. Pure parsing, comparison, and report assembly have no process, clock, or filesystem capability. JSON reports serialize typed structures and include requirement IDs, expected conditions, observed facts, outcomes, and remedies; they do not reuse arbitrary probe JSON.</p>
+            <p>Add <code>PrerequisiteFailure</code> to the CLI <code>Outcome</code> enum for a completed negative readiness assessment, mapping it to exit 1. Do not stuff machine failures into <code>DocumentViolation</code>: these share the unsatisfied-contract exit class but have different domain meanings. Preserve all existing outcome codes; malformed declarations and load failures remain operational failures at exit 2.</p>
+          </section>
+          <section id="hs-decision-3">
+            <h3>3. Keep probes finite and the package manager authoritative</h3>
+            <p>For direct tool checks, resolve the executable once and invoke that path with the fixed argument <code>--version</code>, with no shell and closed stdin. Accept exactly one standalone three-component numeric version token from bounded output only when the process exits successfully; reject ambiguous or unparseable output and nonzero exits. Compare numerically. Tools with another version interface need a package-manager adapter or a future explicit adapter; the runbook cannot supply custom arguments, regular expressions, or shell fragments.</p>
+            <p>The Nix adapter inspects the selected local locked flake for the current system. It evaluates the selected dev shell's <code>buildInputs</code> and <code>nativeBuildInputs</code> with network access, lock updates, and import-from-derivation disabled, then queries already-realized input closures. It resolves each requested tool on the actual PATH and compares its canonical executable location with those inputs' closures. A tool appearing only through a shell hook is unavailable unless its provenance can be established from the declared inputs. Neither a manifest's existence nor <code>IN_NIX_SHELL</code> proves readiness. No versions are copied out of the flake into a second dependency catalog.</p>
+            <p>Pin the adapter invocation and parsed response shape in tests against the Nix version supported by this project. The adapter must never call <code>nix develop</code>, <code>build</code>, <code>shell</code>, a fetch command, or anything that realizes missing outputs. Missing locked sources, missing realized inputs, evaluation requiring a build, or unsupported Nix behavior produce <code>Unavailable</code> with the prerequisite to fix. Ordinary evaluator caches are not a readiness guarantee; target files, locks, and installations remain unchanged. No generic package-manager plugin framework is needed for this one adapter.</p>
+            <p>Skill checks establish readable installed content, not its quality or behavioral correctness. <code>outside-project</code> uses the existing nearest-project boundary from the invocation directory. <code>clean-git-worktree</code> uses a fixed read-only Git status operation with optional locks disabled; modified, staged, conflicted, and untracked files all make it false. An absent repository is unavailable, not clean. Runbook storage remains independent of the work directory: <code>--store</code> selects documents, not where a state probe runs.</p>
+            <p>Use sequential probes for deterministic ordering. Each has a 10-second deadline, a 64-KiB combined output limit, and closed stdin; exceeding either limit is unavailable readiness. Cancellation stops and reaps outstanding processes, including children started by the Nix adapter, before returning. Reuse suitable process management if available; any narrow safe dependency needed for process cleanup must preserve the workspace's <code>unsafe_code = "forbid"</code>. Tests inject the clock and probe responses rather than depending on the developer's installed tools.</p>
+          </section>
+          <section id="hs-decision-4">
+            <h3>4. Gate the existing start operation and preserve the logging distinction</h3>
+            <p>Validate and snapshot both canonical documents, the version, and its changelog before collecting machine observations. Treat unreadable files distinctly from absent ones; do not retain the current <code>read_to_string(...).ok()</code> fallback where it would bypass a machine contract. A missing specification or version is now a migration refusal for new starts, while old record review stays unchanged. Zero declared checks is legal and is reported as zero.</p>
+            <p>Use the existing DOM copying and reference-rewriting path. Match successful machine checks to the copied requirements and replace their generated <code>not-run</code> verifications with <code>passed</code> verifications recording the observation and method. Other verifications remain <code>not-run</code>. Add the runbook version to readable record header prose and the start report, never to <code>htmlspec-version</code>, which identifies the document schema.</p>
+            <p>Validate the complete record before publishing. Use exclusive, non-overwriting publication of a fully written temporary file in the destination filesystem; a successful rename that overwrites another record is not acceptable. Handle same-name concurrent starts as a collision. Own temporary files with cleanup guards, remove a newly created empty <code>runs/</code> on recoverable write failure, and never remove an existing directory or another process's record. Crash leftovers must be hidden temporary files ignored by record enumeration, with an explicit safe retry/cleanup diagnostic.</p>
+            <p>The formal-methods gate applies because checking, snapshotting, and publishing are ordered effects. There is no existing model-tool setup; use this transition specification and deterministic state-transition tests rather than introducing a model checker:</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>State</th>
+                  <th>Trigger and next state</th>
+                  <th>Required invariant</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Unresolved</td>
+                  <td>Resolve storage/work roots and parse -&gt; Validated or Refused</td>
+                  <td>No destination created</td>
+                </tr>
+                <tr>
+                  <td>Validated</td>
+                  <td>Observe every declared check -&gt; Ready or Refused</td>
+                  <td>No run record; all facts bound to this snapshot</td>
+                </tr>
+                <tr>
+                  <td>Ready</td>
+                  <td>Compose and validate -&gt; Prepared or Refused</td>
+                  <td>Every machine check passed; no procedure step executed</td>
+                </tr>
+                <tr>
+                  <td>Prepared</td>
+                  <td>Exclusive publication -&gt; Started or Refused</td>
+                  <td>A record is complete and valid, or absent; prior records preserved</td>
+                </tr>
+                <tr>
+                  <td>Any pre-publication state</td>
+                  <td>Cancellation -&gt; Cancelled</td>
+                  <td>Owned probes and temporary files cleaned up; no published record</td>
+                </tr>
+                <tr>
+                  <td>Started</td>
+                  <td>Operator advances record</td>
+                  <td>Canonical procedure remains unstarted; later conformance remains advisory</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>State variables are source snapshot, working context, collected observations, temporary-file ownership, and destination occupancy. Forbidden transitions include Refused -&gt; Started, a standalone report -&gt; Started, and replacement of an occupied record. A retry begins at Unresolved; there is no cached readiness. Concurrent changes to external tools after observation remain an explicit observation-time limitation. Snapshot ownership prevents document edits during preflight from changing which procedure receives the passed evidence. Process crash after publication may leave a valid record without a success message; retry reports the existing record, never overwrites.</p>
+            <figure data-migration="drawn">
+              <figcaption>The run-start transitions of the table above: Unresolved, Validated, Ready and Prepared each advance or are refused, any of them can be cancelled, only Prepared reaches Started, and a retry begins again at Unresolved. The table holds each state's required invariant. Drawn when this document was migrated, from the text beside it.</figcaption>
+              <details>
+                <summary>Diagram source</summary>
+                <pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Unresolved : start, and every retry
+    Unresolved --&gt; Validated : resolve roots and parse
+    Validated --&gt; Ready : observe every declared check
+    Ready --&gt; Prepared : compose and validate
+    Prepared --&gt; Started : exclusive publication
+    Unresolved --&gt; Refused
+    Validated --&gt; Refused
+    Ready --&gt; Refused
+    Prepared --&gt; Refused
+    Unresolved --&gt; Cancelled : cancellation
+    Validated --&gt; Cancelled : cancellation
+    Ready --&gt; Cancelled : cancellation
+    Prepared --&gt; Cancelled : cancellation
+    note right of Started : operator advances record</pre>
+              </details>
+            </figure>
+          </section>
+          <section id="hs-decision-5">
+            <h3>5. Carry a minimal receiving layout and keep the work target explicit</h3>
+            <p>The supported manual copy shape preserves existing relative asset references:</p>
+            <pre><code>portable/
+  htmlspec/
+    assets/                         one existing shared asset store
+    runbooks/release/
+      specification.html
+      tasks.html
+      VERSION
+      CHANGELOG.md
+      runs/                         created on the first local start</code></pre>
+            <p>There is no transport operation to implement. Register <code>portable</code> with the existing store command when the work target is elsewhere, then invoke preflight and run using that store from the target directory. A name remains a name; no additional path selector is added. Original project <code>spec.nix</code>, archives, prior records, and accepted specs need not travel. Required manifests and installed skills belong to the target environment, not this copy. Old run records are local history; leaving them behind does not invalidate the carried contract or assert zero prior runs.</p>
+          </section>
+          <section id="hs-decision-6">
+            <h3>6. Publish runbook release snapshots through the existing archive transaction</h3>
+            <p>Canonical release content is exactly the bytes of <code>specification.html</code> and <code>tasks.html</code> after canonical formatting. Hash both with the existing SHA-256 facility. New records, record edits, and changelog prose do not alter these fingerprints; updated asset references inside either document do. This intentionally makes an authored canonical-document edit require a release even if its effect is editorial. A version-only release is permitted with its changelog entry.</p>
+            <p>Each new archive carries <code>runbooks.json</code>, a versioned typed inventory with one entry per present runbook: directory name, runbook version, two document digests, and the runbook changelog as a snapshot. The enclosing archive's <code>VERSION</code> supplies the source project version. Changelog snapshots are necessary: a deleted or renamed runbook must not make past releases unverifiable. An empty inventory is explicit. The format rejects duplicate names, malformed digests, unknown versions/fields, and duplicate changelog version headings.</p>
+            <p>Read history ordered by parsed project version and compare against the last snapshot for that runbook name, including history before a temporary removal. Identical content at the same version is a repeated snapshot of one release, not a duplicate release. Reject a downgrade even with identical bytes. New names start above <code>0.0.0</code>; renaming intentionally starts a new lineage because the existing contract forbids a second stable runbook identity.</p>
+            <p>Persist an adoption marker <code>runbook-releases.json</code> at the planning root containing the first project version subject to inventories. Publish it atomically with the first inventory; it is never advanced on later releases. Any archive at or above that version must have an inventory. The marker prevents deleting the first inventory from turning missing history into a legacy exemption. An inventory without its marker, or a marker naming an absent adoption archive, is an error. The release checker independently verifies this policy from files without Git.</p>
+            <p>Extend the existing archive planning/commit path, including <code>--check</code>, rather than doing a second post-archive write. Parse and compare all releases before mutation; stage the inventory with the change; publish the adoption marker with rollback on failure. Preserve unrelated active-change files on refusal and retry. Do not use <code>staging.rs</code>'s project-migration API as if it were an archive transaction; inspect and extend the actual archive path in <code>commands.rs</code>.</p>
+            <p>For this publication transition, state consists of the immutable prior history, proposed inventory, active-change location, adoption-marker ownership, and archive destination occupancy. The sequence is Read -&gt; Compared -&gt; Staged -&gt; Committed. Comparison failure or cancellation before commit returns to the original filesystem state; a staging/commit failure rolls back only owned writes. The archive destination must be vacant, and publication must not replace an existing inventory or adoption marker. Retry rereads history. If process termination interrupts the multi-file commit, retain a small transaction journal naming owned paths and intended digests; recovery completes or rolls back that transaction before accepting another publication, and refuses conflicting edits. This is local filesystem coordination, with no remote retries or exactly-once delivery claim.</p>
+            <figure data-migration="drawn">
+              <figcaption>The publication transition of the paragraph above: Read, Compared, Staged and Committed in sequence; a comparison failure or a cancellation before commit returns to the original filesystem state; a staging or commit failure rolls back only owned writes; and a commit interrupted by process termination leaves a journal, from which recovery completes or rolls back the transaction, or refuses conflicting edits. Drawn when this document was migrated, from the text beside it.</figcaption>
+              <details>
+                <summary>Diagram source</summary>
+                <pre class="mermaid">stateDiagram-v2
+    state "original filesystem state" as Original
+    state "owned writes rolled back" as RolledBack
+    state "transaction journal" as Journal
+    state "conflicting edits refused" as Refused
+    [*] --&gt; Read : publication, and every retry
+    Read --&gt; Compared
+    Compared --&gt; Staged
+    Staged --&gt; Committed
+    Read --&gt; Original : comparison failure or cancellation
+    Compared --&gt; Original : cancellation before commit
+    Staged --&gt; Original : cancellation before commit
+    Compared --&gt; RolledBack : staging failure
+    Staged --&gt; RolledBack : commit failure
+    Staged --&gt; Journal : termination interrupts the commit
+    Journal --&gt; Committed : recovery completes
+    Journal --&gt; RolledBack : recovery rolls back
+    Journal --&gt; Refused : recovery refuses</pre>
+              </details>
+            </figure>
+            <p><code>scripts/check-release</code> gains the fourth question about released runbooks. Its OpenSpec adapter uses root <code>runbooks/</code>, <code>openspec/changes/archive/</code>, and <code>openspec/runbook-releases.json</code>; product code uses the corresponding <code>ProjectRoot</code> paths. Share format fixtures across the Python checker and Rust implementation to prevent divergent version ordering and legacy handling. Check current version/heading presence, but compare document changes only at archival: unarchived work can legitimately still be choosing its release number. This resolves the proposal's comparison gap without making a carried run depend on an unavailable archive.</p>
+          </section>
+          <section id="hs-decision-7">
+            <h3>7. Decisions the implementation reached that this design did not state</h3>
+            <p>Recorded here rather than left in the code, because each one is a place where an implementer had to choose and a later reader would otherwise have to reverse-engineer the choice.</p>
+            <p><strong>An archive whose recorded project version will not parse is skipped, not refused.</strong> History is ordered by recorded versions, so such an archive cannot be placed in it. Refusing every later archival over it was the alternative and is worse: the fault is in a file belonging to some <em>other</em> change, and a gate blocking the project on that has no route back through this operation. <code>last_archived_version</code> already draws this line for the project version gate, for the stated reason that reporting a malformed <code>VERSION</code> belongs to <code>scripts/check-release</code> — which names the change carrying it, and asks about every archive's version independently of this reader.</p>
+            <p><strong>A withdrawn requirement's machine-check declaration is not a check.</strong> It follows the line <code>runs.rs</code> already draws twice: a record does not copy a withdrawn requirement and <code>--check</code> does not demand an outcome for one. A check declared by a withdrawn requirement would be copied into no verification, so it could never be attested to — and refusing a run over an obligation that no longer applies is the defect <code>is_withdrawn</code> exists to prevent. That helper is now crate-visible, so there is one statement of it rather than three.</p>
+            <p><strong>A declaration on a requirement with no identifier is refused rather than checked anonymously.</strong> The design says to retain requirement identity in every error but not what happens where there is none. A passed check is copied into the record as a verification naming its requirement, so a requirement nothing can name is one a record cannot attest to.</p>
+            <p><strong><code>ReadyRun</code> has a private constructor and is consumed by publication, with no conversion from a report.</strong> The design requires that a standalone readiness report cannot become permission; this makes it unrepresentable rather than unchecked. <code>PreflightReport</code> holds no token and <code>prepare_run</code> is the only path to a <code>ReadyRun</code>, so reuse has no spelling.</p>
+            <p><strong>Publication is a hard link rather than a rename.</strong> The design requires exclusive, non-overwriting publication of a fully written temporary file and forbids a rename that overwrites. <code>std::fs::rename</code> replaces its destination, and the atomic exclusive create wanted here is <code>renameat2</code> with <code>RENAME_EXCL</code> — unavailable without the <code>unsafe</code> FFI this workspace forbids. <code>link(2)</code> fails with <code>EEXIST</code> where the name is taken, including where it is taken by a broken symlink, which is the case <code>nothing_is_at</code> was written to refuse. The same primitive publishes the adoption marker.</p>
+            <p><strong>The journal holds paths and digests, and recovery is decided by which side of the move the interruption fell on.</strong> The move is the commit point, so "the target exists or the change does" answers where the transaction got to without a log of steps. Recovery completes past the commit point and rolls back before it, and refuses where a file it owns holds bytes it did not intend — completing would publish content nobody compared, and rolling back would destroy somebody's work.</p>
+            <p><strong>A staged inventory or recorded version found in an active change refuses archival.</strong> Those files are written into the change directory so the rename carries them, which means an interrupted publication leaves them somewhere this program never otherwise writes. Overwriting would publish a release nobody compared; removing them silently would destroy the only evidence of what the interrupted run intended.</p>
+            <p><strong>Cancellation is a signal handler, and the process group is why it has to be.</strong> A probe runs in its own group so that stopping it can stop everything it started — and the same property means a terminal's interrupt no longer reaches it. Without a handler, <code>Ctrl-C</code> during a Nix evaluation would end this process and leave the evaluator running, which is the opposite of what the design requires. <code>signal-hook</code> installs one, and it is already in the dependency tree through <code>inquire</code>, so this adds no vendored subtree.</p>
+            <p><strong>Two dependencies, under the allowance the design already grants.</strong> <code>command-group</code> for the group kill <code>std</code> cannot express under <code>unsafe_code = "forbid"</code>, and <code>signal-hook</code> for the handler above. Both are pinned exactly, confined to <code>preflight/host.rs</code>, and four transitive crates between them.</p>
+            <p><strong>The release runbook declares one machine check, and it is the toolchain one.</strong> <code>python3</code> and <code>git</code> are needed by the procedure and are not declared: a <code>tool</code> check states an exact version, and this procedure needs any <code>python3</code> whose standard library reads a file. Pinning one would grow a second dependency language beside <code>flake.nix</code> for a constraint the procedure does not have — the proposal's counter-argument, applied. They stay obligations of the run, stated in the procedure's prose. Neither <code>outside-project</code> nor <code>clean-git-worktree</code> is declared, for the reasons the migration plan gives.</p>
+            <p><strong>That check is stricter than the procedure strictly needs, and the runbook says so.</strong> It requires provenance from the pinned environment, so a contributor whose <code>cargo</code> comes from rustup reading the same <code>rust-toolchain.toml</code> is refused. The alternative was a check that accepts any <code>cargo</code> and therefore establishes nothing about the pin. The broken <code>~/.cargo/bin/cargo</code> symlink this procedure has already met is the case that makes the distinction worth its cost.</p>
+            <p><strong>A tool inside an input's <em>closure</em> counts as supplied by it.</strong> Measured in this repository: <code>jq</code> resolves to the <code>-bin</code> output of a derivation whose declared input is the <code>-dev</code> output, so a prefix comparison against the declared inputs alone would report a tool the pinned environment does supply as a shadowed one. The closure is queried once, and only where the direct comparison left something unexplained.</p>
+            <p><strong>The pinned Nix response is a recorded answer, parsed without a store.</strong> The bytes in the test came from a real <code>nix eval</code> against this repository's flake, but whether the store paths in them are realized <em>here</em> is a different question — so parsing is pinned against the recording, and realization is tested against directories a test creates. A test reaching into <code>/nix/store</code> would pass on a contributor's machine and fail on a clean one.</p>
+            <p><strong>The devShell gains no packages.</strong> The procedure needs <code>python3</code> and <code>git</code> and the flake's devShell supplies neither, so <code>scripts/check</code> cannot run inside <code>nix develop</code>. That is a real gap, and closing it changes what <code>nix develop</code> provides, which this change does not claim.</p>
+            <p><strong>Two run-tests moved off an absent specification.</strong> <code>a_runbook_stating_nothing_has_runs_nothing_checks</code> and <code>the_records_summary_does_not_describe_an_absent_section</code> deleted <code>specification.html</code> to reach a runbook stating nothing, and an absent specification is now a migration refusal for a new start. Both reach the same subject through a specification that states nothing instead, and the third — <code>a_record_that_does_not_validate_is_not_written_and_does_not_wedge_the_run</code> — now meets its refusal at load, naming the runbook's own document rather than a record that was never composed. Its subject, nothing written and no wedge, is unchanged.</p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li>Note declarations add an authoring protocol inside an existing field -&gt; version and document it, reject unknown fields, preserve IDs, and test projection/formatting round trips. This is the explicit compromise required by keeping the document schema unchanged.</li>
+            <li>Built-in checks cover fewer cases than shell commands -&gt; report unsupported conditions honestly; retain manual requirements without falsely claiming preflight checked them.</li>
+            <li>Nix inspection has platform and version differences -&gt; isolate the adapter, refuse unavailable provenance, and test against the pinned environment with fake observations for ordinary tests.</li>
+            <li>A tool's version process can itself misbehave -&gt; bound execution and output and document that locally installed tools and Nix are trusted; inspection is not a process sandbox.</li>
+            <li>Readiness can become stale immediately -&gt; rerun at start, record exact observations, and make no guarantee that environmental state remains fixed during manually executed steps.</li>
+            <li>New starts require metadata older runbooks lack -&gt; provide migration guidance and keep old record review usable. Canonical documents and release metadata should travel together.</li>
+            <li>Snapshots and an adoption marker add release bookkeeping -&gt; one archive transaction writes them, and the ordinary release stage checks them without introducing a second publication command.</li>
+            <li>Carried version metadata can be tampered with -&gt; it identifies the claimed release and is not a signature. Signing and cross-machine history reconciliation remain outside this change.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <ol>
+            <li>Land the typed contracts and regression tests before implementing the probe and publication bodies. Keep the predecessor's logging behavior and current no-overwrite guarantees covered.</li>
+            <li>Implement parsing and adapters, the CLI report, and integrated run gating. Teach existing run fixtures to carry explicit version metadata; retain legacy fixtures for historical review.</li>
+            <li>Implement version comparison and archive inventories together with the release checker. During implementation this repository has no adoption marker yet; the first published inventory and marker are recorded together at release, not fabricated during planning.</li>
+            <li>Migrate <code>runbooks/release</code> with its first independent version and a candid adoption changelog. Declare only entry preconditions. The historical <code>init</code> hazard occurs in a scratch directory later in this procedure, so do not incorrectly require the whole release run to start outside a project. Demonstrate <code>outside-project</code> in a separate bootstrap fixture. Similarly, do not require a clean tree for a procedure whose intended starting state contains release edits.</li>
+            <li>Update runbook authoring and CLI documentation, plus affected archive instruction sources for the new release gate. Regenerate installed copies through the existing installer if those sources change. Include new metadata in the Nix source filter and migration classification.</li>
+            <li>Verify a copied minimal project with the source unavailable, then run the repository suite. Before publication the change can be reverted normally. After publication preserve inventories, marker, and run records; a rollback must retain their reader or be an explicit compatibility change, rather than delete recorded release history.</li>
+          </ol>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

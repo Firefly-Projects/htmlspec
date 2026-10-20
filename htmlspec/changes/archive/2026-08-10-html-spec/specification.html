@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>html-spec</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>html-spec</h1>
+        <p>This was the project's first change, made while <code>openspec/specs/</code> was empty, so every requirement it states is new. It required a closed vocabulary of semantic units, each carried by a reserved class and a stable identifier (<em>Semantic units are identified by class</em>, <em>Every semantic unit has a stable unique identifier</em>), published as a machine-readable schema, a normative HTML-to-model projection, and conformance fixtures (<em>The element contract is published as a machine-readable schema</em>, <em>The HTML-to-model projection is published as a normative specification</em>, <em>Conformance is pinned by fixtures</em>). It also required a page that renders offline and reads without JavaScript (<em>A document is self-contained and offline</em>, <em>Core content is readable without JavaScript</em>), a formatter whose output is a fixed point (<em>Formatting is idempotent</em>), validation that rejects any parser recovery the project does not permit and any remote dependency (<em>Markup must be deterministically parseable</em>, <em>Remote and hidden network dependencies are rejected</em>), and one program that validates, formats, and initializes documents (<em>A single command exposes validate, format, and init</em>).</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>html-spec</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-10-html-spec/specs/deterministic-formatting/spec.md</code><br><code>openspec/changes/archive/2026-08-10-html-spec/specs/document-schema/spec.md</code><br><code>openspec/changes/archive/2026-08-10-html-spec/specs/document-template/spec.md</code><br><code>openspec/changes/archive/2026-08-10-html-spec/specs/document-validation/spec.md</code><br><code>openspec/changes/archive/2026-08-10-html-spec/specs/toolchain-packaging/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-document-schema">document-schema</a></li>
+          <li><a href="#hs-document-template">document-template</a></li>
+          <li><a href="#hs-deterministic-formatting">deterministic-formatting</a></li>
+          <li><a href="#hs-document-validation">document-validation</a></li>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-document-schema">
+          <h2>document-schema</h2>
+          <p>Defines the normative HTML element contract for the semantic units of a specification — requirements, scenarios, decisions, tasks, evidence, risks, and verification — so that agents can address and revise individual units reliably and humans read a document rather than a data format.</p>
+          <section class="requirement" id="req-semantic-units-are-identified-by-class" data-change="added">
+            <h3>Semantic units are identified by class <span class="hs-id">req-semantic-units-are-identified-by-class</span></h3>
+            <p>A document SHALL express each semantic unit as an HTML element carrying a reserved class name from a closed vocabulary: <code>requirement</code>, <code>scenario</code>, <code>decision</code>, <code>task</code>, <code>evidence</code>, <code>risk</code>, and <code>verification</code>. A reserved class name SHALL NOT be used on an element that is not that semantic unit.</p>
+            <article class="scenario" id="scenario-recognized-unit" data-change="added">
+              <h4>Recognized unit</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains <code>&lt;section class="requirement" id="req-theme-selection"&gt;</code></dd>
+                <dt>Then</dt>
+                <dd>consumers treat that element and its descendants as one requirement unit</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-class-outside-the-vocabulary" data-change="added">
+              <h4>Class outside the vocabulary</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document uses a class name that is not reserved, such as <code>class="note"</code></dd>
+                <dt>Then</dt>
+                <dd>the element carries no semantic-unit meaning and is treated as ordinary content</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reserved-class-on-a-decorative-element" data-change="added">
+              <h4>Reserved class on a decorative element</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document applies <code>class="requirement"</code> to an element used only for layout, with no requirement content</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-every-semantic-unit-has-a-stable-unique-identifier" data-change="added">
+            <h3>Every semantic unit has a stable unique identifier <span class="hs-id">req-every-semantic-unit-has-a-stable-unique-identifier</span></h3>
+            <p>Every semantic unit SHALL carry an <code>id</code> attribute. The identifier SHALL be unique within the document, SHALL use a prefix reserved for its unit type, and SHALL consist of lowercase alphanumeric characters and hyphens.</p>
+            <article class="scenario" id="scenario-prefix-matches-unit-type" data-change="added">
+              <h4>Prefix matches unit type</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement is identified</dd>
+                <dt>Then</dt>
+                <dd>its <code>id</code> begins with <code>req-</code>, a scenario with <code>scenario-</code>, a decision with <code>decision-</code>, a task with <code>task-</code>, evidence with <code>evidence-</code>, a risk with <code>risk-</code>, and verification with <code>verify-</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-duplicate-identifier" data-change="added">
+              <h4>Duplicate identifier</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>two elements in the same document share the same <code>id</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-identifier-is-stable-across-edits" data-change="added">
+              <h4>Identifier is stable across edits</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent revises the prose of a requirement without changing what it requires</dd>
+                <dt>Then</dt>
+                <dd>the requirement's <code>id</code> is unchanged, and references to it continue to resolve</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-renaming-a-requirement" data-change="added">
+              <h4>Renaming a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's title changes but it describes the same obligation</dd>
+                <dt>Then</dt>
+                <dd>its <code>id</code> SHALL be preserved rather than regenerated from the new title</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-semantic-units-declare-a-change-state" data-change="added">
+            <h3>Semantic units declare a change state <span class="hs-id">req-semantic-units-declare-a-change-state</span></h3>
+            <p>Every semantic unit SHALL declare its lifecycle state in a <code>data-change</code> attribute with one of the values <code>added</code>, <code>modified</code>, <code>removed</code>, or <code>unchanged</code>. A unit with no <code>data-change</code> attribute SHALL be interpreted as <code>unchanged</code>.</p>
+            <article class="scenario" id="scenario-newly-proposed-requirement" data-change="added">
+              <h4>Newly proposed requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change introduces a requirement that does not exist in the accepted specs</dd>
+                <dt>Then</dt>
+                <dd>the requirement carries <code>data-change="added"</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-requirement-being-withdrawn" data-change="added">
+              <h4>Requirement being withdrawn</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change removes an accepted requirement</dd>
+                <dt>Then</dt>
+                <dd>the requirement carries <code>data-change="removed"</code> and remains present in the document so reviewers can see what is being withdrawn</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unrecognized-change-state" data-change="added">
+              <h4>Unrecognized change state</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a unit carries <code>data-change="pending"</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-requirement-contains-a-title-and-normative-statement" data-change="added">
+            <h3>A requirement contains a title and normative statement <span class="hs-id">req-a-requirement-contains-a-title-and-normative-statement</span></h3>
+            <p>A requirement unit SHALL contain exactly one heading giving its name and at least one element of prose stating the obligation. The normative statement SHALL use <code>SHALL</code> or <code>MUST</code>, and SHALL NOT rely on <code>should</code> or <code>may</code> to express an obligation.</p>
+            <article class="scenario" id="scenario-well-formed-requirement" data-change="added">
+              <h4>Well-formed requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement contains a heading and a paragraph reading "The application MUST let the user select a light or dark theme"</dd>
+                <dt>Then</dt>
+                <dd>the requirement is well formed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-requirement-with-no-normative-statement" data-change="added">
+              <h4>Requirement with no normative statement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement contains only a heading</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-requirement-with-multiple-headings" data-change="added">
+              <h4>Requirement with multiple headings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement unit contains two headings at its own level</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because the requirement's name is ambiguous</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-every-requirement-contains-at-least-one-scenario" data-change="added">
+            <h3>Every requirement contains at least one scenario <span class="hs-id">req-every-requirement-contains-at-least-one-scenario</span></h3>
+            <p>A requirement SHALL contain at least one scenario unit nested within it. A scenario SHALL NOT appear outside a requirement.</p>
+            <article class="scenario" id="scenario-requirement-without-scenarios" data-change="added">
+              <h4>Requirement without scenarios</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement declares an obligation but contains no scenario</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-orphaned-scenario" data-change="added">
+              <h4>Orphaned scenario</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a scenario appears as a sibling of requirements rather than nested inside one</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-scenario-states-conditions-and-expected-outcomes" data-change="added">
+            <h3>A scenario states conditions and expected outcomes <span class="hs-id">req-a-scenario-states-conditions-and-expected-outcomes</span></h3>
+            <p>A scenario SHALL contain a heading naming it and a structured body pairing each condition with its expected outcome, using the labels <code>Given</code>, <code>When</code>, and <code>Then</code>. A scenario SHALL contain at least one <code>When</code> and at least one <code>Then</code>. <code>Given</code> is optional and MAY repeat.</p>
+            <article class="scenario" id="scenario-minimal-scenario" data-change="added">
+              <h4>Minimal scenario</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a scenario pairs a single <code>When</code> condition with a single <code>Then</code> outcome</dd>
+                <dt>Then</dt>
+                <dd>the scenario is well formed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-scenario-missing-an-outcome" data-change="added">
+              <h4>Scenario missing an outcome</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a scenario states a <code>When</code> condition with no <code>Then</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-scenario-with-preconditions" data-change="added">
+              <h4>Scenario with preconditions</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a scenario that depends on prior state</dd>
+                <dt>When</dt>
+                <dd>it declares one or more <code>Given</code> labels before its <code>When</code></dd>
+                <dt>Then</dt>
+                <dd>the scenario is well formed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unrecognized-label" data-change="added">
+              <h4>Unrecognized label</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a scenario body uses a label other than <code>Given</code>, <code>When</code>, or <code>Then</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-cross-references-address-units-by-identifier" data-change="added">
+            <h3>Cross-references address units by identifier <span class="hs-id">req-cross-references-address-units-by-identifier</span></h3>
+            <p>A task, verification, evidence, or risk unit MAY reference the semantic units it relates to. Such a reference SHALL name the target by its identifier, and SHALL resolve to a unit that exists in the same document or in an accepted spec reachable from it.</p>
+            <article class="scenario" id="scenario-task-implements-a-requirement" data-change="added">
+              <h4>Task implements a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task declares that it satisfies <code>req-theme-selection</code></dd>
+                <dt>Then</dt>
+                <dd>consumers can report implementation progress per requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-verification-covers-a-scenario" data-change="added">
+              <h4>Verification covers a scenario</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a verification unit references <code>scenario-theme-persists</code></dd>
+                <dt>Then</dt>
+                <dd>consumers can report which scenarios have been verified and which have not</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-dangling-reference" data-change="added">
+              <h4>Dangling reference</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task references <code>req-does-not-exist</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-cross-references-address-units-by-identifier-reference-to-a-removed-requirement" data-change="added">
+              <h4>Reference to a removed requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task references a requirement carrying <code>data-change="removed"</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because work cannot target a withdrawn obligation</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-decision-records-its-outcome-and-rationale" data-change="added">
+            <h3>A decision records its outcome and rationale <span class="hs-id">req-a-decision-records-its-outcome-and-rationale</span></h3>
+            <p>A decision unit SHALL contain a heading, a statement of the decision reached, and its rationale. It SHALL declare a status of <code>proposed</code>, <code>accepted</code>, or <code>superseded</code>. A superseded decision SHALL reference the decision that replaces it.</p>
+            <article class="scenario" id="scenario-accepted-decision" data-change="added">
+              <h4>Accepted decision</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a decision states the chosen option and why, with status <code>accepted</code></dd>
+                <dt>Then</dt>
+                <dd>the decision is well formed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-superseded-decision-without-a-successor" data-change="added">
+              <h4>Superseded decision without a successor</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a decision declares status <code>superseded</code> but references no replacement</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-task-declares-completion-state" data-change="added">
+            <h3>A task declares completion state <span class="hs-id">req-a-task-declares-completion-state</span></h3>
+            <p>A task unit SHALL declare whether it is complete in a machine-readable attribute, distinct from any visual checkbox. Completion state SHALL be one of <code>todo</code>, <code>in-progress</code>, <code>done</code>, or <code>dropped</code>. A dropped task SHALL state why.</p>
+            <article class="scenario" id="scenario-reporting-progress" data-change="added">
+              <h4>Reporting progress</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a consumer reads a document containing ten tasks of which four are <code>done</code></dd>
+                <dt>Then</dt>
+                <dd>the consumer can report progress without parsing prose or rendered markup</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-dropped-task-without-a-reason" data-change="added">
+              <h4>Dropped task without a reason</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task declares state <code>dropped</code> and gives no reason</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-element-contract-is-published-as-a-machine-readable-schema" data-change="added">
+            <h3>The element contract is published as a machine-readable schema <span class="hs-id">req-the-element-contract-is-published-as-a-machine-readable-schema</span></h3>
+            <p>The element contract SHALL be published as a machine-readable schema that is the single source of truth for the vocabulary, required structure, identifier prefixes, and permitted attribute values of the projected document model. Tools that validate, format, or generate documents SHALL derive their understanding of that model from the schema rather than restating it.</p>
+            <p>The schema describes the projected model. It does not describe the HTML that produces the model, so the schema alone SHALL NOT be treated as the complete public contract.</p>
+            <article class="scenario" id="scenario-contract-and-tooling-agree" data-change="added">
+              <h4>Contract and tooling agree</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the published schema is changed to add a semantic unit</dd>
+                <dt>Then</dt>
+                <dd>tools reflect the new unit without a separate, independently maintained definition</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-third-party-consumer-reads-the-model-contract" data-change="added">
+              <h4>Third-party consumer reads the model contract</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a consumer outside this project</dd>
+                <dt>When</dt>
+                <dd>it reads the published schema</dd>
+                <dt>Then</dt>
+                <dd>it can determine the full set of semantic units and their required structure in the projected model without reading this project's source code</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-html-to-model-projection-is-published-as-a-normative-specification" data-change="added">
+            <h3>The HTML-to-model projection is published as a normative specification <span class="hs-id">req-the-html-to-model-projection-is-published-as-a-normative-specification</span></h3>
+            <p>The project SHALL publish a normative projection specification stating how a document's HTML becomes the projected model. That specification SHALL be part of the public contract alongside the schema. It SHALL state, at minimum:</p>
+            <ul>
+              <li>
+                <p>which elements and attributes create a semantic unit, and which are ignored</p>
+              </li>
+              <li>
+                <p>how a nested element becomes a field of its containing unit</p>
+              </li>
+              <li>
+                <p>which content preserves whitespace exactly, and which content normalizes it</p>
+              </li>
+              <li>
+                <p>how a link, and how an explicit reference attribute, each become a reference in the model</p>
+              </li>
+              <li>
+                <p>how a figure, its caption, and its visualization source project</p>
+              </li>
+              <li>
+                <p>how task completion state and unit change state project</p>
+              </li>
+              <li>
+                <p>how presentational markup that carries no semantic unit is discarded</p>
+              </li>
+            </ul>
+            <article class="scenario" id="scenario-independent-implementation-reproduces-the-model" data-change="added">
+              <h4>Independent implementation reproduces the model</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an implementation written from the projection specification and the schema, with no access to this project's source code</dd>
+                <dt>When</dt>
+                <dd>it projects a conformance fixture</dd>
+                <dt>Then</dt>
+                <dd>it produces the same model as this project's implementation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-presentational-markup-is-ignored-predictably" data-change="added">
+              <h4>Presentational markup is ignored predictably</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document wraps a requirement's prose in additional presentational elements that carry no reserved class</dd>
+                <dt>Then</dt>
+                <dd>the projection specification determines whether that markup is discarded, and the resulting model does not vary between implementations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-projection-rule-without-a-fixture" data-change="added">
+              <h4>Projection rule without a fixture</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a rule is added to the projection specification with no corresponding mapping fixture</dd>
+                <dt>Then</dt>
+                <dd>the conformance suite is incomplete and the contract change is not accepted</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-conformance-is-pinned-by-fixtures" data-change="added">
+            <h3>Conformance is pinned by fixtures <span class="hs-id">req-conformance-is-pinned-by-fixtures</span></h3>
+            <p>The contract SHALL be accompanied by a conformance suite of example documents, each labelled valid or invalid. Every invalid fixture SHALL identify the rule it violates. Every rule in the contract SHALL be covered by at least one valid and one invalid fixture.</p>
+            <p>The suite SHALL also contain mapping fixtures, each pairing an HTML input with its expected projected model, so that the projection specification is pinned as precisely as the schema.</p>
+            <article class="scenario" id="scenario-rule-without-coverage" data-change="added">
+              <h4>Rule without coverage</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a rule is added to the contract with no corresponding fixtures</dd>
+                <dt>Then</dt>
+                <dd>the conformance suite is incomplete and the contract change is not accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-verifying-an-independent-implementation" data-change="added">
+              <h4>Verifying an independent implementation</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an independent implementation of the contract</dd>
+                <dt>When</dt>
+                <dd>it is run against the conformance suite</dd>
+                <dt>Then</dt>
+                <dd>it accepts every valid fixture and rejects every invalid fixture, identifying the expected violated rule</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-document-template">
+          <h2>document-template</h2>
+          <p>Defines the canonical page a reviewer opens — its structure, its restrained visual system, its print behavior, and the pinned offline runtime that renders diagrams, charts, and equations — so that a specification is legible in a browser, on paper, and with scripting disabled.</p>
+          <section class="requirement" id="req-a-document-is-self-contained-and-offline" data-change="added">
+            <h3>A document is self-contained and offline <span class="hs-id">req-a-document-is-self-contained-and-offline</span></h3>
+            <p>A document SHALL render completely without network access. It SHALL NOT reference remote scripts, stylesheets, fonts, images, or analytics. All referenced assets SHALL resolve to files within the project.</p>
+            <article class="scenario" id="scenario-opened-with-no-network" data-change="added">
+              <h4>Opened with no network</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a machine with networking disabled</dd>
+                <dt>When</dt>
+                <dd>a reviewer opens a document in a browser</dd>
+                <dt>Then</dt>
+                <dd>the document renders fully, including its diagrams and charts</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-remote-reference-present" data-change="added">
+              <h4>Remote reference present</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document references a script or font over <code>http:</code> or <code>https:</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-tracking" data-change="added">
+              <h4>No tracking</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer opens a document</dd>
+                <dt>Then</dt>
+                <dd>no request leaves the machine</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-core-content-is-readable-without-javascript" data-change="added">
+            <h3>Core content is readable without JavaScript <span class="hs-id">req-core-content-is-readable-without-javascript</span></h3>
+            <p>The semantic content of a document — its requirements, scenarios, decisions, tasks, evidence, risks, and verification — SHALL be present in the served markup and legible with JavaScript disabled. JavaScript SHALL only enhance presentation.</p>
+            <article class="scenario" id="scenario-scripting-disabled" data-change="added">
+              <h4>Scripting disabled</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a browser with JavaScript disabled</dd>
+                <dt>When</dt>
+                <dd>a reviewer opens a document</dd>
+                <dt>Then</dt>
+                <dd>every requirement, scenario, decision, task, and verification result is readable, correctly ordered, and styled</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-diagram-with-scripting-disabled" data-change="added">
+              <h4>Diagram with scripting disabled</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document containing a diagram is opened with JavaScript disabled</dd>
+                <dt>Then</dt>
+                <dd>the diagram's source or a textual description is visible in place of the rendered figure, rather than an empty region</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-content-injected-by-script" data-change="added">
+              <h4>Content injected by script</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document supplies a requirement's text only by running JavaScript</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-documents-share-one-pinned-runtime" data-change="added">
+            <h3>Documents share one pinned runtime <span class="hs-id">req-documents-share-one-pinned-runtime</span></h3>
+            <p>Diagram, chart, and equation support SHALL come from a fixed set of approved libraries at versions pinned by the project. The runtime SHALL be shared across documents in a project rather than duplicated into each file. Arbitrary generated scripts SHALL NOT be embedded in a document.</p>
+            <article class="scenario" id="scenario-approved-libraries" data-change="added">
+              <h4>Approved libraries</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document renders a diagram or a chart</dd>
+                <dt>Then</dt>
+                <dd>it does so through the project's pinned diagram or charting library, and equations use native MathML with no library at all</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-shared-assets" data-change="added">
+              <h4>Shared assets</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project containing many documents</dd>
+                <dt>When</dt>
+                <dd>the runtime is measured</dd>
+                <dt>Then</dt>
+                <dd>each library appears once in the project rather than once per document</dd>
+              </dl>
+              <p data-field="note">Migration note: this change built otherwise. Its <code>init</code> established the assets in the new document's own directory unless <code>--assets</code> named a project root, so documents in different directories each received their own copy, and at archival (commit <code>6956324</code>) this change's own converted document had an eight-file copy of the runtime in <code>documents/assets/</code>, a second copy alongside the repository's <code>assets/</code>. Nothing then detected the duplicate. The later change 2026-08-13-content-address-runtime-assets fixed it, storing each asset once under a name derived from its bytes and rejecting a project that holds two copies; see its <a href="../2026-08-13-content-address-runtime-assets/proposal.html">proposal</a>.</p>
+            </article>
+            <article class="scenario" id="scenario-unapproved-script" data-change="added">
+              <h4>Unapproved script</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document embeds an inline script that is not part of the pinned runtime</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-runtime-version-is-recorded" data-change="added">
+              <h4>Runtime version is recorded</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer inspects a project's assets</dd>
+                <dt>Then</dt>
+                <dd>each vendored library's exact version and content hash are recorded, so a rendered document can be reproduced later</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-document-declares-its-identity-and-provenance" data-change="added">
+            <h3>A document declares its identity and provenance <span class="hs-id">req-a-document-declares-its-identity-and-provenance</span></h3>
+            <p>Every document SHALL declare, in machine-readable form, the schema version it conforms to, the change or spec it represents, and its lifecycle status. A reviewer SHALL be able to see this information on the page without reading source.</p>
+            <p data-field="note">Migration note: this change built the lifecycle status as an <code>htmlspec-status</code> declaration in the document's head, shown on the page as its Status, as the template and section 9.3 of <code>crates/htmlspec-schema/doc/projection.md</code> at commit <code>6956324</code> show. The later change 2026-08-14-separate-artifact-kinds replaced the status with the document's kind; see its <a href="../2026-08-14-separate-artifact-kinds/specification.html#req-a-document-declares-its-identity-and-provenance">specification</a>.</p>
+            <article class="scenario" id="scenario-schema-version-present" data-change="added">
+              <h4>Schema version present</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a consumer reads a document</dd>
+                <dt>Then</dt>
+                <dd>it can determine which version of the element contract the document targets before parsing its content</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-status-visible-to-a-reviewer" data-change="added">
+              <h4>Status visible to a reviewer</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer opens a document representing a proposal under review</dd>
+                <dt>Then</dt>
+                <dd>the page shows its status, so an unapproved proposal is not mistaken for accepted specification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-missing-schema-version" data-change="added">
+              <h4>Missing schema version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document omits its schema version</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-document-is-navigable" data-change="added">
+            <h3>A document is navigable <span class="hs-id">req-a-document-is-navigable</span></h3>
+            <p>A document SHALL present its sections in a stable, predictable order and SHALL provide navigation to its semantic units. Every semantic unit SHALL be addressable by a fragment link that resolves within the document.</p>
+            <article class="scenario" id="scenario-deep-link-to-a-requirement" data-change="added">
+              <h4>Deep link to a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer follows a link ending in <code>#req-theme-selection</code></dd>
+                <dt>Then</dt>
+                <dd>the browser scrolls to that requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-navigation-without-scripting" data-change="added">
+              <h4>Navigation without scripting</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is opened with JavaScript disabled</dd>
+                <dt>Then</dt>
+                <dd>its navigation still lists the document's sections and its links still resolve</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-broken-internal-link" data-change="added">
+              <h4>Broken internal link</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains a fragment link whose target does not exist</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-visual-system-favors-comprehension-over-decoration" data-change="added">
+            <h3>The visual system favors comprehension over decoration <span class="hs-id">req-the-visual-system-favors-comprehension-over-decoration</span></h3>
+            <p>A document SHALL use the project's shared visual system: flat editorial layout, serif body text, high information density, and muted color. Color SHALL NOT be the only means of conveying meaning. Styling SHALL NOT hide or reorder semantic content.</p>
+            <article class="scenario" id="scenario-change-state-conveyed-without-color-alone" data-change="added">
+              <h4>Change state conveyed without color alone</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer with a color-vision deficiency reads a document containing added, modified, and removed requirements</dd>
+                <dt>Then</dt>
+                <dd>each unit's change state is distinguishable by text or shape, not only by hue</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-styling-does-not-hide-content" data-change="added">
+              <h4>Styling does not hide content</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is styled</dd>
+                <dt>Then</dt>
+                <dd>no semantic unit is visually hidden or moved out of its document order</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-readable-at-a-narrow-width" data-change="added">
+              <h4>Readable at a narrow width</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is viewed in a narrow window</dd>
+                <dt>Then</dt>
+                <dd>its text reflows and remains readable without horizontal scrolling of body prose</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-documents-print-cleanly" data-change="added">
+            <h3>Documents print cleanly <span class="hs-id">req-documents-print-cleanly</span></h3>
+            <p>A document SHALL provide print styling that produces a legible paper or PDF rendering. Navigation chrome and interactive controls SHALL be omitted from print output. Content SHALL NOT be truncated at page boundaries.</p>
+            <article class="scenario" id="scenario-printing-to-pdf" data-change="added">
+              <h4>Printing to PDF</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer prints a document to PDF</dd>
+                <dt>Then</dt>
+                <dd>the result contains the full content with legible type, no clipped diagrams, and no navigation chrome</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-link-targets-in-print" data-change="added">
+              <h4>Link targets in print</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document containing external references is printed</dd>
+                <dt>Then</dt>
+                <dd>those references remain identifiable on paper rather than appearing as unresolvable link text</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-project-can-be-initialized-with-a-conforming-document" data-change="added">
+            <h3>A project can be initialized with a conforming document <span class="hs-id">req-a-project-can-be-initialized-with-a-conforming-document</span></h3>
+            <p>The project SHALL provide a way to create a new document that already conforms to the element contract, the visual system, and the runtime conventions, without hand-assembly.</p>
+            <article class="scenario" id="scenario-starting-a-new-change" data-change="added">
+              <h4>Starting a new change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor initializes a new change document</dd>
+                <dt>Then</dt>
+                <dd>the resulting file passes validation immediately and opens as a readable page</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-into-a-project-without-assets" data-change="added">
+              <h4>Initializing into a project without assets</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is created in a project whose shared assets are not yet present</dd>
+                <dt>Then</dt>
+                <dd>the assets are established as part of initialization, so the document renders offline without a further step</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-deterministic-formatting">
+          <h2>deterministic-formatting</h2>
+          <p>Defines the canonical serialization of a specification document so that rich HTML still produces small, meaningful Git diffs, and so two agents editing the same document independently do not fight over formatting.</p>
+          <section class="requirement" id="req-formatting-is-idempotent" data-change="added">
+            <h3>Formatting is idempotent <span class="hs-id">req-formatting-is-idempotent</span></h3>
+            <p>Formatting a document SHALL be a fixed point: formatting an already-formatted document SHALL produce byte-identical output. Applying formatting repeatedly SHALL never continue to change the file.</p>
+            <article class="scenario" id="scenario-second-pass-changes-nothing" data-change="added">
+              <h4>Second pass changes nothing</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is formatted twice in succession</dd>
+                <dt>Then</dt>
+                <dd>the output of the second pass is byte-identical to the output of the first</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-formatted-file-in-version-control" data-change="added">
+              <h4>Formatted file in version control</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a formatted document committed to Git</dd>
+                <dt>When</dt>
+                <dd>formatting is run again with no content edits</dd>
+                <dt>Then</dt>
+                <dd>Git reports no changes</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-formatting-preserves-meaning" data-change="added">
+            <h3>Formatting preserves meaning <span class="hs-id">req-formatting-preserves-meaning</span></h3>
+            <p>Formatting SHALL NOT change a document's semantic content. It SHALL preserve every semantic unit, every identifier, every attribute value, every cross-reference, and the document order of content. It SHALL NOT add, remove, or reorder semantic units.</p>
+            <article class="scenario" id="scenario-identifiers-survive-formatting" data-change="added">
+              <h4>Identifiers survive formatting</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is formatted</dd>
+                <dt>Then</dt>
+                <dd>every semantic unit retains the identifier it had before</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-content-order-preserved" data-change="added">
+              <h4>Content order preserved</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document with requirements in a deliberate order is formatted</dd>
+                <dt>Then</dt>
+                <dd>the requirements appear in the same order</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-whitespace-sensitive-content-untouched" data-change="added">
+              <h4>Whitespace-sensitive content untouched</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains a preformatted code excerpt</dd>
+                <dt>Then</dt>
+                <dd>formatting leaves that content's internal whitespace and line breaks exactly as authored</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-formatting-an-invalid-document" data-change="added">
+              <h4>Formatting an invalid document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>formatting is applied to a document that fails validation</dd>
+                <dt>Then</dt>
+                <dd>the formatter either produces canonically formatted output without altering meaning, or refuses and reports why — it never silently repairs or discards content</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-serialization-is-canonical" data-change="added">
+            <h3>Serialization is canonical <span class="hs-id">req-serialization-is-canonical</span></h3>
+            <p>For any given document content, there SHALL be exactly one canonical serialization. Attribute order, indentation, line breaking, quoting, character escaping, tag closing, and case SHALL be fully determined by the formatting rules rather than by authoring choices or generator behavior.</p>
+            <article class="scenario" id="scenario-two-agents-converge" data-change="added">
+              <h4>Two agents converge</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>two agents that produce the same semantic document with different attribute order and indentation</dd>
+                <dt>When</dt>
+                <dd>both outputs are formatted</dd>
+                <dt>Then</dt>
+                <dd>the two files are byte-identical</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-attribute-order-is-fixed" data-change="added">
+              <h4>Attribute order is fixed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a formatted element carries a class, an identifier, and a change state</dd>
+                <dt>Then</dt>
+                <dd>those attributes appear in the order the formatting rules prescribe, regardless of the order they were written in</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-escaping-is-consistent" data-change="added">
+              <h4>Escaping is consistent</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>content contains characters that may be written either literally or as entities</dd>
+                <dt>Then</dt>
+                <dd>the formatted output uses one prescribed form for each such character</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-formatting-introduces-no-diff-churn" data-change="added">
+            <h3>Formatting introduces no diff churn <span class="hs-id">req-formatting-introduces-no-diff-churn</span></h3>
+            <p>Formatting SHALL NOT widen a diff beyond the units a content edit touched. Editing, adding, or removing a unit SHALL NOT cause the formatter to reflow or reindent unrelated parts of the document.</p>
+            <p>This requirement constrains the formatter only. It does not promise a minimal Git diff for a given edit. Preserved author line breaks mean a one-line paragraph produces a whole-line change when one sentence changes, and that cost belongs to the line structure rather than to the formatter. Diff minimality SHALL be measured as a separate property.</p>
+            <article class="scenario" id="scenario-editing-one-requirement" data-change="added">
+              <h4>Editing one requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the prose of one requirement is revised and the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the formatter changes no line outside that requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-whole-line-change-is-not-a-violation" data-change="added">
+              <h4>Whole-line change is not a violation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>one sentence changes inside a paragraph held on a single long line</dd>
+                <dt>Then</dt>
+                <dd>the diff covers that whole line, and the formatter is still conformant</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-inserting-a-requirement" data-change="added">
+              <h4>Inserting a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a new requirement is inserted between two existing ones</dd>
+                <dt>Then</dt>
+                <dd>the diff shows the added requirement and does not rewrite the surrounding requirements</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-long-prose-reflow" data-change="added">
+              <h4>Long prose reflow</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a sentence within a paragraph is edited</dd>
+                <dt>Then</dt>
+                <dd>the diff does not rewrap the entire surrounding paragraph or section</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-generated-content-is-ordered-deterministically" data-change="added">
+            <h3>Generated content is ordered deterministically <span class="hs-id">req-generated-content-is-ordered-deterministically</span></h3>
+            <p>Where a document contains content whose order is not authored — such as collected references, indexes, or navigation — that order SHALL be determined by a stable rule. Regenerating such content from unchanged inputs SHALL produce identical output.</p>
+            <article class="scenario" id="scenario-regenerating-navigation" data-change="added">
+              <h4>Regenerating navigation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document's navigation is regenerated with no content change</dd>
+                <dt>Then</dt>
+                <dd>the navigation is byte-identical to before</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-incidental-ordering" data-change="added">
+              <h4>No incidental ordering</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>generated content is produced twice from the same inputs in different runs</dd>
+                <dt>Then</dt>
+                <dd>the ordering does not vary with iteration order, timestamps, or filesystem order</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-formatting-can-be-checked-without-writing" data-change="added">
+            <h3>Formatting can be checked without writing <span class="hs-id">req-formatting-can-be-checked-without-writing</span></h3>
+            <p>It SHALL be possible to determine whether a document is canonically formatted without modifying it, so that continuous integration can reject unformatted documents.</p>
+            <article class="scenario" id="scenario-check-passes" data-change="added">
+              <h4>Check passes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a canonically formatted document is checked</dd>
+                <dt>Then</dt>
+                <dd>the check reports success and the file is not modified</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-check-fails" data-change="added">
+              <h4>Check fails</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an unformatted document is checked</dd>
+                <dt>Then</dt>
+                <dd>the check reports failure, identifies the document, and the file is not modified</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-files-use-a-stable-text-encoding-and-line-ending" data-change="added">
+            <h3>Files use a stable text encoding and line ending <span class="hs-id">req-files-use-a-stable-text-encoding-and-line-ending</span></h3>
+            <p>Formatted documents SHALL use UTF-8 encoding, SHALL use a single prescribed line ending, SHALL end with exactly one final newline, and SHALL NOT contain trailing whitespace on any line.</p>
+            <article class="scenario" id="scenario-line-endings-normalized" data-change="added">
+              <h4>Line endings normalized</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document authored with mixed line endings is formatted</dd>
+                <dt>Then</dt>
+                <dd>the output uses the prescribed line ending throughout</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-cross-platform-round-trip" data-change="added">
+              <h4>Cross-platform round trip</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>contributors on different operating systems</dd>
+                <dt>When</dt>
+                <dd>each formats the same document</dd>
+                <dt>Then</dt>
+                <dd>the results are byte-identical</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-document-validation">
+          <h2>document-validation</h2>
+          <p>Defines the structural and safety rules a specification document must satisfy to be accepted, along with the diagnostics a validator reports, so that a document is both reliably machine-editable and safe to open.</p>
+          <section class="requirement" id="req-structural-conformance-is-enforced" data-change="added">
+            <h3>Structural conformance is enforced <span class="hs-id">req-structural-conformance-is-enforced</span></h3>
+            <p>Validation SHALL reject any document that violates the element contract. This includes missing or duplicate identifiers, identifier prefixes that do not match the unit type, requirements without scenarios, scenarios outside requirements, missing normative statements, malformed scenario bodies, and attribute values outside their permitted sets.</p>
+            <article class="scenario" id="scenario-duplicate-identifier-rejected" data-change="added">
+              <h4>Duplicate identifier rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains two units sharing one identifier</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports both locations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-requirement-without-a-scenario-rejected" data-change="added">
+              <h4>Requirement without a scenario rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement contains no scenario</dd>
+                <dt>Then</dt>
+                <dd>validation fails and identifies the requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-conforming-document-accepted" data-change="added">
+              <h4>Conforming document accepted</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document satisfies every structural rule</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds and reports no structural errors</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-an-upstream-edit-marks-dependents-for-review-rather-than-gating-work" data-change="added">
+            <h3>An upstream edit marks dependents for review rather than gating work <span class="hs-id">req-an-upstream-edit-marks-dependents-for-review-rather-than-gating-work</span></h3>
+            <p>Validation SHALL report a dependent unit as needing review when the unit it references changes materially. Such a report SHALL NOT block continued work, SHALL NOT impose a phase gate, and SHALL NOT require regeneration of the dependent artifact. Exploration, proposal, design, implementation, and verification SHALL be able to loop.</p>
+            <p data-field="note">Migration note: as built, a unit changes materially when it declares <code>data-change</code> <code>added</code> or <code>modified</code>. Every unit referencing it is reported, whether or not it still describes that unit's behaviour, and the report clears when the referenced unit returns to <code>unchanged</code>, rather than when the dependents are reconciled. A second rule, <code>review/stale-verification</code>, reports a verification that records an outcome against such a unit. This was deliberate: the module documentation of <code>crates/htmlspec-validate/src/rules/review.rs</code> at commit <code>6956324</code> states it as the rule's design. No document of this change records it, so the delta's words are kept.</p>
+            <article class="scenario" id="scenario-requirement-revised-during-implementation" data-change="added">
+              <h4>Requirement revised during implementation</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>tasks and verification that reference a requirement</dd>
+                <dt>When</dt>
+                <dd>that requirement's obligation changes while implementation is underway</dd>
+                <dt>Then</dt>
+                <dd>validation reports the referencing units as needing review, and work continues</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reconciliation-clears-the-report" data-change="added">
+              <h4>Reconciliation clears the report</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent reconciles the units reported as needing review</dd>
+                <dt>Then</dt>
+                <dd>validation stops reporting them, and no artifact was regenerated wholesale</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-stale-reference-is-reported-not-fatal" data-change="added">
+              <h4>Stale reference is reported, not fatal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a dependent unit still resolves but describes behavior the referenced requirement no longer states</dd>
+                <dt>Then</dt>
+                <dd>validation reports the inconsistency as needing review rather than as a structural error</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-cross-references-must-resolve" data-change="added">
+            <h3>Cross-references must resolve <span class="hs-id">req-cross-references-must-resolve</span></h3>
+            <p>Validation SHALL verify that every reference to a semantic unit resolves to a unit that exists. This includes fragment links within the document, and references from tasks, verification, evidence, and risks to the requirements and scenarios they address.</p>
+            <article class="scenario" id="scenario-dangling-task-reference" data-change="added">
+              <h4>Dangling task reference</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task references a requirement identifier that does not exist</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the task and the unresolved identifier</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-broken-fragment-link" data-change="added">
+              <h4>Broken fragment link</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document links to a fragment with no matching element</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the link</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-cross-references-must-resolve-reference-to-a-removed-requirement" data-change="added">
+              <h4>Reference to a removed requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task or verification references a requirement marked removed</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-markup-must-be-deterministically-parseable" data-change="added">
+            <h3>Markup must be deterministically parseable <span class="hs-id">req-markup-must-be-deterministically-parseable</span></h3>
+            <p>Validation SHALL reject a document whose markup cannot be parsed into a single unambiguous structure. Constructs that different parsers would interpret differently SHALL be rejected rather than accepted with a guess.</p>
+            <p>A conforming document SHALL produce zero recovered parse errors by default. Any recovered parse error SHALL fail validation unless the project permits that specific recovery.</p>
+            <article class="scenario" id="scenario-improperly-nested-elements" data-change="added">
+              <h4>Improperly nested elements</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains overlapping or improperly nested elements</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the location</dd>
+              </dl>
+              <p data-field="note">Migration note: as built, a parse diagnostic names the document and the parser's message, and cannot name a line or an offset, because the parser hands the message over with no byte offset. <a href="evidence/parse-errors.md"><code>evidence/parse-errors.md</code></a> names this as a limit and leaves offsets out of scope (“Gaps, stated rather than hidden”, limit 2), so the delta's words are kept.</p>
+            </article>
+            <article class="scenario" id="scenario-ambiguous-construct" data-change="added">
+              <h4>Ambiguous construct</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains markup whose interpretation depends on parser error recovery</dd>
+                <dt>Then</dt>
+                <dd>validation fails rather than silently accepting one interpretation</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-permitted-parser-recoveries-are-enumerated-and-pinned" data-change="added">
+            <h3>Permitted parser recoveries are enumerated and pinned <span class="hs-id">req-permitted-parser-recoveries-are-enumerated-and-pinned</span></h3>
+            <p>The project SHALL pin an exact parser version. Every permitted recovery SHALL be enumerated individually, SHALL carry a stable internal diagnostic code owned by this project, and SHALL be justified by a fixture that demonstrates the recovery is unambiguous across consumers.</p>
+            <p>Permitted recoveries SHALL NOT be derived by collecting whatever a sample of documents happens to produce. A parser version change SHALL require deliberate review of the enumeration before the new version is adopted.</p>
+            <article class="scenario" id="scenario-diagnostic-codes-are-owned-by-this-project" data-change="added">
+              <h4>Diagnostic codes are owned by this project</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a parser that reports a recovery as free text rather than as a typed code</dd>
+                <dt>When</dt>
+                <dd>validation reports that recovery</dd>
+                <dt>Then</dt>
+                <dd>it reports this project's own stable diagnostic code, so a reworded parser message does not change the reported code</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-parser-rewords-a-message" data-change="added">
+              <h4>Parser rewords a message</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a new parser version changes the wording of a recovery message</dd>
+                <dt>Then</dt>
+                <dd>the project's checks fail rather than silently widening or narrowing what documents are accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-ambiguous-recovery-is-not-permitted" data-change="added">
+              <h4>Ambiguous recovery is not permitted</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a recovery is proposed for the permitted enumeration and no fixture shows it is unambiguous across consumers</dd>
+                <dt>Then</dt>
+                <dd>the recovery is not permitted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-coarse-parser-message-covering-two-faults" data-change="added">
+              <h4>Coarse parser message covering two faults</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a parser that reports two distinct faults with one identical message</dd>
+                <dt>When</dt>
+                <dd>the enumeration is built</dd>
+                <dt>Then</dt>
+                <dd>it distinguishes the two faults by parser state, or it permits neither</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-remote-and-hidden-network-dependencies-are-rejected" data-change="added">
+            <h3>Remote and hidden network dependencies are rejected <span class="hs-id">req-remote-and-hidden-network-dependencies-are-rejected</span></h3>
+            <p>Validation SHALL reject any document that depends on a resource outside the project. This includes remote scripts, stylesheets, fonts, images, and iframes, and any construct capable of initiating a network request when the document is opened.</p>
+            <article class="scenario" id="scenario-remote-script-rejected" data-change="added">
+              <h4>Remote script rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document references a script by absolute URL</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the reference</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-remote-font-rejected" data-change="added">
+              <h4>Remote font rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document's styling loads a font from a remote origin</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-concealed-request-rejected" data-change="added">
+              <h4>Concealed request rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains a construct that would issue a network request without a visible remote reference, such as a prefetch directive or a beacon</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-local-asset-accepted" data-change="added">
+              <h4>Local asset accepted</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document references the project's shared runtime by relative path</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-code-examples-cannot-execute" data-change="added">
+            <h3>Code examples cannot execute <span class="hs-id">req-code-examples-cannot-execute</span></h3>
+            <p>Validation SHALL ensure that example code shown in a document is inert. Code presented as content SHALL NOT be capable of executing as part of the page, and SHALL NOT be able to terminate its container and inject markup into the document.</p>
+            <p>The security property is the absence of element descendants. A code element's children SHALL contain text and comment nodes only. Validation SHALL NOT require exactly one text node, because a parser splits text around a comment and an empty example has no children at all.</p>
+            <article class="scenario" id="scenario-script-shown-as-an-example" data-change="added">
+              <h4>Script shown as an example</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document displays a JavaScript snippet as an example</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds and the snippet does not execute when the document is opened</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-empty-example-accepted" data-change="added">
+              <h4>Empty example accepted</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a code element has no children</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds, because an empty example carries no element descendant</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-text-split-by-a-comment-accepted" data-change="added">
+              <h4>Text split by a comment accepted</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a parser represents a code element's content as two text nodes separated by a comment</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds, because no child is an element</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-presentational-element-inside-an-example-rejected" data-change="added">
+              <h4>Presentational element inside an example rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a code element contains a child element, including a purely presentational one</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the example is no longer inert text</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-container-escape-rejected" data-change="added">
+              <h4>Container escape rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an example's content would close its containing element and introduce live markup</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the example</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-executable-script-accepted-only-from-the-pinned-runtime" data-change="added">
+              <h4>Executable script accepted only from the pinned runtime</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains an executable script that is not part of the pinned runtime</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-visualization-specifications-are-validated" data-change="added">
+            <h3>Visualization specifications are validated <span class="hs-id">req-visualization-specifications-are-validated</span></h3>
+            <p>Validation SHALL check every embedded diagram or chart specification against its own format. An invalid specification SHALL be reported at authoring time rather than failing silently in the browser.</p>
+            <article class="scenario" id="scenario-invalid-chart-specification" data-change="added">
+              <h4>Invalid chart specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document embeds a chart specification that its format rejects</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the location and the underlying error</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-invalid-diagram-source" data-change="added">
+              <h4>Invalid diagram source</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document embeds diagram source that cannot be parsed by the diagram library</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+              <p data-field="note">Migration note: as built, a Mermaid diagram is checked only for being non-empty and opening with a recognized diagram keyword, and its diagnostic carries a note that the validation is shallow, so a diagram the library cannot parse passes when it opens with a recognized keyword. The change names this as a gap and defers full validation: see the design's <a href="design.html#hs-visualization-sources-are-visible-content-not-inert-script-tags">“Visualization sources are visible content, not inert script tags”</a> and its risk “Mermaid diagrams are only shallowly validated”, and <a href="tasks.html#task-4-14">task 4.14</a>, which builds the shallow check. The delta's words are kept.</p>
+            </article>
+            <article class="scenario" id="scenario-chart-data-is-local" data-change="added">
+              <h4>Chart data is local</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a chart specification loads its data from a remote URL</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the document would not render offline</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-no-javascript-readability-is-enforced" data-change="added">
+            <h3>No-JavaScript readability is enforced <span class="hs-id">req-no-javascript-readability-is-enforced</span></h3>
+            <p>Validation SHALL reject a document whose semantic content is not present in its markup. Content that only appears after scripts run SHALL be treated as absent.</p>
+            <article class="scenario" id="scenario-script-injected-requirement-rejected" data-change="added">
+              <h4>Script-injected requirement rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's text is supplied by a script rather than present in the markup</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-diagram-without-a-fallback" data-change="added">
+              <h4>Diagram without a fallback</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains a diagram with no source or textual description present in the markup</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-diagnostics-are-actionable-and-machine-readable" data-change="added">
+            <h3>Diagnostics are actionable and machine-readable <span class="hs-id">req-diagnostics-are-actionable-and-machine-readable</span></h3>
+            <p>Every validation failure SHALL report the rule violated, the location within the document, and the offending identifier or content where one applies. Diagnostics SHALL be available in a machine-readable form so that agents and continuous integration can consume them without parsing prose.</p>
+            <p data-field="note">Migration note: as built, a diagnostic for a parse failure names the document and cannot name a line or an offset within it. <a href="evidence/parse-errors.md"><code>evidence/parse-errors.md</code></a> names this as a limit left out of scope (“Gaps, stated rather than hidden”, limit 2), so the delta's words are kept.</p>
+            <article class="scenario" id="scenario-human-readable-output" data-change="added">
+              <h4>Human-readable output</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor validates a failing document</dd>
+                <dt>Then</dt>
+                <dd>the output names the rule, the location, and what to fix</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-machine-readable-output" data-change="added">
+              <h4>Machine-readable output</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent validates a failing document and requests structured output</dd>
+                <dt>Then</dt>
+                <dd>it receives each diagnostic as structured data with a stable rule identifier</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-stable-rule-identifiers" data-change="added">
+              <h4>Stable rule identifiers</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the same violation is reported across versions of the validator</dd>
+                <dt>Then</dt>
+                <dd>the rule identifier is unchanged, so suppressions and tests remain valid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-all-violations-are-reported-in-one-pass" data-change="added">
+            <h3>All violations are reported in one pass <span class="hs-id">req-all-violations-are-reported-in-one-pass</span></h3>
+            <p>Validation SHALL report every violation it can detect in a single run rather than stopping at the first. Where one failure prevents further analysis, validation SHALL report what it could determine and state that analysis was curtailed.</p>
+            <article class="scenario" id="scenario-multiple-independent-violations" data-change="added">
+              <h4>Multiple independent violations</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document has a duplicate identifier, a dangling reference, and a remote script</dd>
+                <dt>Then</dt>
+                <dd>all three are reported in one run</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unparseable-document" data-change="added">
+              <h4>Unparseable document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document cannot be parsed at all</dd>
+                <dt>Then</dt>
+                <dd>validation reports the parse failure and states that no further rules were evaluated</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-violations-are-classified-by-severity" data-change="added">
+            <h3>Violations are classified by severity <span class="hs-id">req-violations-are-classified-by-severity</span></h3>
+            <p>Every rule SHALL be classified as an error or a warning. An error SHALL cause validation to fail. A warning SHALL be reported without failing validation. Rules concerning structural conformance, unresolved references, executable content, and network dependencies SHALL be errors.</p>
+            <article class="scenario" id="scenario-warning-does-not-fail-validation" data-change="added">
+              <h4>Warning does not fail validation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document triggers only warnings</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds and the warnings are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-warnings-can-be-made-fatal" data-change="added">
+              <h4>Warnings can be made fatal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests strict validation</dd>
+                <dt>Then</dt>
+                <dd>warnings are treated as errors, so continuous integration can enforce them</dd>
+              </dl>
+              <p data-field="note">Migration note: as built, strict validation treats every warning as an error except those in <code>review/*</code>, which stay warnings. The change chose this so that a strict run imposes no phase gate, which <em>An upstream edit marks dependents for review rather than gating work</em> forbids: <a href="evidence/browser-verification.md"><code>evidence/browser-verification.md</code></a> records the exception as a fix, and <a href="evidence/self-conformance.md"><code>evidence/self-conformance.md</code></a> restates it in its finding 2, with four documents passing <code>--strict</code> while carrying 34 review warnings. The change kept the delta's words: the same record reports that no requirement was relaxed.</p>
+            </article>
+            <article class="scenario" id="scenario-safety-rules-cannot-be-downgraded" data-change="added">
+              <h4>Safety rules cannot be downgraded</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains a remote script or executable content</dd>
+                <dt>Then</dt>
+                <dd>the violation is reported as an error and cannot be reduced to a warning</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <p>Defines the command-line surface contributors and agents use to work with HTMLSpec documents, and the reproducible packaging that ensures everyone — including continuous integration — builds and runs the same toolchain.</p>
+          <section class="requirement" id="req-a-single-command-exposes-validate-format-and-init" data-change="added">
+            <h3>A single command exposes validate, format, and init <span class="hs-id">req-a-single-command-exposes-validate-format-and-init</span></h3>
+            <p>The project SHALL provide one command-line program offering, at minimum, a subcommand to validate documents, a subcommand to format documents, and a subcommand to initialize a new document or project. Each subcommand SHALL be usable without configuration in a conforming project.</p>
+            <article class="scenario" id="scenario-validating-a-project" data-change="added">
+              <h4>Validating a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand in a project with no arguments</dd>
+                <dt>Then</dt>
+                <dd>every document in the project is validated and the results are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-validating-one-document" data-change="added">
+              <h4>Validating one document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand against a single file path</dd>
+                <dt>Then</dt>
+                <dd>only that document is validated</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unknown-subcommand" data-change="added">
+              <h4>Unknown subcommand</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes a subcommand that does not exist</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error, lists the available subcommands, and exits with a failure status</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-discoverable-help" data-change="added">
+              <h4>Discoverable help</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests help</dd>
+                <dt>Then</dt>
+                <dd>every subcommand and option is documented in the output</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-exit-codes-distinguish-outcomes" data-change="added">
+            <h3>Exit codes distinguish outcomes <span class="hs-id">req-exit-codes-distinguish-outcomes</span></h3>
+            <p>The program SHALL exit zero when the requested operation succeeds, and nonzero when it does not. A document that fails validation SHALL be distinguishable by exit code from a failure to run the operation at all, such as an unreadable file or an invalid invocation.</p>
+            <article class="scenario" id="scenario-clean-validation" data-change="added">
+              <h4>Clean validation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>validation finds no errors</dd>
+                <dt>Then</dt>
+                <dd>the program exits zero</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-validation-failure" data-change="added">
+              <h4>Validation failure</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>validation finds at least one error</dd>
+                <dt>Then</dt>
+                <dd>the program exits nonzero with the code designated for document violations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-operational-failure" data-change="added">
+              <h4>Operational failure</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specified file does not exist</dd>
+                <dt>Then</dt>
+                <dd>the program exits nonzero with a code distinct from that used for document violations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-continuous-integration-gate" data-change="added">
+              <h4>Continuous integration gate</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a continuous integration job that runs validation</dd>
+                <dt>When</dt>
+                <dd>any document in the project is invalid</dd>
+                <dt>Then</dt>
+                <dd>the job fails</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-output-is-available-in-human-and-machine-forms" data-change="added">
+            <h3>Output is available in human and machine forms <span class="hs-id">req-output-is-available-in-human-and-machine-forms</span></h3>
+            <p>The program SHALL produce human-readable output by default and structured machine-readable output on request. Structured output SHALL be written to standard output, and SHALL contain nothing but the structured payload so it can be consumed directly.</p>
+            <article class="scenario" id="scenario-agent-consumes-structured-output" data-change="added">
+              <h4>Agent consumes structured output</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent runs validation requesting structured output</dd>
+                <dt>Then</dt>
+                <dd>standard output contains only a well-formed structured payload of diagnostics</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-progress-does-not-corrupt-structured-output" data-change="added">
+              <h4>Progress does not corrupt structured output</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested</dd>
+                <dt>Then</dt>
+                <dd>progress messages, warnings, and errors about the run itself go to standard error, leaving standard output parseable</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-default-output-is-for-people" data-change="added">
+              <h4>Default output is for people</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs validation without requesting structured output</dd>
+                <dt>Then</dt>
+                <dd>the output is formatted for reading in a terminal</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-formatting-can-check-without-writing" data-change="added">
+            <h3>Formatting can check without writing <span class="hs-id">req-formatting-can-check-without-writing</span></h3>
+            <p>The format subcommand SHALL support a mode that reports whether documents are canonically formatted without modifying any file, exiting nonzero if any document would change.</p>
+            <article class="scenario" id="scenario-check-mode-on-formatted-files" data-change="added">
+              <h4>Check mode on formatted files</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>check mode runs against canonically formatted documents</dd>
+                <dt>Then</dt>
+                <dd>the program exits zero and no file is modified</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-check-mode-on-unformatted-files" data-change="added">
+              <h4>Check mode on unformatted files</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>check mode runs against an unformatted document</dd>
+                <dt>Then</dt>
+                <dd>the program exits nonzero, names the document, and modifies nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-write-mode" data-change="added">
+              <h4>Write mode</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the format subcommand runs in its default write mode</dd>
+                <dt>Then</dt>
+                <dd>documents that are not canonically formatted are rewritten, and documents already canonical are left byte-identical</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-toolchain-builds-reproducibly-from-pinned-inputs" data-change="added">
+            <h3>The toolchain builds reproducibly from pinned inputs <span class="hs-id">req-the-toolchain-builds-reproducibly-from-pinned-inputs</span></h3>
+            <p>The project SHALL be buildable from fully pinned inputs, including the compiler toolchain, every dependency, and every vendored browser-side library. Building the same revision SHALL produce equivalent results regardless of what is already installed on the machine.</p>
+            <article class="scenario" id="scenario-clean-machine-build" data-change="added">
+              <h4>Clean machine build</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a machine with no project toolchain installed beyond the packaging tool</dd>
+                <dt>When</dt>
+                <dd>a contributor builds the project</dd>
+                <dt>Then</dt>
+                <dd>the build succeeds without installing dependencies by hand</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-machines-agree" data-change="added">
+              <h4>Two machines agree</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>two machines building the same revision</dd>
+                <dt>When</dt>
+                <dd>each runs the toolchain against the same document</dd>
+                <dt>Then</dt>
+                <dd>the validation results and formatted output are identical</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unpinned-dependency-rejected" data-change="added">
+              <h4>Unpinned dependency rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a dependency is introduced without a pinned version and integrity hash</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks fail</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-development-environment-is-provided" data-change="added">
+            <h3>A development environment is provided <span class="hs-id">req-a-development-environment-is-provided</span></h3>
+            <p>The project SHALL provide a reproducible development environment containing the compiler, test tooling, and any auxiliary tools needed to work on the project, entered with a single command.</p>
+            <article class="scenario" id="scenario-entering-the-environment" data-change="added">
+              <h4>Entering the environment</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor enters the development environment</dd>
+                <dt>Then</dt>
+                <dd>the compiler, test runner, and project tooling are available at their pinned versions</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-environment-matches-the-build" data-change="added">
+              <h4>Environment matches the build</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the project's checks inside the development environment</dd>
+                <dt>Then</dt>
+                <dd>the results match those produced by the packaged build</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-project-checks-are-runnable-as-one-command" data-change="added">
+            <h3>Project checks are runnable as one command <span class="hs-id">req-project-checks-are-runnable-as-one-command</span></h3>
+            <p>The project SHALL expose a single command that runs its full check suite — the conformance fixtures, the unit tests, and the formatting check — so that contributors and continuous integration verify the same thing.</p>
+            <article class="scenario" id="scenario-full-check-suite" data-change="added">
+              <h4>Full check suite</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the check command runs on a healthy revision</dd>
+                <dt>Then</dt>
+                <dd>conformance fixtures, tests, and the formatting check all pass and the command exits zero</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-conformance-regression" data-change="added">
+              <h4>Conformance regression</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a code change causes a valid conformance fixture to be rejected or an invalid one to be accepted</dd>
+                <dt>Then</dt>
+                <dd>the check command fails and identifies the fixture and the expected rule</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-continuous-integration-parity" data-change="added">
+              <h4>Continuous integration parity</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>continuous integration runs</dd>
+                <dt>Then</dt>
+                <dd>it invokes the same check command a contributor would run locally, rather than a separately maintained list of steps</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-program-is-distributable-as-a-standalone-artifact" data-change="added">
+            <h3>The program is distributable as a standalone artifact <span class="hs-id">req-the-program-is-distributable-as-a-standalone-artifact</span></h3>
+            <p>The toolchain SHALL be packageable as an executable artifact that runs without a source checkout and without the packaging tool present at runtime.</p>
+            <article class="scenario" id="scenario-running-the-packaged-program" data-change="added">
+              <h4>Running the packaged program</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a machine with only the packaged artifact</dd>
+                <dt>When</dt>
+                <dd>a user runs the validate subcommand against a document</dd>
+                <dt>Then</dt>
+                <dd>it works without a source checkout or a development environment</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-version-reporting" data-change="added">
+              <h4>Version reporting</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a user asks the program for its version</dd>
+                <dt>Then</dt>
+                <dd>it reports a version identifying the revision it was built from, so a diagnostic can be traced to a specific build</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each unit below and in Verification summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links, and the record is the authority. The last evidence unit is the document task 9.1 produced, carried as it stood at migration under <code>evidence/documents/</code>.</p>
+          </aside>
+          <section class="evidence" id="evidence-typify-spike" data-change="added" data-refs="req-the-element-contract-is-published-as-a-machine-readable-schema">
+            <h3>Evidence: <code>typify</code> schema-to-types spike (task 1.3) <span class="hs-id">evidence-typify-spike</span></h3>
+            <p>Task 1.3, recorded on 2026-08-07 with <code>typify</code> 0.7.0 against a schema covering only the requirement unit: <code>typify</code> accepted every idiom in the conservative subset, and the generated types are constructible, matchable, and round-trip through serde, with each constrained string a validating newtype. Two constraints do not survive generation, each pinned by a test that asserts the loss: <code>minItems: 1</code> becomes a plain <code>Vec&lt;T&gt;</code>, and a bare <code>const</code> becomes <code>serde_json::Value</code>, which the record notes contradicts the design's “plain <code>String</code>”. Neither loss is reachable through the runtime validator, which validates the projected JSON against the schema itself. <a href="evidence/typify-spike.md"><code>evidence/typify-spike.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-schema-generation-decision" data-change="added" data-refs="req-the-element-contract-is-published-as-a-machine-readable-schema">
+            <h3>Decision: schema-generation approach (task 1.4) <span class="hs-id">evidence-schema-generation-decision</span></h3>
+            <p>Task 1.4, recorded on 2026-08-07 from the spike: keep the generated types and do not take the design's fallback to hand-written types. Generated types are a convenience for writing rule code, and the runtime validator, which validates every document against the JSON Schema itself, is the enforcement layer. Two rules follow, enforced by tests: no code path accepts a document on the strength of deserialization alone, and no rule restates in Rust a constraint the schema already expresses. The schema-as-source-of-truth property holds by construction, and <code>cargo test -p htmlspec-schema</code> passes 8 spike tests. <a href="evidence/schema-generation-decision.md"><code>evidence/schema-generation-decision.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-parse-errors" data-change="added" data-refs="req-markup-must-be-deterministically-parseable req-permitted-parser-recoveries-are-enumerated-and-pinned req-diagnostics-are-actionable-and-machine-readable">
+            <h3>Evidence: recovered parse errors under the pinned parser (task 1.5) <span class="hs-id">evidence-parse-errors</span></h3>
+            <p>Task 1.5, recorded on 2026-08-07 with <code>html5ever =0.35.0</code>: a conforming document reports zero recovered errors, so the permitted-recovery list starts empty and stays empty; with <code>exact_errors</code> enabled, the coarse <code>Unexpected token</code> message names the offending token and the insertion mode; and a legacy doctype parses in <code>NoQuirks</code> with zero recoveries, invisible to the parse-error rule. The record maps every message the pinned parser can emit onto 16 project-owned <code>parse/*</code> codes, all fatal, ending in the catch-all <code>parse/unmapped-recovery</code>, and records a test that fails when the parser version changes. It names two limits: mapping is by message prefix, and a parse diagnostic cannot name a line. <a href="evidence/parse-errors.md"><code>evidence/parse-errors.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-vocabulary-dogfood" data-change="added" data-refs="req-the-html-to-model-projection-is-published-as-a-normative-specification req-a-requirement-contains-a-title-and-normative-statement req-a-decision-records-its-outcome-and-rationale req-a-task-declares-completion-state req-cross-references-address-units-by-identifier">
+            <h3>Evidence: dogfooding the draft contract (task 3.4) <span class="hs-id">evidence-vocabulary-dogfood</span></h3>
+            <p>Task 3.4, recorded on 2026-08-07: three documents hand-authored against the draft schema and projection with no tooling, all parsing recovery-free, produced nine findings. The draft model could not hold a document's own prose; positional field projection would have pushed a risk's mitigation out of the model with no diagnostic; one field did two jobs, for requirements and for tasks; and a figure could not be referenced. The record lists the five revisions task 3.5 applies: a document-level summary projected from the header, an explicit <code>data-field</code> attribute, <code>data-field="note"</code>, <code>data-field="reason"</code>, and an optional <code>figure-</code> identifier a link may resolve to. <a href="evidence/vocabulary-dogfood.md"><code>evidence/vocabulary-dogfood.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-diff-locality" data-change="added" data-refs="req-formatting-introduces-no-diff-churn">
+            <h3>Diff locality is a property of line structure, not of the formatter <span class="hs-id">evidence-diff-locality</span></h3>
+            <p>Task 5.8, measured on 2026-08-08 with <code>crates/htmlspec-format/examples/diff_locality.rs</code> against the canonical serializer as of task 5.7: six content edits, each measured in changed diff bytes against the bytes of the edit. One word inserted near the start of a four-sentence paragraph shows one line removed and one added either way, but costs 225 changed bytes when the paragraph is one line and 85 when it is broken per sentence; a phrase appended at the end of the same one-line paragraph costs 227, so position within the line does not matter and nothing is rewrapped. A requirement inserted between two others shows three added lines and none removed. The record concludes that diff locality is owned by the author's line breaks, carries forward only unenforced guidance to break prose at sentence boundaries, and states that <code>tests/no_churn.rs</code> asserts the absence of formatter churn and that it holds. <a href="evidence/diff-locality.md"><code>evidence/diff-locality.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-vega-lite-schema" data-change="added" data-refs="req-visualization-specifications-are-validated req-documents-share-one-pinned-runtime req-the-toolchain-builds-reproducibly-from-pinned-inputs">
+            <h3>The Vega-Lite schema does not load unmodified <span class="hs-id">evidence-vega-lite-schema</span></h3>
+            <p>Task 4.14, measured on 2026-08-08 with <code>vega-lite</code> 6.4.3 and <code>jsonschema</code> 0.49.6, with the vendoring of tasks 6.1 and 6.2 pulled forward: the schema declares draft-07 and has 458 definitions, 126 of whose names, and every <code>$ref</code> to them, carry characters illegal in a URI reference, where the design said 294, so it fails to compile before any chart is validated. Slugifying them takes 3.0 ms and compiling the result 31.0 ms, against the design's estimate of roughly 115 ms; afterwards a valid chart is accepted and a chart with an unknown mark is rejected. A specification loading remote data is valid Vega-Lite, which this project rejects with <code>safety/remote-chart-data</code>. The record lists the versions vendored, <code>mermaid</code> 11.16.1, <code>vega</code> 6.3.1, <code>vega-lite</code> 6.4.3, and <code>vega-embed</code> 7.1.0, and an <code>assetProvenance</code> run that came out clean for all five files. <a href="evidence/vega-lite-schema.md"><code>evidence/vega-lite-schema.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-browser-verification" data-change="added" data-refs="req-a-document-is-self-contained-and-offline req-core-content-is-readable-without-javascript req-documents-share-one-pinned-runtime req-documents-print-cleanly req-cross-references-must-resolve req-violations-are-classified-by-severity">
+            <h3>The offline and no-JavaScript guarantees, verified in a real browser <span class="hs-id">evidence-browser-verification</span></h3>
+            <p>Task 6.9, verified on 2026-08-08 in Firefox on macOS 15.6, against the document <code>init</code> writes with a Vega-Lite chart added: served from a local HTTP server, the browser requested eight project-local files and nothing else, and opened over <code>file://</code> with no server both figures still rendered. In a separate profile with JavaScript disabled, no script was requested. Measured from the live DOM, each figure rendered one SVG into a sibling with its source still present, and the <code>outerHTML</code> a saved page serializes still held both sources. The run found that the template never loaded the vendored libraries, fixed with a test, and its setup exposed two validator defects, both fixed: <code>refs/broken-link</code> rejecting valid section anchors, and strict mode promoting <code>review/*</code> warnings to errors. It records print output, Chromium and WebKit, and color-vision simulation as not verified, and asks that a reviewer print one document to PDF before the change is archived. <a href="evidence/browser-verification.md"><code>evidence/browser-verification.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-self-conformance" data-change="added" data-refs="req-violations-are-classified-by-severity req-the-visual-system-favors-comprehension-over-decoration req-diagnostics-are-actionable-and-machine-readable req-visualization-specifications-are-validated req-a-project-can-be-initialized-with-a-conforming-document">
+            <h3>Final self-conformance: the finished toolchain against real documents <span class="hs-id">evidence-self-conformance</span></h3>
+            <p>Tasks 9.1 to 9.3, run on 2026-08-08 with toolchain and contract at <code>0.1.0</code>: the converted deterministic-formatting specification, scaffolded with <code>htmlspec init</code>, and the three group 3 documents are each accepted with 0 errors, canonical, and passing <code>--strict</code>, while carrying 34 <code>review/*</code> warnings between them (14, 14, 4, and 2). In Firefox no document's body prose overflows horizontally at 1100px, and the converted document's chart renders offline with its source surviving a DOM save. The conversion needed no new vocabulary, no rule relaxation, and no schema edit. Reading the review warnings and the deliberately broken conformance fixtures, every diagnostic names the rule, the unit, the offending identifier, and what to do, and the <code>viz/*</code> diagnostic on a Mermaid diagram notes that validation is shallow. Three implementation defects were fixed, and print output is still not verified. <a href="evidence/self-conformance.md"><code>evidence/self-conformance.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-deterministic-formatting" data-change="added" data-refs="req-formatting-is-idempotent req-formatting-preserves-meaning req-serialization-is-canonical req-formatting-introduces-no-diff-churn req-formatting-can-be-checked-without-writing req-files-use-a-stable-text-encoding-and-line-ending">
+            <h3>Deterministic formatting <span class="hs-id">evidence-deterministic-formatting</span></h3>
+            <p>The document task 9.1 produced, declaring contract <code>0.1.0</code>: the deterministic-formatting capability rendered as an HTMLSpec specification, carrying three decisions, three evidence units, one risk, and three verification units that the Markdown had no place for. One decision states that the formatter refuses a document whose markup requires parser error recovery and formats every other document, including one that fails validation. Its evidence states that over 512 generated documents per property formatting is a fixed point across three passes and the projected model is unchanged, and charts the 225 against 85 changed bytes. Its three verification units, each recorded <code>passed</code>, give as their methods the property suite, <code>crates/htmlspec-format/tests/no_churn.rs</code>, and the CLI integration tests. <a href="evidence/documents/deterministic-formatting.html"><code>evidence/documents/deterministic-formatting.html</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-idempotence-and-canonicality" data-change="added" data-outcome="partial" data-refs="scenario-second-pass-changes-nothing scenario-two-agents-converge">
+            <h3>Formatting is a fixed point, and two authoring styles converge <span class="hs-id">verify-idempotence-and-canonicality</span></h3>
+            <p data-field="method">As <a href="evidence/documents/deterministic-formatting.html"><code>evidence/documents/deterministic-formatting.html</code></a> records it, in its verification “Idempotence and canonicality”, recorded <code>passed</code>: the property suite in <code>crates/htmlspec-format/tests/properties.rs</code> asserts a three-pass fixed point and the convergence of two authoring styles over 512 generated documents each, and the conformance suite formats every fixture twice and compares the results byte for byte. Read at commit <code>778e451</code>, the two documents <code>any_two_authoring_styles_converge</code> compares render the same units, each with the same attribute order and indentation, and differ only in line endings and blank lines.</p>
+            <p data-field="unchecked">two agents that produce the same semantic document with different attribute order and indentation</p>
+            <p data-field="note">Migration note: the suite was read at commit <code>778e451</code>, where the record was written. <code>formatting_is_a_fixed_point</code> formats each generated document three times and asserts the passes are equal, and <code>any_two_authoring_styles_converge</code> renders one set of units in two authoring styles and asserts that both format to the same bytes.</p>
+          </section>
+          <section class="verification" id="verify-absence-of-formatter-churn" data-change="added" data-outcome="passed" data-refs="scenario-editing-one-requirement scenario-inserting-a-requirement">
+            <h3>An edit or an insertion leaves every other line untouched <span class="hs-id">verify-absence-of-formatter-churn</span></h3>
+            <p data-field="method">As <a href="evidence/documents/deterministic-formatting.html"><code>evidence/documents/deterministic-formatting.html</code></a> records it, in its verification “Absence of formatter churn”, recorded <code>passed</code>: <code>crates/htmlspec-format/tests/no_churn.rs</code> splits a formatted document around the edited unit and asserts the lines outside it are unchanged for an edit, an insertion, and a removal. <a href="evidence/diff-locality.md"><code>evidence/diff-locality.md</code></a> records the same test as asserting this and holding. The test was read at commit <code>778e451</code>, where the record was written.</p>
+          </section>
+          <section class="verification" id="verify-check-mode" data-change="added" data-outcome="passed" data-refs="scenario-check-fails scenario-check-mode-on-unformatted-files">
+            <h3>Check mode names an unformatted document and writes nothing <span class="hs-id">verify-check-mode</span></h3>
+            <p data-field="method">As <a href="evidence/documents/deterministic-formatting.html"><code>evidence/documents/deterministic-formatting.html</code></a> records it, in its verification “Check mode and file normalization”, recorded <code>passed</code>: the CLI integration tests invoke the built binary and assert that check mode names the document, exits nonzero, and leaves the file byte-identical. The test, <code>check_mode_exits_nonzero_and_writes_nothing</code> in <code>crates/htmlspec-cli/tests/cli.rs</code>, was read at commit <code>778e451</code>, where the record was written.</p>
+            <p data-field="note">Migration note: the record also says these tests assert that mixed line endings converge on one form. Read at commit <code>778e451</code>, where the record was written, <code>crates/htmlspec-cli/tests/cli.rs</code> holds no such test, so this verification does not name <em>Line endings normalized</em>.</p>
+          </section>
+          <section class="verification" id="verify-diff-locality" data-change="added" data-outcome="passed" data-refs="scenario-whole-line-change-is-not-a-violation scenario-long-prose-reflow">
+            <h3>A sentence edit diffs as its own line, and nothing is rewrapped <span class="hs-id">verify-diff-locality</span></h3>
+            <p data-field="method">As <a href="evidence/diff-locality.md"><code>evidence/diff-locality.md</code></a> records it: the harness <code>crates/htmlspec-format/examples/diff_locality.rs</code> applies six content edits to a canonically formatted document, formats it again, and measures the diff. One word inserted into a four-sentence paragraph held on one line shows that line removed and one added, and with the four sentences one per line the same edit again shows one line removed and one added. Edits at the start and at the end of the one-line paragraph cost 225 and 227 changed bytes, which the record reads as confirming that nothing is rewrapped.</p>
+          </section>
+          <section class="verification" id="verify-invalid-chart-rejected" data-change="added" data-outcome="partial" data-refs="scenario-invalid-chart-specification">
+            <h3>A chart its format rejects is rejected <span class="hs-id">verify-invalid-chart-rejected</span></h3>
+            <p data-field="method">As <a href="evidence/vega-lite-schema.md"><code>evidence/vega-lite-schema.md</code></a> records it: after the vendored Vega-Lite schema is preprocessed, a valid chart is accepted and a chart with an unknown mark is rejected.</p>
+            <p data-field="unchecked">validation reports the location and the underlying error</p>
+          </section>
+          <section class="verification" id="verify-approved-libraries" data-change="added" data-outcome="partial" data-refs="scenario-approved-libraries">
+            <h3>Both figures render through the vendored libraries <span class="hs-id">verify-approved-libraries</span></h3>
+            <p data-field="method">As <a href="evidence/browser-verification.md"><code>evidence/browser-verification.md</code></a> records it, in its sections 1 and 3: the local server's access log shows the browser fetching the four vendored libraries and <code>htmlspec.js</code> from the project, and over <code>file://</code> with no server a probe of the live DOM found one SVG per figure, a Mermaid diagram and a Vega-Lite chart, each drawn into a sibling of its source.</p>
+            <p data-field="unchecked">equations use native MathML with no library at all</p>
+          </section>
+          <section class="verification" id="verify-diagnostics-explain-themselves" data-change="added" data-outcome="passed" data-refs="scenario-human-readable-output">
+            <h3>Each diagnostic names its rule, its unit, and what to do <span class="hs-id">verify-diagnostics-explain-themselves</span></h3>
+            <p data-field="method">As <a href="evidence/self-conformance.md"><code>evidence/self-conformance.md</code></a> records it, in its finding 4: the 34 review warnings and the diagnostics of the deliberately broken conformance fixtures were read, and each names the rule, the unit, the offending identifier, and what to do.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

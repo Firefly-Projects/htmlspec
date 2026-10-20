@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Sync a change into the accepted contract</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Sync a change into the accepted contract</h1>
+        <p>This change made the command surface provide an operation that reports, for one change, which of the requirement identifiers its specification states the accepted specifications already hold and which are absent, by comparing identifiers alone, and that never modifies an accepted specification (<em>The command surface reports whether a change reached the accepted contract</em>). It made the workflow instructions carry a stage in which an agent merges a change's stated requirements into the accepted specifications (<em>The workflow instructions carry a stage for applying a change's contract</em>), and it fixed <code>sync</code> among the spellings that name the operations OpenSpec also provides (<em>The command surface names its operations as OpenSpec names them</em>).</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Sync a change into the accepted contract</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-31-sync-a-change-into-the-accepted-contract/specs/toolchain-packaging/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract" data-change="added">
+            <h3>The command surface reports whether a change reached the accepted contract <span class="hs-id">req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract</span></h3>
+            <p>The command surface SHALL provide an operation that reports, for one change, whether the requirements its specification states have reached the project's accepted specifications. The report SHALL be available as a structured payload.</p>
+            <p>The operation SHALL determine this by comparing requirement identifiers, and SHALL read neither the change's specification nor the accepted specifications for meaning. This is the same comparison archival makes, and both SHALL derive it from one source, so that a contributor who runs the operation and the archival that follows cannot disagree about which requirements reached the contract.</p>
+            <p>The report SHALL distinguish three sets: the requirement identifiers the change states, those the accepted specifications already hold, and those absent from them. The third is derivable from the first two and SHALL be reported anyway, because it is the answer the operation exists to give.</p>
+            <p><strong>The operation SHALL NOT modify an accepted specification, and SHALL NOT propose the text of a merge.</strong> Deciding which accepted requirement a scenario belongs under is judgment, and <code>artifact-kinds</code> reserves it for an agent. This prohibition is stated rather than left implied: the operation carries OpenSpec's name for it, that name reads like an operation that writes, and a reader who assumes it does would be assuming the program edits the project's contract unattended.</p>
+            <p>An absent requirement SHALL be a finding and not an error, and the operation SHALL succeed while any remain. A change mid-implementation legitimately states requirements that have not reached the contract, and a requirement withdrawn deliberately is absent permanently; an operation that failed on either would fail on the normal state of the work it is meant to be run during.</p>
+            <p>The operation SHALL refuse on a change that cannot be resolved, on an absent specification artifact, and on a specification that does not validate. A comparison made against an invalid contract has no meaning, and reporting it as though it did is worse than declining to report.</p>
+            <article class="scenario" id="scenario-a-change-whose-contract-has-not-been-applied" data-change="added">
+              <h4>A change whose contract has not been applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states a requirement that no accepted specification holds</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd>the requirement is named as absent, the operation succeeds, and no accepted specification is modified</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-contract-has-been-applied" data-change="added">
+              <h4>A change whose contract has been applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change every one of whose stated requirements appears in an accepted specification</dd>
+                <dt>When</dt>
+                <dd>the operation is run against that change</dd>
+                <dt>Then</dt>
+                <dd>the absent set is empty</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-comparison-is-of-identifiers" data-change="added">
+              <h4>The comparison is of identifiers</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operation determines whether a requirement reached the contract</dd>
+                <dt>Then</dt>
+                <dd>it compares identifiers, and reads neither the change's specification nor the accepted specifications for meaning</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-operation-and-archival-agree" data-change="added">
+              <h4>The operation and archival agree</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival reports that a change states requirements no accepted specification holds</dd>
+                <dt>Then</dt>
+                <dd>the identifiers it names are the identifiers the operation reports as absent for that change</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-structured-report" data-change="added">
+              <h4>A structured report</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested</dd>
+                <dt>Then</dt>
+                <dd>the stated, accepted, and absent identifier sets are emitted as a payload</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-command-surface-reports-whether-a-change-reached-the-accepted-contract-an-invalid-specification" data-change="added">
+              <h4>An invalid specification</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification does not validate</dd>
+                <dt>When</dt>
+                <dd>the operation is run against it</dd>
+                <dt>Then</dt>
+                <dd>it refuses and reports why, and reports no comparison</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-accepted-specifications-are-never-written" data-change="added">
+              <h4>The accepted specifications are never written</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operation completes, for any change and any outcome</dd>
+                <dt>Then</dt>
+                <dd>no accepted specification was modified by the program</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-workflow-instructions-carry-a-stage-for-applying-a-change-s-contract" data-change="added">
+            <h3>The workflow instructions carry a stage for applying a change's contract <span class="hs-id">req-the-workflow-instructions-carry-a-stage-for-applying-a-change-s-contract</span></h3>
+            <p>The workflow instructions SHALL carry a stage for merging a change's stated requirements into the project's accepted specifications, available from the command surface as every other stage is and installed by the bootstrap operation from the same source.</p>
+            <p>The stage's instructions SHALL state that the merge is the agent's work: that both the change's specification and the accepted specifications are read for meaning before anything is written, that a change's specification is never copied into an accepted specification wholesale, and that the reporting operation is run again afterwards to confirm the absent set is empty.</p>
+            <p>The instructions SHALL state that a requirement withdrawn deliberately is left absent and reported to the contributor as withdrawn, rather than merged to empty the report.</p>
+            <p>The obligations on the <em>program</em> live in the requirement above. This one governs the text an agent reads, because the half of the operation that requires judgment cannot be stated as a rule the program enforces.</p>
+            <article class="scenario" id="scenario-the-stage-is-available" data-change="added">
+              <h4>The stage is available</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the workflow instructions for the stage are requested from the command surface</dd>
+                <dt>Then</dt>
+                <dd>they are emitted, as the same text the bootstrap operation installs</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-stage-is-installed" data-change="added">
+              <h4>The stage is installed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a project is bootstrapped</dd>
+                <dt>Then</dt>
+                <dd>the stage's instructions are installed for each supported tool alongside the other stages</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-single-command-exposes-validate-format-and-init" data-change="modified">
+            <h3>The command surface names its operations as OpenSpec names them <span class="hs-id">req-a-single-command-exposes-validate-format-and-init</span></h3>
+            <p>The project SHALL provide one command-line program offering, at minimum, a subcommand to validate documents, a subcommand to format documents, a subcommand to bootstrap a project, and a subcommand to create documents. Each subcommand SHALL be usable without configuration in a conforming project.</p>
+            <p><strong>Where an operation corresponds to one OpenSpec provides, it SHALL carry OpenSpec's name for it.</strong> This holds for the subcommand and for the options that select what it acts on. Every plausible adopter arrives from OpenSpec — HTMLSpec is a spinoff and its README says so — and a contributor who has learned one surface SHALL NOT have to learn a second spelling for the same operation. An operation OpenSpec does not provide takes the name this project chooses for it.</p>
+            <p>The spellings are therefore fixed rather than left to an implementer: <code>validate</code>, <code>archive</code>, <code>init</code>, <code>new</code>, <code>list</code>, <code>status</code>, <ins><code>sync</code>, </ins><code>instructions</code>, and <code>store</code> name the operations OpenSpec also provides. <code>format</code> and <code>assets</code> name operations it does not. The selectors <code>--json</code>, <code>--specs</code>, <code>--change</code>, and <code>--store</code> carry OpenSpec's spellings for the same reason.</p>
+            <p>Fixing a spelling in the contract is not decoration. A requirement that describes an operation by role alone — <em>an operation that enumerates a project's active changes</em> — is satisfied by a subcommand called <code>changes</code>, or <code>ls</code>, and the instructions written against it would then name a command that does not exist. The workflow instructions this project installs invoke these commands by name, so the name is part of the contract they depend on.</p>
+            <p>The bootstrap subcommand's subject SHALL be a project and it SHALL require no arguments, because the operation a contributor needs first is the one that establishes the project they are standing in. The creation subcommand's subject SHALL be a document or a change.</p>
+            <p>These SHALL be distinct subcommands. One subcommand meaning both "establish this project" and "write this file" would leave a contributor unable to ask for either without also specifying which they meant.</p>
+            <p>Creation SHALL take the artifact kind of the document to create, and SHALL produce a document already shaped for that kind. A <code>proposal</code> SHALL be initialized as a page of prose with no unit scaffolding at all, and a <code>specification</code> SHALL be initialized with the units its kind expects.</p>
+            <p>The asymmetry is the requirement. A proposal that arrived full of empty requirement scaffolding would push its author toward stating a contract at the stage meant for arguing about one, and the emptiest possible starting point is the correct one for a document whose structure is the author's to choose.</p>
+            <p>Creation SHALL be able to create a whole change — the directory and its documents — rather than one document at a time, because a change is a directory of kinded documents. A change created in a project SHALL be placed where that project keeps its active changes, and the resolved location SHALL be reported.</p>
+            <p>Documents SHALL be created referencing the project's asset store rather than establishing one of their own.</p>
+            <article class="scenario" id="scenario-validating-a-project" data-change="unchanged">
+              <h4>Validating a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand in a project with no arguments</dd>
+                <dt>Then</dt>
+                <dd>every document in the project is validated and the results are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-validating-one-document" data-change="unchanged">
+              <h4>Validating one document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand against a single file path</dd>
+                <dt>Then</dt>
+                <dd>only that document is validated</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-bootstrapping-with-no-arguments" data-change="unchanged">
+              <h4>Bootstrapping with no arguments</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the bootstrap subcommand with no arguments</dd>
+                <dt>Then</dt>
+                <dd>it establishes a project in the current repository rather than reporting a missing argument</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-proposal" data-change="unchanged">
+              <h4>Creating a proposal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document of the proposal kind</dd>
+                <dt>Then</dt>
+                <dd>it opens as a readable page of prose, with no semantic unit scaffolding to fill in</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-specification" data-change="unchanged">
+              <h4>Creating a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document of the specification kind</dd>
+                <dt>Then</dt>
+                <dd>it arrives with the units that kind expects, because its shape is not the author's to invent</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-change" data-change="unchanged">
+              <h4>Creating a change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a new change in a project</dd>
+                <dt>Then</dt>
+                <dd>its directory is created where the project keeps active changes, holding the documents that stage needs, each declaring its kind and each valid immediately, and its location is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-created-document-uses-the-project-s-store" data-change="unchanged">
+              <h4>A created document uses the project's store</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document in a project</dd>
+                <dt>Then</dt>
+                <dd>it references the project's existing asset store and no second store is established</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-change-outside-a-project" data-change="unchanged">
+              <h4>Creating a change outside a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a change where no project exists</dd>
+                <dt>Then</dt>
+                <dd>the program reports that no project was found and names the bootstrap subcommand</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unknown-subcommand" data-change="unchanged">
+              <h4>Unknown subcommand</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes a subcommand that does not exist</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error, lists the available subcommands, and exits with a failure status</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-withdrawn-spelling-names-its-replacement" data-change="unchanged">
+              <h4>A withdrawn spelling names its replacement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes the bootstrap subcommand with the arguments creation formerly took</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error and names the subcommand that now performs it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-proposal" data-change="unchanged">
+              <h4>Initializing a proposal</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>that initialization formerly created one document and its subject is now the project</dd>
+                <dt>When</dt>
+                <dd>a contributor names a document path on the bootstrap subcommand</dd>
+                <dt>Then</dt>
+                <dd>the program refuses, states that the subject is the project, and names the creation subcommand that writes one document</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-specification" data-change="unchanged">
+              <h4>Initializing a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor names a document path on the bootstrap subcommand for any artifact kind</dd>
+                <dt>Then</dt>
+                <dd>the refusal is the same regardless of kind, because the subject changed rather than the kind vocabulary</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-change" data-change="unchanged">
+              <h4>Initializing a change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor names a path on the bootstrap subcommand intending to create a change</dd>
+                <dt>Then</dt>
+                <dd>the program refuses and names the creation subcommand for a change, so a contributor who used the withdrawn spelling is not left guessing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-discoverable-help" data-change="unchanged">
+              <h4>Discoverable help</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests help</dd>
+                <dt>Then</dt>
+                <dd>every subcommand and option is documented in the output</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-operation-openspec-also-provides" data-change="unchanged">
+              <h4>An operation OpenSpec also provides</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the command surface offers an operation that enumerates a project's changes, reports a change's completion, emits workflow instructions, or registers a standalone project</dd>
+                <dt>Then</dt>
+                <dd>it is named <code>list</code>, <code>status</code>, <code>instructions</code>, and <code>store</code> respectively, because those are OpenSpec's names for those operations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-selectors-carry-openspec-s-spellings" data-change="unchanged">
+              <h4>The selectors carry OpenSpec's spellings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor asks for structured output, for specifications rather than changes, for one named change, or for a registered standalone project</dd>
+                <dt>Then</dt>
+                <dd>the options are <code>--json</code>, <code>--specs</code>, <code>--change</code>, and <code>--store</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-operation-openspec-does-not-provide" data-change="unchanged">
+              <h4>An operation OpenSpec does not provide</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the command surface offers an operation with no OpenSpec counterpart</dd>
+                <dt>Then</dt>
+                <dd>it takes the name this project chooses for it, as <code>format</code> and <code>assets</code> do</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-renamed-operation-breaks-the-installed-instructions" data-change="unchanged">
+              <h4>A renamed operation breaks the installed instructions</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>workflow instructions that invoke a subcommand by name</dd>
+                <dt>When</dt>
+                <dd>that subcommand is spelled differently from what the instructions name</dd>
+                <dt>Then</dt>
+                <dd>the instructions name a command that does not exist, which is why the spellings are fixed in the contract rather than left to an implementer</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each unit below summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links, and the record is the authority. All four were recorded for tasks 1.1 to 1.4, before the change was built, so none records the outcome of checking a requirement this specification states, and this specification carries no verification.</p>
+          </aside>
+          <section class="evidence" id="evidence-the-instruction-with-no-command-2026-08-31" data-change="added" data-refs="req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract req-the-workflow-instructions-carry-a-stage-for-applying-a-change-s-contract">
+            <h3>The instruction with no command behind it <span class="hs-id">evidence-the-instruction-with-no-command-2026-08-31</span></h3>
+            <p>Task 1.1, recorded on 2026-08-31 against <code>main</code> at <code>8ca4b59</code>: when a change states a requirement no accepted specification holds, <code>report_findings</code> emits a note ending "Apply the change's contract before archiving, or confirm each one was withdrawn deliberately". The record tabulates the ten subcommands of the <code>Command</code> enum in <code>crates/htmlspec-cli/src/main.rs</code> with their subjects, and none has the accepted specifications as its subject; a <code>grep</code> of that file for <code>sync</code> exits 1. <code>crates/htmlspec-assets/src/instructions.rs</code> defines seven workflow stages, and the one named <code>apply</code> implements a change's tasks, so a contributor told to apply the change's contract who reaches for <code>htmlspec instructions apply</code> gets the implementation stage. <a href="evidence/the-instruction-with-no-command-2026-08-31.md"><code>evidence/the-instruction-with-no-command-2026-08-31.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-openspec-provides-it-and-we-promised-the-name-2026-08-31" data-change="added" data-refs="req-a-single-command-exposes-validate-format-and-init req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract req-the-workflow-instructions-carry-a-stage-for-applying-a-change-s-contract">
+            <h3>OpenSpec provides the operation, and this project promised to carry its name <span class="hs-id">evidence-openspec-provides-it-and-we-promised-the-name-2026-08-31</span></h3>
+            <p>Task 1.2, recorded on 2026-08-31: <code>ls .pi/skills/</code> shows <code>openspec-sync-specs</code> installed, and that skill describes its operation as agent-driven, reading delta specs and editing main specs directly; the same directory holds seven <code>htmlspec-*</code> skills, matching the seven workflow stages, and none for sync. The record quotes <code>toolchain-packaging</code>'s rule that an operation OpenSpec provides carries OpenSpec's name, whose eight fixed spellings do not include <code>sync</code>, and concludes that the name is a contract question rather than a preference, and that carrying it imports no programmatic merger. <a href="evidence/openspec-provides-it-and-we-promised-the-name-2026-08-31.md"><code>evidence/openspec-provides-it-and-we-promised-the-name-2026-08-31.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-no-accepted-requirement-covers-it-2026-08-31" data-change="added" data-refs="req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract req-a-single-command-exposes-validate-format-and-init">
+            <h3>No accepted requirement covers this, and one deliberately excludes it <span class="hs-id">evidence-no-accepted-requirement-covers-it-2026-08-31</span></h3>
+            <p>Task 1.3, recorded on 2026-08-31: <code>toolchain-packaging</code>'s "Archival assesses the merge and never performs it" excludes the merge from archival while no requirement says who performs it, and its "The command surface names its operations as OpenSpec names them" fixes eight spellings, of which <code>sync</code> is not one. All eight accepted capabilities that <code>ls openspec/specs/</code> lists were checked, and none states an operation whose subject is the accepted specifications. The record places the new requirements in <code>toolchain-packaging</code>, because the command surface is what gains an operation. <a href="evidence/no-accepted-requirement-covers-it-2026-08-31.md"><code>evidence/no-accepted-requirement-covers-it-2026-08-31.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-artifact-kinds-reserves-the-merge-2026-08-31" data-change="added" data-refs="req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract req-the-workflow-instructions-carry-a-stage-for-applying-a-change-s-contract">
+            <h3>The merge is reserved for an agent, read from the source <span class="hs-id">evidence-artifact-kinds-reserves-the-merge-2026-08-31</span></h3>
+            <p>Task 1.4, recorded on 2026-08-31 by reading <code>artifact-kinds</code>' "Every synthesis and every contract update is agent-driven" rather than archival's code comment: of the four agent-driven operations that requirement names, the fourth, updating the project's accepted specifications, is a merge and "the only one", and the project supplies the rules that direct these merges as instructions while what it implements in code is the checking. The record finds this stronger than the proposal claimed, and reads the requirement's partial-update clause as ruling out a programmatic merger. <a href="evidence/artifact-kinds-reserves-the-merge-2026-08-31.md"><code>evidence/artifact-kinds-reserves-the-merge-2026-08-31.md</code></a></p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

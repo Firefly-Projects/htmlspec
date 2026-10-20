@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Resolve a new document's project from its destination</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Resolve a new document's project from its destination</h1>
+        <p>This change makes document-template's "A project can be initialized with a conforming document" say which store a new document references: the store its own location reaches, never the one the directory the command runs in reaches. A document beneath a project's own directory references the project's store, and any other document is given a store beside it.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Resolve a new document's project from its destination</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-document-template">document-template</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-document-template">
+          <h2>document-template</h2>
+          <section class="requirement" id="req-a-project-can-be-initialized-with-a-conforming-document" data-change="modified">
+            <h3>A project can be initialized with a conforming document <span class="hs-id">req-a-project-can-be-initialized-with-a-conforming-document</span></h3>
+            <p>The project SHALL provide a way to create a new document that already conforms to the element contract, the visual system, and the runtime conventions, without hand-assembly.</p>
+            <p>Initialization SHALL write asset references that match the bytes it stores. It SHALL NOT copy a runtime asset that the project already stores, and SHALL NOT produce a document whose references and stored bytes disagree.</p>
+            <ins>
+              <p>Initialization SHALL decide which project a new document belongs to from the location of the document it creates, never from the directory it runs in. A document created beneath a project's own directory, <code>htmlspec/</code>, SHALL reference that project's store, and establish it there if it is absent. Any other document SHALL be given a store beside it, because validation looks for a document's store in the document's own directory and above it, and the project's store is above only the documents beneath the project's own directory.</p>
+            </ins>
+            <ins>
+              <p>Whether a location is beneath a project's own directory SHALL be decided as the filesystem identifies that directory, whatever the location's spelling, and the store SHALL be referenced by the path the location spells.</p>
+            </ins>
+            <article class="scenario" id="scenario-starting-a-new-change" data-change="unchanged">
+              <h4>Starting a new change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor initializes a new change document</dd>
+                <dt>Then</dt>
+                <dd>the resulting file passes validation immediately and opens as a readable page</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-into-a-project-without-assets" data-change="unchanged">
+              <h4>Initializing into a project without assets</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is created in a project whose shared assets are not yet present</dd>
+                <dt>Then</dt>
+                <dd>the assets are established as part of initialization, so the document renders offline without a further step</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-into-a-project-that-already-has-the-runtime" data-change="unchanged">
+              <h4>Initializing into a project that already has the runtime</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project already storing the runtime a new document needs</dd>
+                <dt>When</dt>
+                <dd>a contributor initializes that document</dd>
+                <dt>Then</dt>
+                <dd>it references the stored bytes and no second copy of any asset is written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initialization-cannot-emit-a-stale-reference" data-change="unchanged">
+              <h4>Initialization cannot emit a stale reference</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>initialization writes a document and its asset references</dd>
+                <dt>Then</dt>
+                <dd>every reference matches the hash of the bytes the project stores, so a document cannot be created already pointing at bytes it does not get</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-written-outside-the-project-it-is-created-from" data-change="added">
+              <h4>A document written outside the project it is created from</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a contributor working in a directory inside a project</dd>
+                <dt>When</dt>
+                <dd>they initialize a document at a location outside that project</dd>
+                <dt>Then</dt>
+                <dd>the document is given a store beside it, and passes validation immediately</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-written-into-a-project-s-root-outside-its-own-directory" data-change="added">
+              <h4>A document written into a project's root, outside its own directory</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is initialized in a project's root directory, or another directory there that is not beneath <code>htmlspec/</code></dd>
+                <dt>Then</dt>
+                <dd>the document is given a store beside it, which validation finds, so every reference it carries is checked</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-written-into-a-project-from-outside-it" data-change="added">
+              <h4>A document written into a project from outside it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project already storing the runtime a new document needs</dd>
+                <dt>When</dt>
+                <dd>a contributor working outside that project initializes a document beneath its <code>htmlspec/</code></dd>
+                <dt>Then</dt>
+                <dd>the document references the project's store, and no second copy of any asset is written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-project-s-own-directory-named-another-way" data-change="added">
+              <h4>The project's own directory named another way</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is initialized at a location that names a project's own directory in another case, on a filesystem that ignores case, or through a link at the level below the project's root</dd>
+                <dt>Then</dt>
+                <dd>the document references the project's store by that spelling, and no second copy of any asset is written</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <p>Each unit summarizes a record this change carries in its <code>evidence/</code>, and links it. The record is the authority.</p>
+          <section class="evidence" id="evidence-the-four-cases-measured-2026-10-13" data-change="added" data-refs="req-a-project-can-be-initialized-with-a-conforming-document">
+            <h3>The four cases, measured before the change <span class="hs-id">evidence-the-four-cases-measured-2026-10-13</span></h3>
+            <p>With <code>htmlspec 0.29.0</code> in a scratch project, three of the four arrangements of working directory and destination went wrong: written outside the project from inside it, and into its root from inside it, <code>new document</code> exited 2 with a document validation rejected; written into its <code>htmlspec/</code> from outside, the project gained a second store that <code>htmlspec assets</code> reported. Written outside every project, it was correct. <a href="evidence/the-four-cases-measured-2026-10-13.md"><code>evidence/the-four-cases-measured-2026-10-13.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-tests-before-and-after-2026-10-13" data-change="added" data-refs="req-a-project-can-be-initialized-with-a-conforming-document">
+            <h3>The tests, before the repair and after it <span class="hs-id">evidence-the-tests-before-and-after-2026-10-13</span></h3>
+            <p>Before the repair, five of the tests failed, the four arrangements' three failures, the project with no store, and the test that failed when this repository became a project; after it, every one passed. It also records a document in a project's root, referencing <code>htmlspec/assets/</code>, accepted by validation with a stylesheet hash that names no stored bytes. <a href="evidence/the-tests-before-and-after-2026-10-13.md"><code>evidence/the-tests-before-and-after-2026-10-13.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-mutation-testing-2026-10-13" data-change="added" data-refs="req-a-project-can-be-initialized-with-a-conforming-document">
+            <h3>The tests can fail <span class="hs-id">evidence-mutation-testing-2026-10-13</span></h3>
+            <p>With the working directory put back as the project's source, seven tests failed and the three that cover what must not move passed. With the code review's comparison by spelling put back, both tests for a directory named another way failed, and the review's own case ran end to end on a filesystem that ignores case. <a href="evidence/mutation-testing-2026-10-13.md"><code>evidence/mutation-testing-2026-10-13.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-check-suite-2026-10-13" data-change="added" data-refs="req-a-project-can-be-initialized-with-a-conforming-document">
+            <h3>The check suite, with the promoted project in place <span class="hs-id">evidence-the-check-suite-2026-10-13</span></h3>
+            <p>Every stage of <code>scripts/check</code> that runs Rust passed inside <code>nix develop</code>. The four Python stages failed there only on macOS's <code>python3</code> shim, and passed outside it, after the 45 installed instruction files were regenerated for 0.29.1. <a href="evidence/the-check-suite-2026-10-13.md"><code>evidence/the-check-suite-2026-10-13.md</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-document-written-outside-its-project" data-change="added" data-outcome="passed" data-refs="scenario-a-document-written-outside-the-project-it-is-created-from">
+            <h3>Written outside the project it is created from <span class="hs-id">verify-a-document-written-outside-its-project</span></h3>
+            <p data-field="method"><code>a_document_written_outside_the_project_it_is_created_from_gets_its_own_store</code> in <code>crates/htmlspec-cli/tests/cli.rs</code> runs the built binary from inside a scratch project, initializes a proposal in a sibling directory, and asserts exit 0, a store beside the document, the document accepted by <code>htmlspec validate</code>, and <code>htmlspec assets</code> clean in the project. It failed before the repair and passed after it, as <a href="evidence/the-tests-before-and-after-2026-10-13.md"><code>evidence/the-tests-before-and-after-2026-10-13.md</code></a> records.</p>
+          </section>
+          <section class="verification" id="verify-a-document-written-into-a-project-s-root" data-change="added" data-outcome="passed" data-refs="scenario-a-document-written-into-a-project-s-root-outside-its-own-directory">
+            <h3>Written into a project's root, outside its own directory <span class="hs-id">verify-a-document-written-into-a-project-s-root</span></h3>
+            <p data-field="method"><code>a_document_written_into_a_projects_root_outside_its_directory_gets_its_own_store</code> initializes <code>docs/proposal.html</code> from inside a scratch project and asserts exit 0, a store at <code>docs/assets/</code>, the document accepted, and the project's asset check clean. <code>new_document_and_post_document_agree</code> in <code>tests/verbs.rs</code> initializes <code>notes.html</code> in a project's root under both spellings and asserts a store beside it. Both pass, and each fails when the working directory is put back as the project's source, as <a href="evidence/mutation-testing-2026-10-13.md"><code>evidence/mutation-testing-2026-10-13.md</code></a> records.</p>
+          </section>
+          <section class="verification" id="verify-a-document-written-into-a-project-from-outside" data-change="added" data-outcome="passed" data-refs="scenario-a-document-written-into-a-project-from-outside-it">
+            <h3>Written into a project from outside it <span class="hs-id">verify-a-document-written-into-a-project-from-outside</span></h3>
+            <p data-field="method"><code>a_document_written_into_a_project_from_outside_references_the_projects_store</code> runs from a sibling of a scratch project, initializes <code>htmlspec/changes/c/proposal.html</code> inside it, and asserts exit 0, no store beside the document, a reference through <code>../../assets/</code>, the document accepted, and <code>htmlspec assets</code> clean. It failed before the repair and passed after it, as <a href="evidence/the-tests-before-and-after-2026-10-13.md"><code>evidence/the-tests-before-and-after-2026-10-13.md</code></a> records.</p>
+          </section>
+          <section class="verification" id="verify-the-project-s-own-directory-named-another-way" data-change="added" data-outcome="partial" data-refs="scenario-the-project-s-own-directory-named-another-way">
+            <h3>The project's own directory named another way <span class="hs-id">verify-the-project-s-own-directory-named-another-way</span></h3>
+            <p data-field="method">On this machine's filesystem, which ignores case, the repaired binary initialized <code>HTMLSPEC/changes/c/proposal.html</code> in a scratch project from outside it: exit 0, no store beside the document, <code>htmlspec assets</code> clean, and the document accepted, as <a href="evidence/mutation-testing-2026-10-13.md"><code>evidence/mutation-testing-2026-10-13.md</code></a> records. The unit tests <code>the_projects_directory_in_another_case_uses_its_store_where_case_is_ignored</code> and <code>another_name_for_the_projects_directory_uses_its_store</code> pin the store chosen for both spellings, and each fails under the comparison by spelling the code review found.</p>
+            <p data-field="unchecked">A link at the level below the project's root, initialized through the command: the link is checked only by the unit test of the function that chooses the store, which runs no command</p>
+          </section>
+          <section class="verification" id="verify-initializing-into-a-project-without-assets-from-outside-it" data-change="added" data-outcome="passed" data-refs="scenario-initializing-into-a-project-without-assets">
+            <h3>Initializing into a project without assets, from outside it <span class="hs-id">verify-initializing-into-a-project-without-assets-from-outside-it</span></h3>
+            <p data-field="method"><code>a_document_written_into_a_project_with_no_store_establishes_the_projects_store</code> gives a scratch project <code>htmlspec/changes/</code> and no store, initializes <code>htmlspec/changes/first/proposal.html</code> from a sibling directory, and asserts exit 0, the document accepted, every runtime asset stored under <code>htmlspec/assets/</code>, and no store beside the document. It failed before the repair and passed after it, as <a href="evidence/the-tests-before-and-after-2026-10-13.md"><code>evidence/the-tests-before-and-after-2026-10-13.md</code></a> records.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

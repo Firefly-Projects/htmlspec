@@ -1,0 +1,25 @@
+# Coordinator's review of the drafts (second attempt, 2026-10-13)
+
+Every judgment call a drafter flagged, and what the coordinator decided. Verification units are
+reviewed separately, under brief-verify-review.md, in review/verifications-*.md.
+
+| Draft | Call | Decision | Why |
+| --- | --- | --- | --- |
+| spec-project-bootstrap | the summary written under decision 3, three paragraphs | kept | marked as written at migration; each clause names its requirement by heading, and says nothing they do not |
+| 2026-08-30-finish-the-archival | task 4.8 deviation against a packet note | kept | the deviation table and the code at cf11132 agree; the brief makes the table win over a note |
+| 2026-09-11-migrate-an-openspec-project | task 5.9 deviation against the table ('C: later review') | kept; the checker's one finding stays as a recorded exception | the task's own note says the check-release instruction "is not satisfiable": done only in part, which the record shows (brief: the record wins over the table) |
+| 2026-09-06-distinguish-a-requirement-from-an-example | task 3.6 deviation against the table | kept; checker fixed | the task's text carries "Amended during implementation"; the author's words decide whatever the class, so check_deviation_table now skips such a task |
+| spec-project-bootstrap | the placeholder Purpose's two sentences not found | expected | decision 3 replaces the placeholder |
+| 2026-09-28-confine-the-asset-check-to-the-project | task 2.1 references four scenarios; one description spells its heading | kept | the author's words enumerate "the four scenarios" and abbreviate each; they name the units, unambiguously |
+| 2026-08-24-report-in-the-contributors-terms | task 5.6 deviation, added by the drafter | kept | a kept evidence record beyond "one other workflow" is a lasting result |
+| 2026-09-15-catch-a-templates-placeholder-prose | task deviations 3.6 and 7.1 | kept | each is the author's own note; a test kept in the suite, and 45 files regenerated where a no-op was predicted, are results |
+| 2026-08-21-distinguish-command-names-from-skill-names | task 5.3 left without a deviation | **deviation added by the coordinator** | the change's delta added paragraph 11 ("No two files the operation writes for one tool SHALL declare the same name…"), which no task's words mention: a result beyond 5.3's words. The note saying no record states the result was replaced, since the specification states it |
+| 2026-08-22-accept-a-described-change | `artifact-kinds/spec.md:36` linked to the whole accepted specification | kept | convention 3 links a cited source path to its migrated counterpart; a line number names no requirement by heading |
+| 2026-10-08-show-what-a-modification-changed | task deviations 3.1, 5.3, 5.4, 6.1 added by the drafter; 2.4, 2.5, 2.7, 3.2, 3.3 declined | kept | the drafter's line applies the threshold: a result that reaches outside the task's subject or changes another task's work owes one; a test made stricter on the task's own subject does not |
+| 2026-10-08-migrate-into-the-extended-vocabulary | a SHALL added to the configuration requirement for an unreadable file (drafter's class A) | **sentence removed; note rewritten as class C** | the delta is silent on an unreadable file and the build handles it without contradicting anything: built beyond the delta, so a note and never a new obligation the author did not write |
+| 2026-08-24-pass-the-description-through | `$ARGUMENTS` in the `AGENTS.md` region, classed C by the drafter | **reclassed B; one sentence added to the note** | the requirement says the obligation "SHALL NOT reach a kind that carries no invocation", and the placeholder reaches one with nothing recording it as chosen: a defect still in the product, as the first attempt also found |
+| 2026-10-02-state-a-modified-requirement-whole | `sync.md` holding a mismatched `unchanged` scenario unmerged, classed C | kept | no requirement says what the merge does with it; the silence is listed under "Found while reading" |
+| 2026-08-18-conform-generated-frontmatter-names | "Every generated name is loadable": words kept, with a note | kept | the change's record treats the words as met, so the record kept the words (class A's kept-words case); the product disagreement is listed under "Found while reading" |
+| 2026-09-26-carry-a-runbook-to-another-machine | `archive --check` settling an interruption, classed E | kept | the `--check` help and the code record the exception as deliberate; the disagreement with "write nothing" is listed under "Found while reading" |
+| 2026-10-07-mark-the-words-a-modification-changed | a sentence added to "A deleted word is recorded apart from what a unit states" (class A) | kept | the change's reviewed fix deliberately replaced the delta's behaviour (tasks 3.3 and 10.1), so the statement is written as built with the delta's words in the note |
+| all six verification groups | 262 units reviewed under brief-verify-review.md | 225 kept, 16 made partial, 1 made passed, 20 removed | see review/verifications-a.md to -f.md |

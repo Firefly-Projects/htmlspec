@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>See a modification the merge did not take</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>See a modification the merge did not take</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>See a modification the merge did not take</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-02-see-a-modification-the-merge-did-not-take/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>See <a href="proposal.html">proposal.md</a> for why. The shape of the current system that the approach depends on:</p>
+          <ul>
+            <li><strong>One function makes the comparison.</strong> <code>merge_state</code> in <code>crates/htmlspec-cli/src/commands.rs</code> (3545-3600) serves both <code>sync</code> and archival's <code>findings_for</code>. It collects the identifiers the change's specification states, and maps every accepted requirement's identifier to its heading name. It then puts each stated identifier into <code>reached</code>, <code>absent</code>, or <code>untaken_renames</code>. <strong>It never reads a requirement's change state.</strong> <code>grep -c '\.change'</code> over the function's lines prints <code>0</code> (<a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a>, section 7).</li>
+            <li><strong>"Has the contract arrived" is stated twice.</strong> <code>sync</code> prints "the change's contract has been applied in full" when <code>state.absent.is_empty() &amp;&amp; state.untaken_renames.is_empty()</code> (2475). Archival asks <code>Findings::needs_sync</code> (3294), which restates the same two clauses over <code>Findings</code>' own copies of the two sets. The parity tests pin the sets, not the two predicates.</li>
+            <li>
+              <p><strong>The model already holds the text to compare.</strong> A projected <code>Requirement</code> (<code>crates/htmlspec-parse/src/model.rs</code>) carries:</p>
+              <ul>
+                <li><code>change</code>;</li>
+                <li><code>statements</code>, as normalized text from every unmarked and <code>statement</code> paragraph among its descendants, list items included (projection specification, sections 4.1 and 6.1);</li>
+                <li><code>scenarios</code>, each with <code>title</code>, <code>given</code>, <code>when</code>, <code>then</code>, <code>notes</code>, <code>change</code>, and <code>id</code> (section 4.2);</li>
+                <li><code>notes</code>;</li>
+                <li><code>renamed_from</code>, which never supplies a statement (section 4.1.1).</li>
+              </ul>
+              <p><code>HeadingName</code> (section 4.1.2) is defined for any unit, so a scenario has a heading name too. No new field and no new projection rule is needed.</p>
+            </li>
+            <li><strong>Schema values are not written as literals.</strong> <code>crates/htmlspec-validate/tests/schema_rust_split.rs</code> forbids <code>"removed"</code> and <code>"unchanged"</code> in rule code. The CLI follows the same discipline: <code>runs::is_withdrawn</code> finds the withdrawn state by a stem from <code>schema_facts::enum_values</code>, and <code>rules::review::material_states</code> finds <code>added</code> and <code>modified</code> by excluding the other two.</li>
+            <li><strong>The instructions, as <code>state-a-modified-requirement-whole</code> leaves them.</strong> <code>sync.md</code> works through <code>absent</code> and <code>untakenRenames</code>. That change adds a section on merging a modified requirement, which works from the change's specification because the comparison cannot see one. <code>archive.md</code> step 5 says "A requirement the change withdrew is removed". Step 4 then says that after the merge, each identifier left in <code>absent</code> "should be a requirement the change deliberately withdrew". So archival expects a requirement the merge deleted to be reported as not arrived, and that is exactly what it does (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 4</a>).</li>
+          </ul>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong></p>
+          <ul>
+            <li><code>sync</code> and archival report a modification, an added requirement, or a withdrawal that the accepted specifications have not taken.</li>
+            <li>A withdrawal the merge applied counts as reached, so a correct merge leaves nothing to report.</li>
+            <li>The comparison stays exact. It reads text and never meaning, and it never proposes merge text.</li>
+            <li>One definition of "reached", and one predicate for "reached in full", both shared by the two operations.</li>
+            <li>Instructions that tell an agent what to do with every set the payload carries.</li>
+          </ul>
+          <p><strong>Non-Goals:</strong></p>
+          <ul>
+            <li><strong>A diff.</strong> Where the two sides differ is reported, and what they say is not. A diff view is <code>show-what-a-modification-changed</code>'s.</li>
+            <li><strong>Checking that a change's specification states a modified requirement whole.</strong> An accepted scenario the change neither states nor marks <code>removed</code> shows up here only if the merge kept it. That is enough for this operation's question. Whether the change's specification is complete is <code>state-a-modified-requirement-whole</code>'s rule, and it is carried out by the merging agent.</li>
+            <li><strong>A requirement's heading where no rename is stated</strong>, and notes. Both are left out on purpose. See decision 2.</li>
+            <li><strong>Validation.</strong> Nothing here runs in <code>validate</code>.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-decision-1">
+            <h3>1. The change state decides what "reached" means</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>The change marks the requirement</th>
+                  <th>It has reached the contract when</th>
+                  <th>Otherwise it is in</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>added</code> or <code>modified</code></td>
+                  <td>an accepted specification holds its identifier with the content the change states</td>
+                  <td><code>absent</code> if the identifier is not held, and <code>untakenContent</code> if it is</td>
+                </tr>
+                <tr>
+                  <td><code>removed</code></td>
+                  <td>no accepted specification holds its identifier</td>
+                  <td><code>untakenRemovals</code></td>
+                </tr>
+                <tr>
+                  <td><code>unchanged</code></td>
+                  <td>an accepted specification holds its identifier</td>
+                  <td><code>absent</code></td>
+                </tr>
+              </tbody>
+            </table>
+            <p>A stated rename is compared as it is today, for <code>unchanged</code> and <code>modified</code> requirements alike. Validation already rejects a <code>renamed-from</code> paragraph on an <code>added</code> or <code>removed</code> requirement.</p>
+            <p><strong>A requirement marked <code>unchanged</code> that holds a changed scenario is judged as <code>modified</code>.</strong> The code review of this change's pull request found the case: a scenario marked <code>added</code>, <code>modified</code>, or <code>removed</code> inside a requirement marked <code>unchanged</code>. Nothing in validation or the contract rejects it, and judged by the requirement's own mark, the added scenario reached the contract unmerged while <code>sync</code> said "applied in full". The change states content inside such a requirement, so the state read into the type below is the requirement's own, except that one carrying the requirement forward gives way to "establishes" when a scenario in it is changed. <strong>Considered: a validation rule rejecting a changed scenario inside an <code>unchanged</code> requirement.</strong> Rejected here. It changes what every document may say, which is document-validation's subject and not this comparison's.</p>
+            <p>The state is read once per requirement into a closed type with three cases:</p>
+            <ul>
+              <li><strong>establishes</strong>, for the material states, derived from the schema's <code>changeState</code> values by excluding the other two, as <code>rules::review::material_states</code> derives them in the validator;</li>
+              <li><strong>withdraws</strong>, for the state the CLI's <code>runs::is_withdrawn</code> already finds by its stem;</li>
+              <li><strong>carries forward</strong>, for every other value.</li>
+            </ul>
+            <p>The last case is the schema's default state, <code>unchanged</code>. An unknown value cannot reach this function, because both callers refuse a specification that does not validate before they compare it. The match over the three cases is exhaustive, so a fourth state added to the schema lands in "carries forward" until someone decides otherwise. That is the behavior every requirement had before this change.</p>
+            <p><strong>Considered: compare <code>modified</code> requirements only.</strong> Rejected. An <code>added</code> requirement's content is also text the change establishes and the merge writes. An added requirement merged without one of its scenarios is reported as reached today, and so is an added identifier that happens to equal the identifier of an unrelated accepted requirement. Both are this change's defect.</p>
+            <p><strong>Considered: compare every requirement's text, <code>unchanged</code> included.</strong> Rejected. The text of a requirement carried forward untouched moves whenever another change modifies it. A difference then reports that other change's edit as this change's unapplied work. The merge must not act on it, because acting on it would revert the other change. A finding nobody can act on is noise.</p>
+            <p><strong>Considered: leave a withdrawal as it is, and explain in the instructions that a withdrawn requirement belongs in <code>absent</code>.</strong> Rejected. That is today's behavior, and the evidence shows its cost. Against the unmerged accepted specification, <code>sync</code> says the change's contract "has been applied in full" and archival says "ready". After a correct merge, archival says "This change has not been synced" and asks (<a href="evidence/the-measurement-2026-09-30.md">evidence, sections 4 and 6</a>). <code>sync</code>'s note for an absent identifier opens "Merge each into the specification that should hold it". An agent that follows that clause puts back the requirement it just deleted.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, the establishing case is not derived by excluding the other two states. Found that way, a fourth state the schema adds would land in "establishes", not in "carries forward" as this decision also says, so the two statements could not both hold. The implementation keeps the stated behavior: <code>establishing_states</code> finds <code>added</code> and <code>modified</code> by their stems, as <code>runs::is_withdrawn</code> finds <code>removed</code>, and <code>every_change_state_is_judged_one_way</code> pins the case each schema state falls in. <a href="evidence/what-the-implementation-revealed-2026-10-02.md"><code>evidence/what-the-implementation-revealed-2026-10-02.md</code></a> records this, and <a href="tasks.html#task-2-1">task 2.1</a> carries it as its deviation. <a href="tasks.html#task-7-1">Task 7.1</a> records that the contributor accepted as built this decision's comparison of an <code>added</code> requirement as a <code>modified</code> one is.</p>
+            </aside>
+          </section>
+          <section id="hs-decision-2">
+            <h3>2. Content is statements in order and scenarios as a collection, compared as projected text</h3>
+            <p>A requirement's content is its <code>statements</code>, in order, and its scenarios less those the change marks <code>removed</code>. Each scenario is compared as its heading name and its <code>given</code>, <code>when</code>, and <code>then</code> entries, each list in order. The scenarios are compared as a multiset: the accepted requirement holds exactly these scenario texts, in any order, and no others. So a scenario the change marks <code>removed</code> that the merge kept is reported, because it is a text the accepted requirement holds beyond the change's.</p>
+            <p>Every text is compared after whitespace normalization, which is the heading comparison's test. The projection already normalizes, except inside <code>code</code> (section 6.2). The comparison reads the projection, not the markup, so emphasis, links, and attributes are not compared, and neither is a unit's <code>data-change</code>, which differs between a change's specification and an accepted one by design.</p>
+            <p><strong>Statement order is compared.</strong> Statements are prose read in sequence. Moving a paragraph changes what "That division" or "The reason" in the next one refers to, and the accepted requirement is read in its order.</p>
+            <p><strong>Scenario order is not.</strong> A scenario is a unit that is checked on its own, and nothing in the contract gives its position a meaning. OpenSpec 1.13.1's check that a MODIFIED block keeps every scenario matches scenarios by name, not position. The merge at <code>9c3a3c7</code> appended the two scenarios it kept after the delta's five, and the result reads correctly. Both facts are recorded in <a href="../2026-10-02-state-a-modified-requirement-whole/evidence/the-measurement-2026-09-30.md"><code>state-a-modified-requirement-whole</code>'s evidence, sections 1 and 2</a>.</p>
+            <p><strong>Considered: compare scenario order too</strong>, reading "apply it as stated" literally. Rejected. A reorder changes no obligation. A report that fires where nothing is wrong is one a reader learns to pass over, which is the reason "<a href="specification.html#req-archival-assesses-the-merge-and-never-performs-it">Archival assesses the merge and never performs it</a>" gives for staying silent when the contract has arrived.</p>
+            <p><strong>Considered: compare statements as a collection.</strong> Rejected, for the reason above: a statement's meaning depends on the one before it.</p>
+            <p><strong>Considered: match each stated scenario to an accepted one by identifier, then compare the pair.</strong> Rejected. It answers a different question: which scenario this is, not whether the accepted requirement says it. It also adds a failure the text question does not have. Identifiers are unique only within one document, and an accepted specification holds many requirements. toolchain-packaging already holds two scenarios named "An invalid specification", under two requirements (<a href="../../../specs/toolchain-packaging/spec.html"><code>openspec/specs/toolchain-packaging/spec.md</code></a> lines 385 and 651). So the identifier a change's specification gives a scenario it adds can be taken in the accepted document, and the merge has to write it under another. Matched by identifier, that correct merge would be reported as not taken. The identifiers still appear in the report, because they are how a reader finds a scenario in each document (decision 5).</p>
+            <p>This is also the answer to <code>state-a-modified-requirement-whole</code>'s decision 4. That decision kept the sentence that a stated scenario carries its accepted counterpart's identifier, and said this change's comparison needs it. This comparison does not. That change's review settled the question on 2026-10-02 and kept the sentence, because its <code>sync</code> instructions match each stated scenario to its accepted counterpart by identifier. The sentence serves the merging agent, and this comparison still compares text. Nothing here moves.</p>
+            <p><strong>Considered: compare the requirement's markup.</strong> Rejected. Formatting, attributes, and <code>data-change</code> would all differ where nothing normative does. And <code>mark-the-words-a-modification-changed</code> is about to put <code>&lt;ins&gt;</code> and <code>&lt;del&gt;</code> into a modified unit.</p>
+            <p><strong>Notes and the scenario's change state are not content.</strong> A note is "prose that is not a field" (projection specification, section 4.0), and <code>state-a-modified-requirement-whole</code> records that the contract is silent both on notes and on the change states an accepted specification carries after a merge. Comparing either would report an accepted note, or a leftover <code>data-change</code>, that the merge was right to leave alone. The <code>renamed-from</code> paragraph is not a statement, and the requirement's own heading is the rename comparison's, as <code>record-a-renamed-requirement</code>'s design decision 4 settled.</p>
+            <p><strong>Forward note.</strong> <code>mark-the-words-a-modification-changed</code> will let a unit marked <code>modified</code> carry <code>&lt;ins&gt;</code> and <code>&lt;del&gt;</code>, and its projection moves deleted text out of <code>statements</code> into a list of withdrawn words. Because this comparison is defined on the projected statements and scenario entries, and not on raw HTML, that change only has to say that withdrawn words are not content for this comparison. Inserted words are already in the statement. That change's behavior is not specified here.</p>
+          </section>
+          <section class="decision" id="decision-a-withdrawal-the-merge-has-not-taken-is-a-set-of-its-own" data-change="added" data-status="accepted">
+            <h3>3. A withdrawal the merge has not taken is a set of its own <span class="hs-id">decision-a-withdrawal-the-merge-has-not-taken-is-a-set-of-its-own</span></h3>
+            <p><code>untakenRemovals</code> lists identifiers only. There is no content to compare, because <code>state-a-modified-requirement-whole</code> does not ask a withdrawn requirement to be stated whole.</p>
+            <p data-field="rationale"><strong>Considered: one set for everything held that should not be, withdrawals and content together.</strong> Rejected. The work differs. A withdrawal is finished by deleting a requirement, and content by editing one. The entries differ too: a withdrawal has no statement position and no scenarios to name. The rename set was given its own note for the same reason. <code>report_findings</code> says so in its comment: "Its own note rather than a clause of the one above, because the work differs".</p>
+          </section>
+          <section class="decision" id="decision-a-requirement-renamed-and-modified-can-be-in-both-of-those-sets" data-change="added" data-status="accepted" data-refs="req-a-rename-reaches-the-accepted-contract-as-a-new-heading-on-the-same-identifier">
+            <h3>4. A requirement renamed and modified can be in both of those sets <span class="hs-id">decision-a-requirement-renamed-and-modified-can-be-in-both-of-those-sets</span></h3>
+            <p>Every stated identifier is in exactly one of four places: <code>reached</code>, <code>absent</code>, <code>untakenRemovals</code>, or the untaken pair. Within the pair, an identifier is in <code>untakenRenames</code>, in <code>untakenContent</code>, or in both. Where the identifier is not held, <code>absent</code> still takes precedence, because there is nothing to compare. <code>every_stated_requirement_is_in_exactly_one_set</code> is extended to state exactly this partition.</p>
+            <p data-field="rationale"><strong>Considered: one finding per requirement, with the rename first.</strong> Rejected. It hides a fact the comparison already computed, and costs the agent a second round to find it. artifact-kinds' "<a href="../../../specs/artifact-kinds/spec.html#req-a-rename-reaches-the-accepted-contract-as-a-new-heading-on-the-same-identifier">A rename reaches the accepted contract as a new heading on the same identifier</a>" calls the rename and the modification "two facts about one requirement", and the report says both.</p>
+          </section>
+          <section id="hs-decision-5">
+            <h3>5. The report names where the content differs, never what it says</h3>
+            <p>Each <code>untakenContent</code> entry in both payloads:</p>
+            <pre><code>{
+  "id": "req-x",
+  "firstDifferingStatement": 1,
+  "scenariosNotHeld": ["scenario-x-c"],
+  "scenariosNotKept": []
+}</code></pre>
+            <ul>
+              <li><code>firstDifferingStatement</code> is the first paragraph position, counted from one, at which the change's statements and the accepted requirement's differ. Where one side has fewer paragraphs and they agree up to that point, it is the first position the shorter side lacks. It is <code>null</code> where the statements agree.</li>
+              <li><code>scenariosNotHeld</code> lists the scenarios the change keeps (states, and does not mark <code>removed</code>) whose text the accepted requirement does not hold, by the identifier each carries in the change's specification.</li>
+              <li><code>scenariosNotKept</code> lists the scenarios the accepted requirement holds whose text the change does not keep, by the identifier each carries in the accepted specification, or by heading name where it has none.</li>
+            </ul>
+            <p>A scenario the change altered and the merge did not take appears in both lists. Under <code>state-a-modified-requirement-whole</code>'s identifier sentence, it carries the same identifier in both, which tells the reader it is one scenario.</p>
+            <p><code>untakenRemovals</code> is a list of identifiers, like <code>absent</code>.</p>
+            <p>The human report adds one line per entry, after the <code>renamed</code> lines:</p>
+            <pre><code>  differs  req-x (statements from paragraph 1; not held: scenario-x-c)
+  held     req-y (this change marks it removed)</code></pre>
+            <p>Archival's <code>report_findings</code> gains one note per set. Each note names the requirements and says that the change has not been synced, as the rename note does. The content note names the work as "give each accepted requirement the statements and scenarios this change states". The removal note names it as "delete each from the accepted specification that holds it".</p>
+            <p><strong>Considered: report only that the content differs.</strong> Rejected. <code>2026-08-31-sync-a-change-into-the-accepted-contract</code> changed toolchain-packaging's "<a href="../../../specs/toolchain-packaging/spec.html#req-a-single-command-exposes-validate-format-and-init">The command surface names its operations as OpenSpec names them</a>" by one word, <code>sync</code>, in the third of its ten statement paragraphs (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 9</a>). Without a position, the agent reads both sides of all ten to find it.</p>
+            <p><strong>Considered: carry both texts, or a diff.</strong> Rejected. This report is a worklist an agent executes, and in a worklist a text reads as the text to write, which is the text of a merge the operation must never propose. A view with no worklist, labelled by source, reads as a quotation instead, and that view is <code>show-what-a-modification-changed</code>'s subject. The contributor accepted that reading on 2026-10-01, so the two designs agree: the ban governs this report, and the diff view stays apart from it.</p>
+            <p><strong>Considered: every differing paragraph, found by aligning the two sequences.</strong> Rejected here. That is a diff algorithm, and it belongs with the diff view. The first position is exact, cheap, and enough to start reading.</p>
+          </section>
+          <section id="hs-decision-6">
+            <h3>6. One predicate, and <code>Findings</code> carries the comparison instead of copying it</h3>
+            <p><code>MergeState</code> gains <code>untaken_content: Vec&lt;UntakenContent&gt;</code>, <code>untaken_removals: Vec&lt;String&gt;</code>, and <code>fn reached_in_full(&amp;self) -&gt; bool</code>, which is true exactly when <code>absent</code> and all three untaken sets are empty. <code>sync</code>'s "applied in full" line and <code>Findings::needs_sync</code> both call it. <code>Findings</code> replaces its <code>unmerged</code> and <code>untaken_renames</code> fields with <code>merge: MergeState</code>, so a set added to the comparison is in archival's findings without a second edit. The archival payload's key <code>unmergedRequirements</code> is kept, read from <code>merge.absent</code>.</p>
+            <p><code>UntakenContent</code> is built only by the function that compares one stated requirement with the accepted ones. That function returns <code>Option&lt;UntakenContent&gt;</code>, and it returns <code>None</code> when nothing differs. So an entry that names no difference cannot be built. The accepted side of <code>merge_state</code>'s map changes from heading names to the accepted requirements themselves, or a view holding their heading name and content. The rename check keeps reading the heading name from it.</p>
+            <p><strong>Considered: add the two sets to <code>Findings</code> and a clause to each predicate, as the rename change did.</strong> Rejected. That is how the second statement of the predicate arose, and the parity tests only cover the sets they name. The next set would need the same edits in the same places, and nothing would report a missed one.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, <code>UntakenContent</code> is not built only by the function that compares. It sits in a module of its own, with private fields and a constructor, <code>UntakenContent::new</code>, that returns <code>None</code> when nothing differs, and the tests build entries through the same constructor. So an entry that names no difference still cannot be built, by any path. <a href="evidence/what-the-implementation-revealed-2026-10-02.md"><code>evidence/what-the-implementation-revealed-2026-10-02.md</code></a> records this, and <a href="tasks.html#task-2-1">task 2.1</a> carries it in its deviation.</p>
+            </aside>
+          </section>
+          <section id="hs-decision-7">
+            <h3>7. The instructions, and a test that they name every set</h3>
+            <p><code>sync.md</code>:</p>
+            <ul>
+              <li>The table of what comes back gains <code>untakenContent</code> and <code>untakenRemovals</code>. The partition sentence becomes decision 4's.</li>
+              <li>
+                <p><code>state-a-modified-requirement-whole</code>'s "Merging a modified requirement" section stops working around the comparison and works through <code>untakenContent</code>:</p>
+                <ul>
+                  <li>find the accepted requirement by identifier;</li>
+                  <li>start reading at <code>firstDifferingStatement</code>;</li>
+                  <li>bring in each scenario in <code>scenariosNotHeld</code>;</li>
+                  <li>take out each scenario in <code>scenariosNotKept</code> that the change marks <code>removed</code> or does not state.</li>
+                </ul>
+                <p>Its reporting rules stay. It still reports a scenario marked <code>unchanged</code> whose text differs, and an accepted scenario the change neither states nor marks <code>removed</code>. It gains one more: where the difference is another change's later edit, the agent reports it and does not revert it.</p>
+              </li>
+              <li>A new section, "Merging a withdrawal": for each identifier in <code>untakenRemovals</code>, delete the accepted requirement that carries it, and nothing else. It then counts as reached.</li>
+              <li>"A requirement you should not merge" says that a requirement marked <code>removed</code> never appears in <code>absent</code>. What remains there is a requirement the change states as added, modified, or carried forward.</li>
+              <li>"Finish by asking again" and "What to report" cover all four worklists.</li>
+            </ul>
+            <p><code>archive.md</code>:</p>
+            <ul>
+              <li>Step 4 gains the two findings.</li>
+              <li>Step 4's sentence that after the merge each remaining absent identifier "should be a requirement the change deliberately withdrew" is corrected.</li>
+              <li>Step 5's withdrawal bullet says archival then counts the requirement as reached.</li>
+              <li>Step 6's list of what archival still asks about gains the two sets.</li>
+            </ul>
+            <p>The absent notes in <code>sync</code> and <code>report_findings</code> stop saying "withdrawn deliberately". They say "abandoned", because a requirement the change withdraws is no longer among the absent.</p>
+            <p>A test in <code>crates/htmlspec-cli/tests/archive.rs</code>, <code>every_set_the_sync_payload_carries_is_named_in_its_instructions</code>, runs <code>sync --json</code> on a scratch project, takes every key of the payload whose value is an array, and asserts that each appears in backticks in the body <code>htmlspec_assets::instructions::workflow_for("sync")</code> returns. <strong>Considered: the same test in <code>htmlspec-assets</code>, over a list of keys.</strong> Rejected. That list would be a second statement of the payload, which drifts. The CLI's tests can run the payload and read the instructions both.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, the modified-requirement section of <code>sync.md</code> does not take out every scenario in <code>scenariosNotKept</code> that the change does not state. Such a scenario is an omission, which artifact-kinds' "A change's specification states a modified requirement whole" has the agent report to the contributor and not resolve by either reading. <code>sync.md</code> reads <code>scenariosNotKept</code> as three kinds of entry: one the change marks <code>removed</code>, which comes out; the accepted text of a scenario the change states as altered under the same identifier, which comes out because the change's text replaces it; and one whose identifier the change never states, which is reported and holds the requirement. <a href="tasks.html#task-7-1">Task 7.1</a> records that the contributor accepted this reading on 2026-10-02, and that it supersedes this decision's "or does not state". The record of the work also lists three additions to <code>sync.md</code> that the design did not list: an <code>added</code> requirement in <code>untakenContent</code>, whose identifier is already held; an <code>added</code> scenario whose identifier the accepted document already uses, which goes in under another; and another change's later edit, as a third case that holds a requirement. <a href="evidence/what-the-implementation-revealed-2026-10-02.md"><code>evidence/what-the-implementation-revealed-2026-10-02.md</code></a> records both, and <a href="tasks.html#task-4-1">task 4.1</a> carries them as its deviation.</p>
+            </aside>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>[A change written before another change modified the same requirement is reported as not taken.]</strong> → The report is right: merged as stated, the older restatement reverts the newer edit. The <code>sync</code> instructions say to report such a difference and not to apply it, and this project's overlap convention is a "1.0 Re-base" task that refreshes the older change first.</li>
+            <li><strong>[A merge that adapts the wording to its destination is reported as not taken.]</strong> → The change's specification is the as-built record under artifact-kinds' "<a href="../../../specs/artifact-kinds/spec.html#req-a-specification-states-the-settled-contract-as-built">A specification states the settled contract as built</a>". The fix is to make the two agree before archival, in whichever document is wrong.</li>
+            <li><strong>[Text the projection does not carry is not compared.]</strong> → The comparison reads what the model holds. That includes paragraphs inside list items, because statements come from every paragraph among a requirement's descendants. A list item with no paragraph, a table, or a figure inside a requirement projects no statement, so a change to it goes unseen. Every consumer of the model has the same limit, and fixing it belongs to the projection.</li>
+            <li><strong>[Agents that read the payloads see different members in two existing sets.]</strong> → A requirement marked <code>removed</code> leaves <code>absent</code> and <code>unmergedRequirements</code>. <code>reached</code> no longer means "held". The new keys are additive, <code>stated</code> is unchanged, and the release note says both. The same shift happened when untaken renames moved out of <code>reached</code>.</li>
+            <li><strong>[<code>sync</code> named with an archived change's path reports later changes' edits.]</strong> → The operation answers for a change being merged. An archived change's modified requirement matches the accepted text only until a later change modifies it, which is why <code>state-a-modified-requirement-whole</code> kept this out of validation. The instructions run it on the active change, and nothing else is added.</li>
+            <li><strong>[Whitespace inside inline <code>code</code> is normalized away.]</strong> → Two statements that differ only there compare equal. The heading comparison accepts the same limit.</li>
+            <li><strong>[An identifier held by two accepted specifications.]</strong> → That is a fault in those specifications. The content is taken if either holds it, as a rename is. Otherwise the entry reports against the first one found in discovery order.</li>
+            <li><strong>[<code>merge_state</code> keeps whole accepted requirements rather than headings.]</strong> → It already reads and projects every accepted specification. Only what it keeps grows.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p>No document changes meaning, and none stops validating. No unit, field, attribute, or projection rule is added or reshaped, so under the bump table in <code>crates/htmlspec-schema/CHANGELOG.md</code> the contract version stays <code>0.3.0</code>, the version <code>reject-change-markup-inside-a-unit</code> set. This design first said <code>0.2.0</code>, because it was written before that change landed. What changes is the behavior of two commands and the shape of their payloads. Two keys are added, and <code>absent</code>, <code>unmergedRequirements</code>, and <code>reached</code> change members as described under Risks.</p>
+          <p>This change follows <code>state-a-modified-requirement-whole</code>. It relies on that change's requirement, and it edits the instruction sections that change adds, so it lands after that change is archived.</p>
+          <p>The release is expected to be <code>0.21.0</code>, the minor increment after <code>state-a-modified-requirement-whole</code>'s <code>0.20.0</code>. A minor increment fits because <code>sync</code> and archival report findings they did not report before, and four accepted requirements change. The contributor confirms the increment at the release task.</p>
+          <p>Rollback is a revert. It touches no document and no stored data.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

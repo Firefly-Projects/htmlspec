@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Mark the words a modification changed</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Mark the words a modification changed</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Mark the words a modification changed</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-07-mark-the-words-a-modification-changed/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><strong>A modified requirement says that it changed, and nothing in it says which words.</strong> <a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a> shows the plainest case. The archived change <code>2026-08-31-sync-a-change-into-the-accepted-contract</code> modified toolchain-packaging's "<a href="../../../specs/toolchain-packaging/spec.html#req-a-single-command-exposes-validate-format-and-init">The command surface names its operations as OpenSpec names them</a>", a requirement of 10 statement paragraphs and 18 scenarios. Its whole edit was <code>`sync`,</code>, added to a list in the third paragraph. The staged migration marks the whole unit <code>modified</code>, and its paragraph with <code>sync</code> in it looks like the other nine. The word is recorded in git, and in one sentence of the specification's summary.</p>
+          <p>HTML already has elements for this. <code>ins</code> marks text an edit added, <code>del</code> marks text it removed, and every browser draws both without scripts. Today the projection reads them as presentational markup. An inserted word comes out right. A deleted word does not: <a href="evidence/the-measurement-2026-09-30.md">a real edit from this repository</a>, marked with both, projects as "its active changes, and its archive, and its runbooks", which is neither the text before the edit nor the text after it, and <code>validate</code> exits 0. <code>reject-change-markup-inside-a-unit</code> turns that into an error inside every unit. This change gives the two elements their meaning in the one place where they have one.</p>
+          <p><strong>Authors already mark changed words by hand, and the marks go wrong.</strong> Five of the 19 staged changes that modify a requirement narrate in their summary what moved inside it: "Its only change … is <code>sync</code> added", "added its last two paragraphs and its last four scenarios", "added four paragraphs and five scenarios", "removed the clause", "is kept, and bounded to units". <code>2026-09-18-establish-a-runbook</code> bolded the words it added. The merge copied the bold into the accepted project-bootstrap specification, where it still is, and the word the same edit deleted was never marked (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 4</a>).</p>
+          <p><strong>Why now.</strong> The project's migration out of OpenSpec is staged and waiting. It holds <a href="evidence/the-measurement-2026-09-30.md">34 modified requirements in 19 changes</a>, and every unit it marks <code>modified</code> sits in a change's specification. Without this change, which words moved stays in summary prose, or is marked with bold that a merge carries into the accepted contract as emphasis. The gap would be recorded as an open question in the migrated documents or worked around there.</p>
+          <p>This change follows <code>reject-change-markup-inside-a-unit</code>, whose rule it relaxes. It also depends on <code>resolve-a-reference-across-its-change</code>, whose <code>Placement</code> type is how validation knows that a document is a change's specification.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong>A deleted word leaves every field.</strong> The content of a <code>del</code> element contributes to no field of the model, wherever the element sits: no statement, scenario entry, title, note, summary, or caption, and no reference from a link inside it. The link still counts as one of the document's links. The text of an <code>ins</code> element stays in the field around it. So the normative text is always the current text.</li>
+            <li><strong>A requirement and a scenario record their deleted words.</strong> Each gains <code>deletions</code>, a list of the text of each <code>del</code> element that belongs to it, in document order. A deletion inside a scenario is the scenario's. Inserted text is not recorded twice.</li>
+            <li><strong>The markup is permitted in one place.</strong> <code>ins</code> and <code>del</code> may sit inside a requirement or a scenario marked <code>modified</code>, in a change's specification, active or archived. The unit that decides is the nearest one enclosing the markup, so a <code>modified</code> scenario in a <code>modified</code> requirement may carry it, and an <code>unchanged</code> one may not. Marking is permitted, not required.</li>
+            <li><strong>Everywhere else it stays an error, under the same rule.</strong> <code>schema/change-markup</code> still rejects the markup in an accepted specification, a proposal, a design, a tasks document, a runbook, a change's evidence, and a document outside any project. It also rejects it in a unit marked <code>added</code>, <code>removed</code>, or <code>unchanged</code>, in a decision, evidence, risk, verification, or task unit, in a unit's heading or <code>renamed-from</code> paragraph, and around a unit. The diagnostic says which of these applies.</li>
+            <li><strong>The merge writes the current text.</strong> Applying a change's contract unwraps each <code>ins</code> and drops each <code>del</code> with its content. The accepted specification carries no change markup, and validation rejects any that a merge leaves there. The archived change keeps its marks.</li>
+            <li><strong>The comparison needs nothing new.</strong> A comparison of a modified requirement with the accepted one, made on projected text, already sees the current text. A merge that kept a deleted word differs, and one that wrote the current text does not.</li>
+            <li><strong>The page shows both marks by shape and says them aloud.</strong> A new revision of the screen stylesheet draws <code>ins</code> with a double underline, so an inserted word does not look like a link, keeps <code>del</code> struck through, and gives both a start and an end marker that a screen reader announces and the page does not draw.</li>
+            <li><strong>The instructions say how to mark and how to merge.</strong> <code>archive.md</code> says how to mark the words of a modified unit when the specification is written. <code>sync.md</code> and <code>archive.md</code> say that the merge writes the current text.</li>
+            <li><strong>The document contract moves one minor version</strong>, expected to be <code>0.4.0</code> after <code>reject-change-markup-inside-a-unit</code>'s <code>0.3.0</code>.</li>
+            <li>
+              <p><strong>Unchanged:</strong> the model of every document without a <code>del</code> element, which is every document the repository tracks and every staged one. The rule identifier <code>schema/change-markup</code>. Markup in prose outside every unit, which is still not reported. <code>s</code> and <code>strike</code>, which are still presentational. The formatter, which already lays out both forms canonically. The <code>ins</code> and <code>del</code> attributes <code>cite</code> and <code>datetime</code>, which the projection still ignores.</p>
+              <aside data-migration="note">
+                <p><strong>Migration note.</strong> Task 1.3 later found that two documents the repository tracks do carry the markup: the conformance fixtures <code>invalid-schema-change-markup</code> and <code>valid-change-markup-outside-a-unit</code>, 4 start tags in 125 files, which <code>reject-change-markup-inside-a-unit</code> had generated since this proposal was written. The invalid fixture's model changes, and neither fixture's verdict does. <a href="evidence/the-measurement-repeated-2026-10-05.md"><code>evidence/the-measurement-repeated-2026-10-05.md</code></a> records the count and the contributor's decision, and <a href="tasks.html#task-1-3">task 1.3</a> carries them. The claim held for the staged documents, which carry no change markup (task 8.2).</p>
+              </aside>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <section id="hs-new-capabilities">
+            <h3>New Capabilities</h3>
+            <p>None.</p>
+          </section>
+          <section id="hs-modified-capabilities">
+            <h3>Modified Capabilities</h3>
+            <ul>
+              <li><code>document-validation</code>: "<a href="specification.html#req-change-markup-in-or-around-a-semantic-unit-is-rejected">Change markup in or around a semantic unit is rejected</a>" gains the one place where the markup is permitted, the edges of that place, and a reason in the diagnostic. The requirement is <code>reject-change-markup-inside-a-unit</code>'s and is not accepted yet, so the block is written against that change's delta and is refreshed from the accepted text once it archives. It is modified rather than joined by a second requirement, because two requirements would each state half of one rule about the same elements.</li>
+              <li>
+                <p><code>document-schema</code>:</p>
+                <ul>
+                  <li><strong>Added: "<a href="specification.html#req-a-deleted-word-is-recorded-apart-from-what-a-unit-states">A deleted word is recorded apart from what a unit states</a>".</strong> It states what the two elements mean in the model and where deleted text is recorded. It is added rather than folded into "<a href="specification.html#req-the-html-to-model-projection-is-published-as-a-normative-specification">The HTML-to-model projection is published as a normative specification</a>", because that requirement lists what the published specification covers and states no projection behavior itself. This follows <code>record-a-renamed-requirement</code>, which added "<a href="../../../specs/document-schema/spec.html#req-a-renamed-requirement-states-the-heading-it-replaced">A renamed requirement states the heading it replaced</a>" beside it.</li>
+                  <li><strong>Modified: "<a href="specification.html#req-the-html-to-model-projection-is-published-as-a-normative-specification">The HTML-to-model projection is published as a normative specification</a>".</strong> Its list gains one item, how change markup projects, and one scenario. Section 8.2 of the projection specification makes every unreserved element presentational, and <code>del</code> is no longer that, so the list's "how presentational markup … is discarded" no longer covers it.</li>
+                </ul>
+              </li>
+              <li><code>artifact-kinds</code>: <strong>added: "<a href="specification.html#req-a-marked-modification-reaches-the-accepted-contract-as-its-current-text">A marked modification reaches the accepted contract as its current text</a>".</strong> It is added rather than folded into "<a href="../../../specs/artifact-kinds/spec.html#req-every-synthesis-and-every-contract-update-is-agent-driven">Every synthesis and every contract update is agent-driven</a>", which <code>state-a-modified-requirement-whole</code> also modifies, so this change needs no re-base onto that edit. The precedent is "<a href="../../../specs/artifact-kinds/spec.html#req-a-rename-reaches-the-accepted-contract-as-a-new-heading-on-the-same-identifier">A rename reaches the accepted contract as a new heading on the same identifier</a>", which states what one kind of merge leaves behind in a requirement of its own. The scenario about the comparison is placed here rather than in toolchain-packaging, because the comparison needs no change and the fact it rests on is what the merge writes.</li>
+            </ul>
+            <p><code>toolchain-packaging</code> and <code>document-template</code> are not modified. No command changes, and the stylesheet revision carries out document-template's "<a href="../../../specs/document-template/spec.html#req-the-visual-system-favors-comprehension-over-decoration">The visual system favors comprehension over decoration</a>" as it stands.</p>
+          </section>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li><code>crates/htmlspec-parse/src/model.rs</code>: <code>Requirement</code> and <code>Scenario</code> gain <code>deletions: Vec&lt;String&gt;</code>, serialized only when it holds an entry. Only <code>project.rs</code> builds either type.</li>
+            <li><code>crates/htmlspec-parse/src/project.rs</code>: <code>collect_text</code> gives no text for a <code>del</code>. The walk over a unit's own descendants still finds a unit inside a <code>del</code> and supplies no field from anything else inside one. A new helper collects each unit's deletions.</li>
+            <li><code>crates/htmlspec-schema/doc/projection.md</code>: a numbered rule 8.6, with 8.6.1 and 8.6.2, the normalized-text list in section 6.1, and the sentence in section 10.1 that <code>reject-change-markup-inside-a-unit</code> adds.</li>
+            <li><code>crates/htmlspec-schema/schema/document.schema.json</code>: <code>deletions</code> on <code>requirement</code> and <code>scenario</code>.</li>
+            <li><code>crates/htmlspec-validate/src/rules/change_markup.rs</code>: the rule reads the document's placement from the subject, and decides each element through one pure function that returns the permission or the reason it is refused.</li>
+            <li>The contract version, one minor step: <code>CONTRACT_VERSION</code>, the schema's <code>schemaVersion</code> and <code>$id</code>, <code>projection.md</code>'s header, <code>CHANGELOG.md</code>, the four <code>assets/template-*.html</code> with their pins in <code>assets/vendor.lock.json</code>, <code>README.md</code>, and <code>SCHEMA_OWNED_LITERALS</code> in <code>crates/htmlspec-validate/tests/schema_rust_split.rs</code>.</li>
+            <li><code>assets/</code>: a new revision of <code>htmlspec.css</code>, recorded under <code>own</code>, with the revision it replaces moved to <code>retained</code>. The print stylesheet is unchanged.</li>
+            <li>
+              <p>Tests and fixtures:</p>
+              <ul>
+                <li>a mapping fixture, <code>fixtures/projection/change-markup/</code>;</li>
+                <li>a conformance fixture, <code>invalid-schema-change-markup-in-a-modified-unit</code>, through the generator;</li>
+                <li>a suite, <code>conformance/tests/change_markup.rs</code>, that validates documents at each placement;</li>
+                <li>the property case <code>resolve-a-reference-across-its-change</code> adds to <code>conformance/tests/references.rs</code>, restated for this rule;</li>
+                <li>CLI tests in <code>crates/htmlspec-cli/tests/cli.rs</code>;</li>
+                <li>unit tests in <code>change_markup.rs</code> and <code>project.rs</code>;</li>
+                <li>a formatter test, a presentation test, and an instructions test.</li>
+              </ul>
+            </li>
+            <li><code>crates/htmlspec-assets/instructions/archive.md</code> and <code>sync.md</code>, with their installed copies regenerated.</li>
+            <li>
+              <p><strong>Not in this change</strong>, and recorded so it is not assumed to follow:</p>
+              <ul>
+                <li>A diff of a modified requirement against the accepted text. That is <code>show-what-a-modification-changed</code>.</li>
+                <li>Adding marks to the archive, or to the staged migration's 34 modified requirements. Mapping the migrated documents is <code>migrate-into-the-extended-vocabulary</code>.</li>
+                <li>Anything about tasks. A task never carries change markup: <code>dropped</code> with its reason already says that its words were given up.</li>
+                <li>A check that a unit's marks are complete. It needs the accepted text, which one document does not hold.</li>
+                <li>Marking a decision, evidence, risk, or verification unit. No accepted specification holds one. Permitting it later relaxes the rule and breaks no document.</li>
+                <li>Recording when a word changed. <code>datetime</code> on <code>ins</code> and <code>del</code> stays ignored.</li>
+                <li>Guidance in <code>assets/template-specification.html</code>. Its example units are placeholders, as <code>state-a-modified-requirement-whole</code> found. Only its declared version changes.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

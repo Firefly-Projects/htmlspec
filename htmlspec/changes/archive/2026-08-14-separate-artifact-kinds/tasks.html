@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Separate artifact kinds</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Separate artifact kinds</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Separate artifact kinds</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-14-separate-artifact-kinds/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-declare-the-kind-in-the-contract">1. Declare the kind in the contract</a></li>
+          <li><a href="#hs-2-project-the-kind">2. Project the kind</a></li>
+          <li><a href="#hs-3-the-three-rules">3. The three rules</a></li>
+          <li><a href="#hs-4-reshape-the-conformance-fixtures">4. Reshape the conformance fixtures</a></li>
+          <li><a href="#hs-5-migrate-the-projection-fixtures">5. Migrate the projection fixtures</a></li>
+          <li><a href="#hs-6-migrate-the-remaining-documents">6. Migrate the remaining documents</a></li>
+          <li><a href="#hs-7-pin-the-rules-and-the-freedom">7. Pin the rules and the freedom</a></li>
+          <li><a href="#hs-8-initialization-and-the-change-directory">8. Initialization and the change directory</a></li>
+          <li><a href="#hs-9-archival">9. Archival</a></li>
+          <li><a href="#hs-10-verify-the-whole-property">10. Verify the whole property</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-declare-the-kind-in-the-contract">
+          <h2>1. Declare the kind in the contract</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Add <code>kind</code> to <code>crates/htmlspec-schema/schema/document.schema.json</code> as a required property with a closed enumeration of <code>proposal</code>, <code>design</code>, <code>tasks</code>, <code>specification</code>, and remove <code>status</code> from both the properties and the <code>required</code> list</h3>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Rewrite section 9.3 of <code>crates/htmlspec-schema/doc/projection.md</code> to project <code>kind</code> from <code>&lt;meta name="htmlspec-kind"&gt;</code>, stating that an absent kind is invalid and a kind outside the enumeration is invalid, and remove the <code>status</code> clause</h3>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Add a test asserting the schema enumerates exactly four kinds, so a fifth cannot be added without a decision — the set being closed is what makes per-kind rules possible</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-project-the-kind">
+          <h2>2. Project the kind</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Replace <code>Model.status</code> with <code>Model.kind</code> in <code>crates/htmlspec-parse/src/model.rs</code>, keeping the field required rather than <code>Option</code>, so an absent kind is a projection fault rather than a silent <code>None</code></h3>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Update <code>crates/htmlspec-parse/src/project.rs:100</code> to read <code>htmlspec-kind</code>, and confirm <code>meta_content</code> needs no change because the mechanism is the same</h3>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Expose the kind vocabulary through <code>schema_facts</code> so rule code reads the four values from the schema, the way <code>refs.rs</code> reads the <code>changeState</code> enumeration.</h3>
+              <p>A Rust <code>const</code> listing them fails <code>rule_code_does_not_restate_schema_expressible_values</code></p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Update the 10 <code>status</code> assertions in <code>crates/htmlspec-parse/tests/projection.rs</code>, and confirm each still names the projection-specification section it exercises</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-the-three-rules">
+          <h2>3. The three rules</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Add <code>crates/htmlspec-validate/src/rules/kinds.rs</code> with a <code>kind/*</code> namespace, reading <code>Projection.model</code> rather than the tree because every input the rules need is already projected</h3>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Add the placement rule: a <code>specification</code> carrying a task unit is an error naming the task, and stating that a specification records the obligation a task satisfied rather than the work that satisfied it</h3>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Add the completeness rule: a <code>tasks</code> document carrying no task unit is an error.</h3>
+              <p>Assert separately that a tasks document carrying other units alongside its tasks reports nothing, because the rule constrains what must be present rather than what is permitted</p>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 Add the advisory rule as a <code>review/*</code> warning rather than a <code>kind/*</code> one: a <code>specification</code> requirement that no verification names.</h3>
+              <p><code>review/*</code> is the namespace strict mode refuses to promote, and in <code>kind/*</code> this would let <code>--strict</code> fail a specification for being in progress</p>
+            </li>
+            <li class="task" id="task-3-5" data-change="added" data-state="done">
+              <h3>3.5 Scope the advisory rule to the <code>specification</code> kind alone, so a requirement unit in a proposal is never checked for verification — it is not part of the contract there</h3>
+            </li>
+            <li class="task" id="task-3-6" data-change="added" data-state="done">
+              <h3>3.6 Register the rules in <code>rules::ALL</code> and extend <code>every_namespace_has_a_live_rule</code> for the <code>kind</code> namespace</h3>
+            </li>
+            <li class="task" id="task-3-7" data-change="added" data-state="done">
+              <h3>3.7 Add a test asserting the <code>kind/*</code> namespace has exactly two rules and no more, and that no rule reports on unit placement in the <code>proposal</code> or <code>design</code> kinds.</h3>
+              <p>A rule added without a decision fails here</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-reshape-the-conformance-fixtures">
+          <h2>4. Reshape the conformance fixtures</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Remove the task unit from <code>base()</code> in <code>conformance/src/bin/generate_fixtures.rs</code> and declare <code>kind=specification</code>, so the 40 fixtures that pin non-task rules become valid specifications</h3>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Give <code>invalid-schema-missing-reason</code> an <code>edit</code> that adds back a dropped task with no reason, declared <code>kind=tasks</code>.</h3>
+              <p>It is the only fixture pinning a rule a task alone can violate, because <code>schema/missing-reason</code> reads <code>task.state == dropped</code> and no other unit has a state</p>
+              <p data-field="note">Migration note: this claim was later corrected. <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §2 records that it is true of the rule and false of the fixtures: <code>invalid-a11y-script-supplied-content</code> also worked by emptying the task's heading, and it moved to the verification unit rather than taking the task back.</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Repoint the reference and review fixtures at the base's decision unit, which already carries <code>data-refs</code>.</h3>
+              <p><code>refs/unresolved</code>, <code>refs/removed-target</code>, and <code>review/stale-reference</code> all fire from a decision — <a href="evidence/measured-claims.md">verified by building such a document and running the binary</a> — so removing the task does not weaken them</p>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 Repoint <code>warning-review-stale-verification</code> at the base's verification unit, which fires the rule when it names an added requirement and carries its <code>method</code> field</h3>
+            </li>
+            <li class="task" id="task-4-5" data-change="added" data-state="done">
+              <h3>4.5 Confirm <code>invalid-schema-prefix-mismatch</code> still fires.</h3>
+              <p>The rule iterates every unit rather than tasks alone, and the fixture works by giving a unit an identifier whose prefix names a different unit type</p>
+            </li>
+            <li class="task" id="task-4-6" data-change="added" data-state="done">
+              <h3>4.6 Regenerate the fixtures and confirm all 41 still declare and report exactly the rules they did before, with <code>kind</code> substituted for <code>status</code> and the task present only where <code>invalid-schema-missing-reason</code> adds it back</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-migrate-the-projection-fixtures">
+          <h2>5. Migrate the projection fixtures</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Substitute <code>status</code> for <code>kind</code> in each of the 23 <code>fixtures/projection/*/expected.json</code> files.</h3>
+              <p>These hold the projected model itself, so the field name appears in committed test data rather than in markup, and there is no generator to re-run</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Rewrite <code>fixtures/projection/metadata</code> against the new section 9.3.</h3>
+              <p>Its <code>rules</code> array names <code>9.3</code> and its whole purpose is the field being removed, so it is a rewrite rather than a substitution</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Assign a kind to each of the 6 projection fixtures that carry a task unit — <code>field-name-unknown</code>, <code>metadata</code>, <code>metadata-absent</code>, <code>references</code>, <code>no-primary-field</code>, <code>unjudged</code> — choosing <code>tasks</code> where the task is the construct under test and removing the task where it is incidental</h3>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Confirm <code>cargo test -p htmlspec-parse</code> passes, since these fixtures pin the projection specification rather than the rules and nothing else covers that mapping</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-migrate-the-remaining-documents">
+          <h2>6. Migrate the remaining documents</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Migrate <code>assets/template.html</code> to declare a kind, and decide which kind <code>init</code> produces by default</h3>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Reshape <code>fixtures/dogfood/complex-change.html</code> and <code>simple-proposal.html</code>, which carry requirements and tasks together.</h3>
+              <p>They are the project's shipped examples of the vocabulary, and the conflated shape is what this change exists to separate</p>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Confirm <code>fixtures/dogfood/technical-investigation.html</code> needs only a kind declaration, since it carries requirements without tasks and already has a specification's shape</h3>
+            </li>
+            <li class="task" id="task-6-4" data-change="added" data-state="done">
+              <h3>6.4 Substitute the status literal in the 25 Rust source files carrying an inline test document.</h3>
+              <p>The compiler finds none of these, so a missed one fails at run time as an absent kind</p>
+            </li>
+            <li class="task" id="task-6-5" data-change="added" data-state="done">
+              <h3>6.5 Migrate the archived <a href="../2026-08-10-html-spec/evidence/documents/deterministic-formatting.html"><code>openspec/changes/archive/2026-08-10-html-spec/documents/deterministic-formatting.html</code></a>, and confirm the presentation checks still discover it under the archived location</h3>
+            </li>
+            <li class="task" id="task-6-6" data-change="added" data-state="done">
+              <h3>6.6 <a href="evidence/measured-claims.md">Confirm the 10 <code>fixtures/parse-errors</code> documents need no change</a>, because none declares a status and malformed markup never reaches the metadata rules</h3>
+            </li>
+            <li class="task" id="task-6-7" data-change="added" data-state="done">
+              <h3>6.7 Confirm <code>scripts/check</code> passes with steps 1 through 6 in one commit, since a half-migrated tree fails it and there is no useful intermediate state</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-pin-the-rules-and-the-freedom">
+          <h2>7. Pin the rules and the freedom</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Add a fixture for the placement rule: a <code>specification</code> carrying a task unit, declaring the one rule identifier it violates and no other.</h3>
+              <p>The harness asserts the declared rules are the reported rules, so a fixture claiming more than it trips is a fixture that passes for the wrong reason</p>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done">
+              <h3>7.2 Add a fixture for the completeness rule: a <code>tasks</code> document with no task unit</h3>
+            </li>
+            <li class="task" id="task-7-3" data-change="added" data-state="done">
+              <h3>7.3 Add a fixture for the advisory rule: a <code>specification</code> requirement that no verification names, declaring <code>valid: true</code> because the rule is a warning that never gates</h3>
+            </li>
+            <li class="task" id="task-7-4" data-change="added" data-state="done">
+              <h3>7.4 Add a <strong>positive</strong> fixture for the proposal kind: a <code>proposal</code> carrying a requirement unit, declaring <code>valid: true</code> and no rules.</h3>
+              <p>It fails if anyone later adds a placement matrix, which is how a guarantee about absence stays pinned</p>
+            </li>
+            <li class="task" id="task-7-5" data-change="added" data-state="done">
+              <h3>7.5 Add a <strong>positive</strong> fixture for the design kind: a <code>design</code> carrying a task unit, declaring <code>valid: true</code> and no rules</h3>
+            </li>
+            <li class="task" id="task-7-6" data-change="added" data-state="done">
+              <h3>7.6 Add a fixture proving the contract rules are not relaxed by kind: a <code>proposal</code> loading a remote script, which fails exactly as any other kind would</h3>
+            </li>
+            <li class="task" id="task-7-7" data-change="added" data-state="done">
+              <h3>7.7 Extend the conformance harness's <code>known_rules</code> and add <code>kind/*</code> coverage, so a fixture cannot declare a rule the validator lacks</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-8-initialization-and-the-change-directory">
+          <h2>8. Initialization and the change directory</h2>
+          <ul>
+            <li class="task" id="task-8-1" data-change="added" data-state="done">
+              <h3>8.1 Extend <code>init</code> to take a kind, and to produce a document shaped for that kind</h3>
+            </li>
+            <li class="task" id="task-8-2" data-change="added" data-state="done">
+              <h3>8.2 Have <code>init</code> produce a <code>proposal</code> as a page of prose with no unit scaffolding at all, since scaffolding would push an author toward stating a contract at the stage meant for arguing about one</h3>
+            </li>
+            <li class="task" id="task-8-3" data-change="added" data-state="done">
+              <h3>8.3 Have <code>init</code> produce a <code>specification</code> with the units its kind expects, because its shape is not the author's to invent</h3>
+            </li>
+            <li class="task" id="task-8-4" data-change="added" data-state="done">
+              <h3>8.4 Add the ability to initialize a whole change directory, with the documents that stage needs, each declaring its kind and each valid immediately</h3>
+            </li>
+            <li class="task" id="task-8-5" data-change="added" data-state="done">
+              <h3>8.5 Add a test that every kind <code>init</code> can produce validates immediately, so the promise holds for four kinds rather than one</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-9-archival">
+          <h2>9. Archival</h2>
+          <ul>
+            <li class="task" id="task-9-1" data-change="added" data-state="done">
+              <h3>9.1 Write the archival skill: the instructions an agent follows to create or update a change's specification artifact from its proposal, design, tasks, and implemented result</h3>
+            </li>
+            <li class="task" id="task-9-2" data-change="added" data-state="done">
+              <h3>9.2 State in those instructions that the merge applies partial updates and preserves content it does not mention, following OpenSpec's sync guidance that the delta represents intent rather than a wholesale replacement</h3>
+            </li>
+            <li class="task" id="task-9-3" data-change="added" data-state="done">
+              <h3>9.3 Wire the checking half into the archival operation: validate the produced specification, and refuse to proceed while it reports an error</h3>
+            </li>
+            <li class="task" id="task-9-4" data-change="added" data-state="done">
+              <h3>9.4 Have archival apply the specification's contract changes to the project's accepted specifications after it validates, and archive the change directory intact with all four documents preserved</h3>
+            </li>
+            <li class="task" id="task-9-5" data-change="added" data-state="done">
+              <h3>9.5 <a href="evidence/measured-claims.md">Add a test that the archival operation ships no parser reading a proposal or a design and emitting requirements</a>, since those kinds carry no imposed structure and there is nothing to parse reliably</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-10-verify-the-whole-property">
+          <h2>10. Verify the whole property</h2>
+          <ul>
+            <li class="task" id="task-10-1" data-change="added" data-state="done">
+              <h3>10.1 Confirm <code>scripts/check</code> passes with every step landed</h3>
+            </li>
+            <li class="task" id="task-10-2" data-change="added" data-state="done">
+              <h3>10.2 <a href="evidence/measured-claims.md">Confirm a proposal carrying every one of the seven units validates with no diagnostic</a>, which is the freedom this change is for</h3>
+            </li>
+            <li class="task" id="task-10-3" data-change="added" data-state="done">
+              <h3>10.3 <a href="evidence/mutation-testing.txt">Reintroduce each of the three rules' defects and confirm the suite fails</a>, since a check that has never failed is a check nobody has tested</h3>
+            </li>
+            <li class="task" id="task-10-4" data-change="added" data-state="done">
+              <h3>10.4 <a href="evidence/measured-claims.md">Confirm <code>--strict</code> does not fail a specification whose requirements are not yet verified</a>, which is the <code>review/*</code> placement decision holding</h3>
+            </li>
+            <li class="task" id="task-10-5" data-change="added" data-state="done">
+              <h3>10.5 Author one real change in the project's own format, using <code>init</code> and the four kinds, and record what the vocabulary made awkward.</h3>
+              <p>Forty-one generated fixtures cannot perform this test</p>
+              <p data-field="deviation">Migration note: three of the four kinds were authored. The change was written in the project's own format as a proposal, a design, and a tasks document, created with <code>init --change</code>, and no specification was authored in that format. <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §7 records the three, and they are carried in this change's evidence as <a href="evidence/documents/proposal.html"><code>evidence/documents/proposal.html</code></a>, <a href="evidence/documents/design.html"><code>evidence/documents/design.html</code></a>, and <a href="evidence/documents/tasks.html"><code>evidence/documents/tasks.html</code></a>.</p>
+              <p data-field="note">Migration note: what the vocabulary made awkward is recorded in <a href="evidence/documents/tasks.html"><code>evidence/documents/tasks.html</code></a>, under "What the vocabulary made awkward", and <code>evidence/measured-claims.md</code> §7 summarizes the four findings. That document also holds a task this list does not, "Land the migration in stages", dropped with its reason.</p>
+            </li>
+            <li class="task" id="task-10-6" data-change="added" data-state="done">
+              <h3>10.6 <a href="evidence/measured-claims.md">Record evidence for the measured claims</a>: the document population before and after, which rules fire from which units, and the archival round trip</h3>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Finish the archival</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Finish the archival</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Finish the archival</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-30-finish-the-archival/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-pin-the-current-behaviour-before-changing-it">1. Pin the current behaviour before changing it</a></li>
+          <li><a href="#hs-2-the-contract-before-any-code">2. The contract, before any code</a></li>
+          <li><a href="#hs-3-the-version-gate">3. The version gate, which is the smallest change and the one that already matters</a></li>
+          <li><a href="#hs-4-archival-performs-the-archival">4. Archival performs the archival</a></li>
+          <li><a href="#hs-5-list-and-status">5. <code>list</code> and <code>status</code>, which archival now depends on</a></li>
+          <li><a href="#hs-6-instructions">6. <code>instructions</code></a></li>
+          <li><a href="#hs-7-store-which-is-severable">7. <code>store</code>, which is severable</a></li>
+          <li><a href="#hs-8-the-workflow-instructions-catch-up-with-the-command">8. The workflow instructions catch up with the command</a></li>
+          <li><a href="#hs-9-prove-it-against-this-repository">9. Prove it against this repository</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-pin-the-current-behaviour-before-changing-it">
+          <h2>1. Pin the current behaviour before changing it</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 <a href="evidence/the-version-gate-never-fired-2026-08-30.md">Record as evidence that the version gate has never fired</a>: <code>last_archived_version</code> (<code>crates/htmlspec-cli/src/commands.rs:1352</code>) scans archive directory names, <code>archived_version</code> (<code>:1371</code>) needs a part that <code>Version::parse</code> accepts, and <code>Version::parse</code> (<code>crates/htmlspec-cli/src/version.rs:56</code>) requires exactly three dot-separated numeric components.</h3>
+              <p>No directory in <code>openspec/changes/archive/</code> has one. Show the fallback to <code>0.0.0</code> by running the gate against this repository's archive rather than by reading the code</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 <a href="evidence/the-version-gate-never-fired-2026-08-30.md">Record the counterpart</a>: all 11 archived changes carry a <code>VERSION</code> file, values <code>0.1.0</code> through <code>0.5.0</code>, and <code>toolchain-packaging</code>'s release-hygiene requirement is what asks for them.</h3>
+              <p>This is the convention the gate should have been reading</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 <a href="evidence/the-command-usage-measured-2026-08-30.md">Record the workflow's command usage as measured, not estimated</a>: 170 invocations across the vendored OpenSpec prompts, <code>status</code> 52, <code>instructions</code> 48, <code>store</code> 22, <code>new</code> 14, <code>list</code> 14, <code>archive</code> 10, <code>schemas</code> 6, <code>context</code> 4.</h3>
+              <p>This is the evidence that the four commands are load-bearing rather than aspirational</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 <a href="evidence/what-openspec-archival-does-2026-08-30.md">Record what OpenSpec's archival actually does</a>, against its vendored workflow rather than its CLI help.</h3>
+              <p>The help advertises "update main specs"; <code>.pi/skills/openspec-archive-change/SKILL.md</code> routes the merge to <code>openspec-sync-specs</code> and calls it an agent-driven intelligent merge. The claim that this change does not diverge from OpenSpec on merging depends on this, so cite the file</p>
+            </li>
+            <li class="task" id="task-1-5" data-change="added" data-state="done">
+              <h3>1.5 <a href="evidence/the-write-restriction-search-2026-08-30.md">Confirm no accepted requirement other than <code>project-bootstrap</code>'s check-only sentence blocks archival from writing</a>.</h3>
+              <p>Search every capability for obligations on what a command may write, and record what was searched — a withdrawal justified against one sentence is wrong if a second states the same thing elsewhere</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-the-contract-before-any-code">
+          <h2>2. The contract, before any code</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done" data-refs="req-archival-requires-the-project-version-to-advance">
+              <h3>2.1 Modify <code>project-bootstrap</code>'s <a href="specification.html#req-archival-requires-the-project-version-to-advance"><em>Archival requires the project version to advance</em></a>: state that the last archived version is read from the recorded version and not from a directory name, and restate the reservation on the act rather than on the command's name</h3>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Withdraw the check-only sentence inside that same requirement.</h3>
+              <p>It is the requirement's closing line rather than a requirement of its own, so it goes in the modification rather than in a removal, and the replacement states the reservation on the act. Carry every existing scenario forward — a modified requirement replaces its whole block, and dropping a scenario here would silently retire an obligation this change never argued against</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done" data-refs="req-archival-produces-the-specification-and-updates-the-accepted-contract">
+              <h3>2.3 Modify <code>toolchain-packaging</code>'s <a href="specification.html#req-archival-produces-the-specification-and-updates-the-accepted-contract"><em>Archival produces the specification and updates the accepted contract</em></a>: archival completes the operation it is named for, and is atomic with respect to the project</h3>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Add the requirement separating what refuses from what asks, with the contract on the refusing side and the work on the asking side</h3>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done" data-refs="req-archival-assesses-the-merge-and-never-performs-it">
+              <h3>2.5 Add the requirement that <a href="specification.html#req-archival-assesses-the-merge-and-never-performs-it">archival assesses the merge by comparing identifiers and never performs it</a>.</h3>
+              <p>Derive it from <code>artifact-kinds</code> rather than asserting it fresh, because that capability already states the reason and a second statement of one obligation is a second thing to keep true</p>
+            </li>
+            <li class="task" id="task-2-6" data-change="added" data-state="done">
+              <h3>2.6 Add the naming and collision requirement</h3>
+            </li>
+            <li class="task" id="task-2-7" data-change="added" data-state="done" data-refs="req-archival-is-drivable-without-a-person-present">
+              <h3>2.7 Add the requirement that <a href="specification.html#req-archival-is-drivable-without-a-person-present">archival is drivable without a person present</a></h3>
+            </li>
+            <li class="task" id="task-2-8" data-change="added" data-state="done">
+              <h3>2.8 Add the requirements for enumeration, completion reporting, and instruction emission</h3>
+            </li>
+            <li class="task" id="task-2-9" data-change="added" data-state="done">
+              <h3>2.9 Add the requirement for registered standalone projects</h3>
+            </li>
+            <li class="task" id="task-2-10" data-change="added" data-state="done">
+              <h3>2.10 Confirm <code>artifact-kinds</code> needs no delta.</h3>
+              <p>If stating that archival completes requires touching it, the split between assessment and merge is not holding and the design is wrong</p>
+            </li>
+            <li class="task" id="task-2-11" data-change="added" data-state="done">
+              <h3>2.11 Run <code>openspec validate --all</code></h3>
+              <p data-field="note">Migration note: nothing this change carries records the result of this run.</p>
+            </li>
+            <li class="task" id="task-2-13" data-change="added" data-state="done">
+              <h3>2.13 Pin the subcommand and option spellings in the contract, and state the rule that produces them: an operation OpenSpec also provides carries OpenSpec's name.</h3>
+              <p>Rename the requirement that enumerated four subcommands, since it now names ten and its old title claimed a complete list it no longer held. Assert the spellings against <code>--help</code> — the installed instructions invoke these commands by name, so a rename nothing checks breaks every one of them silently</p>
+            </li>
+            <li class="task" id="task-2-12" data-change="added" data-state="done" data-refs="req-archival-supports-a-mode-that-checks-without-performing">
+              <h3>2.12 Add the requirement for <a href="specification.html#req-archival-supports-a-mode-that-checks-without-performing">a mode that checks without performing</a>, deriving it from the format subcommand's existing non-modifying mode rather than asserting it fresh.</h3>
+              <p>This came out of <a href="evidence/the-write-restriction-search-2026-08-30.md">task 1.5's search</a>: the search for obligations about writing surfaced the precedent, which is the kind of thing a search for one thing finds about another. State that the mode fails exactly where archival refuses, so the two cannot drift about what readiness means</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-the-version-gate">
+          <h2>3. The version gate, which is the smallest change and the one that already matters</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Rewrite <code>last_archived_version</code> to read each archived change's <code>VERSION</code> file and take the maximum.</h3>
+              <p>Keep the total-function property: absent archive, or archive with no recorded versions, yields the initial version</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Delete <code>archived_version</code> and its directory-name scan</h3>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Assert the gate against this repository's real archive: the last archived version is <code>0.5.0</code>, so a declaration at <code>0.5.0</code> is refused as unmoved and one at <code>0.4.0</code> is refused as backwards.</h3>
+              <p>Both messages already exist and both are now reachable</p>
+              <p data-field="deviation">Migration note: the gate was asserted against scratch fixtures rather than this repository's real archive. <code>the_version_gate_reads_the_recorded_version_not_the_directory_name</code> archives one change named <code>2026-08-24-report-in-the-contributors-terms</code> recording <code>0.5.0</code>, and refuses a declaration at <code>0.1.0</code> as backwards. <code>an_archived_change_recording_no_version_does_not_lower_the_gate</code> refuses a declaration at <code>0.5.0</code> as unmoved. No test declares <code>0.4.0</code>. Shown in <code>crates/htmlspec-cli/tests/archive.rs</code> at <code>cf11132</code>.</p>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 Assert an archived change with no <code>VERSION</code> file does not silently lower the maximum</h3>
+            </li>
+            <li class="task" id="task-3-5" data-change="added" data-state="done">
+              <h3>3.5 Land this before anything else in section 4.</h3>
+              <p>It is independently correct, it fixes a live defect, and it is the one part of this change that is not a design argument</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-archival-performs-the-archival">
+          <h2>4. Archival performs the archival</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Split the existing <code>archive_check</code> into the gate it already is and the operation that follows, so the refusing conditions keep their current messages and exit codes unchanged</h3>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Add the task count, reading the change's tasks document.</h3>
+              <p>Report the count and offer to proceed</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Add the merge assessment: collect requirement identifiers from the change's <code>specification.html</code>, collect them from the accepted specifications, report identifiers present in the first and absent from the second.</h3>
+              <p>Name them individually — a count is not checkable in under a minute and a list of three identifiers is</p>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 Add the move: target <code>&lt;YYYY-MM-DD&gt;-&lt;name&gt;</code>, no second date where the name already carries one, refuse on collision naming the existing archive, and rename rather than copy</h3>
+            </li>
+            <li class="task" id="task-4-5" data-change="added" data-state="done">
+              <h3>4.5 Write the <code>VERSION</code> file recording the declared version.</h3>
+              <p>Where the write fails after the rename, report the archive location and the failed write together — the change is archived and one file is missing, and reporting that as a failed archival sends a contributor to redo something that already happened</p>
+            </li>
+            <li class="task" id="task-4-6" data-change="added" data-state="done">
+              <h3>4.6 Add <code>--yes</code> and the interactive prompt, with no prompt where the stream is not interactive</h3>
+            </li>
+            <li class="task" id="task-4-7" data-change="added" data-state="done">
+              <h3>4.7 Extend the <code>--json</code> payload with the reports and a field stating whether the change moved</h3>
+            </li>
+            <li class="task" id="task-4-8" data-change="added" data-state="done">
+              <h3>4.8 Assert atomicity in both directions: a refused archival and a declined offer each leave the tree byte-identical, compared before and after</h3>
+              <p data-field="deviation">Migration note: a refused archival is asserted by comparing the whole tree before and after (<code>a_refused_archival_leaves_the_project_untouched</code>), and so is a warned run that nothing can answer (<code>findings_with_no_one_to_ask_stop_the_archival</code>). A declined offer is asserted another way: <code>a_declined_offer_stops</code> checks that the consent decision returns a stop, and no test compares the tree after a declined offer. Shown in <code>crates/htmlspec-cli/tests/archive.rs</code> and <code>crates/htmlspec-cli/src/commands.rs</code> at <code>cf11132</code>.</p>
+            </li>
+            <li class="task" id="task-4-9" data-change="added" data-state="done">
+              <h3>4.9 Assert <code>the_archive_check_does_not_write_the_declaration</code> still passes unchanged.</h3>
+              <p>Archival now writes to the project and still must not touch <code>spec.nix</code>, which is exactly the obligation the withdrawal was careful to preserve</p>
+              <p data-field="deviation">Migration note: the test was changed to keep passing. Its successful archival now passes <code>--yes</code>, because archival performs and the test's change carries findings that would otherwise stop it. Its assertions that the declaration is unchanged are as they were. Shown in <code>crates/htmlspec-cli/tests/archive.rs</code> at <code>cf11132</code>, against its parent.</p>
+            </li>
+            <li class="task" id="task-4-11" data-change="added" data-state="done">
+              <h3>4.11 Add <code>--check</code>, applying every condition archival applies and performing none of them.</h3>
+              <p>It shares the gate with archival rather than reimplementing it — two code paths deciding readiness is exactly the drift the requirement exists to prevent</p>
+            </li>
+            <li class="task" id="task-4-12" data-change="added" data-state="done">
+              <h3>4.12 Assert <code>--check</code> three ways: ready exits zero and reports ready, refused exits nonzero with archival's own message, and would-ask exits zero while saying archival would ask.</h3>
+              <p>Assert in all three that the tree is byte-identical before and after</p>
+              <p data-field="deviation">Migration note: of the three ways, the would-ask case is asserted, the refused case only in part, and the ready case not at all. <code>check_mode_reports_readiness_without_archiving</code> asserts "ready with questions", because its fixture always carries a finding, and no test asserts that a ready change exits zero and reports ready. <code>check_mode_fails_where_archival_refuses</code> asserts a nonzero exit and does not compare the message with archival's. Both compare the tree before and after. Shown in <code>crates/htmlspec-cli/tests/archive.rs</code> at <code>cf11132</code>.</p>
+            </li>
+            <li class="task" id="task-4-10" data-change="added" data-state="done">
+              <h3>4.10 Assert the collision refusal against an archive that already holds the target, and confirm nothing was moved</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-list-and-status">
+          <h2>5. <code>list</code> and <code>status</code>, which archival now depends on</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Add <code>htmlspec list</code>, enumerating active changes, with <code>--specs</code> for accepted specifications and <code>--json</code> for both</h3>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Exclude the archive from the active enumeration, and assert it against a project holding both</h3>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Add <code>htmlspec status --change &lt;name&gt;</code>, reporting artifact presence and task completion, with <code>--json</code></h3>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Have archival's incomplete-work report call the same code, and assert the two agree for one change.</h3>
+              <p>Two counts of one thing drift, and archival disagreeing with the command a contributor just ran is the failure this prevents</p>
+            </li>
+            <li class="task" id="task-5-5" data-change="added" data-state="done">
+              <h3>5.5 Add change selection to <code>archive</code> with no argument: one active change is selected, several are listed, none reports that there is nothing to archive</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-instructions">
+          <h2>6. <code>instructions</code></h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Add <code>htmlspec instructions &lt;stage&gt;</code>, emitting the workflow text for that stage from the compiled workflow table <code>init</code> already installs from</h3>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Assert the emitted text equals the installed text for every stage.</h3>
+              <p>This is the requirement that keeps one source, and a test comparing them is the only thing that keeps it true</p>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Report an unknown stage by naming the stages that exist</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-store-which-is-severable">
+          <h2>7. <code>store</code>, which is severable</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Settle where registrations live, and confirm the location is machine-level and outside any project</h3>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done">
+              <h3>7.2 Add registration, listing, and removal</h3>
+            </li>
+            <li class="task" id="task-7-3" data-change="added" data-state="done">
+              <h3>7.3 Add the selection flag to the operations that read and write specifications and changes</h3>
+              <p data-field="deviation">Migration note: the selection flag, <code>--store</code>, is accepted by every subcommand and reaches only <code>list</code> and <code>status</code>. <code>archive</code>, <code>validate</code>, <code>format</code>, and <code>new</code> act on the project containing the working directory whatever <code>--store</code> names. Shown in <code>crates/htmlspec-cli/src/main.rs</code> at <code>cf11132</code>.</p>
+            </li>
+            <li class="task" id="task-7-4" data-change="added" data-state="done">
+              <h3>7.4 Report an unresolvable registration as unresolvable, and assert that no operation falls back to the working directory's project.</h3>
+              <p>This is the failure mode worth a test: falling back means acting on a different project than the one named, and it would look like success</p>
+              <p data-field="deviation">Migration note: an unresolvable registration is reported as unresolvable, and the assertion that nothing falls back covers <code>list</code> alone (<code>a_store_whose_project_is_gone_does_not_fall_back</code>). The operations <code>--store</code> does not reach, <code>archive</code> among them, act on the working directory's project whatever registration is named. Shown in <code>crates/htmlspec-cli/tests/archive.rs</code> and <code>crates/htmlspec-cli/src/main.rs</code> at <code>cf11132</code>.</p>
+            </li>
+            <li class="task" id="task-7-5" data-change="added" data-state="done">
+              <h3>7.5 If this section is cut, confirm sections 1 through 6 stand alone and that nothing in them references a registered project</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-8-the-workflow-instructions-catch-up-with-the-command">
+          <h2>8. The workflow instructions catch up with the command</h2>
+          <ul>
+            <li class="task" id="task-8-1" data-change="added" data-state="done">
+              <h3>8.1 Rewrite <code>.pi/skills/htmlspec-archive-change/SKILL.md</code>: steps 4 through 6 are now one command, and the agent's remaining work is the specification, the version, and the merge</h3>
+            </li>
+            <li class="task" id="task-8-2" data-change="added" data-state="done">
+              <h3>8.2 Add the change-selection step the HTMLSpec prompts have never had, now that <code>list</code> exists</h3>
+            </li>
+            <li class="task" id="task-8-3" data-change="added" data-state="done">
+              <h3>8.3 State that the agent merges before running <code>archive</code>, so the assessment has something to find.</h3>
+              <p>An agent that archives first will be told three requirements are missing and will have to answer a prompt it caused</p>
+            </li>
+            <li class="task" id="task-8-4" data-change="added" data-state="done">
+              <h3>8.4 Regenerate the installed instructions and confirm <code>instructions</code> emits the same text</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-9-prove-it-against-this-repository">
+          <h2>9. Prove it against this repository</h2>
+          <ul>
+            <li class="task" id="task-9-1" data-change="added" data-state="done">
+              <h3>9.1 Take the two active changes in <code>openspec/changes/</code> and dry-run selection, completion reporting, and the merge assessment against them</h3>
+              <p data-field="note">Migration note: nothing this change carries records the result of this dry run.</p>
+            </li>
+            <li class="task" id="task-9-2" data-change="added" data-state="done">
+              <h3>9.2 Confirm the version gate now refuses a declaration at <code>0.5.0</code> and accepts <code>0.6.0</code></h3>
+              <p data-field="note">Migration note: nothing this change carries records this confirmation against this repository.</p>
+            </li>
+            <li class="task" id="task-9-3" data-change="added" data-state="done">
+              <h3>9.3 Update <code>CHANGELOG.md</code> and record this change's version</h3>
+            </li>
+            <li class="task" id="task-9-4" data-change="added" data-state="done">
+              <h3>9.4 Run the conformance suite and <code>openspec validate --all</code></h3>
+              <p data-field="note">Migration note: nothing this change carries records the result of this run.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

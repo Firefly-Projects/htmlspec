@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Check release hygiene</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Check release hygiene</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Check release hygiene</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-21-check-release-hygiene/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p><code>scripts/check</code> runs a list of <code>name:command</code> pairs, reports each under a <code>=== name ===</code> banner, collects failures, and exits 1 if any stage failed. A stage is a shell command. <a href="evidence/failing-check-2026-08-21.md">It passes or it fails</a> — the script has no warning level and no way to represent "reportable but acceptable".</p>
+          <p>That constraint decides most of this design. The earlier draft of this work proposed a lint inside the <code>htmlspec</code> binary, where <code>Severity::Warning</code> exists and <code>review/unverified-requirement</code> is the precedent for advisory-and-never-gating. None of that is available in a shell stage.</p>
+          <p>The other decisive constraint is the sandbox. <a href="evidence/unbumped-history-2026-08-21.md"><code>flake.nix:39</code> filters the build source and the derivation gets a snapshot, not a repository</a>, so <code>git log</code> and <code>git diff</code> do not run where CI runs the suite. The filter keeps <code>*.md</code> and <code>scripts/</code>, so the stage can be a script that reads files.</p>
+        </section>
+        <section id="hs-goals">
+          <h2>Goals</h2>
+          <ul>
+            <li>The suite fails when a change is archived without a version advance.</li>
+            <li>The suite fails when the current version has no changelog entry.</li>
+            <li>The stage runs identically on a contributor's machine and in the sandbox.</li>
+            <li>No change to any crate.</li>
+          </ul>
+        </section>
+        <section id="hs-non-goals">
+          <h2>Non-Goals</h2>
+          <ul>
+            <li>Changing the shipped program, or deciding the increment. See the proposal.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-the-check-is-on-the-archive-not-on-the-working-change">
+            <h3>The check is on the archive, not on the working change</h3>
+            <p>This is the decision that resolves the pass-or-fail problem, and it took the most work to reach.</p>
+            <p>The obvious framing — "fail if the version has not advanced" — cannot work in a shell stage. A change under way legitimately has not advanced the version yet, because the patch-versus-minor decision is best made once the work's shape is known. A stage that failed on that state would fail from a change's first commit to its last, and a contributor would learn to expect a red suite. Since the script has no warning level, there is no way to soften it.</p>
+            <p>So the check does not ask about work in progress. It asks a question about the archive, which is a settled record:</p>
+            <p><strong>Every archived change records a version, every recorded version is distinct, and every recorded version has a changelog entry.</strong></p>
+            <p>That question has a correct answer at every moment. An unfinished change is not in the archive and is not asked about. Archiving is the act that must satisfy the rule, which is also the moment the increment is known — so the check fires exactly when the answer is available and the decision is best informed.</p>
+            <p>Rejected: comparing <code>Cargo.toml</code>'s version against the newest archive and failing when they match. That fails throughout a change's life, for the reason above.</p>
+            <p>Rejected: an advisory stage that prints and always exits zero. <code>scripts/check</code> gives a stage no way to say "reported but passing", and a stage that never fails is a stage the suite's <code>all N checks passed</code> line makes a false claim about.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> What was built also asks one question of the working tree: the check requires a changelog heading for the version <code>Cargo.toml</code> declares, as the second of this design's Goals states, as well as for each version the archive records. <a href="tasks.html#task-1-3">Task 1.3</a> records it in its deviation. The design was not corrected.</p>
+            </aside>
+          </section>
+          <section id="hs-each-archived-change-records-its-version-in-a-file">
+            <h3>Each archived change records its version in a file</h3>
+            <p>The check needs a version per archived change. Two places it could live:</p>
+            <p><strong>In the directory name</strong> — <code>2026-08-21-0.2.0-distinguish-command-names</code>. <a href="evidence/unbumped-history-2026-08-21.md">This is what the shipped program's <code>last_archived_version</code> already reads</a>, so the two conventions would agree. It also renames every future archive directory and reads awkwardly with a date already in front.</p>
+            <p><strong>In a file inside the archive</strong> — a <code>version</code> line the archival step writes. It survives a directory rename, it is greppable, and it does not compete with the date prefix for position.</p>
+            <p>Taking the file. The convention the shipped program reads is for projects it bootstraps, and this repository is not one of those — <a href="evidence/unbumped-history-2026-08-21.md">it has no <code>spec.nix</code> for that gate to read at all</a>. Making this repository's archive names match a convention that cannot apply here would be cargo-culting the product's shape into its own repository.</p>
+            <p>The seven existing archives get their versions recorded retroactively, all <code>0.1.0</code>, which is the truth: <a href="evidence/unbumped-history-2026-08-21.md">they all shipped under that version</a>. That makes the "every recorded version is distinct" rule fail on them — deliberately, and the next decision handles it.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> What was built is a hand-written file named <code>VERSION</code> in each archived change, holding only the version, rather than a <code>version</code> line the archival step writes. The seven earlier archives' files were added in commit <code>41310f8</code>, and this change's own in its archive commit, <code>afc2bdc</code>. <a href="evidence/each-rule-observed-failing-2026-08-21.md"><code>evidence/each-rule-observed-failing-2026-08-21.md</code></a> shows one such file moved aside to make an archive record no version. The design was not corrected.</p>
+            </aside>
+          </section>
+          <section id="hs-seven-archives-at-one-version-a-baseline-stated-once">
+            <h3>Seven archives at one version: a baseline, stated once</h3>
+            <p>Recording the truth about the seven means seven changes share <code>0.1.0</code>, which the distinctness rule rejects. Three options:</p>
+            <p><strong>Backfill invented versions.</strong> <code>0.1.0</code> through <code>0.7.0</code>, say. Rejected: it writes a release history that never happened, and the changelog would then describe seven releases nobody could have installed.</p>
+            <p><strong>Exempt the seven by name.</strong> A list in the script. Rejected: a list of exceptions is a list that grows.</p>
+            <p><strong>Record a baseline.</strong> The changelog's first entry covers <code>0.1.0</code> and names the seven changes it contains, and the check treats versions at or below the baseline as one release rather than seven. One line in the script, one paragraph in the changelog, and it says something true: the project shipped <code>0.1.0</code> and everything before this change is in it.</p>
+            <p>Taking the baseline. It is honest about the past without inventing it, and it stops being special the moment the eighth change advances the version.</p>
+          </section>
+          <section class="decision" id="decision-a-script-and-python-for-the-same-reason-as-check-prompt" data-change="added" data-status="accepted">
+            <h3>A script, and Python for the same reason as <code>check-prompt</code> <span class="hs-id">decision-a-script-and-python-for-the-same-reason-as-check-prompt</span></h3>
+            <p data-field="rationale">The stage reads a version from <code>Cargo.toml</code>, versions from the archive, and headings from a changelog, then compares three sets. That is more than a comfortable amount of <code>grep</code> and <code>sed</code>, and this project has already met the cost of a subtle shell pipeline being wrong.</p>
+            <p><code>scripts/check-prompt</code> is the precedent: Python, standard library only, <code>#!/usr/bin/env python3</code> so <code>patchShebangs</code> can rewrite it. The sandbox already has <code>pkgs.python3</code> for that script, so this stage needs <strong>no new build input</strong> — which is worth stating, because the last time <code>scripts/check</code> gained a stage the missing build input took CI red for five merges.</p>
+            <p data-field="rationale">Rejected: Rust, as a test in <code>htmlspec-cli</code>. The version and archive layout are facts about this repository, and a test in a shipped crate asserting them would make the product's test suite depend on its own repository's release history.</p>
+          </section>
+          <section id="hs-the-stage-is-called-release">
+            <h3>The stage is called <code>release</code></h3>
+            <p>Not <code>lint</code> — that is <code>cargo clippy</code>, and a second stage by that name would make <code>FAILED: lint</code> ambiguous. <code>release</code> says what it checks. Placed last in the step list, after <code>prompt</code>: the ordering comment in <code>scripts/check</code> says cheapest-first so a contributor is not waiting on the suite to hear about a missing newline, and this stage is fast but least likely to be what someone is iterating on.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <p><strong>The check passes while a change under way has no changelog entry.</strong> By construction — it asks about the archive, not the working tree. A contributor can therefore reach the moment of archiving and discover the obligation then. That is the accepted cost of a stage with no warning level, and it is mitigated by the archive workflow's own instructions, which are where a contributor is told what archiving requires. If the miss turns out to hurt, the repair is a line in <code>archive.md</code> rather than a stage that cries wolf.</p>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> <a href="tasks.html#task-2-5">Task 2.5</a> of this change dropped the line in <code>archive.md</code> that the risk above names as its repair. Its reason gives why: <code>archive.md</code> is shipped prose compiled into the binary and installed into every project.</p>
+          </aside>
+          <p><strong>The baseline is a special case in the script.</strong> One comparison against one constant, and it retires itself: the moment the version advances past <code>0.1.0</code>, every subsequent change is checked normally. Recorded here so a later reader does not delete it as dead code while the seven archives still exist.</p>
+          <p><strong>Retroactive changelog entries are reconstructions.</strong> Written from what each archive records, by someone who was not there for the earliest ones. The first entry says so. A reconstruction labelled as one is better than an absence, and better than a confident fiction.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

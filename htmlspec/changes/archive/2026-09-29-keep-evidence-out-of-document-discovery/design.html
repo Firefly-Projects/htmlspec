@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Keep evidence out of document discovery</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Keep evidence out of document discovery</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Keep evidence out of document discovery</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-29-keep-evidence-out-of-document-discovery/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>Every command that collects documents by walking a directory calls one function, <code>crate::discover::documents(root)</code>. It returns <code>root</code> itself when <code>root</code> is a file. Otherwise it returns every <code>.html</code> file beneath <code>root</code> in sorted order, skipping <code>.git</code>, <code>.jj</code>, <code>assets</code>, <code>node_modules</code>, <code>result</code>, <code>target</code>, and dot-directories. Its callers in <code>crates/htmlspec-cli/src/commands.rs</code>:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Caller</th>
+                <th>Walks</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>validate</code></td>
+                <td>the named path, or <code>htmlspec/</code> when none is named</td>
+              </tr>
+              <tr>
+                <td><code>format</code> (writing and <code>--check</code>)</td>
+                <td>the same</td>
+              </tr>
+              <tr>
+                <td><code>list --specs</code></td>
+                <td><code>htmlspec/specs/</code></td>
+              </tr>
+              <tr>
+                <td>the accepted-heading lookup for renames</td>
+                <td><code>htmlspec/specs/</code></td>
+              </tr>
+              <tr>
+                <td>promotion's <code>conformance</code></td>
+                <td>the whole staged project</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>The layout itself (<code>specs/</code>, <code>changes/</code>, <code>changes/archive/</code>, <code>runbooks/</code>) is derived in one place, <code>ProjectRoot</code> in <code>crates/htmlspec-cli/src/project.rs</code>, whose header argues that a path a caller composes is a path that can drift. <code>ProjectRoot::resolve</code> walks upward from a path to the nearest <code>htmlspec/</code>, stopping at <code>.git</code>, and returns an absolute path. It does not canonicalize.</p>
+          <p><code>confine-the-asset-check-to-the-project</code> solved the same shape of problem for stores: a positional question ("is this store the project's?") answered on canonical paths against a location <code>ProjectRoot</code> derives.</p>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong></p>
+          <ul>
+            <li>One definition of "a change's evidence directory", in the module that owns the layout.</li>
+            <li>Every walking caller reaches it without being able to forget to. The spec requires that the exclusion is "defined once and reached by every such operation".</li>
+            <li>A named path is never excluded. The walk's root is exempt, and only directories the walk comes across can be skipped.</li>
+          </ul>
+          <p><strong>Non-Goals:</strong></p>
+          <ul>
+            <li>Stores beneath evidence. <code>discover::stores</code> is untouched, and so is the topology partition. No evidence in this repository holds a store, and the duplicate check reads stores rather than documents. A later change can decide this against a real case.</li>
+            <li>Reporting how many evidence files a walk skipped. <code>validate</code> already prints one <code>validating &lt;path&gt;</code> progress line per document, so a contributor can see which files were checked. A new count in the human report and the JSON payload would be a new output contract for a fact the spec does not ask to be reported.</li>
+            <li>Anything about what an evidence file contains. Its format is its author's choice, and nothing reads it.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-the-definition-lives-on-projectroot">
+            <h3>The definition lives on <code>ProjectRoot</code></h3>
+            <p><code>ProjectRoot</code> gains one method answering whether a directory is a change's evidence directory:</p>
+            <ul>
+              <li>its name is <code>evidence</code>; and</li>
+              <li>its parent is a change directory. A change directory is either a direct child of <code>changes()</code> other than <code>archive()</code>, or a direct child of <code>archive()</code>.</li>
+            </ul>
+            <p>The spelling <code>evidence</code> becomes a private constant beside <code>SPECS</code>, <code>CHANGES</code>, <code>ARCHIVE</code>, and <code>RUNBOOKS</code>, for the reason that module's header gives: a path a caller composes is a path that can drift.</p>
+            <p><strong>Considered: a name test in <code>discover.rs</code></strong>, skipping any directory called <code>evidence</code> the way <code>target</code> is skipped. It is one line, and it is wrong. A capability whose path is <code>evidence</code>, at <code>htmlspec/specs/evidence/spec.html</code>, would stop being validated, and nothing would report it. The spec's "<a href="specification.html#scenario-a-capability-that-happens-to-be-named-evidence">A capability that happens to be named evidence</a>" scenario exists to catch this.</p>
+            <p><strong>Considered: excluding <code>changes/archive/evidence</code>.</strong> This is not a change's evidence. <code>archive/</code> is not a change, so a directory named <code>evidence</code> directly inside it is an unexpected entry, and it stays walked. A directory called <code>archive</code> directly within <code>changes/</code> is the archive, never a change named "archive", so its <code>evidence/</code> child is not a change's either.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, <code>ProjectRoot</code> gained two methods. <code>is_change_evidence</code> answers the question this section names, and <code>discover::documents</code> asks it of each directory it walks. <code>is_within_change_evidence</code>, added after the review, answers whether a path lies anywhere beneath a change's evidence, and <code>format</code>'s writing mode asks it, as <em>Writing is refused where checking is not</em> below says. <a href="evidence/mutation-testing-2026-09-29.md"><code>evidence/mutation-testing-2026-09-29.md</code></a> records the second method under "After the review: two more", and the source at <code>6a591bd</code> holds both in <code>crates/htmlspec-cli/src/project.rs</code>. The sentence above stays as the author wrote it.</p>
+            </aside>
+          </section>
+          <section id="hs-the-comparison-is-on-canonical-paths">
+            <h3>The comparison is on canonical paths</h3>
+            <p>The walk composes paths from whatever root it was given, which may be <code>.</code>, <code>htmlspec</code>, or a path through a symbolic link. <code>ProjectRoot::resolve</code> returns an absolute path that is not canonical. Comparing the two lexically would miss the exclusion whenever the spellings differ. Both sides are therefore canonicalized, and the fallback to <code>std::path::absolute</code> is the one <code>topology.rs</code> uses for a path that cannot be resolved. Canonicalization runs only for directories named <code>evidence</code>, so the cost is one system call per such directory rather than one per directory walked.</p>
+          </section>
+          <section id="hs-discovery-resolves-the-project-itself">
+            <h3>Discovery resolves the project itself</h3>
+            <p><code>documents(root)</code> calls <code>ProjectRoot::resolve(root)</code> once, and excludes nothing when that fails. The signature does not change.</p>
+            <p><strong>Considered: passing <code>Option&lt;&amp;ProjectRoot&gt;</code> explicitly</strong>, as <code>topology::check</code> takes one. That is the narrower grant, and it is what this project's instructions prefer by default. It is rejected here because the requirement is that no walking caller can omit the exclusion. With a parameter, <code>None</code> is a valid argument, and a caller that passes it gets the old behavior with nothing to report the difference. <code>topology::check</code> differs because its callers already hold a resolved project and the partition is reported. Discovery's callers mostly do not hold one: <code>validate</code> and <code>format</code> receive a bare path by design, because <code>subject</code> must keep working on loose documents and on fixtures. Resolving inside discovery puts the invariant where nobody has to remember it, and discovery already performs filesystem reads.</p>
+            <p>Resolution is from the walk's root, not from the current directory. A contributor who runs <code>validate some/other/project/htmlspec</code> gets that project's evidence excluded, not their own.</p>
+          </section>
+          <section id="hs-the-root-is-exempt-and-exemption-is-structural">
+            <h3>The root is exempt, and exemption is structural</h3>
+            <p>The exclusion test is applied inside the walk to each child directory before descending, never to the root. So <code>validate htmlspec/changes/x/evidence</code> walks everything beneath it, which is the spec's "<a href="specification.html#scenario-naming-the-evidence-directory-checks-what-it-holds">Naming the evidence directory checks what it holds</a>" scenario. A path named explicitly beneath evidence, such as <code>evidence/transcripts</code>, is walked in full for the same reason: its own children are not directly within a change directory.</p>
+          </section>
+          <section id="hs-writing-is-refused-where-checking-is-not">
+            <h3>Writing is refused where checking is not</h3>
+            <p>Artifact-kinds states that no operation rewrites a file beneath a change's evidence. The first version of this design exempted a named root from the exclusion without asking what <code>format</code> would then do with it, and <code>format</code> rewrote a named evidence directory in full. A review of the pull request found this, and <a href="evidence/what-the-implementation-revealed-2026-09-29.md">it was reproduced against all seven of this repository's records</a>. So <code>format</code>'s writing mode asks <code>ProjectRoot::is_within_change_evidence</code> of every document before writing any. If one is a record, it names each record, writes nothing, and exits as an operation that could not run. <code>validate</code> and <code>format --check</code> are unaffected, because a check writes nothing.</p>
+            <p><strong>Considered: skip the records and write the rest.</strong> Rejected. It only differs from refusing when a named directory holds both records and documents, and a walk never produces that mix, because the exclusion removes the records first. Where it could arise, a partial write reports success for a request it half ignored.</p>
+            <p><strong>Considered: allow the write when named.</strong> Rejected by the contributor. It would make a record safe from every operation except the one most likely to be run on it by mistake.</p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>[A contributor expects <code>validate</code> to check a record they meant as a document.]</strong> → Evidence is defined by position alone. A document is one only when it sits outside <code>evidence/</code>, and a record can always be checked by naming it.</li>
+            <li><strong>[Resolution inside discovery surprises a caller that walks a directory outside any project but inside a repository that holds one.]</strong> → The exclusion is positional against that project's own <code>changes/</code>. A directory outside <code>htmlspec/</code> never matches, so a fixture walked from inside this repository after its migration is unaffected. A test covers this case.</li>
+            <li><strong>[Silent exclusion hides a misplaced document.]</strong> → A document at <code>changes/x/evidence/design.html</code> would go unchecked. That is the definition working: a file placed there is a record by position. The workflow instructions never place a document there, and <code>status</code> and <code>archive</code> find a change's documents by name rather than by walking.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p>None is needed. The change only narrows what a walk collects inside a project, and no project in use holds HTML evidence except the migration this change unblocks. The document schema is unchanged, so the contract version stays <code>0.2.0</code>. The release is an ordinary minor increment.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

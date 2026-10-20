@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Resolve a new document's project from its destination: design</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Resolve a new document's project from its destination: design</h1>
+        <p>A new document finds its project, and so its store, from its own destination. Only a document beneath that project's <code>htmlspec/</code> uses the project's store, because only those documents can reach it when validation looks.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Resolve a new document's project from its destination: design</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-the-rule">
+          <h2>The rule</h2>
+          <p>A new document's store is decided by where the document will live. The proposal measured what happens when the working directory decides instead (<a href="evidence/the-four-cases-measured-2026-10-13.md"><code>evidence/the-four-cases-measured-2026-10-13.md</code></a>). The rule has to agree with validation's search for a document's store, because "Starting a new change", a scenario of document-template's "A project can be initialized with a conforming document", says "the resulting file passes validation immediately". So the rule is built from that search.</p>
+          <p>Validation looks for the first <code>assets/</code> directory in the document's own directory or above it (<code>store_for</code> in <code>crates/htmlspec-cli/src/commands.rs</code>). A project keeps its store at <code>htmlspec/assets/</code>, and document-validation's "A project must not store one asset's bytes more than once" names <code>htmlspec/</code> as "the project's own directory". That store is above exactly the documents beneath <code>htmlspec/</code>. So a document beneath <code>htmlspec/</code> can reference the project's store and be found, and a document anywhere else cannot.</p>
+          <figure>
+            <figcaption>How <code>new document</code> chooses the store a document references, after this change. The working directory appears nowhere in it.</figcaption>
+            <details>
+              <summary>Diagram source</summary>
+              <pre class="mermaid">flowchart TD
+  D["destination's directory"] --&gt; R{"a project found by searching it and its ancestors,
+stopping at the destination's repository?"}
+  R -- no --&gt; B["a store beside the document"]
+  R -- yes --&gt; U{"the directory is beneath
+that project's htmlspec/?"}
+  U -- no --&gt; B
+  U -- yes --&gt; P["the project's store, htmlspec/assets/,
+established there if absent"]</pre>
+            </details>
+          </figure>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-the-destination-finds-the-project" data-change="added" data-status="accepted">
+            <h3>1. The destination finds the project</h3>
+            <p><code>new_document</code> resolves the project from the destination's directory with <code>ProjectRoot::resolve</code>, the function every project command already uses, in place of <code>ProjectRoot::resolve(Path::new("."))</code>.</p>
+            <p data-field="rationale">The function searches a directory and its ancestors, and stops at the first one holding <code>.git</code>. Called on the destination's directory, it applies the repository boundary that project-bootstrap's "Commands resolve the project from any directory beneath it" states, to the destination's repository rather than the working directory's. It works on a directory that does not exist yet, because it tests each candidate for an <code>htmlspec/</code> directory and climbs whether or not the candidate exists. So a destination such as <code>htmlspec/changes/new-one/proposal.html</code>, whose directory <code>write_document</code> creates later, still finds its project.</p>
+            <p data-field="rationale">The requirement governs "every command whose subject is a project". The subject of <code>new document</code> is a document, so that requirement never chose the working directory here. The program borrowed it. <code>new change</code> keeps it, because its subject is a project.</p>
+          </section>
+          <section class="decision" id="decision-only-a-document-beneath-the-project-s-directory-uses-its-store" data-change="added" data-status="accepted">
+            <h3>2. Only a document beneath the project's directory uses its store</h3>
+            <p>Where the project is found and the destination's directory is beneath its <code>htmlspec/</code>, the document references <code>htmlspec/assets/</code>, establishing it there if absent. Otherwise the document gets a store beside it, as a document outside every project gets today.</p>
+            <p data-field="rationale">The first half is project-bootstrap's "A project has a declared root holding one asset store": "every document in the project SHALL reference that store rather than a store of its own". The second half follows from validation's search: a document in <code>docs/</code> that referenced <code>htmlspec/assets/</code> would fail validation, which is the second row the proposal measured. A store beside it lies outside the project's own directory, so it is not one of the project's stores, and document-validation's duplicate rule checks it on its own.</p>
+            <p data-field="rationale">"Beneath" is a comparison of two absolute paths, each made by joining a relative path to the working directory and resolving <code>.</code> and <code>..</code> lexically, so <code>htmlspec/../docs/notes.html</code> is not beneath <code>htmlspec/</code>. The program's <code>normalize</code> dropped <code>.</code> and kept <code>..</code>, which would leave the prefix in place while the path left the directory, so it now resolves <code>..</code> too. <em>Added during implementation.</em></p>
+            <p data-field="rationale">The path is walked as spelled, because <code>ProjectRoot::resolve</code> and validation's <code>store_for</code> both walk a path the way the contributor typed it, and a store chosen through resolved links is one that validation's walk would not find. But whether the destination is beneath the project is asked of the filesystem, the way the walk that found the project asked it: the destination's first directory below the project's root is the project's own directory when the filesystem says the two are one directory. So <code>HTMLSPEC/changes/</code> on a filesystem that ignores case, or a link to <code>htmlspec/</code> at that level, uses the project's store, and the store is returned in the destination's own spelling, which is the path validation walks. <em>Added during implementation, and revised after the code review of pull request #56</em>, which found the first version comparing by spelling: on a filesystem that ignores case, the walk found the project through <code>HTMLSPEC/</code>, the comparison did not, and the document was given a second store inside the project.</p>
+            <p data-field="rationale">A document directly in a project's root, beside <code>htmlspec/</code>, is outside the project's directory too, and gets a store of its own. Before this change it referenced <code>htmlspec/assets/</code> through a path that descends. A reference that descends is one validation does not check when it finds no store above the document, and none is above it. The document rendered, and a reference naming bytes no store holds was accepted as readily as a correct one. With a store beside it, validation checks every reference. <em>Added during implementation.</em></p>
+          </section>
+          <section class="decision" id="decision-the-requirement-states-the-rule" data-change="added" data-status="accepted">
+            <h3>3. The requirement states the rule</h3>
+            <p>The change modifies document-template's "A project can be initialized with a conforming document" to state that initialization decides which project a document belongs to from the document's own location, never from the directory it runs in, with a scenario for each arrangement the proposal measured.</p>
+            <p data-field="rationale">The contract was silent, and the silence is how the defect lasted: no scenario named an arrangement in which the two directories differ, so no test exercised one until this repository became a project. A requirement with a scenario per arrangement gives each one a test that is owed. The specification is produced at archival, from what was built, so its exact words are settled then.</p>
+          </section>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives</h2>
+          <p><strong>Mirror validation's search exactly:</strong> reference the first store at or above the destination, and create one beside the document where none is found. It is the simplest rule that always produces a document validation accepts. It fails in a project whose store is not established yet, where "Initializing into a project without assets" requires the assets to be established as part of initialization: no store exists above the destination, so the rule would put one beside the document, inside <code>htmlspec/</code>, and the project's own store would never be established. The rule in decision 2 establishes it.</p>
+          <p><strong>Reference the project's store wherever the destination lies inside the project.</strong> It fixes the first and third arrangements and leaves the second, for the reason decision 2 gives.</p>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <section class="risk" id="risk-a-path-through-a-symbolic-link" data-change="added" data-response="accepted">
+            <h3>A path through a symbolic link</h3>
+            <p>A link that reaches into a project's <code>htmlspec/</code> from outside the project's root is not seen: the walk that finds a project follows the path as spelled, finds none, and the document gets a store of its own inside the project. The change bears this. A link at the level below the project's root, and a name in another case on a filesystem that ignores case, are seen, because that one comparison asks the filesystem (decision 2). Resolving every link would make the outcome depend on the filesystem's layout rather than on the path a contributor typed, and the failure is not silent: <code>htmlspec assets</code> reports the second store as a duplicate.</p>
+          </section>
+          <section class="risk" id="risk-a-document-in-a-project-s-root-gets-a-second-copy-of-the-runtime" data-change="added" data-response="accepted">
+            <h3>A document in a project's root gets a second copy of the runtime</h3>
+            <p>A document written directly into a project's root, outside <code>htmlspec/</code>, used to reference the project's store and wrote one file. It now writes a store of its own beside it, a second copy of the runtime in the repository. The change bears this, because the one-file version carried references that validation never checked, so its provenance was unverified (decision 2). The second store lies outside the project's own directory, so document-validation's "A project must not store one asset's bytes more than once" checks it on its own and never counts it against the project. <em>Added during implementation</em>, when the test <code>new_document_and_post_document_agree</code> was found asserting the one-file outcome.</p>
+          </section>
+          <section class="risk" id="risk-an-arrangement-that-worked-changes" data-change="added">
+            <h3>An arrangement that worked changes</h3>
+            <p>A contributor who relied on the working directory choosing the store gets a different store.</p>
+            <p data-field="mitigation">Every arrangement whose references validation checked and accepted before is unchanged: where the working directory and the destination agree, both rules choose the same store. The three failing arrangements change outcome, and so does the document in a project's root, as the risk above states. Tests pin the unchanged arrangement and every changed one.</p>
+          </section>
+          <section class="risk" id="risk-the-first-archive-s-runbook-inventory" data-change="added" data-response="accepted">
+            <h3>The first archive's runbook inventory</h3>
+            <p>This is the first change <code>htmlspec archive</code> archives in this repository, and the release runbook still sits at <code>runbooks/release/</code>, outside the project, until the migration plan's follow-on change moves it to <code>htmlspec/runbooks/release/</code>. So the inventory this archive records lists no runbook. The change bears this, because moving the runbook is the follow-on change's subject. Whatever the archive records is noted in this change's tasks, so the follow-on change starts from it.</p>
+          </section>
+        </section>
+        <section id="hs-sequence">
+          <h2>Where this change sits</h2>
+          <p>The migration plan's decision 4 names the first change made in html-spec form: it retargets <code>scripts/check-release</code> and the release runbook at <code>htmlspec/</code> and removes <code>openspec/</code>. This change comes first instead, because the promotion cannot reach <code>main</code> while <code>scripts/check</code> fails. The follow-on change becomes the second, and the plan's decision 4 needs a dated amendment saying so. That amendment belongs to the plan, which is not part of this repository.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

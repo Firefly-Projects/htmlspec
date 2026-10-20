@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Where an ordering is written and what reads it</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Where an ordering is written and what reads it</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Where an ordering is written and what reads it</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-02-state-a-changes-place-in-a-sequence/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section class="decision" id="decision-the-declaration-goes-in-the-change-that-follows" data-change="added" data-status="accepted">
+          <h2>The declaration goes in the change that follows <span class="hs-id">decision-the-declaration-goes-in-the-change-that-follows</span></h2>
+          <p>One relation, written by the change that has a predecessor: <em>this change follows that one.</em></p>
+          <p data-field="rationale">The alternative — a change naming the changes that follow it — was rejected on two grounds. It puts the fact in the change least able to maintain it: the contract is written first, before its successors exist, so their names cannot be known. And it makes the fact grow after the file is finished, which is how a list of successors goes stale silently. A successor knows its own predecessor at the moment it is created, which is the only moment the fact is cheap to record.</p>
+        </section>
+        <section class="decision" id="decision-in-the-change-s-declaration-not-in-a-document" data-change="added" data-status="accepted">
+          <h2>In the change's declaration, not in a document <span class="hs-id">decision-in-the-change-s-declaration-not-in-a-document</span></h2>
+          <p>The ordering goes in <code>.openspec.yaml</code>, beside <code>schema</code> and <code>created</code>.</p>
+          <p data-field="rationale">The alternative was a unit inside <code>proposal.html</code> carrying a <code>data-refs</code> attribute, which would reuse the reference machinery already there. Rejected, and the reason is a fact about the projection rather than a preference: <a href="evidence/a-reference-cannot-name-another-change-2026-09-02.md"><code>refs/unresolved</code> resolves a reference against the identifiers of <em>the same projection</em></a>, so a reference to another change resolves to nothing and the rule reports it as an error. Making it not an error would mean teaching the reference rules that some targets live outside the document, which weakens a rule that is currently exact.</p>
+          <p data-field="rationale">There is a stronger reason. A reference addresses a <em>unit</em> — a requirement, a task, a decision. A change is not a unit. It is a directory. <code>artifact-kinds</code> is explicit that the four kinds carry units and that a change is the thing that holds them, so making a change addressable as a reference target would put two different things in one namespace.</p>
+          <p data-field="rationale">The declaration is already the file that carries facts about the change as a whole rather than about its contents. <code>schema</code> says which workflow it follows. <code>created</code> says when. <code>follows</code> says what came before it. All three are properties of the directory.</p>
+          <p data-field="note">Migration note: this is not what was built. An HTMLSpec change directory held its three documents and nothing else, and the one declaration in an HTMLSpec project, <code>spec.nix</code>, describes the project rather than a change, so the file this decision names does not exist in the project the change modified. The predecessor was built as a one-line <code>FOLLOWS</code> file in the change directory, on the precedent of <code>VERSION</code>, as <a href="evidence/where-the-declaration-goes-2026-09-02.md"><code>evidence/where-the-declaration-goes-2026-09-02.md</code></a> records, together with <code>change.nix</code> and <code>.openspec.yaml</code> as the alternatives considered and rejected.</p>
+        </section>
+        <section id="hs-resolving-a-predecessor-across-the-archive-boundary">
+          <h2>Resolving a predecessor across the archive boundary</h2>
+          <p>This is the part that looks trivial and is not.</p>
+          <p>A change is named <code>contract-the-guidance-solver-comparison</code> while active. Archival moves it to <code>archive/2026-09-02-contract-the-guidance-solver-comparison</code>, <a href="evidence/equality-fails-exactly-when-the-predecessor-is-done-2026-09-02.md">because <code>archived_name</code> prepends the date</a>. So a successor that recorded its predecessor's name cannot find that predecessor by equality once it has been archived — which is precisely the state the successor is waiting for.</p>
+          <p>The resolution therefore accepts three outcomes, and the distinction between them is the whole report:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>The named change is</th>
+                <th>Meaning</th>
+                <th>What archival says</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>in the archive</td>
+                <td>the predecessor is done</td>
+                <td>nothing</td>
+              </tr>
+              <tr>
+                <td>active</td>
+                <td>the predecessor is not done</td>
+                <td>a finding</td>
+              </tr>
+              <tr>
+                <td>nowhere</td>
+                <td>the name is wrong, or the change was renamed</td>
+                <td>a different finding</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>The third case must be reported separately from the second. A successor whose predecessor was renamed and one whose predecessor is merely unfinished are in different situations, and a report that conflated them would send a contributor looking for work that was already done under another name.</p>
+          <p>Matching an archived predecessor means comparing against the archived directory's name with a leading <code>YYYY-MM-DD-</code> removed, using the same date-prefix test <code>archived_name</code> already uses. This is stated in the contract rather than left to an implementer, because the obvious implementation — string equality — is wrong in the one case the whole feature exists to detect, and it is wrong silently.</p>
+          <p><strong>Note what this does not do.</strong> <code>project-bootstrap</code> forbids deriving the last archived version from a directory name, and this is not that. The version is a <em>fact about the work</em> that the project records in a <code>VERSION</code> file. A change's name is its identity, and matching a name against a name is the only thing that can resolve a named predecessor at all. The prohibition is against deriving one kind of fact from another, not against reading a name as a name.</p>
+        </section>
+        <section id="hs-why-archival-reports-and-does-not-refuse">
+          <h2>Why archival reports and does not refuse</h2>
+          <p>An ordering violation joins the two findings archival already has: an unfinished task and a requirement that never reached the accepted specifications. Both are legitimate states that a contributor is the authority on, and this is a third.</p>
+          <p>A gate would be wrong here on a case that will occur. A sequence gets abandoned. Its first change is dropped and its second is completed and archived on its own merits, and a gate would refuse that archival with no way to proceed except editing a file to lie about the history. <a href="evidence/two-precedents-for-a-cross-change-check-2026-09-02.md">Archival already solved this shape</a>: report the finding, ask, and let <code>--yes</code> answer in advance for an agent. The same machinery takes a third finding with no new mechanism.</p>
+        </section>
+        <section id="hs-the-enumeration-carries-it-too">
+          <h2>The enumeration carries it too</h2>
+          <p>The listing is where a workflow selects what to act on, and 0.8.0 established that it carries what selection needs. A change waiting on another is exactly that: the strongest reason not to select a change is that its predecessor is unfinished.</p>
+          <p>So the payload carries each change's predecessor and whether that predecessor is resolved. The human report names it in a way that does not disturb the columns the fraction occupies, because that alignment was a stated requirement one change ago.</p>
+          <p><strong>The order does not change.</strong> The accepted contract requires that the enumeration's order not depend on what it carries, and a dependency ordering is a thing it carries. Sorting the listing topologically would also be unstable in a way name order is not: a cycle has no topological order at all, and a listing that reordered itself when a <code>follows</code> line was edited could not be selected from twice. Name order, with the fact reported beside each change.</p>
+        </section>
+        <section id="hs-a-cycle-is-reported-and-never-resolved">
+          <h2>A cycle is reported and never resolved</h2>
+          <p>Two changes that each follow the other are a contradiction in the recorded facts. The program reports it and stops there.</p>
+          <p>This is not a graph algorithm. With one relation per change, a cycle is found by walking predecessors from a starting change and noticing a name twice, and the walk is bounded by the number of changes. There is no transitive closure to compute and no ambiguity about which edge to blame, because a contributor who wrote both <code>follows</code> lines can see both.</p>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> The walk this change built follows predecessors among the active changes only, and ends at a predecessor that is archived, so a cycle that passes through an archived change is not reported. The doc comment on <code>cycle_through</code> in <code>crates/htmlspec-cli/src/sequence.rs</code>, at line 200 in <code>80558b5</code>, the commit that landed this change, states that as a choice: an archived change's work is done, and "a cycle through the archive is history rather than a contradiction in what remains to be done". It is still so at <code>139b206</code>.</p>
+          </aside>
+        </section>
+        <section id="hs-rejected-inferring-the-sequence">
+          <h2>Rejected: inferring the sequence</h2>
+          <p>Three inferences were considered and all three are rejected on the same ground — each would make the program assert an ordering nobody stated.</p>
+          <p><strong>From names.</strong> <code>artifact-kinds</code> says a change is renamed by moving its directory "because nothing depends on the first name". An ordering inferred from names would make that sentence false.</p>
+          <p><strong>From creation dates.</strong> <code>created</code> records when a change was written, not what it depends on. The contract in the motivating example was written first <em>and</em> a project could equally write a successor first and the contract second, on discovering the successor needed one.</p>
+          <p><strong>From requirement identifiers.</strong> A change stating a requirement that another change also states is a real signal, and it is the signal <code>sync</code> already reads for a different question. Two changes touching one requirement are not ordered by that fact — they might be, or they might conflict, and deciding which is judgment. <code>artifact-kinds</code> reserves that judgment for an agent.</p>
+        </section>
+        <section id="hs-rejected-a-general-dependency-graph">
+          <h2>Rejected: a general dependency graph</h2>
+          <p>Many-to-many edges, edge kinds, transitive resolution, and parallel branches were considered and rejected as building on no evidence. The observed problem is one project stating a linear sequence in prose. One relation covers it. If a project later needs a change with two independent predecessors, that is a change to make then, with the case in hand.</p>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> This change's record of the motivating project, <a href="evidence/the-motivating-sequence-is-live-2026-09-02.md"><code>evidence/the-motivating-sequence-is-live-2026-09-02.md</code></a>, finds that the sequence it states is not linear: its fourth change, <code>settle-sensors-and-precision</code>, follows the other three in prose, and one relation can report against at most one of them. The record calls this a real limit of what is being built and the limit the design accepts deliberately, and <a href="evidence/the-sequence-against-real-projects-2026-09-02.md"><code>evidence/the-sequence-against-real-projects-2026-09-02.md</code></a> records the other two predecessors as unstated and unreported.</p>
+          </aside>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

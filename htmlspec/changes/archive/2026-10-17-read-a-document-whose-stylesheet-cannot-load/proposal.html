@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Read a document whose stylesheet cannot load</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Read a document whose stylesheet cannot load</h1>
+        <p>Every document reaches its stylesheet in the project's one asset store, in a folder above the document. Safari, opening a document from disk, refuses a stylesheet in a parent folder, so there every document renders as bare HTML. This change gives every new document a small inline fallback stylesheet that changes nothing while the real stylesheet loads and keeps the page readable when it does not. The vocabulary of the contract does not change.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Read a document whose stylesheet cannot load</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>A reader opened a runbook in Safari, saw plain HTML, and took it for a runbook missing the styling the specifications have. The styling is the same. The cause is where the stylesheet sits.</p>
+          <p><strong>Measured on 2026-10-15</strong>, with a page that loads four stylesheets from four places and colours one line for each that loads: Safari, opening the page from disk, loaded the stylesheet beside the page and the one in a subfolder, and refused the one a folder up and the one two folders up. Chrome 154 and Firefox 158 loaded all four. An html-spec document always reaches the project's store above it: an accepted specification at <code>../assets/</code>, a change or a runbook at <code>../../assets/</code>, an archived change or a run's record at <code>../../../assets/</code>. So in Safari, from disk, no document gets its stylesheet. A specification opened there runs edge to edge in the browser's default font, with its masthead fields stacked as a bare definition list.</p>
+          <p>The documents are not at fault. document-template's <a href="../../../specs/document-template/spec.html#req-a-document-is-self-contained-and-offline">"A document is self-contained and offline"</a> holds: every reference resolves within the project and nothing reaches the network. What is missing is a page that stays readable when the browser refuses the reference.</p>
+        </section>
+        <section id="hs-what-working-looks-like">
+          <h2>What working looks like</h2>
+          <ol>
+            <li><code>htmlspec new document</code> and <code>htmlspec new change</code> write documents whose head carries one <code>&lt;style&gt;</code> element holding a cascade layer named <code>htmlspec-fallback</code>, and the documents validate immediately, as before.</li>
+            <li>Opened with the store reachable, a document with the block renders exactly as the same document without it. Measured as two screenshots that are identical byte for byte.</li>
+            <li>Opened with the store unreachable, which is Safari opening a document from disk, the document renders as a readable centred serif column, with code in a monospace face and the skip link hidden until a keyboard user reaches it.</li>
+            <li>A test fails when the block sets a property that the store's stylesheet does not also set, unlayered, on the same selector, when the store's stylesheet gains a cascade layer, or when the block references anything.</li>
+            <li><code>htmlspec format --fallback &lt;path&gt;</code> adds the block to the documents a project already holds and refreshes one that differs from the current block. Plain <code>htmlspec format</code> never adds it. Neither touches an archived change or a run's record.</li>
+            <li>A run's record carries the block, as a document the program writes.</li>
+            <li>document-template states the block as a requirement: what it is, why it is inert, and why it is neither the shared runtime nor a copy of a stored asset.</li>
+            <li>This repository's 13 accepted specifications carry the block.</li>
+            <li>This is release 0.31.0, and <code>scripts/check</code> passes.</li>
+          </ol>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <p><strong>The toolchain holds one fallback stylesheet.</strong> It is a few hundred bytes of CSS in a named cascade layer. A declaration in a named layer loses to every declaration outside a layer, whatever their order, and the store's stylesheet declares nothing in a layer. The fallback sets only properties that the store's stylesheet also sets on the same selectors, so whenever the store's stylesheet loads, every property the fallback sets is overridden. When it does not load, the fallback is all there is: a centred column, the house serif and ink, monospace code, and a hidden skip link.</p>
+          <p><strong>Every document the program writes carries it.</strong> The four templates hold one placeholder for it, so <code>new document</code> and <code>new change</code> write it, and the run record's head writes it too. The text lives in one place in the asset crate.</p>
+          <p><strong>Existing documents gain it only when a contributor asks.</strong> <code>htmlspec format --fallback</code> adds it, or replaces a block that differs from the current one, and does nothing else. Plain formatting leaves a document's fallback present, absent, or stale as it was. Archived changes and run records are history, and the request leaves them as written.</p>
+          <p><strong>The contract states it.</strong> document-template gains the obligation. deterministic-formatting's <a href="../../../specs/deterministic-formatting/spec.html#req-formatting-preserves-meaning">"Formatting preserves meaning"</a>, which today permits one exception, filling an asset reference that names absent bytes, gains a second: the fallback, on request.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <p><strong>A command that serves the project over local HTTP.</strong> Safari loads a stylesheet from a parent path over HTTP. Rejected as the fix, because the reader who double-clicks a file still gets bare HTML, and a document should not depend on how it was opened. It remains a reasonable later convenience.</p>
+          <p><strong>A single-file export.</strong> <code>htmlspec export</code> would write a self-contained copy with the runtime inlined, which also makes diagrams portable. Set aside for now at the contributor's choice: it is larger, and it answers sharing a copy, not reading the document in place.</p>
+          <p><strong>Inline documents chosen at <code>init</code>, with a convert command.</strong> Rejected. Inlining the runtime costs about 72.7 MB across this repository, against 6.35 MB in the one store, and it contradicts document-template twice: <a href="../../../specs/document-template/spec.html#req-documents-share-one-pinned-runtime">"Documents share one pinned runtime"</a> shares the runtime across documents "rather than duplicated into each file", and <a href="../../../specs/document-template/spec.html#req-a-project-can-be-initialized-with-a-conforming-document">"A project can be initialized with a conforming document"</a> forbids copying a runtime asset the project already stores. Two document forms would also make every tool handle both.</p>
+          <p><strong>The formatter adds the block to every document.</strong> Rejected. A runbook's release is fingerprinted by the hash of its canonical document, so a formatter that added the block would change every runbook's fingerprint on upgrade and refuse every project's next archival until each runbook raised its version, for no change to any procedure. It would also rewrite every archived document, which the reference-filling rule already refuses to do for the same reason: an archived page renders with what it was reviewed against.</p>
+          <p><strong>Fingerprints that leave the block out.</strong> Rejected. It makes a runbook's canonical bytes and its fingerprint mean two different things, and it hides a real edit to the document from the release check.</p>
+          <p><strong>The full stylesheet inlined as the fallback.</strong> Rejected. It is 28 KB per document, it is a copy of a stored asset's bytes, which document-template forbids, and it would have to change in every document whenever the stylesheet changed.</p>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <p><strong>In scope.</strong> The fallback block and its single home in the asset crate. The four templates and the run record's head. <code>htmlspec format --fallback</code>. A test that holds the block inert against the store's stylesheet. The two requirements. This repository's accepted specifications, and this change's own documents.</p>
+          <p><strong>Diagrams and scripts are out of scope.</strong> The fallback restores a readable page, not the design: it carries no contents column and no unit styling, and it draws no diagram. Mermaid and Vega-Lite still load from the store, so a reader in Safari sees each figure's source in its <code>&lt;details&gt;</code> element, as document-template's <a href="../../../specs/document-template/spec.html#req-core-content-is-readable-without-javascript">"Core content is readable without JavaScript"</a> already provides. Whether Safari also refuses scripts from a parent folder was not measured.</p>
+          <p><strong>No validation diagnostic.</strong> Validation says nothing about a missing or stale block. Every document written before 0.31.0 lacks it legitimately, and the block is presentation, not content.</p>
+          <p><strong>Not touched.</strong> Archived changes, which are history. The release runbook, whose canonical documents would change and require a runbook release, 0.3.0, with no change to any step. It gains the block at its next revision. No export, no inline setting at <code>init</code>, and no convert command.</p>
+          <p><strong>The README.</strong> Its "Reading the documents" section, added by pull request #61, tells Safari readers to serve the project. #61 landed first, so this change rewrites that section: a document the program writes stays readable in Safari, diagrams and charts still need the store's scripts, and <code>htmlspec format --fallback</code> gives older documents the fallback.</p>
+          <p><strong>Requirements.</strong> One added to document-template, and deterministic-formatting's "Formatting preserves meaning" modified. The contract's vocabulary does not change: an inline <code>&lt;style&gt;</code> element in a document's head is already accepted, and the projection does not read it.</p>
+          <p><strong>The release.</strong> The size of an increment is judgment, and the choice is mine: a minor, 0.31.0, because every document the program writes now carries something it did not, and <code>format</code> gains a request.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

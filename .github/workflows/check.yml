@@ -1,0 +1,71 @@
+# Continuous integration.
+#
+# This file deliberately contains no list of checks. It runs `nix flake check`, which
+# builds the check-suite derivation, which runs `scripts/check` — the same script a
+# contributor runs locally. That is the requirement: CI verifies what a contributor
+# verifies, rather than a separately maintained list of steps that drifts until the day
+# CI passes something a contributor's machine rejects.
+#
+# To change what CI does, change `scripts/check`.
+
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A superseded run tells nobody anything, and the suite is not cheap.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The version reported by the built binary names the revision it came from,
+          # and the build script reads that from Git. A shallow clone still has HEAD,
+          # which is all it needs.
+          fetch-depth: 1
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      # The offline suite: formatting, lints, every test, the conformance fixtures,
+      # the asset lockfile hashes, the enhancement-script budget, and this project's
+      # own documents checked through the built binary.
+      - name: Run the check suite
+        run: nix build --print-build-logs .#checks.${{ runner.arch == 'ARM64' && 'aarch64' || 'x86_64' }}-linux.default
+
+      # The provenance half of the asset check, separate because it needs the network:
+      # it re-fetches each vendored library from its pinned URL and verifies the
+      # committed bytes match. This is what makes the committed third-party build
+      # output auditable rather than trusted.
+      - name: Verify vendored asset provenance
+        run: nix build --print-build-logs .#checks.${{ runner.arch == 'ARM64' && 'aarch64' || 'x86_64' }}-linux.assetProvenance
+
+      # The packaging requirement: the binary runs with no source checkout and no Nix
+      # at runtime. Copied out of the store and run from a bare directory, because a
+      # binary invoked through `nix run` proves nothing about either.
+      #
+      # `new document` rather than `init`. `init` used to write one document and now
+      # bootstraps a project, so the old spelling here failed with `unexpected argument
+      # '--subject' found`. That break landed with the bootstrap work and stayed
+      # invisible: the check suite above failed first, so this step never ran.
+      - name: Verify the standalone artifact
+        run: |
+          set -euo pipefail
+          nix build --print-build-logs .#htmlspec
+          work="$(mktemp -d)"
+          cp "$(readlink -f result/bin/htmlspec)" "$work/htmlspec"
+          chmod +x "$work/htmlspec"
+          cd "$work"
+          env -i PATH=/usr/bin:/bin ./htmlspec --version
+          env -i PATH=/usr/bin:/bin ./htmlspec new document proposal document.html --subject "Packaged"
+          env -i PATH=/usr/bin:/bin ./htmlspec validate document.html
+          env -i PATH=/usr/bin:/bin ./htmlspec format --check document.html

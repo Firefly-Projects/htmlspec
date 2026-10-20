@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Resolve a new document's project from its destination</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Resolve a new document's project from its destination</h1>
+        <p><code>htmlspec new document</code> decides which project a new document belongs to from the directory the command runs in, not from where the document will live. In three of the four ways those two can differ, it writes a document that fails validation or gives the project a second copy of its runtime. This change makes the destination decide.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Resolve a new document's project from its destination</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>document-template's "A project can be initialized with a conforming document" requires a new document that "already conforms to the element contract, the visual system, and the runtime conventions, without hand-assembly". Its scenario "Starting a new change" says "the resulting file passes validation immediately", and the requirement says initialization "SHALL NOT copy a runtime asset that the project already stores".</p>
+          <p>The program does not do either reliably. <code>new_document</code> in <code>crates/htmlspec-cli/src/commands.rs</code> resolves the project from the working directory, <code>ProjectRoot::resolve(Path::new("."))</code>, and points the new document at that project's store. Validation looks for a document's store elsewhere: the first <code>assets/</code> directory in the document's own directory or above it. So the two agree only when the working directory and the destination sit in the same place. <a href="evidence/the-four-cases-measured-2026-10-13.md"><code>evidence/the-four-cases-measured-2026-10-13.md</code></a> measured the four arrangements in a scratch project:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Run from</th>
+                <th>Destination</th>
+                <th>What happens</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>inside a project</td>
+                <td>outside it</td>
+                <td><code>new document</code> exits 2, and the document fails validation with 7 <code>asset/unresolved</code> errors</td>
+              </tr>
+              <tr>
+                <td>inside a project</td>
+                <td>inside the project, outside <code>htmlspec/</code></td>
+                <td><code>new document</code> exits 2, and the document fails validation with 7 <code>asset/unresolved</code> errors</td>
+              </tr>
+              <tr>
+                <td>outside a project</td>
+                <td>inside its <code>htmlspec/</code></td>
+                <td><code>new document</code> exits 0, and the project now holds two stores, which <code>htmlspec assets</code> reports as duplicates</td>
+              </tr>
+              <tr>
+                <td>outside a project</td>
+                <td>outside it</td>
+                <td>correct</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>This repository met the first row the day it became an html-spec project. The CLI test <code>new_document_creates_a_document_that_validates_immediately</code> runs <code>new document</code> from inside the repository and writes to a temporary directory. Before the promotion, the repository held no project and the test passed. After it, the test fails with exit 2, and so does <code>scripts/check</code>.</p>
+          <p>The contract is silent on how a new document finds its project. project-bootstrap's "Commands resolve the project from any directory beneath it" governs "every command whose subject is a project", and the program applied that rule to a command whose subject is a document.</p>
+        </section>
+        <section id="hs-what-working-looks-like">
+          <h2>What working looks like</h2>
+          <ol>
+            <li>From inside this repository, <code>htmlspec new document proposal /tmp/x/proposal.html --subject X</code> exits 0, writes <code>/tmp/x/assets/</code> beside the document, and <code>htmlspec validate /tmp/x/proposal.html</code> accepts it.</li>
+            <li>From outside a project, <code>htmlspec new document proposal &lt;project&gt;/htmlspec/changes/y/proposal.html</code> references the project's existing store at <code>&lt;project&gt;/htmlspec/assets/</code>, and writes no second store. <code>htmlspec assets</code> still finds each asset once.</li>
+            <li>A destination inside a project but outside its <code>htmlspec/</code>, such as <code>docs/notes.html</code>, gets a store beside it and validates, wherever the command runs.</li>
+            <li>A destination inside a project whose store does not exist yet still establishes the store in the project's <code>htmlspec/</code>, as "Initializing into a project without assets" requires.</li>
+            <li><code>new_document_creates_a_document_that_validates_immediately</code> passes when run inside this repository, and <code>scripts/check</code> passes with the promoted project in place.</li>
+          </ol>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <p><code>new document</code> finds the project from the destination's directory, searching it and its ancestors and stopping at the destination's repository, as project resolution already stops at a repository's boundary. A destination beneath that project's <code>htmlspec/</code> directory references the project's store, and establishes it there if it is absent. Any other destination gets a store beside the document, as a document outside every project does today. The directory the command runs in no longer enters into it.</p>
+          <p>The accepted requirement gains the rule, so it is checked rather than remembered: initialization decides which project a document belongs to from the document's own location. This is a patch release, 0.29.1. It changes no document format and no other command.</p>
+          <p>It is the first change written in this repository's own html-spec form, so its archive is the first that <code>htmlspec archive</code> writes here.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <p><strong>Change only the test, so it runs from a scratch directory.</strong> Rejected. The test would pass and the three failing arrangements would remain. A contributor writing a standalone document from inside any project's repository meets the first row.</p>
+          <p><strong>Find the project from the destination, and reference its store wherever the document lies.</strong> Rejected. It fixes the first and third rows and leaves the second: a document in <code>docs/</code> would reference <code>htmlspec/assets/</code>, which validation never finds, because that store is not above <code>docs/</code>.</p>
+          <p><strong>Reference whatever store validation would find above the destination, and create one beside the document where there is none.</strong> Rejected. It mirrors validation exactly, and it fails the fourth line of what working looks like: in a project whose store is not established yet, it would put a store beside the document instead of in <code>htmlspec/</code>.</p>
+          <p><strong>Refuse a destination outside the working directory's project.</strong> Rejected. Writing a standalone document from inside a repository is a legitimate use, and it is the very case the CLI test exercises.</p>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <ul>
+            <li><code>new change</code> is not changed. Its subject is a project, so it resolves from the working directory, as "Commands resolve the project from any directory beneath it" requires.</li>
+            <li><code>init</code> is not changed, and neither is validation's search for a store.</li>
+            <li>No existing document is rewritten. A document already written into the wrong arrangement stays as it is, and validation reports it as before.</li>
+            <li>None of the other disagreements between the program and its contract that the migration recorded is in scope here. Each is a change of its own.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

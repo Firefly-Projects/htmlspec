@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Keep archived documents pointing at their store</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Keep archived documents pointing at their store</h1>
+        <p>This change makes archival keep every relative reference in a change's documents reaching what it reached before the move, inside its transaction, and makes validation resolve an asset reference only where its path reaches the store, not wherever its address is stored.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Keep archived documents pointing at their store</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-document-validation">document-validation</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-archival-produces-the-specification-and-updates-the-accepted-contract" data-change="modified">
+            <h3>Archival produces the specification and updates the accepted contract <span class="hs-id">req-archival-produces-the-specification-and-updates-the-accepted-contract</span></h3>
+            <p>The command surface SHALL provide an archival operation that produces a change's specification artifact from its proposal, design, and tasks, validates it, and then applies its contract changes to the project's accepted specifications.</p>
+            <p>There SHALL be one specification artifact per change, and it SHALL be the same file as that change's as-built record. The project's accepted specifications SHALL be a separate destination outside the change directory.</p>
+            <p>The production SHALL be performed by an agent following stated instructions rather than by a deterministic extractor in the program. The program's part SHALL be the checking: it validates the produced document and reports what is wrong with it. That division is deliberate — the judgment of what a design's prose obliges is not derivable by rule, while whether the result conforms is exactly what a validator determines.</p>
+            <p>The project SHALL NOT ship a command that parses a proposal or a design and emits requirements. Those kinds carry no imposed structure, so there is nothing for such a command to parse reliably, and one written anyway would produce a specification that passes every check and misstates what the change established.</p>
+            <p>Archival SHALL NOT complete while the produced specification reports an error. A change archived with an invalid specification would leave the accepted contract in a state the project's own tools reject.</p>
+            <p>The archival command SHALL complete the operation it is named for. On success the change directory SHALL have been moved into the project's archive, and the change SHALL have recorded the version the project declared. An archival that reports success while the change remains among the project's active changes SHALL NOT be considered to have archived it.</p>
+            <p>Archival SHALL be atomic with respect to the project. Where archival refuses, or where a contributor declines to proceed, the project SHALL be left exactly as archival found it: no change moved, no accepted specification altered, and no version recorded.</p>
+            <ins>
+              <p>Archival SHALL keep every relative reference in the change's documents reaching the file it reached before the move. A reference that would reach a different file from the archive SHALL be rewritten to reach the same one. A reference within the change, a URL, an absolute path, a bare fragment, and an author's quotation of a reference in text SHALL be left as written, and the change's evidence SHALL NOT be rewritten.</p>
+            </ins>
+            <ins>
+              <p>The rewrite SHALL be part of archival's transaction. A refusal, or an interruption before the change moves, SHALL leave every document as it was, and an interruption after the move SHALL be completed by the next archival.</p>
+            </ins>
+            <article class="scenario" id="scenario-archiving-a-completed-change" data-change="unchanged">
+              <h4>Archiving a completed change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor archives a change whose tasks are complete</dd>
+                <dt>Then</dt>
+                <dd>its specification artifact is produced, validated, applied to the project's accepted specifications, and archived alongside the change's other documents</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-change-s-documents-survive" data-change="unchanged">
+              <h4>The change's documents survive</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival completes</dd>
+                <dt>Then</dt>
+                <dd>the change's proposal, design, tasks, and specification are all still readable in the archive</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archiving-with-an-invalid-specification" data-change="unchanged">
+              <h4>Archiving with an invalid specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the produced specification reports an error</dd>
+                <dt>Then</dt>
+                <dd>archival does not complete, and the error is reported for reconciliation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-tool-does-not-extract-requirements-itself" data-change="unchanged">
+              <h4>The tool does not extract requirements itself</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the archival operation runs</dd>
+                <dt>Then</dt>
+                <dd>the program validates the specification an agent wrote rather than deriving requirements from the source documents by rule</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-completed-archival" data-change="unchanged">
+              <h4>A completed archival</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival succeeds for a change</dd>
+                <dt>Then</dt>
+                <dd>the change directory is in the archive, it records the declared version, and it is no longer among the active changes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-refused-archival-leaves-nothing-behind" data-change="unchanged">
+              <h4>A refused archival leaves nothing behind</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival refuses</dd>
+                <dt>Then</dt>
+                <dd>the change remains among the active changes, unmoved and unmodified</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-archived-document-reaches-what-it-reached" data-change="added">
+              <h4>An archived document reaches what it reached</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose documents reference the project's store and an accepted specification by relative paths</dd>
+                <dt>When</dt>
+                <dd>the change is archived</dd>
+                <dt>Then</dt>
+                <dd>each of those references reaches the same file from the archive, so the archived document loads its stylesheet and scripts and its links lead where they led</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reference-within-the-change-moves-with-it" data-change="added">
+              <h4>A reference within the change moves with it</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document references its change's evidence, or a sibling document, by a relative path within the change, or carries a URL or quotes a reference in text</dd>
+                <dt>Then</dt>
+                <dd>archival leaves each as written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-evidence-is-not-rewritten" data-change="added">
+              <h4>Evidence is not rewritten</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence carries relative references</dd>
+                <dt>When</dt>
+                <dd>the change is archived</dd>
+                <dt>Then</dt>
+                <dd>every file beneath its evidence is byte-identical to what it was</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-interruption-before-the-move" data-change="added">
+              <h4>An interruption before the move</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an archival interrupted before the change moved, with some documents already rewritten into staged copies</dd>
+                <dt>When</dt>
+                <dd>archival runs again</dd>
+                <dt>Then</dt>
+                <dd>every staged copy is removed, whatever it holds, and every document is as it was</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-interruption-after-the-move" data-change="added">
+              <h4>An interruption after the move</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an archival interrupted after the change moved and before every rewritten document took its place</dd>
+                <dt>When</dt>
+                <dd>archival runs again</dd>
+                <dt>Then</dt>
+                <dd>it puts the remaining rewritten documents in place, and refuses a staged copy edited since it was written</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-document-validation">
+          <h2>document-validation</h2>
+          <section class="requirement" id="req-an-asset-reference-must-match-the-bytes-it-names" data-change="modified">
+            <h3>An asset reference must match the bytes it names <span class="hs-id">req-an-asset-reference-must-match-the-bytes-it-names</span></h3>
+            <p>Validation SHALL reject a document whose asset reference does not resolve to stored bytes whose hash equals the hash named by that reference. A reference naming bytes the project does not store SHALL be reported as unresolved. A reference resolving to bytes whose hash differs from the name SHALL be reported as a mismatch, and the two SHALL be distinguishable diagnostics because they have different causes.</p>
+            <ins>
+              <p>A reference SHALL resolve only where its path, followed from the document's directory, reaches the directory of the store above the document. A reference whose path reaches another directory SHALL be reported as unresolved, whatever bytes its address names, and the report SHALL name the directory the path leads to and the path to the store.</p>
+            </ins>
+            <p>This rule SHALL apply only to a document validated within a project that has an asset store. A document validated outside such a project SHALL NOT have its asset references resolved, and SHALL NOT be rejected for naming bytes that no store holds. The rule states a relationship between a document and the bytes beside it, and where there are no bytes there is no relationship to violate.</p>
+            <p>Where a document's asset reference ascends out of the document's own directory, and no asset store is found in any directory above it, validation SHALL report that reference. Such a reference asserts that a store sits above the document, and the absence of one contradicts the reference rather than placing the document outside the rule's scope.</p>
+            <p>A reference that does not ascend SHALL remain unreported when no store is found. This is what keeps a document whose references are symbolic — a conformance fixture, or a document written to be read rather than rendered — outside the rule, and the distinction is exact: a fixture's references name a store beside the document that has never existed, while an ascending reference names a store the document was generated against.</p>
+            <p>A document SHALL NOT be able to exempt itself. The scope SHALL be determined by whether a store is present and by the shape of the reference, never by a declaration inside the document, because a rule a document can switch off protects nothing. Reference shape is not such a declaration: it is written by whatever generated the document, and changing it to silence the rule breaks the reference it describes.</p>
+            <p>This rule SHALL be an error rather than a warning, and SHALL NOT be reducible to a warning. A document that renders against bytes other than the ones it names is misreporting its own provenance.</p>
+            <article class="scenario" id="scenario-reference-matches-stored-bytes" data-change="unchanged">
+              <h4>Reference matches stored bytes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>every asset reference in a document names the hash of the bytes stored at its location</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-document-validated-with-no-store-present" data-change="unchanged">
+              <h4>Document validated with no store present</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document that is not part of a project with an asset store, such as a conformance fixture whose references are symbolic</dd>
+                <dt>When</dt>
+                <dd>it is validated</dd>
+                <dt>Then</dt>
+                <dd>its asset references are not resolved, and their targets being absent is not a violation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-ascending-reference-with-no-store-above-it" data-change="unchanged">
+              <h4>An ascending reference with no store above it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document whose asset references ascend out of its own directory, such as a change directory copied away from the project that holds its store</dd>
+                <dt>When</dt>
+                <dd>it is validated</dd>
+                <dt>Then</dt>
+                <dd>validation reports the ascending references, because each one names a store that is not there</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-strict-validation-does-not-accept-dead-ascending-references" data-change="unchanged">
+              <h4>Strict validation does not accept dead ascending references</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document carrying only ascending asset references and no store in any directory above it</dd>
+                <dt>When</dt>
+                <dd>it is validated in strict mode</dd>
+                <dt>Then</dt>
+                <dd>validation does not report the document as accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-cannot-exempt-itself" data-change="unchanged">
+              <h4>A document cannot exempt itself</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document declares that its asset references are not to be resolved, by any marker it carries</dd>
+                <dt>Then</dt>
+                <dd>the declaration has no effect, and a document inside a project with a store is checked regardless</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reference-to-bytes-the-project-does-not-store" data-change="unchanged">
+              <h4>Reference to bytes the project does not store</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document references an asset hash that no stored asset matches</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the reference as unresolved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-stored-bytes-do-not-match-the-name" data-change="unchanged">
+              <h4>Stored bytes do not match the name</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an asset location whose contents were replaced with different bytes</dd>
+                <dt>When</dt>
+                <dd>a document referencing that location is validated</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports a mismatch rather than an absent asset</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-stale-reference-cannot-pass" data-change="unchanged">
+              <h4>Stale reference cannot pass</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document authored against one revision of a stylesheet</dd>
+                <dt>When</dt>
+                <dd>it is stored beside a different revision of that stylesheet</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the reference and the bytes disagree</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-mismatch-cannot-be-downgraded" data-change="unchanged">
+              <h4>Mismatch cannot be downgraded</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests that asset mismatches be treated as warnings</dd>
+                <dt>Then</dt>
+                <dd>the violation is still reported as an error</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-stored-address-through-a-path-to-another-directory" data-change="added">
+              <h4>A stored address through a path to another directory</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document below a project's store, whose asset reference names stored bytes through a path that reaches a directory other than the store's</dd>
+                <dt>When</dt>
+                <dd>it is validated</dd>
+                <dt>Then</dt>
+                <dd>the reference is reported as unresolved, naming the directory the path leads to and the path to the store</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-path-that-leaves-and-re-enters-the-store-s-directory" data-change="added">
+              <h4>A path that leaves and re-enters the store's directory</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an asset reference's path climbs out of the store's directory and back into it, landing on it</dd>
+                <dt>Then</dt>
+                <dd>the reference resolves, as a browser loading it would</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <p>Each unit summarizes a record this change carries in its <code>evidence/</code>, and links it. The record is the authority.</p>
+          <section class="evidence" id="evidence-the-two-defects-reproduced-2026-10-14" data-change="added" data-refs="req-archival-produces-the-specification-and-updates-the-accepted-contract req-an-asset-reference-must-match-the-bytes-it-names">
+            <h3>The two defects, reproduced before the change <span class="hs-id">evidence-the-two-defects-reproduced-2026-10-14</span></h3>
+            <p>In a scratch project, archival moved a change and rewrote nothing, so its documents referenced a store one level short, and validation accepted every one of them, because it resolved a reference by its address and never by its path. Each defect hid the other. <a href="evidence/the-two-defects-reproduced-2026-10-14.md"><code>evidence/the-two-defects-reproduced-2026-10-14.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-what-a-path-check-would-change-2026-10-14" data-change="added" data-refs="req-archival-produces-the-specification-and-updates-the-accepted-contract req-an-asset-reference-must-match-the-bytes-it-names">
+            <h3>What a path check would change <span class="hs-id">evidence-what-a-path-check-would-change-2026-10-14</span></h3>
+            <p>Measured over this repository and its fixtures before the change: a path check changes the verdict on six documents under <code>openspec/</code>, which nothing validates, and on nothing the repository validates. <a href="evidence/what-a-path-check-would-change-2026-10-14.md"><code>evidence/what-a-path-check-would-change-2026-10-14.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-tests-before-and-after-the-fix-2026-10-14" data-change="added" data-refs="req-archival-produces-the-specification-and-updates-the-accepted-contract req-an-asset-reference-must-match-the-bytes-it-names">
+            <h3>The tests, before and after the fix <span class="hs-id">evidence-the-tests-before-and-after-the-fix-2026-10-14</span></h3>
+            <p>Every test the change added failed before the fix, except those pinning what must not move, and every one passed after it. <a href="evidence/the-tests-before-and-after-the-fix-2026-10-14.md"><code>evidence/the-tests-before-and-after-the-fix-2026-10-14.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-mutation-testing-2026-10-14" data-change="added" data-refs="req-archival-produces-the-specification-and-updates-the-accepted-contract req-an-asset-reference-must-match-the-bytes-it-names">
+            <h3>Proving the tests can fail <span class="hs-id">evidence-mutation-testing-2026-10-14</span></h3>
+            <p>Undoing each of seven repairs in turn made at least one test fail, after one test was strengthened to close the gap the first run found. <a href="evidence/mutation-testing-2026-10-14.md"><code>evidence/mutation-testing-2026-10-14.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-code-review-of-pull-request-58-2026-10-14" data-change="added" data-refs="req-archival-produces-the-specification-and-updates-the-accepted-contract req-an-asset-reference-must-match-the-bytes-it-names">
+            <h3>The code review of pull request 58 <span class="hs-id">evidence-the-code-review-of-pull-request-58-2026-10-14</span></h3>
+            <p>The review found a path that leaves and re-enters the store's directory rejected, and a half-written staged copy refused as an edit. Both are repaired, each with a test that failed against the reviewed head. <a href="evidence/the-code-review-of-pull-request-58-2026-10-14.md"><code>evidence/the-code-review-of-pull-request-58-2026-10-14.md</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-archival-keeps-every-reference-reaching-what-it-reached" data-change="added" data-outcome="passed" data-refs="scenario-an-archived-document-reaches-what-it-reached scenario-a-reference-within-the-change-moves-with-it scenario-evidence-is-not-rewritten">
+            <h3>Archival keeps every reference reaching what it reached <span class="hs-id">verify-archival-keeps-every-reference-reaching-what-it-reached</span></h3>
+            <p data-field="method"><code>archival_keeps_every_reference_reaching_what_it_reached</code> in <code>crates/htmlspec-cli/tests/archive.rs</code> archives, with the built binary, a change whose document references the store, an accepted specification, its own evidence, a sibling task, a URL, and a quoted reference, and whose evidence holds a relative reference. It asserts each outside reference reaches the same file from the archive, the others are left as written, and the evidence is byte-identical. It failed before the fix and passed after it (<a href="evidence/the-tests-before-and-after-the-fix-2026-10-14.md"><code>evidence/the-tests-before-and-after-the-fix-2026-10-14.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-an-interruption-before-the-move" data-change="added" data-outcome="passed" data-refs="scenario-an-interruption-before-the-move">
+            <h3>An interruption before the move <span class="hs-id">verify-an-interruption-before-the-move</span></h3>
+            <p data-field="method"><code>an_interruption_before_the_move_removes_the_staged_documents</code>, and <code>an_interruption_while_a_document_was_staged_rolls_back</code>, added by the code review, leave a journal and staged copies as an interrupted archival would, one of them half-written, and run archival again: every staged copy is removed and the documents are as they were. The first failed before the fix (<a href="evidence/the-tests-before-and-after-the-fix-2026-10-14.md"><code>evidence/the-tests-before-and-after-the-fix-2026-10-14.md</code></a>); the second failed against the reviewed head (<a href="evidence/the-code-review-of-pull-request-58-2026-10-14.md"><code>evidence/the-code-review-of-pull-request-58-2026-10-14.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-an-interruption-after-the-move" data-change="added" data-outcome="passed" data-refs="scenario-an-interruption-after-the-move">
+            <h3>An interruption after the move <span class="hs-id">verify-an-interruption-after-the-move</span></h3>
+            <p data-field="method"><code>an_interruption_after_the_move_puts_the_staged_documents_in_place</code> leaves the change moved with staged copies not yet in place, and runs archival again: each takes its document's place. <code>an_edited_staged_document_is_refused_after_the_move</code> edits a staged copy first, and archival refuses it. Both pass (<a href="evidence/the-tests-before-and-after-the-fix-2026-10-14.md"><code>evidence/the-tests-before-and-after-the-fix-2026-10-14.md</code></a>, <a href="evidence/the-code-review-of-pull-request-58-2026-10-14.md"><code>evidence/the-code-review-of-pull-request-58-2026-10-14.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-a-stored-address-through-a-path-to-another-directory" data-change="added" data-outcome="passed" data-refs="scenario-a-stored-address-through-a-path-to-another-directory">
+            <h3>A stored address through a path to another directory <span class="hs-id">verify-a-stored-address-through-a-path-to-another-directory</span></h3>
+            <p data-field="method"><code>a_reference_whose_path_misses_the_store_is_unresolved</code> in <code>crates/htmlspec-cli/tests/cli.rs</code> validates, with the built binary, a document whose reference names stored bytes through <code>../../assets/</code> where the store is <code>../../../assets/</code>, and asserts <code>asset/unresolved</code>, naming where the path leads. It failed before the fix and passes after it (<a href="evidence/the-tests-before-and-after-the-fix-2026-10-14.md"><code>evidence/the-tests-before-and-after-the-fix-2026-10-14.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-a-path-that-leaves-and-re-enters-the-store-s-directory" data-change="added" data-outcome="passed" data-refs="scenario-a-path-that-leaves-and-re-enters-the-store-s-directory">
+            <h3>A path that leaves and re-enters the store's directory <span class="hs-id">verify-a-path-that-leaves-and-re-enters-the-store-s-directory</span></h3>
+            <p data-field="method"><code>a_reference_that_climbs_out_and_back_in_reaches_the_store</code>, added by the code review, validates a document whose reference reaches the store through <code>../../../htmlspec/assets/</code> and asserts no diagnostic. It failed against the reviewed head and passes now (<a href="evidence/the-code-review-of-pull-request-58-2026-10-14.md"><code>evidence/the-code-review-of-pull-request-58-2026-10-14.md</code></a>).</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

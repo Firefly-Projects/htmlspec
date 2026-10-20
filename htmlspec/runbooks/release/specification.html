@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.1.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Releasing html-spec</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../assets/sha256-e4f5de7cecc4f691/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-0350261bb5666167/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Releasing html-spec</h1>
+        <p>What this project's release procedure is for, and the hazards its history taught. The first two were learned twice, at 0.10.0 and again at 0.12.0, because the only record of the first was an archived tasks document that binds nothing and is read by nobody. They are requirements here so that the sixth release is not positioned to rediscover what the fourth and fifth both wrote down. The second turned over when this repository became its own project at 0.29.0: what a run once had to remove is now the project, and a run must leave it in place. A third arrived with 0.33.0, when the crates began pinning one another to the workspace's version: the version moves only with its pins.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.1.0</dd>
+          <dt>Subject</dt>
+          <dd>Releasing html-spec</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-purpose">What this runbook is for</a></li>
+          <li><a href="#hs-requirements">Requirements</a></li>
+          <li><a href="#hs-decisions">Decisions</a></li>
+          <li><a href="#hs-risks">Risks</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-purpose">
+          <h2>What this runbook is for</h2>
+          <p>Shipping a version of html-spec is four steps, and this project has run them five times. Each of those five runs retyped the steps into a new <code>tasks.md</code>, under a section number that was different every time — 6, 8, 6, 9, 7 — because nothing was shared.</p>
+          <p><strong>The procedure has been got wrong, and the same lesson was learned twice.</strong> That is what makes this a runbook rather than a note. A procedure whose steps are exact belongs in a script, and this project keeps those in <code>scripts/</code>; what a script cannot hold is the step whose content is judgment, and the release contains one that this project has already decided is judgment. <code>archive.md</code> says so: deciding whether the change earned a patch, a minor, or a major increment is judgment, so it is the contributor's, and whether one version follows another is exact, so it is the program's.</p>
+          <p>The requirements below are what this runbook requires of a run. <strong>They are not obligations of the project</strong> — the project's contract is what its accepted specifications state, and a runbook is a procedure the project keeps.</p>
+        </section>
+        <section id="hs-requirements">
+          <h2>Requirements</h2>
+          <section class="requirement" id="req-version-before-regenerate" data-change="unchanged">
+            <h3>The version is advanced before the instruction files are regenerated <span class="hs-id">req-version-before-regenerate</span></h3>
+            <p>A run of this procedure MUST advance the workspace version before it regenerates the installed instruction files, and MUST NOT treat the regeneration as conditional on whether any workflow body changed.</p>
+            <p>Each installed file carries <code>generatedBy: htmlspec &lt;version&gt;</code> in its frontmatter, written from <code>CARGO_PKG_VERSION</code> at run time. Advancing the version therefore makes every installed file disagree with the binary, whatever the change did to the workflow prose. Regenerating first means regenerating twice.</p>
+            <p>This check is coupled to the version rather than only to workflow prose, so <strong>every</strong> release regenerates. A change that bumps the version and touches no workflow still has this step to do.</p>
+            <article class="scenario" id="scenario-no-workflow-changed" data-change="unchanged">
+              <h4>A release that changed no workflow body</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A change that edits no file under the instructions source directory.</dd>
+                <dt>When</dt>
+                <dd>The run advances the version and then checks the installed files.</dd>
+                <dt>Then</dt>
+                <dd>Every installed file is stale, and regeneration rewrites exactly one line in each — the version stamp — and nothing else.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-regenerated-first" data-change="unchanged">
+              <h4>A run that regenerates before advancing the version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A run regenerates the installed files and then advances the version.</dd>
+                <dt>Then</dt>
+                <dd>The <code>installed</code> stage of the suite turns red, and the run has to regenerate a second time — which is the outcome this ordering exists to prevent.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-stamp-edited-by-hand" data-change="unchanged">
+              <h4>The stamp edited rather than regenerated</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A run updates the version stamp by editing the installed files.</dd>
+                <dt>Then</dt>
+                <dd>The result is a file claiming a run that never happened, which is the specific defect the installed-files check was written to make impossible to repeat quietly.</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-version-moves-with-its-pins" data-change="unchanged">
+            <h3>The version moves only through the script that moves its pins <span class="hs-id">req-the-version-moves-with-its-pins</span></h3>
+            <p>A run of this procedure MUST advance the workspace version only by running <code>scripts/set-version</code> with the new version, and MUST NOT edit <code>version</code> under <code>[workspace.package]</code>, or any <code>htmlspec-*</code> entry in <code>[workspace.dependencies]</code>, by hand.</p>
+            <p>Since 0.33.0 the six crates release together, so each internal dependency names the workspace's exact version, <code>version = "=X.Y.Z"</code>, beside its path. Cargo cannot read the workspace version into those entries, so they are strings, and a version raised without them leaves every one naming the old version. The offline relock then fails, and so does every stage of the suite that builds, before the release check could name the stale pin. The script writes the version and every pin in one edit, relocks offline, and puts the manifest back when the relock fails.</p>
+            <article class="scenario" id="scenario-the-version-raised-by-hand" data-change="unchanged">
+              <h4>The version raised by hand, its pins left behind</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>The workspace at 0.32.0, with each internal dependency pinned at <code>=0.32.0</code>.</dd>
+                <dt>When</dt>
+                <dd>A run raises <code>version</code> under <code>[workspace.package]</code> to 0.32.1 by hand and runs <code>cargo update --workspace --offline</code>.</dd>
+                <dt>Then</dt>
+                <dd>cargo exits 101 with "failed to select a version for the requirement <code>htmlspec-parse = "=0.32.0"</code>". <code>scripts/set-version 0.32.1</code> on the same tree writes the five pins and relocks, changing only the workspace's own entries in <code>Cargo.lock</code>.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-stale-pin" data-change="unchanged">
+              <h4>A pin that names another version</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A workspace declaring 0.32.0 in which one internal dependency is pinned at <code>=0.31.0</code>.</dd>
+                <dt>When</dt>
+                <dd>A run reaches the release check.</dd>
+                <dt>Then</dt>
+                <dd><code>scripts/check-release</code> fails, naming the entry, the version it pins, the version the workspace declares, and <code>scripts/set-version</code> as the repair.</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-regenerating-leaves-the-project-in-place" data-change="unchanged">
+            <h3>Regenerating inside this repository leaves its project in place <span class="hs-id">req-regenerating-leaves-the-project-in-place</span></h3>
+            <p>A run of this procedure MUST regenerate the instruction files from the repository root, MUST NOT remove <code>htmlspec/</code> or <code>spec.nix</code>, and MUST stop rather than continue when the regeneration changed anything other than the installed instruction files and the assets it reports establishing in the project's store.</p>
+            <p>This repository is an html-spec project. <code>htmlspec/</code> holds its accepted specifications, its archive, its asset store, this runbook, and any change under way, and <code>spec.nix</code> declares its version. The command that regenerates the instruction files is the command that establishes a project, and where it finds one it extends it: run from the root, it reports <code>extending the project in</code> the root and <code>spec.nix already exists, so it was left as it is</code>, and writes nothing but the installed files.</p>
+            <p>Where it finds no project it makes one, and it looks only where it is run. From any other directory, or with <code>htmlspec/</code> missing, it reports <code>created the project structure</code> and <code>declared the project at version 0.0.0</code>, and writes a second project and a second set of instruction files there. That report, or a path that <code>git status</code> lists after the regeneration and did not list before it, outside the root's <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code> and the assets <code>init</code> reports establishing, is the signal to stop. The listing before is the baseline because the working tree is not clean when the regeneration runs: the version the step before it advanced is not committed yet, and the change being released may not be either. <strong>The run removes nothing, then or later.</strong> What a misdirected regeneration writes is untracked, so <code>git status</code> lists every path of it, and none of them is the project. By name, though, they are the project's names, and telling the two apart is a person's work rather than a step's.</p>
+            <p>Before 0.29.0 the obligation was the opposite. The repository kept its specifications in OpenSpec's markdown and was not a project, so what the bootstrap wrote was stray and a run had to remove it, and this runbook's 0.1.0 required that. Followed now, that removal deletes the project, and the asset-topology stage, which 0.1.0 named as the check that catches a mistake here, passes after it.</p>
+            <article class="scenario" id="scenario-the-old-removal-followed" data-change="unchanged">
+              <h4>The removal 0.1.0 required, followed</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>The repository with its project in <code>htmlspec/</code> and its declaration in <code>spec.nix</code>.</dd>
+                <dt>When</dt>
+                <dd>A run regenerates the instruction files and then removes both.</dd>
+                <dt>Then</dt>
+                <dd>The project's accepted specifications, its archive, its asset store, this runbook, and the change being released are gone. The release stage and the runbook stages of the suite exit 2, the asset-topology stage passes, and a change under way that no commit holds cannot be recovered.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-regenerating-in-the-project" data-change="unchanged">
+              <h4>Regenerating in the project</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A working tree in which the advanced version in <code>Cargo.toml</code> and <code>Cargo.lock</code>, and the change being released, are not yet committed.</dd>
+                <dt>When</dt>
+                <dd>A run regenerates the instruction files from the repository root.</dd>
+                <dt>Then</dt>
+                <dd>The bootstrap reports that it is extending the project there and left <code>spec.nix</code> as it is, and the only paths <code>git status</code> lists that it did not list before are the installed files under <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code>. The uncommitted version and change are listed before and after, so they do not stop the run.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-regenerating-elsewhere" data-change="unchanged">
+              <h4>Regenerating from another directory</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A run whose working directory is beneath the repository root rather than the root.</dd>
+                <dt>When</dt>
+                <dd>It regenerates the instruction files.</dd>
+                <dt>Then</dt>
+                <dd>The bootstrap does not find the repository's project, reports that it created the project structure and declared a project at version 0.0.0, and writes them with a set of instruction files where it ran. The run stops, and removes nothing.</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-increment-is-judgment" data-change="unchanged">
+            <h3>The size of the increment is the contributor's decision <span class="hs-id">req-the-increment-is-judgment</span></h3>
+            <p>A run of this procedure MUST NOT derive the version increment from anything the program can compute, and the run MUST state the reasoning for the increment it chose.</p>
+            <p>This is a reservation the project already took and wrote down, and it is why the release cannot be a script end to end. The release-hygiene check's own docstring explains why the automated version is impossible rather than merely unbuilt: a change under way legitimately has not advanced the version, because the patch-versus-minor decision is best made once the work's shape is known, so a stage asking about it would be red from a change's first commit to its last — and a suite that is always red is one a contributor learns to skip.</p>
+            <p>What remains automatable is checked automatically. Whether one version is ordered after another is exact, so archival compares them and refuses on the comparison alone.</p>
+            <article class="scenario" id="scenario-increment-chosen" data-change="unchanged">
+              <h4>An increment chosen and reasoned</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A run advances the version.</dd>
+                <dt>Then</dt>
+                <dd>It states whether the change earned a patch, a minor, or a major increment and why, so a reader can disagree with the reasoning rather than only with the number.</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-changelog-heading-names-the-version" data-change="unchanged">
+            <h3>The changelog heading names the version <span class="hs-id">req-the-changelog-heading-names-the-version</span></h3>
+            <p>A run of this procedure MUST write a changelog entry whose heading contains the version as a dotted numeric string.</p>
+            <p>The release-hygiene check finds an entry by reading headings for that pattern and reads nothing else. An entry whose version appears only in its prose is an entry the check cannot see, so the release fails on a changelog that a person would say is present.</p>
+            <article class="scenario" id="scenario-version-only-in-prose" data-change="unchanged">
+              <h4>A version named only in the entry's body</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A changelog entry whose heading is a title and whose body names the version.</dd>
+                <dt>When</dt>
+                <dd>The release-hygiene check runs.</dd>
+                <dt>Then</dt>
+                <dd>It reports that no heading names the version, because it reads headings and not prose.</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-recorded-version-waits-for-archival" data-change="unchanged">
+            <h3>The change's recorded version is written at archival <span class="hs-id">req-the-recorded-version-waits-for-archival</span></h3>
+            <p>A run of this procedure MUST NOT write the <code>VERSION</code> file beside the change's documents itself, MUST raise the version <code>spec.nix</code> declares, at archival, to the version it set in <code>Cargo.toml</code>, and MUST leave the release check's question about the archived version open until archival has run.</p>
+            <p>The file lives in the archived change's directory, which does not exist until archival creates it. <code>htmlspec archive</code> creates the directory and writes the file, recording the version <code>spec.nix</code> declares, after refusing any version not ordered after the last one archived. So a run does not write the file at all. Under the OpenSpec workflow a run did, by hand, at archival, and every archived change that ran this procedure then recorded the same thing: this was the last task open, and it was the last one open because it could not be done earlier rather than because it was forgotten.</p>
+            <p>What a run owes is the value. The version is declared twice: <code>Cargo.toml</code>'s is what the binary reports and what the release-hygiene check reads as declared, and <code>spec.nix</code>'s is what archival compares and records. Nothing compares the two. The archive workflow raises <code>spec.nix</code> at archival, and this runbook requires it raised to the version the first step set, as each release since this repository became its own project raised it.</p>
+            <p>The half that can be done during implementation is the declared version's changelog entry, which the release-hygiene check asks about separately.</p>
+            <article class="scenario" id="scenario-version-file-before-archival" data-change="unchanged">
+              <h4>The recorded version attempted early</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A run tries to write the recorded version before archival.</dd>
+                <dt>Then</dt>
+                <dd>There is no archived directory to write it into, so the step stays open and the run says so rather than reporting it done.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-spec-nix-raised-to-another-version" data-change="unchanged">
+              <h4>The declaration raised to a version the workspace does not declare</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A run that advanced <code>Cargo.toml</code> to one version and, at archival, raised <code>spec.nix</code> to another.</dd>
+                <dt>When</dt>
+                <dd>Archival runs, and then the release-hygiene check.</dd>
+                <dt>Then</dt>
+                <dd>The archive records the version <code>spec.nix</code> declared, which no binary of the release reports, and the check fails unless a changelog heading names that version as well as the declared one.</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-pinned-toolchain-is-what-runs" data-change="unchanged">
+            <h3>The toolchain the flake pins is the one the run uses <span class="hs-id">req-the-pinned-toolchain-is-what-runs</span></h3>
+            <p>A run MUST start with <code>cargo</code> and <code>rustc</code> resolving to the development shell <code>flake.nix</code> pins, and MUST NOT start from a toolchain installed beside it.</p>
+            <p data-field="note">preflight/v1 {"kind":"toolchain","manifest":"flake.nix","shell":"default","tools":["cargo","rustc"]}</p>
+            <p>The declaration names the manifest rather than a version, and that is the point of it: <code>rust-toolchain.toml</code> already pins the compiler, and a version restated here would be a second pin that drifts from the first. What the check establishes is provenance — that the executables this run invokes are the ones the pin selects.</p>
+            <p><strong>This is stricter than the procedure strictly needs, and the cost is named rather than discovered at step three.</strong> A contributor whose <code>cargo</code> comes from rustup reading the same <code>rust-toolchain.toml</code> has a working toolchain and will be refused, because nothing observable from outside distinguishes it from an unpinned one. The remedy the refusal names is to enter the shell; the alternative was a check that accepts any <code>cargo</code> and therefore establishes nothing about the pin. The <code>~/.cargo/bin/cargo</code> broken symlink this procedure has met is the case that makes the distinction worth paying for: it resolves, and it does not run.</p>
+            <p><code>python3</code> and <code>git</code> are deliberately not declared. A tool check states an exact version, and this procedure needs any <code>python3</code> whose standard library reads a file — pinning one here would be a second dependency language beside the flake, for a constraint the procedure does not have. They stay obligations of the run, stated in the procedure's own prose and recorded by whoever runs it.</p>
+            <article class="scenario" id="scenario-a-shadowed-toolchain" data-change="unchanged">
+              <h4>A toolchain installed beside the pinned one</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A machine whose search path resolves <code>cargo</code> to an installation of its own.</dd>
+                <dt>When</dt>
+                <dd>The run's prerequisites are checked before it starts.</dd>
+                <dt>Then</dt>
+                <dd>The check reports where <code>cargo</code> resolved and that it is not the pinned environment's, and the run does not start — which is the difference between learning this now and learning it from a build that used the wrong compiler.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-environment-is-not-realized" data-change="unchanged">
+              <h4>An environment this machine has never entered</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A checkout whose pinned inputs are not in the local store.</dd>
+                <dt>When</dt>
+                <dd>The prerequisites are checked.</dd>
+                <dt>Then</dt>
+                <dd>The check reports readiness as unavailable rather than fetching or building anything, because an inspection that provisioned its way to an answer would have changed the machine it was asked about.</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-order-corrects-the-archive" data-change="unchanged" data-status="accepted">
+            <h3>The step order corrects the archive rather than transcribing it <span class="hs-id">decision-order-corrects-the-archive</span></h3>
+            <p>This runbook states the version bump first, although all five archived release sections state regeneration first.</p>
+            <p data-field="rationale">The five sections agree with each other and disagree with what three of them then measured. The 0.10.0 run recorded that the version bump restaled every installed file and turned the check red; the 0.12.0 run predicted a no-op, found the same thing, and wrote down the general form. Transcribing the stated order would ship a procedure whose own history contradicts it, and the alternative — stating the order and adding a note that it is wrong — is what the archive already has.</p>
+          </section>
+          <section class="decision" id="decision-hazards-are-requirements" data-change="unchanged" data-status="accepted">
+            <h3>The hazards are requirements rather than notes beside the steps <span class="hs-id">decision-hazards-are-requirements</span></h3>
+            <p>Each hazard is a requirement in this document with scenarios, rather than a sentence in the corresponding task's note.</p>
+            <p data-field="rationale">A hazard written beside a step is exactly what the archive already held, five times, and what nothing read. A requirement is addressable, carries scenarios that state the failure concretely, and is what a run's record can attest to once run records exist. The cost is that the procedure and the reasons for its shape are two documents, which the split between a specification and a tasks document forces anyway.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <section class="risk" id="risk-this-runbook-goes-stale" data-change="unchanged">
+            <h3>A step changes and this runbook does not <span class="hs-id">risk-this-runbook-goes-stale</span></h3>
+            <p>Nothing compares this runbook against the scripts and commands it names. A stage renamed in the check suite, or a flag the bootstrap command stops accepting, leaves this document confidently wrong.</p>
+            <p data-field="mitigation">Partly held down and honestly not fully. The steps name commands rather than restating what those commands do, so a renamed stage produces a command that fails loudly at the moment it is run rather than a silently wrong instruction. What is not held down is a step that becomes unnecessary: nothing would report that. The check this project already runs over its installed instruction files is the shape that would close it, and building it is not this runbook's work. It happened, and worse than this predicted. When this repository became its own project at 0.29.0, the step that removed a stray project became a step that removes the project, and nothing reported it. The change that moved this runbook into the project found it by reading, and 0.2.0 is the correction.</p>
+          </section>
+          <section class="risk" id="risk-the-inputs-are-prose" data-change="unchanged">
+            <h3>The inputs are prose that nothing checks <span class="hs-id">risk-the-inputs-are-prose</span></h3>
+            <p>This procedure requires a toolchain, an interpreter, a clean working tree, and a repository whose project is in place. Only the first is checked before a run starts. The other three are prose in the tasks document, so a run on a machine missing one discovers it partway through — at the step that needs it, with the version already advanced.</p>
+            <p data-field="mitigation">Partly held down. The toolchain is a machine requirement, <code>req-the-pinned-toolchain-is-what-runs</code>, which preflight checks and which gates starting a run. A runbook has no notion of an input, which is an open finding of the change that established runbooks, so the other three stay prose. The pinned development shell supplies the toolchain and not the interpreter: <code>flake.nix</code>'s shell lists no <code>python3</code>, so a run inside it uses whatever <code>python3</code> the machine provides.</p>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-the-lesson-learned-twice" data-change="unchanged" data-refs="req-version-before-regenerate">
+            <h3>The same lesson recorded at two releases <span class="hs-id">evidence-the-lesson-learned-twice</span></h3>
+            <p>At 0.10.0 the release record states that the version bump restales every installed file, and that the stage which reports it <q>found, on its first release, the class of drift it was written for</q>. Three weeks later, at 0.12.0, the release task predicted regeneration would be a no-op and recorded that it was not — <q>advancing the version in 7.2 made all 45 files stale</q> — and then wrote down the general form: the check is coupled to the version, not only to workflow prose, so every release regenerates.</p>
+            <p>Two records of one fact, three weeks apart, in two archived documents that bind nothing. That is the measurement behind this runbook existing at all.</p>
+          </section>
+          <section class="evidence" id="evidence-nine-duplicate-assets" data-change="unchanged" data-refs="req-regenerating-leaves-the-project-in-place">
+            <h3>Nine duplicate assets, when this repository was not a project <span class="hs-id">evidence-nine-duplicate-assets</span></h3>
+            <p>Before 0.29.0, running the bootstrap command in this repository and then the asset-topology check reported exactly nine duplicated assets and exited non-zero. Eight were the assets the bootstrap copied into the stray store, each already present byte-identically in the repository's own. The ninth was the one an empty directory alone produced: the stray directory made the repository resolve as a project, and the check then compared across the conformance fixtures' deliberate stores.</p>
+            <p>Reproduced for this runbook's 0.1.0 rather than quoted from the archive, which is what distinguished the ninth error from the eight. The archived record gave the number and not the split. It is why 0.1.0 required the removal, and it no longer occurs: the repository resolves as a project, and the check compares only the stores inside it with one another.</p>
+          </section>
+          <section class="evidence" id="evidence-the-removal-measured-against-the-project" data-change="unchanged" data-refs="req-regenerating-leaves-the-project-in-place">
+            <h3>The removal, measured against the project <span class="hs-id">evidence-the-removal-measured-against-the-project</span></h3>
+            <p>Measured at 0.30.1 in a scratch copy of the repository, beside an untouched copy. Run from the root, the bootstrap reported <q>extending the project</q> and <q>spec.nix already exists, so it was left as it is</q>, and a recursive diff against the untouched copy found nothing. Removing <code>htmlspec/</code> and <code>spec.nix</code> then deleted 504 files: 13 accepted specifications, 38 archived changes, this runbook, the asset store, and the change under way. Afterwards the release-hygiene check and the runbook validation stage exited 2, and the asset-topology check exited 0.</p>
+            <p>Run from <code>crates/</code>, the bootstrap reported <q>created the project structure</q> and <q>declared the project at version 0.0.0</q>, and wrote <code>crates/htmlspec/</code>, <code>crates/spec.nix</code>, and three instruction directories beside them, leaving the root's project as it was. Run from the root with the project removed, it reported the same and established an empty project there.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-the-ordering-hazard" data-change="unchanged" data-outcome="passed" data-refs="req-version-before-regenerate">
+            <h3>The ordering hazard, checked at both points <span class="hs-id">verify-the-ordering-hazard</span></h3>
+            <p data-field="method">Run the installed-files check before advancing the version and again after, with nothing else changed between the two runs. The first passes and the second fails, which establishes that the version alone is the trigger. The 0.12.0 release performed exactly this and recorded both outcomes; the diff after regeneration was one line in each of 45 files, and inspecting the whole diff found nothing but the version stamp.</p>
+          </section>
+          <section class="verification" id="verify-the-version-moves-with-its-pins" data-change="unchanged" data-outcome="passed" data-refs="req-the-version-moves-with-its-pins">
+            <h3>The version raised alone, and then through the script <span class="hs-id">verify-the-version-moves-with-its-pins</span></h3>
+            <p data-field="method">On the tree that pinned each internal dependency at <code>=0.32.0</code>, raise <code>version</code> under <code>[workspace.package]</code> to 0.32.1 by hand and run <code>cargo update --workspace --offline</code> with the pinned cargo 1.90: it exited 101 with "failed to select a version for the requirement <code>htmlspec-parse = "=0.32.0"</code>". Then run <code>scripts/set-version 0.32.1</code> on the same tree: it wrote the five pins and relocked, changing only the seven workspace entries in <code>Cargo.lock</code>, and with the instruction files regenerated and a trial changelog heading all 13 stages of <code>scripts/check</code> passed. With one pin set to <code>=0.31.0</code>, <code>scripts/check-release</code> exited 1 naming the entry and the script. Recorded on 2026-10-19 by <code>ship-through-four-channels</code>, and the trial was reverted.</p>
+          </section>
+          <section class="verification" id="verify-the-project-is-left-in-place" data-change="unchanged" data-outcome="passed" data-refs="req-regenerating-leaves-the-project-in-place">
+            <h3>Nothing is left to remove, and removing is what destroys <span class="hs-id">verify-the-project-is-left-in-place</span></h3>
+            <p data-field="method">In a scratch copy of the repository, run the bootstrap from the root and diff the copy against an untouched one: nothing differs, and the report says it extended the project. Remove the copy's <code>htmlspec/</code> and <code>spec.nix</code> and run the release-hygiene check, the runbook validation stage, and the asset-topology check: the first two exit 2 and the third exits 0, so the asset stage cannot be what catches the removal. Run the bootstrap from a subdirectory: it reports a project created where it ran. The three readings establish that nothing is left to remove, that removing deletes the project and passes the stage 0.1.0 relied on, and that the report tells a misdirected run apart. At a release the version has advanced, and each of the three runs since 0.29.0 recorded one line changed in each of 45 installed files and nothing else. Rehearsed for 0.2.0's code review with the advanced version and the change being released left uncommitted, as a run leaves them: from the root, the same 9 paths outside the three directories were listed before the regeneration and after it, and the 45 paths it added were all installed files, so comparing with the listing from before passes where a check for any change outside them stops. From <code>crates/</code>, all 54 paths it added were outside the root's three directories. With a commit removing one asset from the store, it reported establishing 1 shared asset, and the one path it added outside the three directories was that asset under <code>htmlspec/assets/</code>.</p>
+          </section>
+          <section class="verification" id="verify-the-increment-is-not-derived" data-change="unchanged" data-outcome="passed" data-refs="req-the-increment-is-judgment">
+            <h3>Nothing in the suite derives the increment <span class="hs-id">verify-the-increment-is-not-derived</span></h3>
+            <p data-field="method">Read the release-hygiene check and confirm which questions it asks. It asks four of the archive — that every archived change records a version, that every recorded version above the baseline is distinct, that every recorded version has a changelog entry, and that every runbook release the archive publishes is accounted for — plus three of the workspace: that the declared version has a changelog entry, that every internal dependency pins it, and that every published crate carries the root <code>LICENSE</code>. Given a tag, it also asks whether the tag names the declared version. None of them computes what the next version should be, and the file's own docstring states that a check which did would be red from a change's first commit to its last. So the reservation holds by the absence of a gate rather than by a gate enforcing it, which is what this verification records.</p>
+          </section>
+          <section class="verification" id="verify-the-recorded-version-cannot-be-early" data-change="unchanged" data-outcome="passed" data-refs="req-the-recorded-version-waits-for-archival">
+            <h3>The archived directory does not exist before archival <span class="hs-id">verify-the-recorded-version-cannot-be-early</span></h3>
+            <p data-field="method">Read the archived release sections of the five changes that ran this procedure and confirm what each recorded about this step. All five state it as the last task, and two state explicitly that it could only be done at archival — the 0.11.0 run says this is why it was the last one open, and the 0.12.0 run records it as left open deliberately, following its predecessor. Five independent runs reaching the same conclusion is the measurement; the mechanism is that archival is what creates the directory the file goes in. Since 0.29.0 archival is <code>htmlspec archive</code>. Rehearsed for this runbook's 0.2.0 in a scratch copy, it wrote the archived change's <code>VERSION</code> from the version <code>spec.nix</code> declared. With <code>spec.nix</code> raised to a version <code>Cargo.toml</code> did not declare, it recorded that version, and the release-hygiene check then failed for want of a changelog heading naming it.</p>
+          </section>
+          <section class="verification" id="verify-this-runbook-validates" data-change="unchanged" data-outcome="passed" data-refs="req-the-changelog-heading-names-the-version">
+            <h3>Both of this runbook's documents are accepted <span class="hs-id">verify-this-runbook-validates</span></h3>
+            <p data-field="method">Validate this document and the tasks document beside it with the project's own validator, under default and strict strictness, and check both against the canonical format. All four commands accept them, which is the claim that a runbook's documents need no validation of their own: they are ordinary documents of two existing kinds.</p>
+          </section>
+          <section class="verification" id="verify-the-pinned-toolchain" data-change="unchanged" data-outcome="passed" data-refs="req-the-pinned-toolchain-is-what-runs">
+            <h3>The declaration checks the shell this repository pins <span class="hs-id">verify-the-pinned-toolchain</span></h3>
+            <p data-field="method">Ask the pinned environment what it supplies and ask the search path where each tool resolves, then compare. Inside the shell the flake declares, <code>cargo</code> and <code>rustc</code> both resolve inside the Rust input's store path, so the check passes; <code>jq</code> resolves to the <code>-bin</code> output of an input declared as <code>-dev</code>, which is why the comparison reads the inputs' closures rather than the inputs alone. Outside the shell, both resolve to an installation of their own and the check reports the differing provenance. Neither reading builds, downloads, or changes a lock: the evaluation is offline with import-from-derivation disabled, and the working tree is unchanged afterwards.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Fill only the references a document loads</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Fill only the references a document loads</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Fill only the references a document loads</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-09-fill-only-the-references-a-document-loads/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-re-measure-before-changing-anything">1. Re-measure before changing anything</a></li>
+          <li><a href="#hs-2-tests-first">2. Tests first</a></li>
+          <li><a href="#hs-3-one-list-of-the-attributes-that-load-an-asset">3. One list of the attributes that load an asset</a></li>
+          <li><a href="#hs-4-the-scanner-and-the-rewrite">4. The scanner and the rewrite</a></li>
+          <li><a href="#hs-5-prove-it">5. Prove it</a></li>
+          <li><a href="#hs-6-release">6. Release</a></li>
+          <li><a href="#hs-7-review">7. Review</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-re-measure-before-changing-anything">
+          <h2>1. Re-measure before changing anything</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 In a scratch project made by <code>htmlspec init</code> and <code>htmlspec new change</code>, quote <code>href="…"</code> and <code>src="…"</code> in <code>&lt;code&gt;</code>, an escaped <code>&lt;link&gt;</code> in <code>&lt;pre&gt;&lt;code&gt;</code>, and an <code>&lt;a href&gt;</code> to the stylesheet in a proposal.</h3>
+              <p>Run <code>format --check</code>, <code>format</code>, and <code>validate</code>, and record every fill. Then point the <code>&lt;a&gt;</code> and the <code>&lt;link&gt;</code> at an absent address in turn, and record what the asset rules report for each. Record the result in <a href="evidence/the-measurement-2026-10-09.md"><code>evidence/the-measurement-2026-10-09.md</code></a></p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-tests-first">
+          <h2>2. Tests first</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 In <code>crates/htmlspec-format/tests/reference_rewriting.rs</code>, add one test per measured case: a <code>&lt;code&gt;</code> quotation, an escaped <code>&lt;pre&gt;&lt;code&gt;</code> example, and an <code>&lt;a href&gt;</code>, each in a project whose store does not hold the bytes.</h3>
+              <p>Each asserts that the document is byte-identical after <code>rewrite</code> and that the document's own <code>&lt;link&gt;</code> is still filled. Check that all three fail on HEAD</p>
+              <ul>
+                <li>
+                  <p>Three tests, <code>prose_quoting_an_asset_attribute_is_left_as_written</code>, <code>an_escaped_example_of_a_link_is_left_as_written</code>, and <code>a_hyperlink_to_an_asset_is_left_as_written</code>, share one assertion. The body survives byte for byte, the document's own <code>&lt;link&gt;</code> is filled, and exactly one fill is reported. A precondition asserts that the fixture body is canonical as written, so a formatting change cannot make the words differ for another reason</p>
+                </li>
+                <li>
+                  <p>On HEAD all three fail at "the author's words were rewritten", and the existing 8 tests in the file pass</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 In <code>crates/htmlspec-format/src/references.rs</code>, add unit tests for what a substring search gets wrong:</h3>
+              <ul>
+                <li>
+                  <p>a reference inside a comment, and inside the contents of <code>&lt;script&gt;</code>, <code>&lt;style&gt;</code>, <code>&lt;textarea&gt;</code>, and <code>&lt;template&gt;</code>, is kept;</p>
+                </li>
+                <li>
+                  <p><code>data-src="…"</code> is not filled;</p>
+                </li>
+                <li>
+                  <p><code>&lt;object data="…"&gt;</code>, a single-quoted value, an unquoted value, and an uppercase <code>SRC</code> are filled;</p>
+                </li>
+                <li>
+                  <p>a repeated <code>href</code> fills the first value and leaves the second;</p>
+                </li>
+                <li>
+                  <p>a <code>&gt;</code> inside another attribute's quoted value does not end the tag.</p>
+                </li>
+              </ul>
+              <p>The <code>&gt;</code> case holds on HEAD, because a substring search is right about it by accident, and is there to guard the scanner. Check that a test which held on HEAD still holds: a fragment link is untouched, and the rewrite changes one line</p>
+              <ul>
+                <li>
+                  <p>Ten tests, built on three helpers: <code>in_a_project</code> stores the shipped runtime, <code>assert_untouched</code> requires the source unchanged and nothing reported, and <code>assert_filled</code> requires one fill of the named asset, with only the value's bytes changed</p>
+                </li>
+                <li>
+                  <p>On HEAD, 9 fail and 1 holds: <code>a_closing_bracket_inside_a_quoted_value_does_not_end_the_tag</code>, as expected. The kept cases fail at <code>assert_untouched</code>, because HEAD filled the comment, the raw text, the template, <code>data-src</code>, and the <code>title</code> quotation. The filled cases fail at <code>assert_filled</code>: HEAD missed <code>&lt;object data&gt;</code>, the single-quoted and unquoted values, and <code>SRC</code>, and filled both of a repeated <code>href</code></p>
+                </li>
+                <li>
+                  <p>The existing 11 unit tests pass on HEAD, the fragment link and one-line tests among them</p>
+                </li>
+                <li>
+                  <p data-field="deviation">The <code>title</code> case is an attribute value that quotes a reference, <code>&lt;abbr title='written as href="…"'&gt;</code>, which a substring search also fills</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 In the test module of <code>crates/htmlspec-validate/src/rules/assets.rs</code>, add the cross-check from design decision 3:</h3>
+              <ul>
+                <li>
+                  <p>over every <code>.html</code> file under the repository root except <code>target/</code>, the references <code>htmlspec_format::asset_references</code> finds equal <code>referenced_assets</code>, in order;</p>
+                </li>
+                <li>
+                  <p>a property test over bodies built from the fragments the decision lists asserts the same equality, and that the parser recovered no error.</p>
+                </li>
+              </ul>
+              <p>Add <code>proptest</code> to the validator's dev-dependencies. Check that the module fails to compile on HEAD, for want of <code>asset_references</code></p>
+              <p data-field="deviation">Migration note: done another way, and in part. The corpus test walks named directories rather than every <code>.html</code> file under the repository root except <code>target/</code>, and skips a document the parser recovered errors in. The property test leaves out a repeated attribute, one of the fragments design decision 3 lists, because it makes the parser recover. The first two records below state both, and <a href="evidence/what-the-implementation-revealed-2026-10-09.md"><code>evidence/what-the-implementation-revealed-2026-10-09.md</code></a> records in section 1 that the corpus test compared 128 of the 138 documents and skipped the 10 under <code>fixtures/parse-errors/</code>.</p>
+              <ul>
+                <li>
+                  <p><code>the_formatter_finds_the_references_these_rules_judge_in_every_repository_document</code> walks <code>README.html</code>, <code>assets/</code>, <code>fixtures/</code>, <code>openspec/</code>, and <code>runbooks/</code>. It names directories rather than walking the checkout, so a contributor's untracked notes do not decide it. A document the parser recovered errors in is skipped, and floors of 100 documents and 100 references stop it passing on nothing</p>
+                </li>
+                <li>
+                  <p><code>the_formatter_finds_the_references_these_rules_judge_in_generated_documents</code> runs 512 cases. Each body holds up to 7 of 28 fragments, with values drawn from six (padded, empty, a fragment, a remote URL) and, where a value stands unquoted, from three. A duplicated attribute and a CDATA section in HTML content are left out of the fragments, because each makes the parser recover, and both are unit-tested in group 4</p>
+                </li>
+                <li>
+                  <p><code>proptest</code> is a dev-dependency of the validator, and <code>Cargo.lock</code> gains that one edge. On HEAD the test module fails to compile, with E0425 for <code>asset_references</code></p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-one-list-of-the-attributes-that-load-an-asset">
+          <h2>3. One list of the attributes that load an asset</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Move the thirteen pairs to <code>crates/htmlspec-assets</code> as <code>ReferencingAttribute</code> and <code>REFERENCING_ATTRIBUTES</code>, with the doc comment that says why <code>&lt;a href&gt;</code> is absent.</h3>
+              <p>Make <code>referenced_assets</code> read it. Check with <code>cargo test -p htmlspec-assets -p htmlspec-validate</code> that every existing asset-rule test passes unchanged, <code>a_hyperlink_is_not_an_asset_reference</code> among them</p>
+              <ul>
+                <li>
+                  <p data-field="deviation"><code>crates/htmlspec-assets/src/reference.rs</code> holds <code>ReferencingAttribute</code> (<code>element</code>, <code>attribute</code>), the thirteen pairs as <code>REFERENCING_ATTRIBUTES</code>, and <code>ReferencingAttribute::find</code>. The doc comment keeps the reason <code>&lt;a href&gt;</code> is absent. It adds the reason <code>srcset</code> is absent although <code>safety/*</code> reads it: its value lists several URLs with sizes. Three unit tests check that <code>a</code>/<code>href</code> is not found, that every name is lowercase, and that every pair is found by its own names</p>
+                </li>
+                <li>
+                  <p><code>referenced_assets</code> reads the moved list, and the validator's private copy is gone. <code>cargo test -p htmlspec-assets</code> passes, 9 of its tests matching <code>reference</code>. All 22 tests that existed in <code>rules/assets.rs</code> pass unchanged, <code>a_hyperlink_is_not_an_asset_reference</code> among them</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-the-scanner-and-the-rewrite">
+          <h2>4. The scanner and the rewrite</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Add the scanner module to <code>crates/htmlspec-format</code> as design decision 2 describes, total over any input: no unchecked indexing and no panic.</h3>
+              <p>Give it unit tests for each rule the decision lists: comments (including <code>&lt;!--&gt;</code> and <code>&lt;!---&gt;</code>), CDATA, end tags with quoted <code>&gt;</code>, each value quoting, a repeated attribute, each raw-text element and its case-insensitive end tag, <code>plaintext</code>, nested <code>&lt;template&gt;</code>, and a tag cut off by the end of the source. Check with <code>cargo test -p htmlspec-format</code></p>
+              <ul>
+                <li>
+                  <p><code>crates/htmlspec-format/src/tags.rs</code>, private, with <code>start_tags</code> returning each <code>StartTag</code> and its <code>Attribute</code>s by name and value range. The module comment names the three places it stops following the parser: a document with recovered errors, foreign content, and the escape states of script data. Indexing goes through <code>get</code>, so the module has no unchecked index and no <code>unwrap</code></p>
+                </li>
+                <li>
+                  <p data-field="deviation">18 unit tests, one per rule, and a property test, <code>any_source_is_scanned_without_panic</code>. Over strings built from the characters the tag states turn on, mixed with arbitrary text, it checks that the scanner returns and that every value range can be sliced from the source. <code>cargo test -p htmlspec-format --lib tags</code>: 19 pass</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Add <code>asset_references</code> to <code>references.rs</code>, and make <code>rewrite</code> copy between its ranges.</h3>
+              <p>Remove <code>next_reference</code> and <code>ATTRIBUTES</code>. Correct the module's doc comment to say which values are references and why. Check that the tests from 2.1, 2.2, and 2.3 pass, and that <code>htmlspec format --check</code> reports <code>fixtures/dogfood/</code> and <code>runbooks/</code> canonical, unchanged</p>
+              <ul>
+                <li>
+                  <p><code>asset_references</code> returns <code>SourceReference { on, value, span }</code>, and <code>span</code> is private to the crate. Each value is trimmed and taken only if not blank, as <code>referenced_assets</code> takes it, so the two compare without any normalizing in the test. <code>rewrite</code> copies the source between spans. <code>next_reference</code>, <code>Found</code>, and <code>ATTRIBUTES</code> are gone. The module comment now says which values are references and points at the cross-check. <code>lib.rs</code> re-exports <code>asset_references</code> and <code>SourceReference</code></p>
+                </li>
+                <li>
+                  <p><code>cargo test -p htmlspec-format</code>: every test passes, the 3 from 2.1 and the 10 from 2.2 among them. <code>cargo test -p htmlspec-validate --lib assets</code>: 24 pass, both from 2.3 among them. The corpus test compared 128 of the 138 documents, holding 640 references, and skipped the 10 parse-error fixtures; the counts were printed once and the print removed</p>
+                </li>
+                <li>
+                  <p><code>htmlspec format --check fixtures/dogfood</code> reports all six canonical, and <code>runbooks</code> both. <code>git status</code> shows neither directory changed. <code>cargo clippy --workspace --all-targets -- -D warnings</code> is clean</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-prove-it">
+          <h2>5. Prove it</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Repeat 1.1 against the built change, and record the result beside the measurement.</h3>
+              <p>The expected result is no fill in the three paragraphs, and <code>format --check</code> passing without the document being changed. The <code>&lt;a&gt;</code> is still not judged by the asset rules, and the <code>&lt;link&gt;</code> still is</p>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/the-change-measured-2026-10-09.md"><code>evidence/the-change-measured-2026-10-09.md</code></a>. Every expected result holds. In the same scratch project, at the same commit, <code>format --check</code> and <code>format</code> report the proposal canonical, and <code>git diff</code> is empty. The <code>&lt;a&gt;</code> pointed at an absent address gives no asset diagnostic and a canonical check. The <code>&lt;link&gt;</code> pointed at it gives <code>asset/unresolved</code>, and <code>format --check</code> fills it and exits 1</p>
+                </li>
+                <li>
+                  <p>Beyond the task: in a copy of the staged migration, all 109 documents are canonical. With both of the drafter's <code>href&lt;!-- --&gt;=</code> workarounds restored to <code>href=</code>, <code>establish-a-runbook/design.html</code> passes the change's check and fails <code>htmlspec 0.18.0</code>'s, whose rewrite is HEAD's. Its <code>tasks.html</code> passes both, because its quotation names no file</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Mutation-test the change, and record which test catches each mutation:</h3>
+              <ul>
+                <li>
+                  <p>the old substring search restored;</p>
+                </li>
+                <li>
+                  <p>comments not skipped;</p>
+                </li>
+                <li>
+                  <p>raw-text elements not skipped;</p>
+                </li>
+                <li>
+                  <p><code>&lt;template&gt;</code> contents not skipped;</p>
+                </li>
+                <li>
+                  <p>a repeated attribute's last value kept rather than its first;</p>
+                </li>
+                <li>
+                  <p>a quoted value ended at <code>&gt;</code>;</p>
+                </li>
+                <li>
+                  <p>attribute names compared without lowercasing;</p>
+                </li>
+                <li>
+                  <p><code>("a", "href")</code> added to the shared list;</p>
+                </li>
+                <li>
+                  <p>values not trimmed;</p>
+                </li>
+                <li>
+                  <p>a cut-off tag reported.</p>
+                </li>
+              </ul>
+              <p>A mutation that nothing catches needs a new test before this task is done</p>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/mutation-testing-2026-10-09.md"><code>evidence/mutation-testing-2026-10-09.md</code></a>. <strong>All ten are caught</strong>, and so is 6b, a <code>&gt;</code> inside a quoted value ending the tag, which was added because mutation 6 ends only the value. Every mutation compiled, the mutated files matched their copies after each run, and the <code>proptest-regressions/</code> seeds the failing runs wrote were removed</p>
+                </li>
+                <li>
+                  <p>Two needed a new test, as the task requires. Mutation 10 survived its first run, because no cut-off case ended after a whole attribute; two such cases in <code>a_tag_cut_off_by_the_end_of_the_source_is_not_emitted</code> now catch it. Mutation 9 was caught only by the property test, at random; <code>a_padded_value_is_filled_inside_its_padding</code> now catches it directly</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Run <code>cargo test --workspace --all-targets</code>, then <code>scripts/check</code>, with every stage green</h3>
+              <ul>
+                <li>
+                  <p><code>cargo test --workspace --all-targets</code>: 1,380 passed, 0 failed. At <code>0.28.1</code>, <code>scripts/check</code> passes the nine stages that run inside <code>nix develop</code> (format, lint, test, doctest, self-conformance, self-format, self-runbooks, self-runbooks-format, self-assets), with the same 1,380 tests. The four Python stages fail there with "tool 'python3' not found", and pass outside it: <code>check-prompt</code> (4 cases), <code>check-installed</code> (45 files), <code>check-release --self-test</code> (23 shared cases), and <code>check-release</code> (declared <code>0.28.1</code>)</p>
+                </li>
+                <li>
+                  <p>After two doc-comment corrections, <code>cargo fmt --all --check</code> and <code>cargo clippy --workspace --all-targets -- -D warnings</code> are clean, and the format and validate library tests pass again (85 and 305). <code>cargo doc</code> gives no warning in a file this change touches. It gives three elsewhere, which predate it: an ambiguous <code>lockfile</code> link in <code>htmlspec-assets/src/lib.rs</code>, and two links to a private <code>verdict</code> in <code>change_markup.rs</code></p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Record what the implementation revealed in <code>evidence/</code>, including any document in the corpus on which the scanner and the tree first disagreed</h3>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/what-the-implementation-revealed-2026-10-09.md"><code>evidence/what-the-implementation-revealed-2026-10-09.md</code></a>. <strong>The scanner and the tree agreed on the first run, over the corpus and the generated documents.</strong> Three rules taken from the HTML specification were confirmed against the pinned parser: <code>noscript</code> is raw text, a <code>&lt;template&gt;</code>'s contents are outside the tree, and a CDATA section in <code>&lt;svg&gt;</code> is text. The file also records the line the moved list gained on <code>srcset</code>, the single-quoted and unquoted references the old search never filled, that only one of the two staged workarounds was needed, and two things left out of this change</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-release">
+          <h2>6. Release</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Run the release runbook at <code>runbooks/release/tasks.html</code>, and report whether it worked as written</h3>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/the-runbook-ran-2026-10-09.md"><code>evidence/the-runbook-ran-2026-10-09.md</code></a>. It worked as written, in its order. The version and the lock moved the seven workspace members. The 45 installed files took the new stamp and nothing else, and <code>check-installed</code> passed. The changelog entry names <code>0.28.1</code>, and <code>check-release</code> passed on the declared version. The four Python stages pass at <code>0.28.1</code></p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done" data-refs="req-formatting-preserves-meaning">
+              <h3>6.2 Choose the increment, state the reasoning, and flag it for the contributor's confirmation.</h3>
+              <p>The expected increment is a patch, to 0.28.1: the formatter now does what "<a href="specification.html#req-formatting-preserves-meaning">Formatting preserves meaning</a>" already required, and nothing is added to the contract</p>
+              <ul>
+                <li>
+                  <p><strong><code>0.28.1</code>, a patch increment, confirmed by the contributor on 2026-10-09 before the version moved.</strong> The formatter now does what "<a href="specification.html#req-formatting-preserves-meaning">Formatting preserves meaning</a>" already required, the contract stays at <code>0.7.0</code>, and no committed document is reformatted</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done" data-refs="req-formatting-preserves-meaning">
+              <h3>6.3 Check that <code>scripts/check-release</code> passes after archival writes <code>VERSION</code> and the hand-written <code>runbooks.json</code> beside it</h3>
+              <ul>
+                <li>
+                  <p><code>openspec archive fill-only-the-references-a-document-loads --yes</code> archived the change as <code>2026-10-09-fill-only-the-references-a-document-loads</code>, on its branch before review, as the contributor asked. It modified 1 requirement in <code>deterministic-formatting</code>, and the merged "<a href="../../../specs/deterministic-formatting/spec.html#req-formatting-preserves-meaning">Formatting preserves meaning</a>" equals the delta's word for word. No other accepted specification changed. <code>openspec validate deterministic-formatting --type spec --strict</code> passes. <code>--specs</code> still fails only <code>project-bootstrap</code>, which is unchanged from HEAD and keeps a placeholder Purpose. It warned of 2 incomplete tasks, this one and 7.1, and continued under <code>--yes</code></p>
+                </li>
+                <li>
+                  <p><code>VERSION</code> holds <code>0.28.1</code>. <code>runbooks.json</code> is a copy of the previous archive's, because the release runbook is unchanged: the sha256 of <code>runbooks/release/specification.html</code> and <code>tasks.html</code> still match the inventory's (<code>3d7efaec…</code> and <code>e6a4410e…</code>)</p>
+                </li>
+                <li>
+                  <p><code>scripts/check-release</code>: <code>ok  35 archived change(s) record a version, and 29 version(s) are in the changelog</code> and <code>ok  declared version 0.28.1 has a changelog entry</code></p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-review">
+          <h2>7. Review</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Resolve what a review of the pull request found, and record what was and was not taken</h3>
+              <ul>
+                <li>
+                  <p><strong>The code review of PR #53 (medium) found three readings on which the scanner disagreed with the tree, each in a document read without error, and the contributor chose on 2026-10-09 to fix all three.</strong> The three: an SVG <code>&lt;style&gt;</code> or <code>&lt;title&gt;</code> read as raw text; an SVG <code>&lt;template&gt;</code> whose contents were hidden as an HTML template's; and a script whose <code>&lt;!--&lt;script&gt;</code> postpones its end, read as ending at the first <code>&lt;/script&gt;</code>. In the first two the validator judged a reference the formatter would not fill. In the third the formatter could fill text inside a script, the defect this change exists to remove</p>
+                </li>
+                <li>
+                  <p><strong>Taken.</strong> <code>tags.rs</code> now keeps a stack of the foreign elements open, with each one's namespace and how its children are read. Raw text, <code>template</code>, and <code>plaintext</code> apply only where children are read as HTML. Integration points are SVG's <code>foreignObject</code>, <code>desc</code>, and <code>title</code>, and MathML's text elements, with <code>mglyph</code> and <code>malignmark</code> staying MathML. An element inside foreign content takes its parent's namespace, except an <code>svg</code> directly inside <code>annotation-xml</code>. A self-closing foreign tag opens nothing. <code>script_end</code> follows the tokenizer's script data, escaped, and double-escaped states. The design's decision 2 and its risks are corrected to match, and the changelog entry says the formatter follows SVG and MathML</p>
+                </li>
+                <li>
+                  <p><strong>Found while fixing: the pinned parser makes no <code>annotation-xml</code> an integration point</strong>, where the HTML specification makes one with an HTML <code>encoding</code>. kuchikiki leaves markup5ever's <code>is_mathml_annotation_xml_integration_point</code> at its default, <code>false</code>. The scanner follows the parser, because the tree is what the asset rules judge, and a fragment pins it. Recorded in <a href="evidence/what-the-implementation-revealed-2026-10-09.md"><code>evidence/what-the-implementation-revealed-2026-10-09.md</code></a>, section 6</p>
+                </li>
+                <li>
+                  <p>Tests: 9 scanner unit tests; 14 new fragments in the generated-document cross-check; and a new fixed test, <code>every_fragment_alone_is_read_as_the_tree_reads_it</code>, which runs each fragment alone with every value, so no fragment is left to the property test's random draw. Twelve mutations of the fixes are all caught, two after a new test each (<a href="evidence/mutation-testing-2026-10-09.md"><code>evidence/mutation-testing-2026-10-09.md</code></a>, "The review's fixes, mutated")</p>
+                </li>
+                <li>
+                  <p><code>scripts/check</code> at <code>0.28.1</code>: the nine <code>nix develop</code> stages pass, 1,388 tests among them, and the four Python stages pass outside it. <code>cargo fmt --check</code> and <code>cargo clippy -- -D warnings</code> are clean</p>
+                </li>
+                <li>
+                  <p><strong>Not taken, already recorded:</strong> the review's note that the tree decodes character references and the scanner does not. It is the design's risk "[A value with character references]", and no shipped asset name holds an <code>&amp;</code></p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

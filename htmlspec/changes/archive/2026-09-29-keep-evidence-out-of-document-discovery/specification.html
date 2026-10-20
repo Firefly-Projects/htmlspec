@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Keep evidence out of document discovery</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Keep evidence out of document discovery</h1>
+        <p>Under artifact-kinds' "A change's evidence is kept in the change and is not one of its documents", a change directory, active or archived, may hold an <code>evidence/</code> directory, and every file beneath it is a record of the change rather than a document of the project, which no operation of the program rewrites. Under toolchain-packaging's "An operation over a directory collects documents and not a change's evidence", an operation that collects documents by walking a directory within a project passes over a change's evidence, while a path a contributor names is still checked and <code>format</code>'s writing mode refuses to write a record. Under project-migration's "Evidence crosses unchanged", carried evidence is outside the conformance checks run over a staged project, so it does not gate promotion.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Keep evidence out of document discovery</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-29-keep-evidence-out-of-document-discovery/specs/artifact-kinds/spec.md</code><br><code>openspec/changes/archive/2026-09-29-keep-evidence-out-of-document-discovery/specs/project-migration/spec.md</code><br><code>openspec/changes/archive/2026-09-29-keep-evidence-out-of-document-discovery/specs/toolchain-packaging/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-artifact-kinds">artifact-kinds</a></li>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-project-migration">project-migration</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-artifact-kinds">
+          <h2>artifact-kinds</h2>
+          <section class="requirement" id="req-a-change-s-evidence-is-kept-in-the-change-and-is-not-one-of-its-documents" data-change="added">
+            <h3>A change's evidence is kept in the change and is not one of its documents <span class="hs-id">req-a-change-s-evidence-is-kept-in-the-change-and-is-not-one-of-its-documents</span></h3>
+            <p>A change directory MAY hold an <code>evidence/</code> directory directly within it. Every file beneath that directory, at any depth, SHALL be the change's evidence: a transcript, a measurement, a recorded complaint, or a document preserved as it was written. It is a record of why the change has the shape it does.</p>
+            <p><strong>Evidence SHALL NOT be a document of the project.</strong> An evidence file declares no artifact kind, owes conformance to no contract version, and does not reference the project's asset store. The obligations this contract places on "every document in the project", including "A project has a declared root holding one asset store", do not reach it. Its format is its author's choice: Markdown, plain text, a script, or HTML.</p>
+            <p>The reason is the one project-migration's "Evidence crosses unchanged" already gives: a record's worth is that nobody edited it. A contract that held evidence to the rules for documents would require each record to be rewritten whenever the contract moved. A record written in this format at an earlier contract version, or naming an asset store that has since been removed, would have to be edited or deleted. Either act destroys what the record was kept for.</p>
+            <p>The location is positional. A directory named <code>evidence</code> is a change's evidence only where it sits directly within a change directory, active or archived. The same name anywhere else, such as a capability whose path is <code>evidence</code>, carries no special meaning.</p>
+            <p>No operation of the program SHALL rewrite a file beneath a change's evidence, including one a contributor names. Checking one is permitted, because a check writes nothing.</p>
+            <article class="scenario" id="scenario-a-record-in-this-format-at-a-superseded-version" data-change="added">
+              <h4>A record in this format at a superseded version</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file declaring an earlier contract version and naming an asset store the project does not hold</dd>
+                <dt>When</dt>
+                <dd>the project's documents are checked</dd>
+                <dt>Then</dt>
+                <dd>the file is not among them, and no diagnostic names it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-evidence-nested-below-the-evidence-directory" data-change="added">
+              <h4>Evidence nested below the evidence directory</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds <code>evidence/transcripts/a-session.html</code></dd>
+                <dt>When</dt>
+                <dd>the project's documents are checked</dd>
+                <dt>Then</dt>
+                <dd>the file is evidence, because every file beneath a change's evidence directory is, at any depth</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-capability-that-happens-to-be-named-evidence" data-change="added">
+              <h4>A capability that happens to be named evidence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project holding an accepted specification at <code>htmlspec/specs/evidence/spec.html</code></dd>
+                <dt>When</dt>
+                <dd>the project's documents are checked</dd>
+                <dt>Then</dt>
+                <dd>that specification is among them, because only a change's evidence directory is excluded</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-archived-change-keeps-its-evidence" data-change="added">
+              <h4>An archived change keeps its evidence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an archived change whose evidence holds an HTML file</dd>
+                <dt>When</dt>
+                <dd>the project's documents are checked</dd>
+                <dt>Then</dt>
+                <dd>the file is not among them, because an archived change is still a change</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence" data-change="added">
+            <h3>An operation over a directory collects documents and not a change's evidence <span class="hs-id">req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence</span></h3>
+            <p>When <code>validate</code> or <code>format</code>, in either its writing or its checking mode, is given a directory or no path at all, it SHALL operate on every <code>.html</code> file beneath that directory, except files beneath a change's evidence as artifact-kinds' "A change's evidence is kept in the change and is not one of its documents" places it. Every other operation that collects a project's documents by walking a directory SHALL make the same exclusion from the same definition.</p>
+            <p><strong>A path the contributor names SHALL be checked as named.</strong> A file means that file. A directory that is itself a change's evidence directory, or lies beneath one, means that directory, and <code>validate</code> and <code>format --check</code> SHALL check every <code>.html</code> file beneath it. The exclusion applies to what a walk comes across and never to what a contributor asked for. A contributor who wants to know whether a record still conforms can ask, and the answer is the ordinary one.</p>
+            <p><strong>Checking is not writing.</strong> <code>format</code> in its writing mode SHALL NOT write a file beneath a change's evidence, including one a contributor names, because artifact-kinds states that no operation rewrites one. Given such a path, it SHALL name each record, write nothing at all, and exit with the status for an operation that could not run. It SHALL NOT write the other documents and skip the records. A partial write would report success for a request it half ignored.</p>
+            <p>Where the walked directory is not within a project, no directory is a change's evidence, and every <code>.html</code> file beneath it SHALL be operated on. A conformance fixture and a loose directory of documents keep the behavior they have.</p>
+            <p>The exclusion SHALL be defined once and reached by every such operation. It SHALL NOT be restated per command. A second definition that drifts from the first would have <code>validate</code> and <code>format</code> disagree about which files are documents. That is the fault this requirement exists to remove, arriving by another route.</p>
+            <article class="scenario" id="scenario-validating-a-project-that-holds-html-evidence" data-change="added">
+              <h4>Validating a project that holds HTML evidence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose documents all conform, and a change whose evidence holds an HTML file that does not</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code> with no path</dd>
+                <dt>Then</dt>
+                <dd>it succeeds and reports no diagnostic naming the evidence file</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-formatting-leaves-evidence-untouched" data-change="added">
+              <h4>Formatting leaves evidence untouched</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file that is not in canonical form</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>format</code> over the project, and then <code>format --check</code></dd>
+                <dt>Then</dt>
+                <dd>the evidence file is byte-identical to what it was, and the check succeeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-naming-an-evidence-file-checks-it" data-change="added">
+              <h4>Naming an evidence file checks it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file that does not conform</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code> naming that file</dd>
+                <dt>Then</dt>
+                <dd>the file is validated and its diagnostics are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-naming-the-evidence-directory-checks-what-it-holds" data-change="added">
+              <h4>Naming the evidence directory checks what it holds</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file that does not conform</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code> naming the change's evidence directory</dd>
+                <dt>Then</dt>
+                <dd>the file is validated and its diagnostics are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-formatting-a-named-record-is-refused" data-change="added">
+              <h4>Formatting a named record is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file that is not in canonical form</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>format</code> naming that file, or the evidence directory holding it</dd>
+                <dt>Then</dt>
+                <dd>nothing is written, each record is named, and the exit is the one for an operation that could not run, while <code>format --check</code> naming the same path still reports the file</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-outside-a-project-every-file-is-a-document" data-change="added">
+              <h4>Outside a project every file is a document</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a directory that is not within a project, holding <code>evidence/a-record.html</code></dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code> naming that directory</dd>
+                <dt>Then</dt>
+                <dd>the file is validated, because outside a project there is no change for it to be the evidence of</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-project-migration">
+          <h2>project-migration</h2>
+          <section class="requirement" id="req-evidence-crosses-unchanged" data-change="modified">
+            <h3>Evidence crosses unchanged <span class="hs-id">req-evidence-crosses-unchanged</span></h3>
+            <p>A source change's evidence files SHALL be carried into the migrated change unchanged, and SHALL NOT be converted into the destination format.</p>
+            <p>Evidence is a transcript, a measurement, or a recorded complaint, and its worth is that nobody edited it. Converting one is rewriting a record, and a rewritten record cannot serve the purpose evidence serves.</p>
+            <p>The migrated change's documents SHALL reference the carried evidence, so that a reader reaches it from the document that cites it rather than by finding it in a directory.</p>
+            <ins>
+              <p><strong>Carried evidence SHALL NOT be subject to the conformance checks run over the staged project.</strong> Those checks are the project's own, and a change's evidence is not a document of the project. So a record that is already in the destination format neither gates promotion nor is rewritten by it, even at a superseded contract version or naming an asset store the project does not hold. That includes a document preserved under "A source entity already in the destination format is not assumed usable". A requirement to carry records unchanged, paired with a check that refuses them, would leave a migration only two choices: edit the record, or leave it behind.</p>
+            </ins>
+            <article class="scenario" id="scenario-evidence-carried-verbatim" data-change="unchanged">
+              <h4>Evidence carried verbatim</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change carrying evidence files is migrated</dd>
+                <dt>Then</dt>
+                <dd>each evidence file is present in the migrated change with its contents unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-evidence-is-referenced" data-change="unchanged">
+              <h4>Evidence is referenced</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a migrated document makes a claim its change recorded evidence for</dd>
+                <dt>Then</dt>
+                <dd>the document references the carried evidence file</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-carried-evidence-in-the-destination-format-does-not-gate-promotion" data-change="added">
+              <h4>Carried evidence in the destination format does not gate promotion</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a staged project whose documents all conform, and a migrated change whose evidence holds an HTML file declaring an earlier contract version and naming an asset store the project does not hold</dd>
+                <dt>When</dt>
+                <dd>promotion's conformance checks run over the staged project</dd>
+                <dt>Then</dt>
+                <dd>they report nothing about that file, promotion proceeds, and the file arrives byte-identical</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Every evidence and verification unit in this section and the next was written when this document was migrated. Each summarizes a record carried unchanged in this change's <code>evidence/</code>, as project-migration's "Evidence crosses unchanged" requires, and links it, and the record is the authority. Eight verifications rest on the outcome a record gives for a run of the built program. Three rest on a test the mutation record names as catching a mutation, read at <code>6a591bd</code> when this document was migrated. <code>evidence/.openspec.yaml</code> is the change's creation record and has no unit.</p>
+          </aside>
+          <section class="evidence" id="evidence-evidence-read-as-documents-2026-09-29" data-change="added" data-refs="req-a-change-s-evidence-is-kept-in-the-change-and-is-not-one-of-its-documents req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence req-evidence-crosses-unchanged">
+            <h3>Evidence read as documents, measured against HEAD and against the change <span class="hs-id">evidence-evidence-read-as-documents-2026-09-29</span></h3>
+            <p>Tasks 1.1, 1.2, and 5.1, on 2026-09-29, with <code>htmlspec 0.17.0 (dfb2b0448023)</code> before the change and the built change after (<a href="evidence/evidence-read-as-documents-2026-09-29.md"><code>evidence/evidence-read-as-documents-2026-09-29.md</code></a>). The subject was this repository's seven HTML records, each declaring <code>0.1.0</code>: three in <code>2026-09-11-migrate-an-openspec-project</code>'s evidence and four documents converted by hand in August. Copied into one change's <code>evidence/</code> in a scratch project, on 0.17.0 they drew 14 <code>asset/unresolved</code> errors from <code>validate</code>, two for each record, and every error was an evidence file's. <code>format --check</code> exited 1, and <code>format</code> rewrote all seven. Over a staged tree holding the three records in one archived change, promotion's coverage check passed and its conformance check refused on 13 diagnostics, all naming the three records. Against the built change, <code>validate</code> exited 0 with 3 documents, 0 errors, and 5 warnings, <code>format --check</code> exited 0, <code>format</code> left all seven byte-identical, and <code>validate</code> naming the evidence directory or one record still exited 1. Promotion passed its checks, and the three records arrived byte-identical.</p>
+          </section>
+          <section class="evidence" id="evidence-mutation-testing-2026-09-29" data-change="added" data-refs="req-a-change-s-evidence-is-kept-in-the-change-and-is-not-one-of-its-documents req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence req-evidence-crosses-unchanged">
+            <h3>Mutation testing the exclusion <span class="hs-id">evidence-mutation-testing-2026-09-29</span></h3>
+            <p>Task 5.2, on 2026-09-29 (<a href="evidence/mutation-testing-2026-09-29.md"><code>evidence/mutation-testing-2026-09-29.md</code></a>). A script applied each mutation with a Perl substitution, refused to run the suite when a substitution changed nothing, ran <code>cargo test -p htmlspec-cli --no-fail-fast</code>, and restored the sources, compared by MD5. Six mutations were caught, each by at least two tests: a name-only test, an excluded root, nothing skipped, resolution from the working directory, a lexical comparison, and the archive counted as a change. Mutation 4 is caught by promotion and not by <code>validate</code> or <code>format</code>, and mutation 5 only by unit tests. After the review two more were caught, <code>format</code> writing a named record and a record judged lexically: eight of eight.</p>
+          </section>
+          <section class="evidence" id="evidence-what-the-implementation-revealed-2026-09-29" data-change="added" data-refs="req-a-change-s-evidence-is-kept-in-the-change-and-is-not-one-of-its-documents req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence">
+            <h3>What the implementation revealed <span class="hs-id">evidence-what-the-implementation-revealed-2026-09-29</span></h3>
+            <p>Task 5.4, on 2026-09-29 (<a href="evidence/what-the-implementation-revealed-2026-09-29.md"><code>evidence/what-the-implementation-revealed-2026-09-29.md</code></a>). Eight findings. Run over a whole project on HEAD, <code>format</code> rewrote all seven HTML records, where the 2026-09-09 record found one. <code>asset/unresolved</code> asks whether the project stores bytes at the named address, so a record naming current bytes validates by accident, and the tests use the superseded addresses <code>e4f5de7…</code> and <code>0350261…</code>. Outside a project a missing stylesheet is no violation, so the test record also carries a dangling unit reference. Only promotion shows where discovery resolves its project from. The <code>canonical</code> helper moved to <code>project.rs</code>, shared by both positional questions. Until this change the contract did not say where a change keeps its evidence. Regenerating the installed instructions created a stray <code>htmlspec/</code> and <code>spec.nix</code> again. A review found the two new requirements contradicting each other for <code>format</code>, which rewrote all seven records when their evidence directory was named, and the fix separates checking from writing.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-record-in-this-format-at-a-superseded-version" data-change="added" data-outcome="passed" data-refs="scenario-a-record-in-this-format-at-a-superseded-version">
+            <h3>A project validated with seven superseded records in a change's evidence <span class="hs-id">verify-a-record-in-this-format-at-a-superseded-version</span></h3>
+            <p data-field="method">Against the built change, <code>validate</code> was run over a scratch project from <code>htmlspec init --tools none</code> holding one change, whose <code>evidence/</code> held this repository's seven HTML records, each declaring <code>0.1.0</code> and naming stylesheet addresses the project never held.</p>
+            <p>It exited 0 with <code>3 document(s): 0 error(s), 5 warning(s)</code>, and the three documents were the change's own proposal, design, and tasks (<a href="evidence/evidence-read-as-documents-2026-09-29.md"><code>evidence/evidence-read-as-documents-2026-09-29.md</code></a>, "After: task 5.1").</p>
+          </section>
+          <section class="verification" id="verify-evidence-nested-below-the-evidence-directory" data-change="added" data-outcome="passed" data-refs="scenario-evidence-nested-below-the-evidence-directory">
+            <h3>The same run, with four records nested below the evidence directory <span class="hs-id">verify-evidence-nested-below-the-evidence-directory</span></h3>
+            <p data-field="method">The same run. Four of the seven records sat in <code>evidence/converted/</code>, one level below the change's evidence directory, placed there to exercise nesting.</p>
+            <p>None of the four was among the 3 documents validated, and <code>format</code> left all four byte-identical (<a href="evidence/evidence-read-as-documents-2026-09-29.md"><code>evidence/evidence-read-as-documents-2026-09-29.md</code></a>, "Before: task 1.1" and "After: task 5.1").</p>
+          </section>
+          <section class="verification" id="verify-a-capability-that-happens-to-be-named-evidence" data-change="added" data-outcome="passed" data-refs="scenario-a-capability-that-happens-to-be-named-evidence">
+            <h3>A specification at specs/evidence, under mutation <span class="hs-id">verify-a-capability-that-happens-to-be-named-evidence</span></h3>
+            <p data-field="method">Read at <code>6a591bd</code> when this document was migrated: <code>a_capability_named_evidence_is_still_validated</code> in <code>crates/htmlspec-cli/tests/cli.rs</code> writes a non-conforming document at <code>htmlspec/specs/evidence/spec.html</code> in a project, runs <code>validate</code> with no path, and asserts that it exits with a document violation and that its report names <code>specs/evidence/spec.html</code>.</p>
+            <p>The mutation record names the test among those that caught mutation 1, which takes any directory called <code>evidence</code> for a change's evidence (<a href="evidence/mutation-testing-2026-09-29.md"><code>evidence/mutation-testing-2026-09-29.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-an-archived-change-keeps-its-evidence" data-change="added" data-outcome="passed" data-refs="scenario-an-archived-change-keeps-its-evidence">
+            <h3>Promotion's checks over an archived change holding three records <span class="hs-id">verify-an-archived-change-keeps-its-evidence</span></h3>
+            <p data-field="method">Against the built change, promotion's checks were run over a staged tree built with <code>init</code>, holding one archived change whose evidence held the three HTML records from <code>2026-09-11-migrate-an-openspec-project</code>. On 0.17.0 the same tree drew 13 conformance diagnostics, every one naming those files.</p>
+            <p>Every check passed, and the tree was promoted (<a href="evidence/evidence-read-as-documents-2026-09-29.md"><code>evidence/evidence-read-as-documents-2026-09-29.md</code></a>, "Before: task 1.2" and "After: task 5.1").</p>
+          </section>
+          <section class="verification" id="verify-validating-a-project-that-holds-html-evidence" data-change="added" data-outcome="passed" data-refs="scenario-validating-a-project-that-holds-html-evidence">
+            <h3>The project validated with no path <span class="hs-id">verify-validating-a-project-that-holds-html-evidence</span></h3>
+            <p data-field="method">Against the built change, <code>validate</code>, which the record's table gives with no path, was run over the scratch project, whose change's three documents raise no error and whose evidence held seven records that do not conform.</p>
+            <p>It exited 0 with <code>3 document(s): 0 error(s), 5 warning(s)</code>, the change's own three documents and nothing else, where on 0.17.0 it had exited 1 with 14 errors, every one an evidence file's (<a href="evidence/evidence-read-as-documents-2026-09-29.md"><code>evidence/evidence-read-as-documents-2026-09-29.md</code></a>, "After: task 5.1").</p>
+          </section>
+          <section class="verification" id="verify-formatting-leaves-evidence-untouched" data-change="added" data-outcome="passed" data-refs="scenario-formatting-leaves-evidence-untouched">
+            <h3>The project formatted and checked <span class="hs-id">verify-formatting-leaves-evidence-untouched</span></h3>
+            <p data-field="method">Against the built change, <code>format --check</code> and <code>format</code> were run over the same project, its seven records restored first from a pristine copy. On 0.17.0, <code>format --check</code> had reported every record as not canonically formatted.</p>
+            <p><code>format --check</code> exited 0, <code>format</code> exited 0, and all seven records were byte-identical (<a href="evidence/evidence-read-as-documents-2026-09-29.md"><code>evidence/evidence-read-as-documents-2026-09-29.md</code></a>, "After: task 5.1"). The record lists the check before the write. The write changed no record's bytes, so the check saw the bytes a check run after it would see. <code>formatting_a_project_leaves_a_changes_evidence_byte_identical</code> in <code>crates/htmlspec-cli/tests/cli.rs</code>, read at <code>6a591bd</code> when this document was migrated, runs the two in the scenario's order, and the mutation record names it among the tests that caught mutation 3 (<a href="evidence/mutation-testing-2026-09-29.md"><code>evidence/mutation-testing-2026-09-29.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-naming-an-evidence-file-checks-it" data-change="added" data-outcome="passed" data-refs="scenario-naming-an-evidence-file-checks-it">
+            <h3>One record named to validate <span class="hs-id">verify-naming-an-evidence-file-checks-it</span></h3>
+            <p data-field="method">Against the built change, <code>validate</code> was run naming one of the records in the change's evidence.</p>
+            <p>It exited 1, and the record states that a contributor who asks about a record still gets the ordinary answer, including its <code>asset/unresolved</code> errors (<a href="evidence/evidence-read-as-documents-2026-09-29.md"><code>evidence/evidence-read-as-documents-2026-09-29.md</code></a>, "After: task 5.1").</p>
+          </section>
+          <section class="verification" id="verify-naming-the-evidence-directory-checks-what-it-holds" data-change="added" data-outcome="passed" data-refs="scenario-naming-the-evidence-directory-checks-what-it-holds">
+            <h3>The evidence directory named to validate <span class="hs-id">verify-naming-the-evidence-directory-checks-what-it-holds</span></h3>
+            <p data-field="method">Against the built change, <code>validate</code> was run naming the change's <code>evidence/</code> directory.</p>
+            <p>It exited 1, and the record states that the records are checked when named (<a href="evidence/evidence-read-as-documents-2026-09-29.md"><code>evidence/evidence-read-as-documents-2026-09-29.md</code></a>, "After: task 5.1").</p>
+          </section>
+          <section class="verification" id="verify-formatting-a-named-record-is-refused" data-change="added" data-outcome="passed" data-refs="scenario-formatting-a-named-record-is-refused">
+            <h3>A named record refused to format, under mutation <span class="hs-id">verify-formatting-a-named-record-is-refused</span></h3>
+            <p data-field="method">Read at <code>6a591bd</code> when this document was migrated: <code>formatting_a_named_record_is_refused_and_writes_nothing</code> in <code>crates/htmlspec-cli/tests/cli.rs</code> puts a record that <code>format</code> would rewrite at <code>evidence/transcripts/a-record.html</code> in a change, and runs <code>format</code> naming the record, the evidence directory, and <code>evidence/transcripts</code> in turn. For each it asserts the exit for an operation that could not run, an error naming the record with "refusing to write" and "nothing was written", and the record's bytes unchanged, and then that <code>format --check</code> naming the same path exits with a document violation.</p>
+            <p>The mutation record names the test as the one that caught mutation 7, in which the refusal never fires (<a href="evidence/mutation-testing-2026-09-29.md"><code>evidence/mutation-testing-2026-09-29.md</code></a>, "After the review: two more").</p>
+          </section>
+          <section class="verification" id="verify-outside-a-project-every-file-is-a-document" data-change="added" data-outcome="passed" data-refs="scenario-outside-a-project-every-file-is-a-document">
+            <h3>An evidence directory outside a project, under mutation <span class="hs-id">verify-outside-a-project-every-file-is-a-document</span></h3>
+            <p data-field="method">Read at <code>6a591bd</code> when this document was migrated: <code>outside_a_project_an_evidence_directory_is_walked</code> in <code>crates/htmlspec-cli/tests/cli.rs</code> writes a record at <code>evidence/a-record.html</code> in a directory that is not within a project, runs <code>validate</code> naming that directory, and asserts that it exits with a document violation. The record carries a dangling unit reference, so it fails wherever it sits, and a skipped file cannot pass for a clean one.</p>
+            <p>The mutation record names the test among those that caught mutation 1 (<a href="evidence/mutation-testing-2026-09-29.md"><code>evidence/mutation-testing-2026-09-29.md</code></a>), and section 3 of <a href="evidence/what-the-implementation-revealed-2026-09-29.md"><code>evidence/what-the-implementation-revealed-2026-09-29.md</code></a> records that the record was given the dangling reference after the test first failed on HEAD for want of one.</p>
+          </section>
+          <section class="verification" id="verify-carried-evidence-in-the-destination-format-does-not-gate-promotion" data-change="added" data-outcome="partial" data-refs="scenario-carried-evidence-in-the-destination-format-does-not-gate-promotion">
+            <h3>A staged tree with superseded records, promoted <span class="hs-id">verify-carried-evidence-in-the-destination-format-does-not-gate-promotion</span></h3>
+            <p data-field="method">Against the built change, <code>htmlspec migrate promote</code> was run, from a script whose setup mirrors <code>crates/htmlspec-cli/tests/promote.rs</code>, over a staged tree built with <code>init</code> holding one archived change whose evidence held the three HTML records from <code>2026-09-11-migrate-an-openspec-project</code>, each declaring <code>0.1.0</code> and naming stylesheet addresses the staged store does not hold. The staged project held no other document, so the run had no conforming document beside the records.</p>
+            <p>Every check passed, promotion exited 0 and moved the tree, and all three records were the same at the destination (<a href="evidence/evidence-read-as-documents-2026-09-29.md"><code>evidence/evidence-read-as-documents-2026-09-29.md</code></a>, "After: task 5.1").</p>
+            <p data-field="unchecked">a staged project whose documents all conform</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

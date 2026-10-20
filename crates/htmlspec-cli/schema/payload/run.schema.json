@@ -1,0 +1,232 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://html-spec.dev/schema/payload/1/run.schema.json",
+  "title": "htmlspec run --json",
+  "description": "The payload `htmlspec run --json` (`post run`) writes, in one of three shapes: the run it started with --as, what every run recorded with --check, and the preflight report --as writes in place of a run when the machine falls short. A later 1.x release can add a property to any object in this payload, and only a major release removes, renames, or retypes one, so a consumer ignores a property it does not know.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "runbook",
+        "record",
+        "path",
+        "steps",
+        "recording",
+        "version",
+        "preflight"
+      ],
+      "properties": {
+        "runbook": {
+          "type": "string"
+        },
+        "record": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "recording": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "version": {
+          "type": "string"
+        },
+        "preflight": {
+          "type": "object",
+          "required": [
+            "checked",
+            "passed"
+          ],
+          "properties": {
+            "checked": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "passed": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "runbook",
+        "required",
+        "unreadable",
+        "runs",
+        "diagnostics"
+      ],
+      "properties": {
+        "runbook": {
+          "type": "string"
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unreadable": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "record",
+              "recorded"
+            ],
+            "properties": {
+              "record": {
+                "type": "string"
+              },
+              "recorded": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/diagnostic"
+          }
+        }
+      }
+    },
+    {
+      "$ref": "#/definitions/preflightReport"
+    }
+  ],
+  "definitions": {
+    "diagnostic": {
+      "description": "One diagnostic, as htmlspec_validate::StructuredDiagnostic writes it. The four optional fields are present only where the rule supplies them.",
+      "type": "object",
+      "required": [
+        "rule",
+        "namespace",
+        "severity",
+        "message"
+      ],
+      "properties": {
+        "rule": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "unitId": {
+          "type": "string"
+        },
+        "schemaPath": {
+          "type": "string"
+        },
+        "projectionRule": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "preflightReport": {
+      "description": "The preflight report `run --as` writes in place of a run, when this machine does not satisfy every prerequisite the runbook declares and no record was created. It is the payload `htmlspec preflight --json` writes, with the same fields.",
+      "type": "object",
+      "required": [
+        "runbook",
+        "version",
+        "source",
+        "workdir",
+        "ready",
+        "declared",
+        "checks"
+      ],
+      "properties": {
+        "runbook": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "workdir": {
+          "type": "string"
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "declared": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "requirement",
+              "expected",
+              "observed",
+              "outcome",
+              "remedy"
+            ],
+            "properties": {
+              "requirement": {
+                "type": "string"
+              },
+              "expected": {
+                "type": "string"
+              },
+              "observed": {
+                "type": "string"
+              },
+              "outcome": {
+                "type": "string",
+                "enum": [
+                  "passed",
+                  "unmet",
+                  "unavailable",
+                  "timed-out",
+                  "probe-failed"
+                ]
+              },
+              "remedy": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

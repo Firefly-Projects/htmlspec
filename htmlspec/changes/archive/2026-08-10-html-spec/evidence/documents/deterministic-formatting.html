@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.1.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Deterministic formatting</title>
+    <link href="../../../../../assets/sha256-3e4014c3004abea5/htmlspec.css" rel="stylesheet">
+    <link href="../../../../../assets/sha256-da53340d33da116e/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Deterministic formatting</h1>
+        <p>Defines the canonical serialization of a specification document, so that rich HTML still produces small, meaningful Git diffs and two agents editing the same document independently do not fight over formatting.</p>
+        <p>This is the <code>deterministic-formatting</code> capability specification, converted from Markdown into a conforming HTMLSpec document by the toolchain it specifies. Task 9.1.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.1.0</dd>
+          <dt>Capability</dt>
+          <dd>deterministic-formatting</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-requirements">Requirements</a></li>
+          <li><a href="#hs-decisions">Decisions</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-risks">Risks</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-requirements">
+          <h2>Requirements</h2>
+          <section class="requirement" id="req-idempotent" data-change="added">
+            <h3>Formatting is idempotent <span class="hs-id">req-idempotent</span></h3>
+            <p>Formatting a document SHALL be a fixed point: formatting an already-formatted document SHALL produce byte-identical output.</p>
+            <p>Applying formatting repeatedly SHALL never continue to change the file.</p>
+            <article class="scenario" id="scenario-second-pass" data-change="added">
+              <h4>Second pass changes nothing</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A document is formatted twice in succession.</dd>
+                <dt>Then</dt>
+                <dd>The output of the second pass is byte-identical to the output of the first.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-git-change" data-change="added">
+              <h4>A formatted file in version control</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A formatted document committed to Git.</dd>
+                <dt>When</dt>
+                <dd>Formatting is run again with no content edits.</dd>
+                <dt>Then</dt>
+                <dd>Git reports no changes.</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-preserves-meaning" data-change="added">
+            <h3>Formatting preserves meaning <span class="hs-id">req-preserves-meaning</span></h3>
+            <p>Formatting SHALL NOT change a document's semantic content. It SHALL preserve every semantic unit, every identifier, every attribute value, every cross-reference, and the document order of content.</p>
+            <p>Formatting SHALL NOT add, remove, or reorder semantic units.</p>
+            <article class="scenario" id="scenario-identifiers-survive" data-change="added">
+              <h4>Identifiers survive formatting</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A document is formatted.</dd>
+                <dt>Then</dt>
+                <dd>Every semantic unit retains the identifier it had before.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-order-preserved" data-change="added">
+              <h4>Content order is preserved</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A document with requirements in a deliberate order is formatted.</dd>
+                <dt>Then</dt>
+                <dd>The requirements appear in the same order.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-whitespace-untouched" data-change="added">
+              <h4>Whitespace-sensitive content is untouched</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A document contains a preformatted code excerpt.</dd>
+                <dt>Then</dt>
+                <dd>Formatting leaves that content's internal whitespace and line breaks exactly as authored.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-invalid-document" data-change="added">
+              <h4>Formatting an invalid document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>Formatting is applied to a document that fails validation.</dd>
+                <dt>Then</dt>
+                <dd>The formatter either produces canonically formatted output without altering meaning, or refuses and reports why. It never silently repairs or discards content.</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-canonical" data-change="added">
+            <h3>Serialization is canonical <span class="hs-id">req-canonical</span></h3>
+            <p>For any given document content, there SHALL be exactly one canonical serialization.</p>
+            <p>Attribute order, indentation, line breaking, quoting, character escaping, tag closing, and case SHALL be fully determined by the formatting rules rather than by authoring choices or generator behavior.</p>
+            <article class="scenario" id="scenario-agents-converge" data-change="added">
+              <h4>Two agents converge</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>Two agents that produce the same semantic document with different attribute order and indentation.</dd>
+                <dt>When</dt>
+                <dd>Both outputs are formatted.</dd>
+                <dt>Then</dt>
+                <dd>The two files are byte-identical.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-attribute-order" data-change="added">
+              <h4>Attribute order is fixed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A formatted element carries a class, an identifier, and a change state.</dd>
+                <dt>Then</dt>
+                <dd>Those attributes appear in the order the formatting rules prescribe, regardless of the order they were written in.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-escaping" data-change="added">
+              <h4>Escaping is consistent</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>Content contains characters that may be written either literally or as entities.</dd>
+                <dt>Then</dt>
+                <dd>The formatted output uses one prescribed form for each such character.</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-no-churn" data-change="added">
+            <h3>Formatting introduces no diff churn <span class="hs-id">req-no-churn</span></h3>
+            <p>Formatting SHALL NOT widen a diff beyond the units a content edit touched. Editing, adding, or removing a unit SHALL NOT cause the formatter to reflow or reindent unrelated parts of the document.</p>
+            <p data-field="note">This requirement constrains the formatter only. It does not promise a minimal Git diff for a given edit: preserved author line breaks mean a one-line paragraph produces a whole-line change when one sentence changes, and that cost belongs to the line structure rather than to the formatter. Diff minimality is measured as a separate property, recorded in <a href="#evidence-diff-locality">the diff-locality evidence</a>.</p>
+            <article class="scenario" id="scenario-editing-one-unit" data-change="added">
+              <h4>Editing one requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>The prose of one requirement is revised and the document is formatted.</dd>
+                <dt>Then</dt>
+                <dd>The formatter changes no line outside that requirement.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-whole-line-permitted" data-change="added">
+              <h4>A whole-line change is not a violation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>One sentence changes inside a paragraph held on a single long line.</dd>
+                <dt>Then</dt>
+                <dd>The diff covers that whole line, and the formatter is still conformant.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-inserting-a-unit" data-change="added">
+              <h4>Inserting a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A new requirement is inserted between two existing ones.</dd>
+                <dt>Then</dt>
+                <dd>The diff shows the added requirement and does not rewrite the surrounding requirements.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-reflow" data-change="added">
+              <h4>Long prose is not reflowed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A sentence within a paragraph is edited.</dd>
+                <dt>Then</dt>
+                <dd>The diff does not rewrap the entire surrounding paragraph or section.</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-generated-order" data-change="added">
+            <h3>Generated content is ordered deterministically <span class="hs-id">req-generated-order</span></h3>
+            <p>Where a document contains content whose order is not authored — such as collected references, indexes, or navigation — that order SHALL be determined by a stable rule.</p>
+            <p>Regenerating such content from unchanged inputs SHALL produce identical output.</p>
+            <article class="scenario" id="scenario-regenerating-navigation" data-change="added">
+              <h4>Regenerating navigation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A document's navigation is regenerated with no content change.</dd>
+                <dt>Then</dt>
+                <dd>The navigation is byte-identical to before.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-incidental-order" data-change="added">
+              <h4>No incidental ordering</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>Generated content is produced twice from the same inputs in different runs.</dd>
+                <dt>Then</dt>
+                <dd>The ordering does not vary with iteration order, timestamps, or filesystem order.</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-check-mode" data-change="added">
+            <h3>Formatting can be checked without writing <span class="hs-id">req-check-mode</span></h3>
+            <p>It SHALL be possible to determine whether a document is canonically formatted without modifying it, so that continuous integration can reject unformatted documents.</p>
+            <article class="scenario" id="scenario-check-passes" data-change="added">
+              <h4>The check passes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A canonically formatted document is checked.</dd>
+                <dt>Then</dt>
+                <dd>The check reports success and the file is not modified.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-check-fails" data-change="added">
+              <h4>The check fails</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>An unformatted document is checked.</dd>
+                <dt>Then</dt>
+                <dd>The check reports failure, identifies the document, and the file is not modified.</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-file-normalization" data-change="added">
+            <h3>Files use a stable text encoding and line ending <span class="hs-id">req-file-normalization</span></h3>
+            <p>Formatted documents SHALL use UTF-8 encoding, SHALL use a single prescribed line ending, SHALL end with exactly one final newline, and SHALL NOT contain trailing whitespace on any line.</p>
+            <article class="scenario" id="scenario-line-endings" data-change="added">
+              <h4>Line endings are normalized</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A document authored with mixed line endings is formatted.</dd>
+                <dt>Then</dt>
+                <dd>The output uses the prescribed line ending throughout.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-cross-platform" data-change="added">
+              <h4>Cross-platform round trip</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>Contributors on different operating systems.</dd>
+                <dt>When</dt>
+                <dd>Each formats the same document.</dd>
+                <dt>Then</dt>
+                <dd>The results are byte-identical.</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-never-rewrap" data-change="added" data-status="accepted" data-refs="req-idempotent req-no-churn">
+            <h3>The formatter never rewraps text <span class="hs-id">decision-never-rewrap</span></h3>
+            <p>The canonical serializer normalizes the indentation and line breaking of block structure, fixes attribute order and quoting, and prescribes one escaping form per character. It does not reflow prose: author line breaks inside text-bearing content are preserved exactly.</p>
+            <p data-field="rationale">General HTML formatters that rewrap text are notoriously difficult to make idempotent, because inline whitespace is semantic and every wrap decision interacts with the next. Refusing to rewrap makes the fixed-point property nearly structural rather than something to be asserted and hoped for.</p>
+            <p data-field="rationale">The cost is that prose line breaks become the author's problem, and agents may produce very long lines. That is acceptable: no requirement constrains line length, and a long line still diffs as one line.</p>
+          </section>
+          <section class="decision" id="decision-refuse-ambiguous" data-change="added" data-status="accepted" data-refs="req-preserves-meaning">
+            <h3>Only ambiguity is refused <span class="hs-id">decision-refuse-ambiguous</span></h3>
+            <p>The formatter refuses a document whose markup requires parser error recovery, and formats every other document — including one that fails validation.</p>
+            <p data-field="rationale">A document with a dangling reference or a duplicate identifier has one unambiguous tree, so canonicalizing it alters no meaning. Refusing there would mean a document could not be tidied until it was already correct, which is backwards. Ambiguity is different: the formatter would have to pick one reading, and picking one is a silent repair.</p>
+          </section>
+          <section class="decision" id="decision-not-prettier" data-change="added" data-status="accepted" data-refs="req-canonical">
+            <h3>The serializer is written here rather than delegated <span class="hs-id">decision-not-prettier</span></h3>
+            <p>The canonical serializer is implemented in Rust in this project.</p>
+            <p data-field="rationale"><code>prettier</code> was the obvious alternative and is not available: it is JavaScript, and taking a Node dependency for the core operation of a Rust toolchain would compromise the reproducible single-artifact packaging.</p>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-fixed-point" data-change="added" data-refs="req-idempotent req-preserves-meaning">
+            <h3>Idempotence and preservation hold over generated documents <span class="hs-id">evidence-fixed-point</span></h3>
+            <p>A <code>proptest</code> generator draws its vocabulary from the published schema and produces documents with sprawling indentation, shuffled attribute order, mixed line endings, and text carrying author line breaks. Over 512 cases per property it asserts that formatting is a fixed point across three passes, and that the projected model is unchanged.</p>
+            <p>Every conformance fixture is additionally formatted twice and compared byte-for-byte, and the projection mapping fixtures cover the whitespace-sensitive cases directly.</p>
+          </section>
+          <section class="evidence" id="evidence-diff-locality" data-change="added" data-refs="req-no-churn">
+            <h3>Diff locality belongs to line structure, not to the formatter <span class="hs-id">evidence-diff-locality</span></h3>
+            <p>The same seven-byte edit to the same four sentences costs 225 changed bytes when the paragraph is held on one line and 85 when it is broken at sentence boundaries — a 2.6× difference in what a reviewer must re-read, with an identical changed-line count of one.</p>
+            <p>Editing the same one-line paragraph at its start and at its end costs 225 and 227 bytes, within one percent of each other. A rewrapping formatter would show a cascade for the early edit and almost nothing for the late one, so the symmetry confirms nothing is being rewrapped.</p>
+            <figure id="figure-diff-locality">
+              <figcaption>Changed diff bytes for one seven-byte edit to four sentences, under two line structures. The formatter is identical in both cases; only the author's line breaks differ.</figcaption>
+              <details>
+                <summary>Chart source</summary>
+                <pre class="vega-lite">{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "data": {"values": [
+    {"layout": "one long line", "bytes": 225},
+    {"layout": "one line per sentence", "bytes": 85}
+  ]},
+  "mark": "bar",
+  "encoding": {
+    "x": {"field": "layout", "type": "nominal", "title": null},
+    "y": {"field": "bytes", "type": "quantitative", "title": "changed diff bytes"}
+  }
+}</pre>
+              </details>
+            </figure>
+          </section>
+          <section class="evidence" id="evidence-no-churn" data-change="added" data-refs="req-no-churn">
+            <h3>An edit leaves every other line untouched <span class="hs-id">evidence-no-churn</span></h3>
+            <p>Editing a unit, inserting one between two others, and removing one each leave every line outside the affected unit byte-identical. A unit made taller does not reindent the unit after it, which is the churn a formatter that re-derived depth from content would produce.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <section class="risk" id="risk-long-lines" data-change="added" data-refs="req-no-churn">
+            <h3>Agents may produce unreadably long lines <span class="hs-id">risk-long-lines</span></h3>
+            <p>Because the formatter has no opinion about line breaks, an agent may emit a whole section as one line, and every subsequent edit to it will diff as that whole line.</p>
+            <p data-field="mitigation">Measured rather than assumed: the cost is 2.6× more bytes to re-read, not a correctness failure, and it is fully within an author's control. The guidance is to break prose at sentence boundaries. Enforcing a line length is deliberately out of scope, because a line-length rule is a configuration surface and the number to beat is now recorded.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-idempotence" data-change="added" data-outcome="passed" data-refs="req-idempotent req-canonical">
+            <h3>Idempotence and canonicality <span class="hs-id">verify-idempotence</span></h3>
+            <p data-field="method">Run the property suite in <code>crates/htmlspec-format/tests/properties.rs</code>, which asserts a three-pass fixed point and the convergence of two authoring styles over 512 generated documents each, plus the conformance suite's double-format comparison over every fixture.</p>
+          </section>
+          <section class="verification" id="verify-no-churn" data-change="added" data-outcome="passed" data-refs="req-no-churn">
+            <h3>Absence of formatter churn <span class="hs-id">verify-no-churn</span></h3>
+            <p data-field="method">Run <code>crates/htmlspec-format/tests/no_churn.rs</code>, which splits a formatted document around the edited unit and asserts the lines outside it are unchanged for an edit, an insertion, and a removal.</p>
+          </section>
+          <section class="verification" id="verify-check-mode" data-change="added" data-outcome="passed" data-refs="req-check-mode req-file-normalization">
+            <h3>Check mode and file normalization <span class="hs-id">verify-check-mode</span></h3>
+            <p data-field="method">Run the CLI integration tests, which invoke the built binary and assert that check mode names the document, exits nonzero, and leaves the file byte-identical, and that mixed line endings converge on one form.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

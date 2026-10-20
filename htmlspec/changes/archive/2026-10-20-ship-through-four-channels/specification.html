@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Ship through four channels</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Ship through four channels</h1>
+        <p>What this change established. A release of html-spec reaches four channels, the Nix flake, GitHub release binaries, crates.io, and Homebrew, from one version tag in the public repository, and every channel names that tag's version. A publication stopped partway finishes when run again, and nothing publishes from this private repository. Release 0.33.0.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Ship through four channels</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-a-release-reaches-every-channel-from-one-tag" data-change="added">
+            <h3>A release reaches every channel from one tag <span class="hs-id">req-a-release-reaches-every-channel-from-one-tag</span></h3>
+            <p>Every release SHALL be cut from one tag, <code>vX.Y.Z</code>, whose version equals the version the workspace declares, and the binaries, the crates, and the Homebrew formula the release produces SHALL each name that version. The release SHALL refuse a tag that names another version before it builds anything.</p>
+            <p>Publication SHALL begin only from a version tag in the public repository, <code>Firefly-Projects/htmlspec</code>, only for a commit that repository's <code>main</code> holds, and only after the check suite has passed on that commit. A tag in any other repository SHALL publish nothing.</p>
+            <p>A publication interrupted partway SHALL finish when run again, and SHALL NOT publish any version twice: the crates publish one at a time, a version the registry already holds is skipped, and a rate limit is waited out within a stated budget, after which the run stops and names the crates that remain. Every request the release makes to crates.io SHALL carry a fixed User-Agent that names the project, and no personal information.</p>
+            <article class="scenario" id="scenario-a-tag-naming-another-version" data-change="added">
+              <h4>A tag naming another version</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a workspace that declares 0.33.0</dd>
+                <dt>When</dt>
+                <dd>the release runs on the tag <code>v9.9.9</code></dd>
+                <dt>Then</dt>
+                <dd>it refuses before any build, naming both versions</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tag-in-another-repository" data-change="added">
+              <h4>A tag in another repository</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a version tag is pushed to a repository other than the public one</dd>
+                <dt>Then</dt>
+                <dd>the workflow verifies and builds, and its release, crates, and tap jobs publish nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tag-on-a-commit-main-does-not-hold" data-change="added">
+              <h4>A tag on a commit main does not hold</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a version tag in the public repository names a commit that its <code>main</code> does not hold</dd>
+                <dt>Then</dt>
+                <dd>the release refuses it, and nothing publishes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-artifact-names-the-version" data-change="added">
+              <h4>Every artifact names the version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release builds from a tag</dd>
+                <dt>Then</dt>
+                <dd>each binary reports that version, each crate is packaged at it, and the formula installs it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-formula-matches-the-release" data-change="added">
+              <h4>The formula matches the release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the formula is rendered for a release</dd>
+                <dt>Then</dt>
+                <dd>each target's digest is the one the release's <code>SHA256SUMS</code> records, and the rendered formula passes Homebrew's strict audit, installs, and passes its test in a local tap</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-publication-stopped-by-the-rate-limit" data-change="added">
+              <h4>A publication stopped by the rate limit</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a crates publication that published some crates and stopped on the registry's rate limit</dd>
+                <dt>When</dt>
+                <dd>it runs again</dd>
+                <dt>Then</dt>
+                <dd>it skips the crates already published, publishes the rest, and publishes nothing twice</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-request-names-the-project" data-change="added">
+              <h4>Every request names the project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release sends a request to crates.io</dd>
+                <dt>Then</dt>
+                <dd>its User-Agent names the project and its public repository, and no header carries personal information</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-the-four-builds-on-the-pull-request" data-change="added" data-refs="req-a-release-reaches-every-channel-from-one-tag">
+            <h3>The four builds on the pull request <span class="hs-id">evidence-the-four-builds-on-the-pull-request</span></h3>
+            <p>Run 39347646809 on pull request 67 built all four targets on their own runners, and each binary printed <code>htmlspec 0.33.0</code> with the run's revision: <code>aarch64-apple-darwin</code> on macos-15, <code>x86_64-apple-darwin</code> on macos-15-intel, <code>x86_64-unknown-linux-musl</code> on ubuntu-24.04, reported as static-pie linked, and <code>aarch64-unknown-linux-musl</code> on ubuntu-24.04-arm, reported as statically linked. No dependency refused musl.</p>
+          </section>
+          <section class="evidence" id="evidence-every-job-green-after-the-review" data-change="added" data-refs="req-a-release-reaches-every-channel-from-one-tag">
+            <h3>Every job green after the review <span class="hs-id">evidence-every-job-green-after-the-review</span></h3>
+            <p>After the code review's ten findings were settled, runs 39353659674 and 39355492345 on pull request 67 passed every job that runs on a pull request: verify, the four builds, sums, and formula, whose strict audit, install, and test passed in a local tap. The formula job had failed its first run, at ea54d92, because the template restated a version Homebrew reads from the tarball addresses. The release, crates, tap, and suite jobs were skipped, as they run only on a version tag, and the publishing three only in the public repository.</p>
+          </section>
+          <section class="evidence" id="evidence-the-packaged-crates" data-change="added" data-refs="req-a-release-reaches-every-channel-from-one-tag">
+            <h3>The six crates, packaged without uploading <span class="hs-id">evidence-the-packaged-crates</span></h3>
+            <p><code>cargo publish --workspace --dry-run</code> packaged and built all six crates in dependency order, uploading nothing. The compressed packages: htmlspec-schema 33.8 KiB, htmlspec-parse 49.7 KiB, htmlspec-assets 1.5 MiB, htmlspec-format 62.9 KiB, htmlspec-validate 127.9 KiB, and htmlspec-cli 480.3 KiB, all far under crates.io's 10 MB limit.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-mismatched-tag-is-refused" data-change="added" data-outcome="passed" data-refs="scenario-a-tag-naming-another-version">
+            <h3>A mismatched tag is refused <span class="hs-id">verify-a-mismatched-tag-is-refused</span></h3>
+            <p data-field="method"><code>scripts/check-release --tag v9.9.9</code>, with the workspace at 0.33.0, exits 1 with "tag v9.9.9 names 9.9.9, and Cargo.toml declares 0.33.0", and <code>--tag v0.33.0</code> exits 0. The release workflow's verify job runs this check before the build jobs, which need it.</p>
+          </section>
+          <section class="verification" id="verify-every-artifact-names-the-version" data-change="added" data-outcome="passed" data-refs="req-a-release-reaches-every-channel-from-one-tag scenario-every-artifact-names-the-version">
+            <h3>Every artifact names the version <span class="hs-id">verify-every-artifact-names-the-version</span></h3>
+            <p data-field="method">Each of the four builds in run 39347646809 ran its binary and printed <code>htmlspec 0.33.0</code>. <code>cargo publish --workspace --dry-run</code> packaged the six crates at 0.33.0, with every internal pin at <code>=0.33.0</code>, which <code>scripts/check-release</code> requires. The formula job installed the rendered formula and ran its test, which matches <code>htmlspec 0.33.0</code> in the binary's output.</p>
+          </section>
+          <section class="verification" id="verify-the-formula-matches-the-release" data-change="added" data-outcome="passed" data-refs="scenario-the-formula-matches-the-release">
+            <h3>The formula matches the release <span class="hs-id">verify-the-formula-matches-the-release</span></h3>
+            <p data-field="method">In runs 39353659674 and 39355492345, the formula job rendered the formula from the run's own <code>SHA256SUMS</code> with <code>scripts/render-formula</code>, placed it in a tap made with <code>brew tap-new --no-git</code>, and passed <code>brew audit --strict</code>, <code>brew install</code>, and <code>brew test</code>. Run locally, the renderer refuses a <code>SHA256SUMS</code> lacking a target, naming two versions, or naming a file that is not a release tarball, and a template whose license or targets drift from the crate.</p>
+          </section>
+          <section class="verification" id="verify-a-stopped-publication-finishes" data-change="added" data-outcome="passed" data-refs="req-a-release-reaches-every-channel-from-one-tag scenario-a-publication-stopped-by-the-rate-limit">
+            <h3>A stopped publication finishes <span class="hs-id">verify-a-stopped-publication-finishes</span></h3>
+            <p data-field="method"><code>scripts/check-publish-crates</code>, a stage of <code>scripts/check</code>, runs the publisher against a stub index and a stub cargo. <code>test_a_rerun_that_finds_three_published_publishes_the_other_three</code>, <code>test_a_429_answered_once_is_waited_out_and_the_set_finishes</code>, <code>test_a_wait_past_the_budget_stops_and_names_what_remains_and_a_rerun_finishes</code>, <code>test_a_publish_that_failed_after_its_upload_landed_counts_as_published</code>, and <code>test_words_in_the_build_log_are_not_read_as_answers</code> pass, among 16 cases, and the five added after the code review each failed against the publisher before its fix.</p>
+          </section>
+          <section class="verification" id="verify-every-request-names-the-project" data-change="added" data-outcome="passed" data-refs="scenario-every-request-names-the-project">
+            <h3>Every request names the project <span class="hs-id">verify-every-request-names-the-project</span></h3>
+            <p data-field="method"><code>test_every_request_carries_the_fixed_user_agent_and_nothing_else</code> records every header the publisher sends to the stub index and finds only the fixed User-Agent and urllib's own headers. The publisher sets <code>CARGO_HTTP_USER_AGENT</code> for cargo's requests, and the dry-run package, pointed first at a local stub that recorded every header, sent nothing naming a person or a machine.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Show what a modification changed</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Show what a modification changed</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Show what a modification changed</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-08-show-what-a-modification-changed/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><strong>A reviewer of an html-spec change sees <code>modified</code> on a requirement and has to find the edit alone.</strong> <a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a> measures what that costs. The staged migration holds 34 modified requirements in 19 changes. The median is 7 statement paragraphs and 7 scenarios, and the largest is 15 paragraphs and 18 scenarios (<a href="evidence/the-measurement-2026-09-30.md">section 4</a>). The plainest case is <code>2026-08-31-sync-a-change-into-the-accepted-contract</code>. It modified a requirement of 10 paragraphs, 491 words, and 18 scenarios, and its whole edit was one word.</p>
+          <p><strong>OpenSpec has a view for this, and html-spec has none.</strong> Rebuilt as it stood while that change was open, <code>openspec show sync-a-change-into-the-accepted-contract --diff</code> prints one hunk: the third paragraph twice, once marked <code>-</code> and once marked <code>+</code>, differing by <code>`sync`,</code> (<a href="evidence/the-measurement-2026-09-30.md">section 1</a>). <code>htmlspec show</code> is an unrecognized subcommand, and exits 2 (<a href="evidence/the-measurement-2026-09-30.md">section 3</a>).</p>
+          <p>This set of changes makes the gap wider and the view possible:</p>
+          <ul>
+            <li><code>state-a-modified-requirement-whole</code> has a change restate a modified requirement whole, so the text a reviewer searches is always the whole requirement.</li>
+            <li><code>mark-the-words-a-modification-changed</code> lets an author mark words with <code>&lt;ins&gt;</code> and <code>&lt;del&gt;</code>. Its design says a mark claims only what it marks, and that a diff against the accepted text is where an unmarked word shows.</li>
+            <li><code>see-a-modification-the-merge-did-not-take</code> compares a modified requirement's text with the accepted text for <code>sync</code> and archival. It reports where the two differ and never what they say, on purpose, and its design leaves a diff view to this change.</li>
+          </ul>
+          <p>toolchain-packaging's "<a href="specification.html#req-a-single-command-exposes-validate-format-and-init">The command surface names its operations as OpenSpec names them</a>" decides the name: "Where an operation corresponds to one OpenSpec provides, it SHALL carry OpenSpec's name for it." So the view is <code>htmlspec show &lt;change&gt; --diff</code>.</p>
+          <p><strong>Why now.</strong> The project's migration out of OpenSpec is staged and waiting. Once it lands, this project writes its changes in html-spec form and reviews every modified requirement there. Without this change the gap would be recorded as an open question in the migrated documents, or worked around. Today it is worked around in prose: five staged changes narrate in their summary what moved inside a modified requirement (<code>mark-the-words-a-modification-changed</code>'s <a href="../2026-10-07-mark-the-words-a-modification-changed/evidence/the-measurement-2026-09-30.md">evidence, section 4</a>).</p>
+          <p>This change follows <code>mark-the-words-a-modification-changed</code>, whose marks it shows. It also depends on <code>see-a-modification-the-merge-did-not-take</code>, whose pairing of a change's requirement with the accepted one, and whose comparison of their text, it reuses rather than restates.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong><code>htmlspec show &lt;change&gt; --diff</code> shows each modified requirement beside the accepted one.</strong> For each requirement whose content <code>sync</code> compares, which is one the change marks <code>added</code> or <code>modified</code> and one marked <code>unchanged</code> that holds a changed scenario, it finds the accepted requirement with the same identifier and shows the two paragraph by paragraph and scenario by scenario, in human form and with <code>--json</code>.</li>
+            <li><strong>It uses the comparison <code>sync</code> and archival already make.</strong> The accepted requirement is the one <code>see-a-modification-the-merge-did-not-take</code>'s comparison pairs it with, and a requirement is shown as differing exactly where <code>sync</code> reports its content as not taken. The view adds what that comparison left out on purpose: which paragraphs differ, and which words.</li>
+            <li><strong>Changed words are marked inside a paragraph.</strong> Paragraphs both sides hold are counted and not reprinted. A paragraph the change edits is shown beside the accepted paragraph it pairs with, and the words only one side holds are marked on that side. A paragraph that shares fewer than half its words with any partner is shown whole on each side.</li>
+            <li><strong>An author's <code>&lt;ins&gt;</code> and <code>&lt;del&gt;</code> are shown as the author marked them, where they account for the whole difference.</strong> Where they do not, the view marks words by its own comparison and says the author's marks leave part of the difference unmarked.</li>
+            <li><strong>Scenarios are paired by identifier</strong>, which <code>state-a-modified-requirement-whole</code> has every carried-forward, altered, or withdrawn scenario keep. Added, withdrawn, and left-out scenarios are each shown as such.</li>
+            <li><strong>Requirements the change removes or carries forward are listed, and not compared.</strong></li>
+            <li><strong>Nothing in the view reads as merge text.</strong> Every text is labelled with the document that holds it: "the change states" or "the accepted specification holds". No text combines the two, and the human form is not a patch.</li>
+            <li><strong>It reads and never writes.</strong></li>
+            <li><strong><code>show &lt;change&gt;</code> without <code>--diff</code> refuses</strong>, names <code>--diff</code>, and exits 2. No other view of a change is defined yet.</li>
+            <li><strong>An archived change is refused</strong>, and the refusal says why. Compared with today's accepted text, an archived change shows nothing, or shows a later change's edit reversed (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 6</a>).</li>
+            <li><strong>The instructions point reviewers at the view</strong>: <code>verify.md</code> where a change already has a specification, and <code>archive.md</code> before the merge, where a difference the change did not make is another change's later edit that the restatement would revert.</li>
+            <li>
+              <p><strong>Unchanged:</strong></p>
+              <ul>
+                <li>the document contract. <code>CONTRACT_VERSION</code> does not move, because no unit, field, attribute, or projection rule is added.</li>
+                <li><code>sync</code>, archival, and their payloads. The view reuses their comparison and changes none of its results.</li>
+                <li>validation, the exit-code contract, and every other command.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <section id="hs-new-capabilities">
+            <h3>New Capabilities</h3>
+            <p>None.</p>
+          </section>
+          <section id="hs-modified-capabilities">
+            <h3>Modified Capabilities</h3>
+            <ul>
+              <li>
+                <p><code>toolchain-packaging</code>:</p>
+                <ul>
+                  <li><strong>Added: "<a href="specification.html#req-the-command-surface-shows-a-modified-requirement-beside-the-accepted-one">The command surface shows a modified requirement beside the accepted one</a>".</strong> It is added rather than folded into "<a href="../../../specs/toolchain-packaging/spec.html#req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract">The command surface reports whether a change reached the accepted contract</a>". That requirement's report says where content differs, "SHALL NOT propose the text of a merge", and, as <code>see-a-modification-the-merge-did-not-take</code> leaves it, carries no text of either side. A view that carries both texts is a different output with a different name. Folded in, it would put a text-carrying view under a requirement whose report is defined by carrying none. The new requirement ties the two together instead: it takes "differs" from that requirement's comparison, from the same source.</li>
+                  <li><strong>Modified: "<a href="specification.html#req-a-single-command-exposes-validate-format-and-init">The command surface names its operations as OpenSpec names them</a>".</strong> <code>show</code> joins the fixed spellings, and <code>--diff</code> joins the selectors. The scenarios "<a href="specification.html#scenario-an-operation-openspec-also-provides">An operation OpenSpec also provides</a>" and "<a href="specification.html#scenario-the-selectors-carry-openspec-s-spellings">The selectors carry OpenSpec's spellings</a>" gain <code>show</code> and <code>--diff</code>. Every other paragraph and scenario is today's accepted text, unchanged. <code>resolve-a-reference-across-its-change</code> modifies this requirement first, in its scenario "<a href="specification.html#scenario-validating-one-document">Validating one document</a>", so task 1.0 refreshes this block from the accepted text once that change archives.</li>
+                  <li><strong>Checked and unchanged:</strong> "<a href="../../../specs/toolchain-packaging/spec.html#req-exit-codes-distinguish-outcomes">Exit codes distinguish outcomes</a>", "<a href="../../../specs/toolchain-packaging/spec.html#req-output-is-available-in-human-and-machine-forms">Output is available in human and machine forms</a>", and "<a href="../../../specs/toolchain-packaging/spec.html#req-specifications-can-live-in-a-repository-other-than-the-one-being-worked-on">Specifications can live in a repository other than the one being worked on</a>". The view follows each as it stands, and the new requirement cites each. "<a href="../../../specs/toolchain-packaging/spec.html#req-archival-assesses-the-merge-and-never-performs-it">Archival assesses the merge and never performs it</a>" is unchanged too: its prohibition on merge text is about archival, and the new requirement states its own.</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li><code>crates/htmlspec-cli/src/main.rs</code>: <code>Command::Show</code>, taking the change as a positional argument as OpenSpec's <code>show</code> does, with a <code>--diff</code> flag and help text. A missing <code>--diff</code> is reported by name, as <code>Command::Run</code> reports a missing <code>--as</code>.</li>
+            <li><code>crates/htmlspec-cli/src/show.rs</code>, new: the view's types, the alignment, the pairing, the human and structured forms, and the command. The core is pure, and files are read only at its edge.</li>
+            <li>
+              <p><code>crates/htmlspec-cli/src/commands.rs</code>:</p>
+              <ul>
+                <li>The index of accepted requirements is taken out of <code>merge_state</code> into one function that <code>sync</code>, archival, and the view all call.</li>
+                <li><code>see-a-modification-the-merge-did-not-take</code>'s content comparison is made callable by the view.</li>
+                <li>The refusals <code>sync</code> makes before comparing are shared with the view.</li>
+                <li><code>Refusal</code> gains a variant, so a runbook is refused with the view's own reason.</li>
+              </ul>
+            </li>
+            <li><code>crates/htmlspec-cli/src/project.rs</code>: <code>ProjectRoot</code> answers whether a directory is an archived change, by position, beside <code>is_change_evidence</code>.</li>
+            <li><code>crates/htmlspec-parse</code>: a reader of the <code>ins</code> and <code>del</code> runs in a unit's statements and scenario entries, beside the projection and sharing its walk. It adds no field to the model.</li>
+            <li>
+              <p>Tests:</p>
+              <ul>
+                <li>unit tests for the alignment and for the view, one per scenario of the new requirement;</li>
+                <li>a parity test with <code>sync</code>'s content comparison;</li>
+                <li>a property test that the marks reader agrees with the projection on every mapping fixture;</li>
+                <li>CLI tests in a new <code>crates/htmlspec-cli/tests/show.rs</code>;</li>
+                <li><code>no_shipped_body_names_an_absent_command</code>, which covers the new instruction text.</li>
+              </ul>
+            </li>
+            <li><code>crates/htmlspec-assets/instructions/verify.md</code> and <code>archive.md</code>, with their installed copies regenerated.</li>
+            <li>
+              <p><strong>Not in this change</strong>, and recorded so it is not assumed to follow:</p>
+              <ul>
+                <li><strong>Comparing an archived change with the requirement as it stood before it.</strong> That needs an order over archived changes' specifications. The program orders only runbook snapshots, by recorded version (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 5</a>). The text the accepted specification held then is recorded only in git. So none of the staged migration's 24 archived changes is served by this view.</li>
+                <li><strong>A default view for <code>show &lt;change&gt;</code></strong>, such as OpenSpec's printing of the proposal.</li>
+                <li><strong><code>show</code> for an accepted specification</strong>, which OpenSpec's <code>show</code> also offers. An accepted specification is a page a browser renders.</li>
+                <li><strong>Comparing the text of removed or carried-forward requirements.</strong> Whether they reached the contract is <code>sync</code>'s report, and <code>sync</code> does not compare their text either.</li>
+                <li><strong>Notes and the <code>renamed-from</code> paragraph.</strong> The comparison does not treat them as content, so the view does not show them.</li>
+                <li><strong>Presentational markup.</strong> The view compares projected text, so a change to emphasis, code spans, or links alone shows nothing.</li>
+                <li><strong>A pointer from <code>sync.md</code> to the view.</strong> The merge reads the change's specification for meaning and works through <code>sync</code>'s own worklist. A view that shows both texts side by side invites the wholesale copy that <code>sync.md</code> forbids.</li>
+                <li><strong>Colour in the human form.</strong> The marks are characters, so they survive a pipe and a log.</li>
+                <li><strong>A validation rule.</strong> Nothing here runs in <code>validate</code>.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

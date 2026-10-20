@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>html-spec</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>html-spec</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>html-spec</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-10-html-spec/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>HTMLSpec currently exists only as a README argument: HTML should be the canonical format for agent-authored specs because the browser is the real review surface. The agent commands, the OpenSpec migration, and the single-file export all rest on decisions nobody has made yet: what markup carries a requirement, what the page looks like, how it serializes byte-for-byte, and what makes it invalid.</p>
+          <p>This change establishes that foundation. It defines the canonical document, its machine-readable schema, its deterministic serialization, and a validator that rejects unsafe or unparseable specs.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong>Canonical HTML schema.</strong> A normative element contract for the semantic units of a spec: requirement, scenario, decision, task, evidence, risk, and verification. Each has a fixed structure, a stable ID convention, and a <code>data-change</code> lifecycle state so agents and Git diffs can address individual units without a second data format.</li>
+            <li><strong>Machine-readable schema source of truth.</strong> The element contract is expressed as JSON Schema, not prose. Rust types are derived from it so the validator, the formatter, and any future generator cannot drift from the spec. A conformance suite of valid and invalid fixtures pins the contract.</li>
+            <li><strong>Document template and pinned offline runtime.</strong> A single page template plus a shared <code>assets/</code> directory holding the restrained visual system (flat editorial, serif body, muted color, print styles) and version-pinned Mermaid and Vega-Lite. <a href="evidence/browser-verification.md">No network fetches, no remote fonts, no tracking.</a> Core content stays readable with JavaScript disabled; MathML is native.</li>
+            <li><strong>Deterministic formatter.</strong> A canonical serializer producing stable attribute order, predictable indentation, and idempotent output, so rich documents still yield minimal, meaningful diffs. Formatting is a fixed point: formatting twice equals formatting once.</li>
+            <li><strong>Validator.</strong> Structural and safety checks — unique resolvable IDs, cross-references that point at real requirements, well-formed markup, non-executable code examples, valid Vega-Lite specs, and rejection of remote scripts or hidden network dependencies.</li>
+            <li><strong>Rust toolchain packaged with Nix.</strong> One <code>htmlspec</code> binary exposing <code>validate</code>, <code>format</code>, and <code>init</code>, built and distributed through a flake so contributors and CI get the same pinned toolchain. ReScript is reserved for later, only if the review surface needs behavior beyond progressive enhancement.</li>
+          </ul>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> The design narrowed the “Deterministic formatter” item's “minimal, meaningful diffs”: its decision <a href="design.html#hs-the-formatter-never-rewraps-text">“The formatter never rewraps text”</a> says the formatter delivers the absence of formatter-induced churn, which is narrower than diff minimality, and that diff minimality is measured as a separate property. That measurement is <a href="evidence/diff-locality.md"><code>evidence/diff-locality.md</code></a>, which finds that diff locality belongs to the author's line breaks rather than to the formatter. The item is carried as the proposal stated it.</p>
+          </aside>
+          <p>Non-goals for this change, deferred deliberately: the <code>/htmlspec:*</code> agent command lifecycle, migration from an existing OpenSpec project, and the portable single-file export. No <strong>BREAKING</strong> changes — the project has no released surface yet.</p>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <section id="hs-new-capabilities">
+            <h3>New Capabilities</h3>
+            <ul>
+              <li><code>document-schema</code>: The normative element contract for requirements, scenarios, decisions, tasks, evidence, risks, and verification, including stable ID conventions, <code>data-change</code> states, and cross-reference semantics — plus the JSON Schema that expresses it as the machine-readable source of truth.</li>
+              <li><code>document-template</code>: The canonical page structure, the restrained visual system, print behavior, and the shared version-pinned offline runtime for diagrams, charts, and equations, including the no-JavaScript readability guarantee.</li>
+              <li><code>deterministic-formatting</code>: Canonical serialization rules that make generated HTML stable across runs and agents — attribute ordering, whitespace, element ordering, idempotence, and diff-minimality guarantees.</li>
+              <li><code>document-validation</code>: The structural and safety rules a document must satisfy to be accepted, the severity model, and the machine-readable diagnostic output the validator emits.</li>
+              <li><code>toolchain-packaging</code>: The <code>htmlspec</code> command surface (<code>validate</code>, <code>format</code>, <code>init</code>), its exit-code and output contract, and reproducible Nix flake packaging for development, distribution, and CI.</li>
+            </ul>
+          </section>
+          <section id="hs-modified-capabilities">
+            <h3>Modified Capabilities</h3>
+            <p>None. <code>openspec/specs/</code> is empty; this is the project's first change.</p>
+          </section>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li><strong>New code.</strong> A Rust workspace: schema types generated from JSON Schema, a canonical HTML serializer, a validator, and a thin CLI. No existing code to modify.</li>
+            <li><strong>New assets.</strong> <code>htmlspec/assets/</code> with pinned CSS and vendored Mermaid and Vega-Lite builds, checked into the repository so the artifact works offline and in perpetuity.</li>
+            <li><strong>Dependencies.</strong> Rust crates for HTML parsing and serialization, JSON Schema validation, and CLI argument handling — all pinned. <a href="evidence/vega-lite-schema.md">Vendored JavaScript libraries are pinned by version and integrity hash.</a></li>
+            <li><strong>Build and CI.</strong> A <code>flake.nix</code> becomes the entry point for the dev shell, the release build, and CI checks. Contributors need Nix, or a compatible pinned Rust toolchain.</li>
+            <li><strong>Documentation.</strong> The README's "Project status" list narrows: items 1, 2, 4, and 6's shared-asset half are answered here. Items 3 and 5, and the single-file export, remain open and become follow-up changes.</li>
+            <li><strong>Downstream.</strong> This schema is the contract every later change depends on. Getting the element vocabulary and ID conventions wrong is expensive to reverse once documents exist in the wild, so the conformance fixtures matter more than usual.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

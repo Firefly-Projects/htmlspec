@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+"""Whether this repository's installed instruction files match the binary's bodies.
+
+Why this exists
+---------------
+The workflow bodies are `include_str!`ed into the binary, so an agent reads the copy
+`htmlspec init` wrote into `.claude/`, `.codex/`, and `.pi/` — not the file under
+`crates/htmlspec-assets/instructions/`. Those are two artifacts, and nothing compared
+them until this script.
+
+They drifted, and the history is the argument for the check. Regeneration was complete
+through 0.5.0, then:
+
+    cf11132  v0.6.0  changed instructions/archive.md and updated 2 of 5 copies
+    ee4301c  v0.7.0  shipped the `sync` workflow and updated none
+    9af58cf  v0.8.0  changed bodies and updated none
+    80558b5  v0.9.0  changed bodies and updated none
+    06b3508  v0.9.0  changed bodies and updated none
+
+So `sync` existed in the binary and in no file an agent could read, for three releases.
+`project-bootstrap` already states the general form — a rule nothing checks is not a
+rule — and the 0.9.0 changelog names it twice about other gates. This is that shape
+applied to the files this project tells other projects to trust.
+
+The two `.pi` files `cf11132` did update are worse than stale. After that commit they
+still read `generatedBy: htmlspec 0.5.0` while the workspace was at `0.6.0`, and the
+stamp is written from `CARGO_PKG_VERSION` at run time — so a real `init` run could not
+have printed it. They were edited by hand, which is the failure this script makes
+impossible to repeat quietly.
+
+How it asks
+-----------
+By running `init` into a scratch directory and comparing what it writes to what is
+committed. A body-by-body string comparison would need this script to know how each
+tool's file is assembled — its frontmatter, its field order, its name prefixes — and
+that knowledge is `install.rs`'s. Duplicating it here would produce a check that passes
+while the real writer does something else, which is the defect in miniature.
+
+`--tools claude,codex,pi` rather than `all`: `all` also installs for tools this
+repository does not use, writing `.cursor/`, and appends the bodies to the hand-authored
+`AGENTS.md`.
+
+Exit codes match `scripts/check-release`: 0 clean, 1 drift found, 2 could not ask.
+"""
+
+from __future__ import annotations
+
+import filecmp
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+# The tools this repository installs for. Not `all` — see the module docstring.
+TOOLS = "claude,codex,pi"
+
+# The directories `init` writes into, and whether each holds entries belonging to other
+# tools. Compared as whole trees rather than as a file list, so a file that should exist
+# and does not is a fault of the same kind as one whose contents drifted — which is
+# exactly how `sync` went missing for three releases.
+#
+# The flag is why this is a table rather than a list of paths. A shared directory such as
+# `.claude/skills` can also hold entries that another tool installs and this check must
+# not judge — it held OpenSpec's until 0.30.1 — so only the `htmlspec`-prefixed ones are
+# compared. A dedicated directory such as `.claude/commands/htmlspec` is namespaced by its
+# own path, so every entry in it is ours and the names inside carry no prefix — filtering
+# there compares nothing, which is the bug this flag replaced.
+INSTALLED = [
+    (Path(".claude/commands/htmlspec"), False),
+    (Path(".claude/skills"), True),
+    (Path(".codex/skills"), True),
+    (Path(".pi/prompts"), True),
+    (Path(".pi/skills"), True),
+]
+
+# `init` writes these into the scratch directory as a new project's skeleton, or for tools
+# this repository does not install for. This repository's own `htmlspec/`, `spec.nix`, and
+# `AGENTS.md` are its project and its own text rather than installed output, so these are
+# byproducts here rather than output to compare. Named so the scratch comparison ignores
+# them rather than reporting every one as an extra file.
+BYPRODUCTS = {"htmlspec", "spec.nix", ".cursor", "AGENTS.md"}
+
+# The prefix marking an entry as this project's, in a directory shared with another tool.
+PREFIX = "htmlspec"
+
+
+def fault(message: str) -> None:
+    print(f"  FAIL  {message}")
+
+
+def relevant(directory: Path, shared: bool) -> list[str]:
+    """The entry names in `directory` this check judges, sorted.
+
+    Every entry where the directory is ours alone, and only the prefixed ones where it
+    is shared with another tool.
+    """
+    if not directory.is_dir():
+        return []
+    return sorted(
+        entry.name
+        for entry in directory.iterdir()
+        if not shared or entry.name.startswith(PREFIX)
+    )
+
+
+def compare(root: Path, scratch: Path) -> list[str]:
+    """Every way the committed files differ from what `init` writes."""
+    faults: list[str] = []
+    for relative, shared in INSTALLED:
+        committed, fresh = root / relative, scratch / relative
+        if not fresh.is_dir():
+            faults.append(
+                f"{relative}: `init` wrote no such directory, so this check's idea of "
+                f"where files land is stale"
+            )
+            continue
+
+        here, there = relevant(committed, shared), relevant(fresh, shared)
+        for name in sorted(set(there) - set(here)):
+            faults.append(f"{relative / name}: `init` writes this and it is not committed")
+        for name in sorted(set(here) - set(there)):
+            faults.append(f"{relative / name}: committed and `init` no longer writes it")
+
+        for name in sorted(set(here) & set(there)):
+            a, b = committed / name, fresh / name
+            if a.is_dir():
+                # A skill is a directory holding SKILL.md.
+                match, mismatch, errors = filecmp.cmpfiles(
+                    a, b, ["SKILL.md"], shallow=False
+                )
+                for entry in mismatch:
+                    faults.append(f"{relative / name / entry}: differs from what `init` writes")
+                for entry in errors:
+                    faults.append(f"{relative / name / entry}: could not be compared")
+            elif not filecmp.cmp(a, b, shallow=False):
+                faults.append(f"{relative / name}: differs from what `init` writes")
+    return faults
+
+
+def main() -> int:
+    root = Path(__file__).resolve().parent.parent
+
+    with tempfile.TemporaryDirectory(prefix="htmlspec-installed-") as temporary:
+        scratch = Path(temporary)
+        # The committed files are what `init` refreshes rather than creates, so the
+        # scratch copy starts from them: a tool that preserves existing content would
+        # otherwise be compared against its from-nothing output.
+        for relative, _shared in INSTALLED:
+            source = root / relative
+            if source.is_dir():
+                shutil.copytree(source, scratch / relative, dirs_exist_ok=True)
+
+        finished = subprocess.run(
+            [
+                "cargo",
+                "run",
+                "--quiet",
+                "--locked",
+                "--bin",
+                "htmlspec",
+                "--",
+                "init",
+                "--tools",
+                TOOLS,
+                "--root",
+                str(scratch),
+            ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+        )
+        if finished.returncode != 0:
+            print(f"  the binary could not be run: {finished.stderr.strip()}")
+            return 2
+
+        for name in BYPRODUCTS:
+            target = scratch / name
+            if target.is_dir():
+                shutil.rmtree(target)
+            elif target.exists():
+                target.unlink()
+
+        faults = compare(root, scratch)
+
+    if faults:
+        for message in faults:
+            fault(message)
+        print()
+        print(
+            "the installed instruction files are not what this binary writes. An agent "
+            "reads the committed copy, so a body changed in the source and not "
+            "regenerated is a body no agent sees.\n\n"
+            f"  htmlspec init --tools {TOOLS}\n\n"
+            "then review the diff and commit it."
+        )
+        return 1
+
+    counted = sum(len(relevant(root / relative, shared)) for relative, shared in INSTALLED)
+    print(f"  ok  {counted} installed instruction file(s) match what `init` writes")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

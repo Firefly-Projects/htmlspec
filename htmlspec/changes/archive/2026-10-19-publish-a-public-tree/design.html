@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Publish a public tree: design</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Publish a public tree: design</h1>
+        <p>How a release leaves this private repository: what the <code>publish/</code> directory holds and why none of it crosses, how the export reads a committed ref and lands as a pull request on the public repository's own history, which rewrites it applies, how the scan refuses, why the suite runs inside the exported tree, and what this repository's contract gains.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Publish a public tree: design</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-what-this-settles">
+          <h2>What this settles</h2>
+          <p>The contributor settled the destination on 2026-10-16: a fresh public repository, <code>Firefly-Projects/htmlspec</code>, with this repository kept private as the working record, an MIT license held by Firefly Systems LLC, a private organization's names replaced by <code>example-corp</code>, a private project treated as that organization's information and renamed <code>missile-launcher</code>, a branch ruleset in place of <code>main-guard.yml</code>, and a script modelled on the skills export that runs again for every later release. This design turns those decisions into a mechanism and records the choices that the decisions did not make.</p>
+          <figure id="figure-the-road-out">
+            <figcaption>The export's steps in order. Every step can refuse, nothing reaches the public repository before a person reviews the exact tree, and only the push writes outside a scratch directory.</figcaption>
+            <details>
+              <summary>Diagram source</summary>
+              <pre class="mermaid">flowchart TD
+  R["A committed ref in this repository"] --&gt; A["git archive of the allowlisted paths"]
+  A --&gt; W["Rewrites: each names the text it expects"]
+  W --&gt; S["Scan against the private pattern file"]
+  S --&gt; C["scripts/check inside the exported tree"]
+  C --&gt; M["Commit on the public repository's main, naming the source ref and commit"]
+  M --&gt; V["A person reviews the exact tree, locally"]
+  V --&gt; P["Push that tree's branch and open, or update, its pull request"]</pre>
+            </details>
+          </figure>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-the-road-out-stays-private" data-change="added" data-status="accepted">
+            <h3>1. The road out is a <code>publish/</code> directory, and none of it crosses</h3>
+            <p><code>publish/</code> holds five parts: <code>allowlist</code>, the paths that may cross; <code>rewrites.tsv</code>, the rewrite table; <code>patterns.tsv</code>, the private pattern file; <code>scan</code>, the scanner; and <code>export</code>, the script. A sixth file, <code>READINESS.md</code>, is the checklist a person signs before a path joins the allowlist. The allowlist never lists <code>publish/</code>.</p>
+            <p data-field="rationale">The rewrite table and the pattern file must name the strings they guard against, so publishing either would publish the material itself. The skills repository keeps its pattern file private for the same reason. Keeping the whole directory home makes the rule one line instead of five exceptions.</p>
+            <p data-field="rationale">The tooling's own tests cannot be a stage of <code>scripts/check</code>. toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-project-checks-are-runnable-as-one-command">"Project checks are runnable as one command"</a> requires one command for the project's full suite, so that contributors and continuous integration check the same thing, and that suite runs here and inside the exported tree, where <code>publish/</code> does not exist. A stage for tooling only one of the two trees holds would make the suite differ between them, which is the divergence the requirement exists to prevent, and the suite has no optional stage. So <code>publish/test</code> holds them as a second command for tooling that belongs to this repository alone, and contributors and continuous integration still run the same thing: a workflow that lives only here, <code>.github/workflows/publish.yml</code>, runs it on every pull request, and the allowlist excludes that workflow. Amended 2026-10-19, after the review of the plan: this rationale first said the contract is silent here, and it is not.</p>
+            <p data-field="rationale">The skills repository writes its allowlist in Nix. I chose plain text, one path per line, because the export reads it without evaluating anything and a reviewer reads it at a glance. The contract is silent on the format, so this is my choice and a cheap one to change. The script is Python 3 with the standard library, as <code>scripts/check-release</code> and <code>scripts/check-installed</code> already are, also my choice.</p>
+            <p data-field="rationale">Amended 2026-10-18, during implementation. As built, <code>publish/</code> holds three more files than the five parts and the checklist: <code>identity</code>, the commit identity decision 11 requires; <code>publishing.py</code>, the module <code>scan</code> and <code>export</code> share, so the allowlist, the tables, and the readiness record are parsed in one place; and <code>test</code>, the tooling's tests. None of them crosses, for the same reason as the rest.</p>
+          </section>
+          <section class="decision" id="decision-the-export-lands-as-a-pull-request" data-change="added" data-status="accepted">
+            <h3>2. Each export is an ordinary commit on the public repository's own <code>main</code></h3>
+            <p><code>publish/export</code> refuses a dirty working tree and an unknown ref. It fetches the target's <code>main</code> into <code>refs/publish/main</code>, checks it out into a scratch directory, replaces its contents with <code>git archive</code> of the allowlisted paths at the source ref, so a path the allowlist dropped disappears, and then rewrites, scans, and runs the suite. Only then does it commit, with the source ref and its full commit id in the message, on a branch <code>publish/&lt;short-sha&gt;</code>. <code>--push</code> pushes that branch and opens a pull request into <code>main</code>. <code>--bootstrap</code> pushes the first commit to an empty target, once. <code>--dry-run</code> stops before committing. <code>--remote-url</code> points the whole road at a scratch repository for testing.</p>
+            <p data-field="rationale">This is the form of the pull-request export in the contributor's skills repository, and that script's header gives the reason: an orphan rebuild leaves GitHub two unrelated histories that it cannot open a pull request between. The contributor wants a branch ruleset on the public <code>main</code> requiring a pull request, and only this form satisfies it.</p>
+            <p data-field="rationale">The export reads a committed ref, never the working tree, because <code>git archive</code> cannot see an untracked file and so cannot leak one. This repository tags no release today, so the ref is a branch or commit until <code>commit-the-contract-and-the-command-line</code> adds a release tag to the release runbook.</p>
+            <p data-field="rationale">Amended 2026-10-18, during implementation, on four points the decision did not settle. <strong>Where the export is built.</strong> <code>refs/publish/main</code> lives in a scratch repository the export creates, not in this one, so no object of the public repository ever enters this repository and no branch of the export is ever made here. The export refuses a target whose <code>main</code> holds any commit this repository also holds, because a public history must never meet this one. <strong>The modes.</strong> With no flag the export commits in the scratch repository, keeps it, and prints its path for inspection. <code>--dry-run</code> runs every step except the commit. A target that is not on GitHub, such as a scratch bare repository, gets the push and a report of the pull request that would open, and no ruleset check.</p>
+            <p data-field="rationale"><strong>What the bootstrap commits.</strong> The first commit of an empty target holds the exported <code>README.md</code> and <code>LICENSE</code> only, after the whole tree has been exported, rewritten, scanned, and passed by the suite. The whole tree then arrives as the first pull request, which a person reviews. This follows the onping export's README-only root, and it is my choice; the decision named <code>--bootstrap</code> and not its content.</p>
+            <p data-field="rationale"><strong>The bootstrap and the target's ruleset.</strong> The contributor created <code>Firefly-Projects/htmlspec</code> empty, with an active ruleset on its default branch that requires a pull request and has no bypass actor. GitHub reports those rules for <code>main</code> before the branch exists, so a direct push of the first commit is refused. So the bootstrap is a recorded release step with three parts, done by the contributor: set the ruleset's enforcement to <code>disabled</code>, run <code>publish/export --bootstrap</code>, and set it back to <code>active</code>. The export checks both ends. <code>--bootstrap</code> refuses while any ruleset on the target's <code>main</code> is not disabled, naming the command that disables it, and prints the command that re-enables it after the push. <code>--push</code> refuses while any ruleset on <code>main</code> is not active, and when none protects <code>main</code> at all. Neither ever changes a ruleset itself: the export holds no credential that could, and loosening the public repository's protection is the contributor's act. The release runbook carries the three steps, in <code>commit-the-contract-and-the-command-line</code>.</p>
+            <p data-field="rationale">Amended 2026-10-19, after the review of the plan (#63), on four points. <strong>No private history.</strong> The export builds every commit with <code>git commit-tree</code> in a scratch repository that <code>git init</code> makes fresh, from the exported files alone, so no object of this repository's history is in it. The bootstrap commit has no parent, and every later commit has exactly one, the target's <code>main</code>. The export reads the commit's parents back and refuses any other before it pushes, and <code>publish/test</code> holds the property itself: after a bootstrap and a push, no commit of the source repository, and no blob only its history holds, is in the target. <strong>A person reviews the exact tree before it leaves.</strong> A branch pushed to the public repository is public from that moment, and GitHub keeps a pull request's commits after the branch is deleted, so the pull request cannot be the first time a person sees an export. The local run is the review: it keeps the scratch repository and prints the exported tree's id and the command that shows exactly what the pull request would show. <code>--push</code> and <code>--bootstrap</code> refuse without <code>--reviewed</code>, and refuse unless the tree they build is the one named. The tree depends only on the exported files, so the same ref gives the same tree. <strong>A second export of one source replaces its branch.</strong> The branch is <code>publish/&lt;short-sha&gt;</code>, so an export of the same source after the target's <code>main</code> moved would collide with the first. The export now replaces that branch with a lease on the commit it found, and updates the pull request already open for it instead of failing to open a second. <strong>A dirty tree is one where a tracked file differs from its commit, staged or not.</strong> An untracked file does not count, because <code>git archive</code> cannot see it, so a run's own record, written and not yet committed, does not stop an export.</p>
+          </section>
+          <section class="decision" id="decision-the-whole-tree-crosses" data-change="added" data-status="accepted">
+            <h3>3. The public tree carries everything the suite reads</h3>
+            <p>The allowlist lists every tracked top-level path: <code>.claude/</code>, <code>.codex/</code>, <code>.pi/</code>, <code>.githooks/</code>, <code>.github/</code>, <code>.gitignore</code>, <code>AGENTS.md</code>, <code>assets/</code>, <code>Cargo.lock</code>, <code>Cargo.toml</code>, <code>CHANGELOG.md</code>, <code>conformance/</code>, <code>crates/</code>, <code>fixtures/</code>, <code>flake.lock</code>, <code>flake.nix</code>, <code>htmlspec/</code>, <code>img/</code>, <code>LICENSE</code>, <code>README.html</code>, <code>README.md</code>, <code>rust-toolchain.toml</code>, <code>scripts/</code>, and <code>spec.nix</code>, with one exclusion inside them: <code>.github/workflows/publish.yml</code>, which tests tooling that does not cross. <code>.github/workflows/main-guard.yml</code> was a second exclusion until decision 12 deleted it.</p>
+            <p data-field="rationale">The archive and the migration fixture are 969 of the 1,487 tracked files, measured 2026-10-19, and hold every private hit, so leaving them out looks like the cheap path. It fails: <code>scripts/check-release</code> exits 2 when a project has no archived changes, and nine migration survey tests read the fixture, as <code>govern-this-repository-from-htmlspec</code> measured when it moved the fixture. A public tree without them would check less than this one. Its accepted specifications and archive are also the clearest demonstration of what the project does.</p>
+            <p data-field="rationale">A new top-level path does not cross until the allowlist names it, and <code>READINESS.md</code> asks a person to read it first. Every path above is signed once, in the tasks, before the first export.</p>
+            <p data-field="rationale">Amended 2026-10-19, after the review of the plan. A directory on the allowlist admitted every file beneath it, including one added after the read, so a new private-only file inside a listed directory would cross by default. Each read in <code>READINESS.md</code> now names the commit it was made at, and the export refuses any file added beneath an allowlisted path after that commit, listing them, until a person reads them and records the read at a commit that holds them. A read at a commit that is not in the exported ref's history, as after a rebase, is refused too. The check is for added files: an edit to a file already read is the scan's to catch.</p>
+          </section>
+          <section class="decision" id="decision-the-rewrites" data-change="added" data-status="accepted">
+            <h3>4. Each rewrite names a file, the text it expects, and the text that replaces it</h3>
+            <p>A row of <code>rewrites.tsv</code> is a path, an expected text, its replacement, and the number of times the text must appear. The export stops when the count differs, naming the file and the text, so a rewrite never silently stops applying. The rows, described here rather than quoted, because this document crosses too:</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Expected text</th>
+                  <th>Replacement</th>
+                  <th>Files</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>the private organization's first name, five times</td>
+                  <td><code>example-corp</code></td>
+                  <td>the archived proposal of <code>distinguish-command-names-from-skill-names</code>, its fixture original, and the migration plan in <code>govern-this-repository-from-htmlspec</code>'s evidence</td>
+                </tr>
+                <tr>
+                  <td>the name of the organization's team, twice</td>
+                  <td><code>example-corp-product-team</code></td>
+                  <td>the archived proposal and its fixture original</td>
+                </tr>
+                <tr>
+                  <td>the private project's local directory, its name, the subject that names it, and each of its ten change names</td>
+                  <td><code>~/projects/missile-launcher</code>, <code>missile-launcher</code>, and ten change names of the same length in the same theme</td>
+                  <td>every file that names any of them: the four evidence files of <code>state-a-changes-place-in-a-sequence</code> and its archived proposal, design, specification, and tasks, their originals in the migration fixture, the migration plan in <code>govern-this-repository-from-htmlspec</code>'s evidence, one past <code>CHANGELOG.md</code> entry, the instruction source <code>crates/htmlspec-assets/instructions/new.md</code>, and its five installed copies under <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code></td>
+                </tr>
+                <tr>
+                  <td>this repository's absolute path in the contributor's home directory, with a path after it or with nothing after it</td>
+                  <td>the path relative to the repository, and <code>.</code></td>
+                  <td>the 15 evidence files and fixture copies that name it, 25 times</td>
+                </tr>
+                <tr>
+                  <td>the absolute path of the contributor's Nix profile</td>
+                  <td><code>~/.nix-profile/bin</code></td>
+                  <td>the two that name it</td>
+                </tr>
+                <tr>
+                  <td>the same paths under the contributor's home directory on an earlier machine: this repository's path, with a path after it or with nothing after it, two sentences naming the bare directory, and the rest of the home directory</td>
+                  <td>the path relative to the repository, <code>.</code>, <q>home-directory</q>, and <code>~/</code></td>
+                  <td>31 archived records and fixture copies, 38 times</td>
+                </tr>
+                <tr>
+                  <td>a session's scratch directory, which writes the contributor's home directory with dashes and names the session</td>
+                  <td><q>the review session's scratch directory</q></td>
+                  <td>one review log in <code>govern-this-repository-from-htmlspec</code>'s evidence</td>
+                </tr>
+                <tr>
+                  <td>this repository's address</td>
+                  <td><code>https://github.com/Firefly-Projects/htmlspec</code></td>
+                  <td><code>Cargo.toml</code></td>
+                </tr>
+              </tbody>
+            </table>
+            <p data-field="rationale">The organization, project, path, and address rows follow the contributor's decisions. The <code>CHANGELOG.md</code> entry that tells how this repository came to need <code>main-guard</code> is history, accurate about the repository it describes, and names nothing private, so it crosses as written. Both are cheap to change.</p>
+            <p data-field="rationale">The rewrites touch archived documents and the migration fixture in the exported copy only. This repository keeps them as written, as the archive is history, and the export commit names its source commit, so the record behind any public file is one lookup away.</p>
+            <p data-field="rationale">Amended 2026-10-18, during implementation. The audit searched for the private project's name and its directory, and found two files. Its change names reach much further: one of them, 51 times across 20 files, including the example in the instruction source that ships in the binary and the five installed copies generated from it. Decision 5 rewrites every change name, so every file holding one gets the rewrite, and the instruction source and its installed copies are rewritten alike, so the suite's <code>installed</code> stage still finds them equal in the exported tree. A row's path may therefore be a glob, <code>*</code> for these, and its count is then the total across the files it names: the export still refuses when a name disappears or a new occurrence appears, which is the property the count exists for. Each replacement change name has the length of the name it replaces, so the console listings in the evidence, aligned on the old names, stay aligned. The README's main-guard material is four rows rather than one, because the public README would otherwise count a workflow it does not have and promise a report nobody makes.</p>
+            <p data-field="rationale">Amended 2026-10-18, again. The first rehearsed export passed the scan and the suite, and reading what it pushed found a second home directory of the contributor's, from an earlier machine, 38 times in 31 archived records and fixture copies. The audit had searched for one home directory by name, and the pattern file named only that one, so the scan could not see the other. Four rows remove it, and the pattern file gains it and two shape rows that match any home directory, whatever its name, so a machine nobody thought to list is refused too. That is the skills scanner's lesson as well: its header keeps a shape check for identifiers no list names. In all, 28 rows rewrite 217 occurrences in 130 file edits.</p>
+            <p data-field="rationale">Amended 2026-10-19, after the review of the plan. The table above now lists the rows the build holds, 23 of them. The four README rows and the two hook rows are gone, because a ruleset already protects this repository's <code>main</code> too, so the text they rewrote was false here as well, and decision 12 corrects it at the source. One row is new: a review log names a session's scratch directory, which writes the contributor's home directory with dashes, so no slash-shaped pattern saw it.</p>
+          </section>
+          <section class="decision" id="decision-the-private-project-is-open" data-change="added" data-status="accepted">
+            <h3>5. The whole private project is rewritten, not only its name</h3>
+            <p>The contributor decided that the project counts as the private organization's information and becomes <code>missile-launcher</code>. The evidence also names the project's local directory and lists ten of its changes, and four of those change names describe its industry, its equipment, and its data sources. The directory and every change name are rewritten into the same neutral theme, keeping the counts, states, and argument of the evidence intact, because the names identify the project as surely as its title does. The rewrites reach the program text too: the example in the instruction source and its five installed copies name one of the changes, so the public binary's instructions read the neutral name, while this repository's program does not change.</p>
+            <p data-field="rationale">The contributor's first decision covered the name, not the rest. Asked on 2026-10-16 whether the directory and every change name are rewritten too, the contributor answered yes, so this decision is accepted and task 2.4 writes those rows.</p>
+          </section>
+          <section class="decision" id="decision-the-scan" data-change="added" data-status="accepted">
+            <h3>6. The scan refuses on any match, and binary files are read by a person</h3>
+            <p><code>publish/scan</code> reads <code>patterns.tsv</code>, rows of a section, a regular expression, a reason, and an optional allowed occurrence, and matches every text file case-insensitively. Exit 0 is clean, 1 is a match, reported by file and line, and 2 is a usage error, the skills scanner's convention. The patterns start from the audit: the private organization's name and both names derived from it, the private project's name, its directory, and every name decision 5 rewrites, the contributor's home directory and email address, the two other private project names the audit looked for, and this repository's address. Amended 2026-10-18: also the contributor's home directory on an earlier machine, and any home directory by shape (decision 4, amended), 25 patterns in all. Amended 2026-10-19: also a home directory written with dashes, as a session's scratch directory or a tool's project directory writes it, URL-encoded, or as a Windows path, and a session's scratch directory itself, 30 patterns in all.</p>
+            <p data-field="rationale">A file holding a NUL byte is binary and is not matched. A raw search for the organization's name flags <code>img/hero.png</code> and <code>img/runbook.png</code>, whose compressed bytes happen to spell it, so a byte match would refuse every export for nothing. Instead the scanner lists every binary file it skipped, and the export refuses unless each one is named in <code>READINESS.md</code> as read by a person.</p>
+            <p data-field="rationale">Amended 2026-10-18, during implementation, on how the readiness record is enforced, which the decisions left open. <code>READINESS.md</code> has three sections the export reads: a table recording who read each allowlisted path and when, the binary files read, and the contributor's sign-off. Every run refuses an allowlisted path the table does not record and a binary file the list does not name. Only <code>--push</code> and <code>--bootstrap</code> refuse an empty sign-off, because they are the runs that publish: a dry run and a local export can be read before anyone signs, and reading them is what the contributor signs after. I recorded the reads as mine, the agent's, and left the sign-off to the contributor.</p>
+            <p data-field="rationale">Amended 2026-10-19, after the review of the plan. A binary file was signed off by its path alone, so a screenshot replaced after the read kept the old sign-off and crossed unread. Each line of "Binary files read" now names the blob id that was looked at, and the export and the scan refuse a binary whose bytes differ from it, saying it changed since its read, and a line that names no blob id. The scan also reads a PNG's text chunks, tEXt, zTXt, and iTXt, decompressed, as text, because a screenshot tool can write a path or a hostname there that nobody looking at the picture sees. The picture is still a person's to read.</p>
+          </section>
+          <section class="decision" id="decision-the-suite-runs-in-the-export" data-change="added" data-status="accepted">
+            <h3>7. The suite runs inside the exported tree before anything is committed</h3>
+            <p>After the scan, the export runs <code>scripts/check</code> in the exported tree and refuses on any failure.</p>
+            <p data-field="rationale">The skills export has no such step, and this one needs it, because the rewrites change files the suite reads: the archive, which <code>scripts/check-release</code> reads, and the migration fixture, which the survey tests read. toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-project-checks-are-runnable-as-one-command">"Project checks are runnable as one command"</a> requires every stage to read the working tree rather than history, which is what lets the suite run in a tree that is not this repository.</p>
+          </section>
+          <section class="decision" id="decision-the-license" data-change="added" data-status="accepted">
+            <h3>8. An MIT license, held by Firefly Systems LLC</h3>
+            <p><code>LICENSE</code> at the root holds the MIT text with <code>Copyright (c) 2026 Firefly Systems LLC</code>, in this repository and therefore in the export.</p>
+            <p data-field="rationale">The contributor chose MIT and the holder. <code>Cargo.toml</code> already declares <code>license = "MIT"</code>, so the file makes an existing declaration true.</p>
+          </section>
+          <section class="decision" id="decision-the-boundary-becomes-a-requirement" data-change="added" data-status="accepted">
+            <h3>9. The boundary becomes a requirement of this repository</h3>
+            <p>toolchain-packaging gains one requirement, an obligation on the project's repositories: the project's public repository receives only trees exported from its private working repository, each from a committed ref through the allowlist, rewritten, found clean by the scan, passed by the suite, and reviewed by a person as the exact tree that is pushed, in a commit whose only parent is the public repository's own <code>main</code>, by a GitHub noreply identity, naming its source ref and commit, and no commit of the private repository's history reaches the public one. Its scenarios: a planted private string refused at the scan, a vanished rewrite refused, a failing suite refused, an unreviewed tree refused, a commit identity that is not a GitHub noreply address refused, no source commit in the public history, and the publishing tooling absent from every export.</p>
+            <p data-field="rationale">The contract is silent on publication. Left as a script, the boundary holds only while someone remembers to run the script the same way, and a leak cannot be taken back. toolchain-packaging already holds obligations on this repository, among them <a href="../../../specs/toolchain-packaging/spec.html#req-the-project-records-what-changed-in-each-version-it-ships">"The project records what changed in each version it ships"</a>, so the new one sits beside them.</p>
+            <p data-field="rationale">Amended 2026-10-19, after the review of the plan. The requirement crosses, as every accepted specification does, so it reads in the public repository too. Worded first as an obligation on "this repository", it would there describe a repository that is not the one holding it. It now names both: the private working repository that publishes, and the public repository that receives.</p>
+          </section>
+          <section class="decision" id="decision-release-0-32-0" data-change="added" data-status="accepted">
+            <h3>10. Release 0.32.0</h3>
+            <p>A minor increment, from 0.31.0. <code>Cargo.toml</code>, <code>Cargo.lock</code>, and <code>CHANGELOG.md</code> advance during implementation, the installed instruction files are regenerated, and <code>spec.nix</code> waits for archival.</p>
+            <p data-field="rationale">The plan the contributor reviewed numbers it 0.32.0. project-bootstrap's <a href="../../../specs/project-bootstrap/spec.html#req-archival-requires-the-project-version-to-advance">"Archival requires the project version to advance"</a> requires a new version and leaves its size to judgment. The program does not change, and the repository gains a license and its first road to the public, which a patch would understate.</p>
+          </section>
+          <section class="decision" id="decision-the-public-identity" data-change="added" data-status="accepted">
+            <h3>11. Every export commit carries a GitHub noreply identity</h3>
+            <p><code>publish/identity</code> holds one line, <code>Name &lt;id+login@users.noreply.github.com&gt;</code>, and the export makes every commit with it as both author and committer. The export refuses an identity that is not a GitHub noreply address before it reaches the target. After committing, it reads the commit's author and committer back and refuses either that is not a noreply address, and it scans the commit's author, committer, and message against the pattern file, which names the contributor's personal email address. The identity is <code>smurphy8</code>'s noreply address.</p>
+            <p data-field="rationale">Added at the main session's direction on 2026-10-18. A public commit's author and committer are public, and a fresh repository's history is made of nothing but export commits, so a personal address in one would be in the public history for good. A commit made with whatever identity the contributor's git happens to hold would put it there. Reading the identity from a file the export requires, and checking it before and after, keeps that from depending on anyone's local configuration.</p>
+            <p data-field="rationale">Amended 2026-10-19. The export controls its own commits, and a squash merge made in GitHub's interface takes the merger's address from the account. The contributor turned on "Keep my email addresses private" in GitHub's email settings on 2026-10-19, so a merge of an export's pull request records the noreply address too, and <code>READINESS.md</code> lists the setting among what is checked before a push.</p>
+          </section>
+          <section class="decision" id="decision-the-guard-at-the-source" data-change="added" data-status="accepted">
+            <h3>12. <code>main-guard.yml</code> retires here too, and the hook refuses any push to the public repository</h3>
+            <p>A branch ruleset already protects this repository's <code>main</code>: it requires a pull request and the checks to pass, and has no bypass. So the account of the free plan in <code>README.md</code> and <code>.githooks/pre-push</code> is false here as well as in the public copy, and the README's own instruction applies: add the ruleset and delete <code>main-guard.yml</code>. This change deletes it, and corrects the README and the hook's comment at the source, so the rewrite table no longer carries them. The hook gains one rule: from a checkout holding <code>publish/export</code>, which only the private working repository does, it refuses every push to the public repository, tags included, with no override.</p>
+            <p data-field="rationale">A push from this repository to the public one carries this repository's history whatever it names: a tag pushes every commit behind it, and the ruleset guards <code>main</code> only. The export pushes from a scratch repository of its own, which the hook never sees, and a release tag is made on GitHub on the public repository's own commit, so nothing legitimate pushes from here. In the public repository, which holds no <code>publish/export</code>, the rule does nothing. The publish runbook, a later change, names the safe tag command, and this guard is what refuses the unsafe one. <code>publish/test</code> holds the rule.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <section class="risk" id="risk-a-private-string-no-pattern-names" data-change="added" data-response="mitigated">
+            <h3>A private string that no pattern names crosses</h3>
+            <p>The patterns are the markers an audit found. A private name that the audit missed, or one that a later change adds, matches nothing and crosses.</p>
+            <p data-field="mitigation">Partly held down. Every path is read once against <code>READINESS.md</code> before it joins the allowlist, a new top-level path or a file added under a listed one cannot cross unread, an image crosses only at the exact bytes a person looked at, and a person reviews the exact tree locally before any push. A pull request on the public repository is not the review, because it is public the moment its branch is pushed, and GitHub keeps its commits after the branch is gone. What is not held down is a private name a person misses in the local review, inside a file already read. The fresh repository bounds the damage to the trees exported, not the whole history. Amended 2026-10-19, after the review of the plan: this mitigation first counted the public pull request as the review.</p>
+          </section>
+          <section class="risk" id="risk-the-public-archive-differs" data-change="added" data-response="accepted">
+            <h3>The public archive differs from the private one</h3>
+            <p>The exported archive carries the rewrites, so a public archived document no longer matches its private original byte for byte. The change bears this: the rewrites are the point, and each export commit names the source commit that holds the original.</p>
+          </section>
+          <section class="risk" id="risk-the-suite-depends-on-this-machine" data-change="added" data-response="accepted">
+            <h3>The suite in the exported tree depends on the machine that runs it</h3>
+            <p>On macOS the suite's Python stages fail inside <code>nix develop</code>, so the export runs <code>scripts/check</code> the way this repository runs it today, with the pinned toolchain on the path. The change bears this. The public repository's own continuous integration runs the same suite on every pull request, including each export.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>document-schema</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>document-schema</h1>
+        <p>Defines the normative HTML element contract for the semantic units of a specification — requirements, scenarios, decisions, tasks, evidence, risks, and verification — so that agents can address and revise individual units reliably and humans read a document rather than a data format.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>document-schema</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/specs/document-schema/spec.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-requirements">Requirements</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-requirements">
+          <h2>Requirements</h2>
+          <section class="requirement" id="req-semantic-units-are-identified-by-class" data-change="unchanged">
+            <h3>Semantic units are identified by class <span class="hs-id">req-semantic-units-are-identified-by-class</span></h3>
+            <p>A document SHALL express each semantic unit as an HTML element carrying a reserved class name from a closed vocabulary: <code>requirement</code>, <code>scenario</code>, <code>decision</code>, <code>task</code>, <code>evidence</code>, <code>risk</code>, and <code>verification</code>. A reserved class name SHALL NOT be used on an element that is not that semantic unit.</p>
+            <article class="scenario" id="scenario-recognized-unit" data-change="unchanged">
+              <h4>Recognized unit</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains <code>&lt;section class="requirement" id="req-theme-selection"&gt;</code></dd>
+                <dt>Then</dt>
+                <dd>consumers treat that element and its descendants as one requirement unit</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-class-outside-the-vocabulary" data-change="unchanged">
+              <h4>Class outside the vocabulary</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document uses a class name that is not reserved, such as <code>class="note"</code></dd>
+                <dt>Then</dt>
+                <dd>the element carries no semantic-unit meaning and is treated as ordinary content</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reserved-class-on-a-decorative-element" data-change="unchanged">
+              <h4>Reserved class on a decorative element</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document applies <code>class="requirement"</code> to an element used only for layout, with no requirement content</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-every-semantic-unit-has-a-stable-unique-identifier" data-change="unchanged">
+            <h3>Every semantic unit has a stable unique identifier <span class="hs-id">req-every-semantic-unit-has-a-stable-unique-identifier</span></h3>
+            <p>Every semantic unit SHALL carry an <code>id</code> attribute. The identifier SHALL be unique within the document, SHALL use a prefix reserved for its unit type, and SHALL consist of lowercase alphanumeric characters and hyphens.</p>
+            <article class="scenario" id="scenario-prefix-matches-unit-type" data-change="unchanged">
+              <h4>Prefix matches unit type</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement is identified</dd>
+                <dt>Then</dt>
+                <dd>its <code>id</code> begins with <code>req-</code>, a scenario with <code>scenario-</code>, a decision with <code>decision-</code>, a task with <code>task-</code>, evidence with <code>evidence-</code>, a risk with <code>risk-</code>, and verification with <code>verify-</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-duplicate-identifier" data-change="unchanged">
+              <h4>Duplicate identifier</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>two elements in the same document share the same <code>id</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-identifier-is-stable-across-edits" data-change="unchanged">
+              <h4>Identifier is stable across edits</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent revises the prose of a requirement without changing what it requires</dd>
+                <dt>Then</dt>
+                <dd>the requirement's <code>id</code> is unchanged, and references to it continue to resolve</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-renaming-a-requirement" data-change="unchanged">
+              <h4>Renaming a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's title changes but it describes the same obligation</dd>
+                <dt>Then</dt>
+                <dd>its <code>id</code> SHALL be preserved rather than regenerated from the new title</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-semantic-units-declare-a-change-state" data-change="unchanged">
+            <h3>Semantic units declare a change state <span class="hs-id">req-semantic-units-declare-a-change-state</span></h3>
+            <p>Every semantic unit SHALL declare its lifecycle state in a <code>data-change</code> attribute with one of the values <code>added</code>, <code>modified</code>, <code>removed</code>, or <code>unchanged</code>. A unit with no <code>data-change</code> attribute SHALL be interpreted as <code>unchanged</code>.</p>
+            <article class="scenario" id="scenario-newly-proposed-requirement" data-change="unchanged">
+              <h4>Newly proposed requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change introduces a requirement that does not exist in the accepted specs</dd>
+                <dt>Then</dt>
+                <dd>the requirement carries <code>data-change="added"</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-requirement-being-withdrawn" data-change="unchanged">
+              <h4>Requirement being withdrawn</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change removes an accepted requirement</dd>
+                <dt>Then</dt>
+                <dd>the requirement carries <code>data-change="removed"</code> and remains present in the document so reviewers can see what is being withdrawn</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unrecognized-change-state" data-change="unchanged">
+              <h4>Unrecognized change state</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a unit carries <code>data-change="pending"</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-renamed-requirement-states-the-heading-it-replaced" data-change="unchanged">
+            <h3>A renamed requirement states the heading it replaced <span class="hs-id">req-a-renamed-requirement-states-the-heading-it-replaced</span></h3>
+            <p>A requirement unit SHALL be able to state the heading it replaced, in one paragraph marked <code>data-field="renamed-from"</code> whose text is that previous heading. The requirement's own heading SHALL be its current name. The pair is OpenSpec's <code>FROM:</code>/<code>TO:</code> rename, expressed on the unit.</p>
+            <p>A rename SHALL be stated separately from the unit's change state. The change state SHALL describe what happened to the requirement's statements and scenarios, and the <code>renamed-from</code> paragraph SHALL describe what happened to its heading. A requirement that is renamed and rewritten in one change SHALL carry <code>data-change="modified"</code> and a <code>renamed-from</code> paragraph. A requirement that is renamed and otherwise untouched SHALL carry <code>data-change="unchanged"</code> and a <code>renamed-from</code> paragraph. Neither fact SHALL be inferred from the other.</p>
+            <p>The reason is that a rename and a modification are different facts, and a change can make either without the other. A single value that meant "renamed" would force a requirement that was renamed and rewritten to give up one of the two, and both of this project's own renames are that case.</p>
+            <p>A renamed requirement SHALL keep its identifier, as "Every semantic unit has a stable unique identifier" already requires. The <code>renamed-from</code> paragraph is what lets a reader who knows the previous heading find the requirement under its new one.</p>
+            <p>A <code>renamed-from</code> paragraph SHALL NOT supply the requirement's normative statement, and its text SHALL project into the requirement's <code>renamedFrom</code> field rather than into its statements.</p>
+            <p>The following SHALL make a document invalid:</p>
+            <ul>
+              <li>
+                <p>a <code>renamed-from</code> paragraph in any unit other than a requirement;</p>
+              </li>
+              <li>
+                <p>a <code>renamed-from</code> paragraph in a requirement whose change state is <code>added</code>, because a requirement this change introduces had no previous heading;</p>
+              </li>
+              <li>
+                <p>a <code>renamed-from</code> paragraph in a requirement whose change state is <code>removed</code>, because a withdrawn requirement is not also renamed, and OpenSpec rejects a rename and a removal of one requirement;</p>
+              </li>
+              <li>
+                <p>more than one <code>renamed-from</code> paragraph in one requirement;</p>
+              </li>
+              <li>
+                <p>a <code>renamed-from</code> paragraph whose text is empty after whitespace normalization;</p>
+              </li>
+              <li>
+                <p>a <code>renamed-from</code> paragraph whose text equals the requirement's own heading after whitespace normalization, because a rename to the same name renames nothing.</p>
+              </li>
+            </ul>
+            <p>A requirement's heading, for every comparison a rename makes, SHALL be its heading name: its projected title with the requirement's own identifier removed from the end, then trimmed. A heading commonly shows its identifier beside the name (<code>&lt;span class="hs-id"&gt;req-x&lt;/span&gt;</code>), and the projected title carries that text. A previous heading is stated as the name a reader read, without the identifier. So a comparison with the title itself would never find the two equal.</p>
+            <article class="scenario" id="scenario-a-requirement-renamed-and-rewritten" data-change="unchanged">
+              <h4>A requirement renamed and rewritten</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement carries <code>data-change="modified"</code>, a new heading, and a <code>data-field="renamed-from"</code> paragraph naming its previous heading</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, and a consumer reads both that the content changed and the heading it replaced</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-renamed-and-otherwise-untouched" data-change="unchanged">
+              <h4>A requirement renamed and otherwise untouched</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement carries <code>data-change="unchanged"</code> and a <code>data-field="renamed-from"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, and the requirement's statements and scenarios are understood as carried forward untouched under a new heading</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-previous-heading-is-a-field-not-a-statement" data-change="unchanged">
+              <h4>The previous heading is a field, not a statement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement carries a <code>renamed-from</code> paragraph and one unmarked paragraph</dd>
+                <dt>Then</dt>
+                <dd>its statements are the unmarked paragraph alone, and its <code>renamedFrom</code> field is the previous heading</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-on-a-new-requirement" data-change="unchanged">
+              <h4>A rename on a new requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement carrying <code>data-change="added"</code> contains a <code>renamed-from</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because a requirement this change introduces had no previous heading</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-on-a-withdrawn-requirement" data-change="unchanged">
+              <h4>A rename on a withdrawn requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement carrying <code>data-change="removed"</code> contains a <code>renamed-from</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-outside-a-requirement" data-change="unchanged">
+              <h4>A rename outside a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a scenario, decision, task, evidence, risk, or verification unit contains a <code>renamed-from</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-previous-headings" data-change="unchanged">
+              <h4>Two previous headings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>one requirement contains two <code>renamed-from</code> paragraphs</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because one rename replaces one heading</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-to-the-same-name" data-change="unchanged">
+              <h4>A rename to the same name</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's <code>renamed-from</code> paragraph states the requirement's own heading</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-heading-that-shows-its-identifier" data-change="unchanged">
+              <h4>A heading that shows its identifier</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's heading is <code>The name &lt;span class="hs-id"&gt;req-x&lt;/span&gt;</code> and its <code>renamed-from</code> paragraph states <code>The name</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because the identifier shown beside a heading is not part of its name</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-with-no-rename" data-change="unchanged">
+              <h4>A requirement with no rename</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement carries no <code>renamed-from</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>its <code>renamedFrom</code> field is absent, and the requirement means exactly what it meant before this capability existed</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-requirement-contains-a-title-and-normative-statement" data-change="unchanged">
+            <h3>A requirement contains a title and normative statement <span class="hs-id">req-a-requirement-contains-a-title-and-normative-statement</span></h3>
+            <p>A requirement unit SHALL contain exactly one heading giving its name and at least one element of prose stating the obligation. The normative statement SHALL use <code>SHALL</code> or <code>MUST</code>, and SHALL NOT rely on <code>should</code> or <code>may</code> to express an obligation.</p>
+            <article class="scenario" id="scenario-well-formed-requirement" data-change="unchanged">
+              <h4>Well-formed requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement contains a heading and a paragraph reading "The application MUST let the user select a light or dark theme"</dd>
+                <dt>Then</dt>
+                <dd>the requirement is well formed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-requirement-with-no-normative-statement" data-change="unchanged">
+              <h4>Requirement with no normative statement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement contains only a heading</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-requirement-with-multiple-headings" data-change="unchanged">
+              <h4>Requirement with multiple headings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement unit contains two headings at its own level</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because the requirement's name is ambiguous</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-every-requirement-contains-at-least-one-scenario" data-change="unchanged">
+            <h3>Every requirement contains at least one scenario <span class="hs-id">req-every-requirement-contains-at-least-one-scenario</span></h3>
+            <p>A requirement SHALL contain at least one scenario unit nested within it. A scenario SHALL NOT appear outside a requirement.</p>
+            <article class="scenario" id="scenario-requirement-without-scenarios" data-change="unchanged">
+              <h4>Requirement without scenarios</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement declares an obligation but contains no scenario</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-orphaned-scenario" data-change="unchanged">
+              <h4>Orphaned scenario</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a scenario appears as a sibling of requirements rather than nested inside one</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-scenario-states-conditions-and-expected-outcomes" data-change="unchanged">
+            <h3>A scenario states conditions and expected outcomes <span class="hs-id">req-a-scenario-states-conditions-and-expected-outcomes</span></h3>
+            <p>A scenario SHALL contain a heading naming it and a structured body pairing each condition with its expected outcome, using the labels <code>Given</code>, <code>When</code>, and <code>Then</code>. A scenario SHALL contain at least one <code>When</code> and at least one <code>Then</code>. <code>Given</code> is optional and MAY repeat.</p>
+            <article class="scenario" id="scenario-minimal-scenario" data-change="unchanged">
+              <h4>Minimal scenario</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a scenario pairs a single <code>When</code> condition with a single <code>Then</code> outcome</dd>
+                <dt>Then</dt>
+                <dd>the scenario is well formed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-scenario-missing-an-outcome" data-change="unchanged">
+              <h4>Scenario missing an outcome</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a scenario states a <code>When</code> condition with no <code>Then</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-scenario-with-preconditions" data-change="unchanged">
+              <h4>Scenario with preconditions</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a scenario that depends on prior state</dd>
+                <dt>When</dt>
+                <dd>it declares one or more <code>Given</code> labels before its <code>When</code></dd>
+                <dt>Then</dt>
+                <dd>the scenario is well formed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unrecognized-label" data-change="unchanged">
+              <h4>Unrecognized label</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a scenario body uses a label other than <code>Given</code>, <code>When</code>, or <code>Then</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-cross-references-address-units-by-identifier" data-change="unchanged">
+            <h3>Cross-references address units by identifier <span class="hs-id">req-cross-references-address-units-by-identifier</span></h3>
+            <p>A task, verification, evidence, or risk unit MAY reference the semantic units it relates to. Such a reference SHALL name the target by its identifier, and SHALL resolve to a unit that exists in the same document or in a document reachable from it.</p>
+            <p><strong>A reference written in a <code>data-refs</code> attribute SHALL be resolved in the following places, in this order, and SHALL resolve to the unit declared in the first place that declares its identifier:</strong></p>
+            <ol>
+              <li>
+                <p>the document that makes the reference;</p>
+              </li>
+              <li>
+                <p>where that document is one of a change's documents other than its specification, that change's own specification;</p>
+              </li>
+              <li>
+                <p>where that document is one of a change's documents, including its specification, or is an accepted specification, the project's accepted specifications, every one of them.</p>
+              </li>
+            </ol>
+            <p>A change's documents are the documents directly within a change's directory, whether the change is active or archived. The project's accepted specifications are the documents beneath the place where the project keeps them. Nothing else is reachable. A document outside any project, a file beneath a change's evidence, and a runbook's documents reach only themselves. A change's documents do not reach another change's documents, and they do not reach their own change's proposal, design, or tasks.</p>
+            <p>A change's other documents reach its specification because they exist to serve it. A proposal argues for what the specification states, a design reasons about it, and the tasks carry it out. The tasks template already tells an author that a task may reference the requirement it serves "once that requirement exists in this change's specification". The accepted specifications are reachable because they are the contract every change starts from.</p>
+            <p><strong>The order decides which unit a reference means when two places declare one identifier.</strong> A change's specification restates, under the accepted identifier, each accepted requirement the change modifies or withdraws. For the change's own documents, the change's statement is the one that counts. So a task that references a requirement its change withdraws targets a withdrawn obligation, even while the accepted specification still holds that requirement unchanged.</p>
+            <p><strong>Every accepted specification is reachable, and an accepted specification reaches the others.</strong> A reference names a unit, not a capability. The merge that applies a change places each requirement in the accepted specification for its capability, so a reference that resolved in a change's specification must still resolve after that change's units are merged into two different accepted specifications.</p>
+            <p>A reference written as a fragment link, <code>href="#…"</code>, SHALL resolve within the document that makes it. It is a hyperlink into that page. If it resolved somewhere else while the link arrived nowhere, the reference would be true and the hyperlink false.</p>
+            <p>Where more than one accepted specification declares an identifier, a reference to it SHALL resolve. Which of them it means is not decided here.</p>
+            <p>A reference SHALL NOT resolve to a unit that the place resolving it marks <code>removed</code>. This holds in every place, not only in the document that makes the reference. A task and the requirement it serves rarely share a document, so a rule confined to one document would miss the case the scenario "Reference to a removed requirement" names.</p>
+            <article class="scenario" id="scenario-task-implements-a-requirement" data-change="unchanged">
+              <h4>Task implements a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task declares that it satisfies <code>req-theme-selection</code></dd>
+                <dt>Then</dt>
+                <dd>consumers can report implementation progress per requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-verification-covers-a-scenario" data-change="unchanged">
+              <h4>Verification covers a scenario</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a verification unit references <code>scenario-theme-persists</code></dd>
+                <dt>Then</dt>
+                <dd>consumers can report which scenarios have been verified and which have not</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-dangling-reference" data-change="unchanged">
+              <h4>Dangling reference</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task references <code>req-does-not-exist</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-cross-references-address-units-by-identifier-reference-to-a-removed-requirement" data-change="unchanged">
+              <h4>Reference to a removed requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task references a requirement carrying <code>data-change="removed"</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because work cannot target a withdrawn obligation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-task-references-a-requirement-in-its-change-s-specification" data-change="unchanged">
+              <h4>A task references a requirement in its change's specification</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification declares <code>req-x</code></dd>
+                <dt>When</dt>
+                <dd>a task in that change's tasks document names <code>req-x</code> in its <code>data-refs</code></dd>
+                <dt>Then</dt>
+                <dd>the reference resolves, and the tasks document is valid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-task-references-a-requirement-only-the-accepted-contract-holds" data-change="unchanged">
+              <h4>A task references a requirement only the accepted contract holds</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted specification declaring <code>req-y</code>, and no document in the change declaring it</dd>
+                <dt>When</dt>
+                <dd>a task in the change names <code>req-y</code> in its <code>data-refs</code></dd>
+                <dt>Then</dt>
+                <dd>the reference resolves</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-withdraws-a-requirement-the-accepted-contract-still-holds" data-change="unchanged">
+              <h4>A change withdraws a requirement the accepted contract still holds</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted specification declaring <code>req-y</code> unchanged, and a change whose specification declares <code>req-y</code> with <code>data-change="removed"</code></dd>
+                <dt>When</dt>
+                <dd>a task in that change names <code>req-y</code> in its <code>data-refs</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because the change's specification is reached first and it withdraws the obligation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-accepted-specifications-reference-one-another" data-change="unchanged">
+              <h4>Accepted specifications reference one another</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a unit in one accepted specification names, in its <code>data-refs</code>, a requirement that another accepted specification declares</dd>
+                <dt>Then</dt>
+                <dd>the reference resolves</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-identifier-two-accepted-specifications-declare" data-change="unchanged">
+              <h4>An identifier two accepted specifications declare</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task names in its <code>data-refs</code> an identifier that two accepted specifications both declare</dd>
+                <dt>Then</dt>
+                <dd>the reference resolves</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reference-to-another-change" data-change="unchanged">
+              <h4>A reference to another change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task names in its <code>data-refs</code> a requirement that only another change's specification declares</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because a change's documents reach their own change's specification and no other</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-that-reaches-only-itself" data-change="unchanged">
+              <h4>A document that reaches only itself</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document outside any project, or a file beneath a change's evidence, names in its <code>data-refs</code> an identifier it does not declare itself</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because nothing beyond it is reachable</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-s-document-names-an-accepted-requirement" data-change="unchanged">
+              <h4>A runbook's document names an accepted requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's tasks document names in its <code>data-refs</code> a requirement that only an accepted specification declares</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because a runbook is not a change and its documents reach only themselves</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-fragment-link-to-a-unit-in-another-document" data-change="unchanged">
+              <h4>A fragment link to a unit in another document</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification declares <code>req-x</code></dd>
+                <dt>When</dt>
+                <dd>a task in that change's tasks document links to <code>#req-x</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because a fragment link resolves within its own document</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-decision-records-its-outcome-and-rationale" data-change="unchanged">
+            <h3>A decision records its outcome and rationale <span class="hs-id">req-a-decision-records-its-outcome-and-rationale</span></h3>
+            <p>A decision unit SHALL contain a heading, a statement of the decision reached, and its rationale. It SHALL declare a status of <code>proposed</code>, <code>accepted</code>, or <code>superseded</code>. A superseded decision SHALL reference the decision that replaces it.</p>
+            <article class="scenario" id="scenario-accepted-decision" data-change="unchanged">
+              <h4>Accepted decision</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a decision states the chosen option and why, with status <code>accepted</code></dd>
+                <dt>Then</dt>
+                <dd>the decision is well formed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-superseded-decision-without-a-successor" data-change="unchanged">
+              <h4>Superseded decision without a successor</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a decision declares status <code>superseded</code> but references no replacement</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-task-declares-completion-state" data-change="unchanged">
+            <h3>A task declares completion state <span class="hs-id">req-a-task-declares-completion-state</span></h3>
+            <p>A task unit SHALL declare whether it is complete in a machine-readable attribute, distinct from any visual checkbox. Completion state SHALL be one of <code>todo</code>, <code>in-progress</code>, <code>done</code>, or <code>dropped</code>. A dropped task SHALL state why.</p>
+            <p><strong>A <code>done</code> task MAY state a deviation: what was done, where that departs from the task's words.</strong> The deviation SHALL be stated in one paragraph marked <code>data-field="deviation"</code>, and SHALL project into the task's <code>deviation</code> field. A task that states a deviation is <code>done</code>, because the work happened. A <code>done</code> task that states no deviation SHALL be read as done as its words say.</p>
+            <p>The reason is that none of the four states says "done, but not as written", and work lands that way. Marked <code>done</code> with a note, such a task claims its words were carried out, because a note is prose that no field and no count reads. Marked <code>dropped</code>, it claims the work did not happen, which is false. The deviation keeps both facts: the state says the work is finished, and the deviation says how it was done.</p>
+            <p>A task's words SHALL be kept as written when it states a deviation. They record what was planned, and designs, evidence, and later changes cite a task by them. The deviation is stated beside the words and SHALL NOT replace them.</p>
+            <p>The following SHALL make a document invalid:</p>
+            <ul>
+              <li>
+                <p>a <code>deviation</code> paragraph in a task whose state is <code>todo</code> or <code>in-progress</code>, because nothing has been done that could differ from the words;</p>
+              </li>
+              <li>
+                <p>a <code>deviation</code> paragraph in a task whose state is <code>dropped</code>, because a dropped task's work did not happen and its reason already states why. A task whose work partly happened is <code>done</code>, and its deviation states which part;</p>
+              </li>
+              <li>
+                <p>more than one <code>deviation</code> paragraph in one task, because a task has one account of what was done, and the projection does not choose between two.</p>
+              </li>
+            </ul>
+            <p>A <code>deviation</code> paragraph in any unit other than a task names no field of that unit, and is invalid for that reason.</p>
+            <article class="scenario" id="scenario-reporting-progress" data-change="unchanged">
+              <h4>Reporting progress</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a consumer reads a document containing ten tasks of which four are <code>done</code></dd>
+                <dt>Then</dt>
+                <dd>the consumer can report progress without parsing prose or rendered markup</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-dropped-task-without-a-reason" data-change="unchanged">
+              <h4>Dropped task without a reason</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task declares state <code>dropped</code> and gives no reason</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-task-done-another-way-than-its-words-say" data-change="unchanged">
+              <h4>A task done another way than its words say</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task declares state <code>done</code> and carries one <code>data-field="deviation"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, the task is <code>done</code>, and a consumer reads what was done from the task's <code>deviation</code> field</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-task-done-as-its-words-say" data-change="unchanged">
+              <h4>A task done as its words say</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task declares state <code>done</code> and carries no <code>deviation</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>its <code>deviation</code> field is absent, and the task is read as done as its words say</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deviation-on-a-task-not-yet-done" data-change="unchanged">
+              <h4>A deviation on a task not yet done</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task whose state is <code>todo</code> or <code>in-progress</code> carries a <code>deviation</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deviation-on-a-dropped-task" data-change="unchanged">
+              <h4>A deviation on a dropped task</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task whose state is <code>dropped</code> carries a reason and a <code>deviation</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because a dropped task's work did not happen</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-deviations-in-one-task" data-change="unchanged">
+              <h4>Two deviations in one task</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a <code>done</code> task carries two <code>deviation</code> paragraphs</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deviation-outside-a-task" data-change="unchanged">
+              <h4>A deviation outside a task</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement, scenario, decision, evidence, risk, or verification unit carries a <code>data-field="deviation"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because the field belongs to a task</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-element-contract-is-published-as-a-machine-readable-schema" data-change="unchanged">
+            <h3>The element contract is published as a machine-readable schema <span class="hs-id">req-the-element-contract-is-published-as-a-machine-readable-schema</span></h3>
+            <p>The element contract SHALL be published as a machine-readable schema that is the single source of truth for the vocabulary, required structure, identifier prefixes, and permitted attribute values of the projected document model. Tools that validate, format, or generate documents SHALL derive their understanding of that model from the schema rather than restating it.</p>
+            <p>The schema describes the projected model. It does not describe the HTML that produces the model, so the schema alone SHALL NOT be treated as the complete public contract.</p>
+            <article class="scenario" id="scenario-contract-and-tooling-agree" data-change="unchanged">
+              <h4>Contract and tooling agree</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the published schema is changed to add a semantic unit</dd>
+                <dt>Then</dt>
+                <dd>tools reflect the new unit without a separate, independently maintained definition</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-third-party-consumer-reads-the-model-contract" data-change="unchanged">
+              <h4>Third-party consumer reads the model contract</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a consumer outside this project</dd>
+                <dt>When</dt>
+                <dd>it reads the published schema</dd>
+                <dt>Then</dt>
+                <dd>it can determine the full set of semantic units and their required structure in the projected model without reading this project's source code</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-contract-s-version-is-a-semantic-version" data-change="unchanged">
+            <h3>The contract's version is a semantic version <span class="hs-id">req-the-contract-s-version-is-a-semantic-version</span></h3>
+            <p>The contract's version SHALL be a semantic version. A major release MAY withdraw or reshape a unit, a field, or a projection rule. A minor release adds vocabulary, and MAY add warnings and review findings. A patch release changes wording and fixes defects.</p>
+            <p>Within a major version from 1 on, a document that one version accepts SHALL be accepted by every later version of that major: no later minor or patch SHALL report an error on it that the earlier version did not, except where the earlier version accepted what a requirement stated at that version refused, a defect the release's changelog names. Warnings are outside this promise.</p>
+            <p>The schema SHALL keep accepting every version a minor or patch release succeeded, and SHALL keep accepting <code>0.1.0</code> to <code>0.7.0</code> beside 1.x. Version <code>1.0.0</code> is the <code>0.7.0</code> vocabulary, unchanged. A document the toolchain writes, from a template or as a run's record, SHALL declare the newest version, in its head and wherever its masthead names the contract.</p>
+            <article class="scenario" id="scenario-a-0-7-0-document-validates-under-1-0-0" data-change="unchanged">
+              <h4>A document declaring 0.7.0 validates under 1.0.0</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document that declares <code>0.7.0</code> and validates with no error</dd>
+                <dt>When</dt>
+                <dd>it is validated by a release whose newest contract version is <code>1.0.0</code></dd>
+                <dt>Then</dt>
+                <dd>it reports no error it did not report under <code>0.7.0</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-minor-that-adds-a-warning-keeps-the-promise" data-change="unchanged">
+              <h4>A minor that adds a warning keeps the promise</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document that 1.x accepts</dd>
+                <dt>When</dt>
+                <dd>a later minor release adds a warning that fires on it</dd>
+                <dt>Then</dt>
+                <dd>the document is still accepted, and the release is a minor</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-new-error-on-an-accepted-document-needs-a-major" data-change="unchanged">
+              <h4>A new error on an accepted document needs a major</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document that a 1.x version accepts</dd>
+                <dt>When</dt>
+                <dd>a change would make a later version report an error on it that the earlier one did not, and the earlier version refused nothing a requirement stated</dd>
+                <dt>Then</dt>
+                <dd>that change is released as 2.0.0, not as a 1.x minor or patch</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-version-the-schema-does-not-list-is-refused" data-change="unchanged">
+              <h4>A version the schema does not list is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document declaring <code>1.1.0</code>, <code>2.0.0</code>, <code>1.0</code>, <code>v1.0.0</code>, or <code>1.0.0-rc.1</code></dd>
+                <dt>When</dt>
+                <dd>it is validated by release 1.0.0</dd>
+                <dt>Then</dt>
+                <dd>validation reports the version as one the contract does not accept</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-written-document-declares-the-newest-version" data-change="unchanged">
+              <h4>A written document declares the newest version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the toolchain writes a document from a template, or composes a run's record</dd>
+                <dt>Then</dt>
+                <dd>its head declares <code>1.0.0</code>, and a record's masthead names <code>1.0.0</code> where it reads Contract</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-html-to-model-projection-is-published-as-a-normative-specification" data-change="unchanged">
+            <h3>The HTML-to-model projection is published as a normative specification <span class="hs-id">req-the-html-to-model-projection-is-published-as-a-normative-specification</span></h3>
+            <p>The project SHALL publish a normative projection specification stating how a document's HTML becomes the projected model. That specification SHALL be part of the public contract alongside the schema. It SHALL state, at minimum:</p>
+            <ul>
+              <li>
+                <p>which elements and attributes create a semantic unit, and which are ignored</p>
+              </li>
+              <li>
+                <p>how a nested element becomes a field of its containing unit</p>
+              </li>
+              <li>
+                <p>which content preserves whitespace exactly, and which content normalizes it</p>
+              </li>
+              <li>
+                <p>how a link, and how an explicit reference attribute, each become a reference in the model</p>
+              </li>
+              <li>
+                <p>how a figure, its caption, and its visualization source project</p>
+              </li>
+              <li>
+                <p>how task completion state and unit change state project</p>
+              </li>
+              <li>
+                <p>how presentational markup that carries no semantic unit is discarded</p>
+              </li>
+              <li>
+                <p>how HTML's change markup, <code>ins</code> and <code>del</code>, projects: which of its text a field holds, and where deleted text is recorded</p>
+              </li>
+            </ul>
+            <article class="scenario" id="scenario-independent-implementation-reproduces-the-model" data-change="unchanged">
+              <h4>Independent implementation reproduces the model</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an implementation written from the projection specification and the schema, with no access to this project's source code</dd>
+                <dt>When</dt>
+                <dd>it projects a conformance fixture</dd>
+                <dt>Then</dt>
+                <dd>it produces the same model as this project's implementation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-presentational-markup-is-ignored-predictably" data-change="unchanged">
+              <h4>Presentational markup is ignored predictably</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document wraps a requirement's prose in additional presentational elements that carry no reserved class</dd>
+                <dt>Then</dt>
+                <dd>the projection specification determines whether that markup is discarded, and the resulting model does not vary between implementations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-change-markup-projects-predictably" data-change="unchanged">
+              <h4>Change markup projects predictably</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document marks an inserted word and a deleted word in a requirement's statement</dd>
+                <dt>Then</dt>
+                <dd>the projection specification determines which text the statement holds and where the deleted word is recorded, and the resulting model does not vary between implementations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-projection-rule-without-a-fixture" data-change="unchanged">
+              <h4>Projection rule without a fixture</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a rule is added to the projection specification with no corresponding mapping fixture</dd>
+                <dt>Then</dt>
+                <dd>the conformance suite is incomplete and the contract change is not accepted</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-conformance-is-pinned-by-fixtures" data-change="unchanged">
+            <h3>Conformance is pinned by fixtures <span class="hs-id">req-conformance-is-pinned-by-fixtures</span></h3>
+            <p>The contract SHALL be accompanied by a conformance suite of example documents, each labelled valid or invalid. Every invalid fixture SHALL identify the rule it violates. Every rule in the contract SHALL be covered by at least one valid and one invalid fixture.</p>
+            <p>The suite SHALL also contain mapping fixtures, each pairing an HTML input with its expected projected model, so that the projection specification is pinned as precisely as the schema.</p>
+            <article class="scenario" id="scenario-rule-without-coverage" data-change="unchanged">
+              <h4>Rule without coverage</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a rule is added to the contract with no corresponding fixtures</dd>
+                <dt>Then</dt>
+                <dd>the conformance suite is incomplete and the contract change is not accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-verifying-an-independent-implementation" data-change="unchanged">
+              <h4>Verifying an independent implementation</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an independent implementation of the contract</dd>
+                <dt>When</dt>
+                <dd>it is run against the conformance suite</dd>
+                <dt>Then</dt>
+                <dd>it accepts every valid fixture and rejects every invalid fixture, identifying the expected violated rule</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-deleted-word-is-recorded-apart-from-what-a-unit-states" data-change="unchanged">
+            <h3>A deleted word is recorded apart from what a unit states <span class="hs-id">req-a-deleted-word-is-recorded-apart-from-what-a-unit-states</span></h3>
+            <p>HTML's change markup SHALL have one meaning in the projected model, wherever a document uses it. <code>ins</code> marks text an edit added, and its text SHALL contribute to the field that encloses it, as the text of any other inline element does. <code>del</code> marks text an edit removed, and <strong>its content SHALL contribute to no field of the model.</strong> A paragraph inside a <code>del</code> SHALL supply no statement, note, or other field. A description-list entry inside one SHALL supply no scenario entry. A heading inside one SHALL supply no title. A link inside one SHALL project no reference. The link SHALL still project into the document's links, because the page still carries it and a reader can still follow it.</p>
+            <p><strong>The text of each <code>del</code> SHALL be recorded in the <code>deletions</code> of the requirement or scenario it belongs to</strong>, one entry for each <code>del</code> that no other <code>del</code> encloses, in document order. A <code>del</code> belongs to the nearest unit that encloses it, so a deletion inside a scenario is the scenario's and not its requirement's. A <code>del</code> in any other unit, or outside every unit, SHALL be recorded nowhere. The document's summary, a figure's caption, and a link's text SHALL hold only the current text.</p>
+            <p>The reason is that a unit's statements are the contract, and the contract is the text as it now reads. Read as presentational markup, a deleted word ran into the statement beside the words that replaced it: a statement read "its active changes, and its archive, and its runbooks", which is neither the text before the edit nor the text after it. Keeping deleted words out of every field makes the normative text always the current text. Recording them keeps in the model what the page shows a reader, which is that the unit deleted words, and which words. A requirement and a scenario record them because an accepted specification holds those two units and no others, so they are the units whose accepted text a change edits.</p>
+            <p>The record is a list of deleted texts for each unit, and not one for each field. A deleted paragraph belongs to no field, and a deleted phrase's place in its sentence is in the markup, where a reader sees it. So the model does not pair a deletion with the insertion beside it.</p>
+            <p>Inserted text SHALL NOT be recorded a second time. It is current text, and it is already in its field.</p>
+            <p>The projection SHALL apply this whatever the document is and wherever it sits. The projection decides what the markup means, and validation decides where the markup is permitted, under document-validation's "Change markup in or around a semantic unit is rejected". So a document that validation rejects for its markup still projects with its deleted words out of every field.</p>
+            <p>A unit inside a <code>del</code> SHALL still project as a unit. A unit is created by its reserved class, and a withdrawn unit says so with its change state. Validation rejects the <code>del</code> around it.</p>
+            <article class="scenario" id="scenario-a-word-inserted-into-a-statement" data-change="unchanged">
+              <h4>A word inserted into a statement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's statement reads <code>… &lt;code&gt;status&lt;/code&gt;, &lt;ins&gt;&lt;code&gt;sync&lt;/code&gt;, &lt;/ins&gt;&lt;code&gt;instructions&lt;/code&gt;, and &lt;code&gt;store&lt;/code&gt; name the operations OpenSpec also provides.</code></dd>
+                <dt>Then</dt>
+                <dd>the statement reads "… status, sync, instructions, and store name the operations OpenSpec also provides.", and the requirement records no deletion</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deleted-word-beside-an-inserted-phrase" data-change="unchanged">
+              <h4>A deleted word beside an inserted phrase</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's statement reads <code>… its active changes, &lt;del&gt;and &lt;/del&gt;its archive, &lt;ins&gt;and its runbooks, &lt;/ins&gt;each in its own place.</code></dd>
+                <dt>Then</dt>
+                <dd>the statement reads "… its active changes, its archive, and its runbooks, each in its own place.", and the requirement's <code>deletions</code> holds the one entry "and"</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deleted-paragraph" data-change="unchanged">
+              <h4>A deleted paragraph</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement holds a paragraph wrapped in <code>del</code></dd>
+                <dt>Then</dt>
+                <dd>that paragraph is not one of the requirement's statements, and its text is an entry of the requirement's <code>deletions</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deletion-inside-a-scenario" data-change="unchanged">
+              <h4>A deletion inside a scenario</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an entry of a scenario inside a requirement contains a <code>del</code> element</dd>
+                <dt>Then</dt>
+                <dd>the entry holds the current text, the deleted text is in the scenario's <code>deletions</code>, and the requirement's <code>deletions</code> does not hold it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deleted-link" data-change="unchanged">
+              <h4>A deleted link</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a verification's method contains, inside a <code>del</code>, a link to a requirement in the same document</dd>
+                <dt>Then</dt>
+                <dd>the verification has no reference from that link, and the link is still among the document's links</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deletion-outside-every-unit" data-change="unchanged">
+              <h4>A deletion outside every unit</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a paragraph of the document's summary contains a <code>del</code> element</dd>
+                <dt>Then</dt>
+                <dd>the summary holds only the current text, and the deleted text is recorded nowhere</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-with-no-change-markup" data-change="unchanged">
+              <h4>A document with no change markup</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document carries no <code>del</code> element</dd>
+                <dt>Then</dt>
+                <dd>no unit has <code>deletions</code>, and the model is exactly what it was before this requirement</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-partial-verification-states-what-it-did-not-check" data-change="unchanged">
+            <h3>A partial verification states what it did not check <span class="hs-id">req-a-partial-verification-states-what-it-did-not-check</span></h3>
+            <p>A verification SHALL be able to record that its check covered only part of what the verification names. That outcome is <code>partial</code>. It means the check ran against the requirement or scenario the verification names, reached part of it, and found that part to hold. A check whose covered part did not hold is <code>failed</code>, whatever else it did not reach.</p>
+            <p>The set of outcome values belongs to the published schema, and this requirement does not restate it. "The element contract is published as a machine-readable schema" makes the schema the single source of truth for permitted attribute values. This requirement names <code>partial</code> because it attaches an obligation to that one value, and a condition on a value's companion field is a validator rule, as a dropped task's reason is.</p>
+            <p><strong>A <code>partial</code> verification SHALL state what it did not check</strong>, in one or more paragraphs marked <code>data-field="unchecked"</code>. Each paragraph SHALL name a part of the requirement or scenario that the check did not cover. A <code>partial</code> verification with no such paragraph SHALL make the document invalid. An unmarked paragraph SHALL NOT satisfy this, because an unmarked paragraph in a verification is a note.</p>
+            <p>The reason is the one that makes a dropped task state why, in "A task declares completion state": an outcome that says less than the whole is useful only with the rest named. A verification names units, and the smallest unit it can name is a scenario, so a check that reached one clause of a scenario cannot narrow its reference to that clause. Without <code>partial</code>, its author has two choices, and both are wrong. <code>passed</code> claims the part the check never reached. Deleting the verification loses the record of the part it did. A <code>partial</code> that named nothing would be a third way to say nothing about what is left.</p>
+            <p>The <code>unchecked</code> paragraphs SHALL project into the verification's <code>unchecked</code> field, in document order, and SHALL NOT project into its notes. A verification recording any other outcome MAY carry them, so that a check that failed or was blocked can state what it never reached.</p>
+            <p>A check whose condition, subject, or trigger differs from the one a scenario states did not reach that scenario at all, and it is not a partial verification of it. <code>partial</code> records a check of the right thing that stopped short, not a check of something nearby.</p>
+            <article class="scenario" id="scenario-a-check-that-reached-part-of-its-scenario" data-change="unchanged">
+              <h4>A check that reached part of its scenario</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a scenario whose Then states two outcomes, and a check that observed only the first</dd>
+                <dt>When</dt>
+                <dd>a verification naming that scenario carries <code>data-outcome="partial"</code> and a <code>data-field="unchecked"</code> paragraph naming the second</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, and a consumer reads both the outcome and what the check did not cover without parsing prose</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-partial-verification-that-does-not-say-what-it-left" data-change="unchanged">
+              <h4>A partial verification that does not say what it left</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a verification carries <code>data-outcome="partial"</code> and no <code>data-field="unchecked"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, and the report names the verification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unmarked-paragraph-does-not-state-it" data-change="unchanged">
+              <h4>An unmarked paragraph does not state it</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a <code>partial</code> verification carries an unmarked paragraph describing what it did not check, and no <code>data-field="unchecked"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because an unmarked paragraph in a verification is a note</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-parts-left-unchecked" data-change="unchanged">
+              <h4>Two parts left unchecked</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a <code>partial</code> verification carries two <code>data-field="unchecked"</code> paragraphs</dd>
+                <dt>Then</dt>
+                <dd>its <code>unchecked</code> field holds both, in document order, because a part dropped from the record would understate what the check missed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-failed-check-that-says-what-it-did-not-reach" data-change="unchanged">
+              <h4>A failed check that says what it did not reach</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a verification carries <code>data-outcome="failed"</code> and a <code>data-field="unchecked"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-any-other-outcome-without-it" data-change="unchanged">
+              <h4>Any other outcome without it</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a verification carries <code>data-outcome="passed"</code> and no <code>data-field="unchecked"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, and the verification means exactly what it meant before <code>partial</code> existed</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-risk-records-how-it-was-settled" data-change="unchanged">
+            <h3>A risk records how it was settled <span class="hs-id">req-a-risk-records-how-it-was-settled</span></h3>
+            <p>A risk unit SHALL contain a heading and one statement of how the change can fail. <strong>It SHALL declare how the risk was settled</strong>, in a <code>data-response</code> attribute with one of the values <code>mitigated</code> or <code>accepted</code>. A risk with no <code>data-response</code> attribute SHALL be interpreted as <code>mitigated</code>.</p>
+            <p>A <code>mitigated</code> risk is one the change holds down. It SHALL state what holds it down, in a paragraph marked <code>data-field="mitigation"</code>. Where the mitigation does not reach all the way, that paragraph SHALL say how far it reaches. The extent SHALL NOT be a value of its own.</p>
+            <p>An <code>accepted</code> risk is one the change bears as it stands. It SHALL NOT be required to state a mitigation. It MAY carry a <code>mitigation</code> paragraph, which then states the part of the risk that something does hold down. It SHALL NOT be required to state its reason in a field of its own, because its statement and its notes are where an author says why a risk is borne.</p>
+            <p>The reason is that a risk is settled in one of two ways, and only one of them has a mitigation to state. A contract that required a mitigation of every risk left the author of an accepted risk two choices: invent a mitigation, or write a mitigation paragraph that denies being one. Either choice puts a false statement in the risk's mitigation.</p>
+            <p>The default is <code>mitigated</code> because every risk written before this attribute existed had to state a mitigation. Each such risk keeps both its meaning and its validity.</p>
+            <p>The response SHALL be stated separately from the unit's change state. The change state says what a change does to the risk, and the response says how the risk is answered. Neither SHALL be inferred from the other. The response SHALL NOT be inferred from whether a mitigation paragraph is present, because an accepted risk may carry one.</p>
+            <p>The response SHALL project into the risk's <code>response</code> field, which every risk in the model carries, including a risk whose markup declares none. A <code>data-response</code> attribute on a unit other than a risk SHALL project nowhere, as a <code>data-state</code> attribute does on a unit other than a task.</p>
+            <p>The following SHALL make a document invalid:</p>
+            <ul>
+              <li>
+                <p>a risk whose response is <code>mitigated</code>, declared or by default, with no <code>mitigation</code> paragraph;</p>
+              </li>
+              <li>
+                <p>a <code>data-response</code> value other than <code>mitigated</code> or <code>accepted</code>.</p>
+              </li>
+            </ul>
+            <article class="scenario" id="scenario-a-mitigated-risk" data-change="unchanged">
+              <h4>A mitigated risk</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a risk carries <code>data-response="mitigated"</code>, a statement, and a <code>data-field="mitigation"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, and the risk's response is <code>mitigated</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-risk-written-before-the-response-attribute-existed" data-change="unchanged">
+              <h4>A risk written before the response attribute existed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a risk carries a statement and a mitigation paragraph, and no <code>data-response</code> attribute</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, and the risk's response is <code>mitigated</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-mitigated-risk-with-no-mitigation" data-change="unchanged">
+              <h4>A mitigated risk with no mitigation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a risk whose response is <code>mitigated</code>, declared or by default, carries no mitigation paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, and the report names <code>data-response="accepted"</code> as the declaration for a risk the change bears</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-accepted-risk-with-no-mitigation" data-change="unchanged">
+              <h4>An accepted risk with no mitigation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a risk carries <code>data-response="accepted"</code> and a statement, and no mitigation paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, its response is <code>accepted</code>, and it has no mitigation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-accepted-risk-that-names-a-partial-measure" data-change="unchanged">
+              <h4>An accepted risk that names a partial measure</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a risk carries <code>data-response="accepted"</code>, a statement, and a mitigation paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, its response is <code>accepted</code>, and its mitigation projects as it would on a mitigated risk</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-risk-that-is-partly-held-down" data-change="unchanged">
+              <h4>A risk that is partly held down</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a risk carries <code>data-response="partial"</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because how far a mitigation reaches is stated in its paragraph and not in the response</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-response-on-another-unit" data-change="unchanged">
+              <h4>A response on another unit</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a decision carries <code>data-response="accepted"</code></dd>
+                <dt>Then</dt>
+                <dd>the attribute projects nowhere, and the decision means what it would mean without it</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

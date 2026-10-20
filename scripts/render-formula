@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""Write the Homebrew formula for a release from that release's SHA256SUMS.
+
+The formula names one tarball per platform and the digest Homebrew checks it against. A digest
+copied by hand is one that can disagree with the file, and a formula whose digest disagrees is an
+install that fails for everyone. So the formula is rendered from the SHA256SUMS the release's
+build wrote: `packaging/homebrew/htmlspec.rb.in` holds placeholders, and this script fills the
+version and each target's digest from that file and nothing else.
+
+It refuses a SHA256SUMS that lacks one of the four targets, names two versions, or names a file
+that is not a release tarball, and a rendering that leaves any placeholder unfilled. It refuses a
+template whose tarballs are not exactly the four targets, and one whose `license` names other
+licenses than the `license` field of `crates/htmlspec-assets/Cargo.toml`: the binary embeds what
+that crate embeds, so the formula declares what the crate declares, and a copy that drifted fails
+the formula job of the pull request that changed it.
+
+Usage:
+  scripts/render-formula --sums SHA256SUMS                  the formula for the GitHub release
+  scripts/render-formula --sums SHA256SUMS --base-url URL   the same, fetching from URL instead
+
+`--base-url` replaces the address the tarballs are fetched from, which is the version's GitHub
+release download directory unless it is given. `{version}` in it is replaced by the version. The
+local check in `scripts/check-formula` points it at the directory the tarballs were built into.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+TEMPLATE = ROOT / "packaging" / "homebrew" / "htmlspec.rb.in"
+ASSETS_MANIFEST = ROOT / "crates" / "htmlspec-assets" / "Cargo.toml"
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from release_facts import TARGETS, section_fields  # noqa: E402
+
+RELEASES = "https://github.com/Firefly-Projects/htmlspec/releases/download/v{version}"
+
+LINE = re.compile(r"([0-9a-f]{64})  (htmlspec-(\d+\.\d+\.\d+)-([a-z0-9_-]+)\.tar\.gz)")
+PLACEHOLDER = re.compile(r"@[A-Z0-9_]+@")
+TEMPLATE_TARBALL = re.compile(r'url "@BASE_URL@/htmlspec-@VERSION@-([a-z0-9_-]+)\.tar\.gz"')
+TEMPLATE_LICENSE = re.compile(r"(?m)^\s*license all_of: \[([^\]]*)\]\s*$")
+
+
+class Refused(Exception):
+    pass
+
+
+def read_sums(text: str) -> tuple[str, dict[str, str]]:
+    """The version and each target's digest, from SHA256SUMS in `sha256sum`'s format."""
+    version = None
+    digests: dict[str, str] = {}
+    for number, line in enumerate(text.splitlines(), start=1):
+        if not line.strip():
+            continue
+        match = LINE.fullmatch(line.strip())
+        if not match:
+            raise Refused(f"line {number} of SHA256SUMS is not a digest and a release tarball: {line!r}")
+        digest, _, named, target = match.groups()
+        if target not in TARGETS:
+            raise Refused(f"SHA256SUMS names {target}, which a release does not build")
+        if version not in (None, named):
+            raise Refused(f"SHA256SUMS names versions {version} and {named}")
+        if target in digests:
+            raise Refused(f"SHA256SUMS names {target} twice")
+        version = named
+        digests[target] = digest
+    missing = [target for target in TARGETS if target not in digests]
+    if version is None or missing:
+        raise Refused(f"SHA256SUMS lacks {', '.join(missing) or 'every target'}")
+    return version, digests
+
+
+def template_faults(template: str, assets_manifest: str) -> list[str]:
+    """Where the template disagrees with the four targets or with the assets crate's license."""
+    faults = []
+    named = TEMPLATE_TARBALL.findall(template)
+    if sorted(named) != sorted(TARGETS):
+        faults.append(
+            f"the template fetches tarballs for {', '.join(named) or 'no target'}, and a release "
+            f"builds {', '.join(TARGETS)}"
+        )
+    declared = section_fields(assets_manifest, "package").get("license")
+    if declared is None or "(" in declared or " OR " in declared:
+        faults.append(
+            f"crates/htmlspec-assets/Cargo.toml declares license {declared!r}, and this script "
+            f"compares only licenses joined by AND, which is what the formula's all_of states"
+        )
+        return faults
+    wanted = declared.split(" AND ")
+    found = TEMPLATE_LICENSE.search(template)
+    stated = re.findall(r'"([^"]+)"', found.group(1)) if found else []
+    if sorted(stated) != sorted(wanted):
+        faults.append(
+            f"the template's license is all_of {stated}, and crates/htmlspec-assets/Cargo.toml "
+            f"declares {declared}. The binary embeds what that crate embeds, so the two name the "
+            f"same licenses"
+        )
+    return faults
+
+
+def render(template: str, version: str, digests: dict[str, str], base_url: str) -> str:
+    text = template.replace("@BASE_URL@", base_url.replace("{version}", version).rstrip("/"))
+    text = text.replace("@VERSION@", version)
+    for target, digest in digests.items():
+        text = text.replace(f"@SHA256_{target.upper().replace('-', '_')}@", digest)
+    left = sorted(set(PLACEHOLDER.findall(text)))
+    if left:
+        raise Refused(f"the template leaves {', '.join(left)} unfilled")
+    return text
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="render the Homebrew formula from SHA256SUMS")
+    parser.add_argument("--sums", type=Path, required=True, help="the release's SHA256SUMS")
+    parser.add_argument("--base-url", default=RELEASES, help="where the tarballs are fetched from")
+    parser.add_argument("--template", type=Path, default=TEMPLATE)
+    arguments = parser.parse_args()
+    try:
+        template = arguments.template.read_text(encoding="utf-8")
+        faults = template_faults(template, ASSETS_MANIFEST.read_text(encoding="utf-8"))
+        if faults:
+            raise Refused("; ".join(faults))
+        version, digests = read_sums(arguments.sums.read_text(encoding="utf-8"))
+        formula = render(template, version, digests, arguments.base_url)
+    except (Refused, OSError) as error:
+        print(f"render-formula: {error}", file=sys.stderr)
+        return 1
+    sys.stdout.write(formula)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

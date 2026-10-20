@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Name each command by its request verb</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Name each command by its request verb</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Name each command by its request verb</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-12-name-each-command-by-its-request-verb/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>See <a href="proposal.html">proposal.md</a> for why. The shape of the current system that the approach depends on:</p>
+          <ul>
+            <li><strong>One subcommand per operation, and no aliases.</strong> <code>crates/htmlspec-cli/src/main.rs</code> declares 14 subcommands with clap's derive API, three of which take subcommands of their own, and declares no alias (<a href="evidence/the-measurement-2026-10-05.md"><code>evidence/the-measurement-2026-10-05.md</code></a>, sections 1 and 6).</li>
+            <li><strong>The spellings are contract.</strong> toolchain-packaging's "<a href="../../../specs/toolchain-packaging/spec.html#req-a-single-command-exposes-validate-format-and-init">The command surface names its operations as OpenSpec names them</a>" fixes <code>validate</code>, <code>archive</code>, <code>init</code>, <code>new</code>, <code>list</code>, <code>status</code>, <code>sync</code>, <code>instructions</code>, and <code>store</code> because the installed instructions invoke them by name, and fixes <code>format</code> and <code>assets</code> as this project's own.</li>
+            <li><strong>The spellings are everywhere.</strong> 1,075 occurrences in tracked files, 300 of them in the instructions and their installed copies (<a href="evidence/the-measurement-2026-10-05.md">evidence, section 5</a>).</li>
+            <li><strong>What each operation writes is already decided</strong>, by its requirement and its options: nine never write, and four of the nine that can have an invocation that writes nothing, <code>format --check</code>, <code>archive --check</code> but for its settling of an interrupted archival, <code>run --check</code>, and <code>migrate promote</code> without <code>--staged</code> (<a href="evidence/the-measurement-2026-10-05.md">evidence, section 2</a>).</li>
+            <li><strong><code>show-what-a-modification-changed</code> adds <code>show</code></strong>, which reads and never writes, to the same requirement.</li>
+          </ul>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong></p>
+          <ul>
+            <li>Every operation can be invoked by a verb that says what it does to the tree.</li>
+            <li>Every current spelling keeps working, byte for byte.</li>
+            <li>One place states each operation's two spellings, so they cannot drift apart.</li>
+          </ul>
+          <p><strong>Non-Goals:</strong></p>
+          <ul>
+            <li>Withdrawing a spelling. The contributor decided to keep them.</li>
+            <li>Changing what any operation does.</li>
+            <li>htmx itself: no script, no server, no request.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-a-second-spelling-and-the-openspec-one-stays-primary" data-change="added" data-status="accepted">
+            <h3>1. A second spelling, and the OpenSpec one stays primary <span class="hs-id">decision-a-second-spelling-and-the-openspec-one-stays-primary</span></h3>
+            <p>Each operation answers to its request-verb spelling and its OpenSpec spelling, and both run the same handler with the same arguments. The OpenSpec spelling is the one the program prints in its own messages, the one the installed instructions use, and the one listed first in help.</p>
+            <p data-field="rationale"><strong>Considered: replacing the OpenSpec spellings.</strong> Rejected by the contributor on 2026-10-05. It would also break every instruction line that invokes a command, every runbook step, and every archived change's record of what it ran (<a href="evidence/the-measurement-2026-10-05.md">evidence, section 5</a>), and it would contradict the requirement's own reason for fixing the spellings.</p>
+            <p data-field="rationale"><strong>Considered: writing the verbs into the instructions.</strong> Rejected. The instructions are read by agents that arrive from OpenSpec, and the requirement's promise is that they have one spelling to learn. The verbs are for a reader who wants the effect on the face of the command. Revisiting this is a change of its own, once the verbs have been used.</p>
+          </section>
+          <section id="hs-decision-2">
+            <h3>2. The verb names the most an operation writes, and options carry over</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Verb</th>
+                  <th>Meaning, as HTTP gives it</th>
+                  <th>Operations</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>get</code></td>
+                  <td>never writes</td>
+                  <td><code>validate</code>, <code>list</code>, <code>status</code>, <code>sync</code>, <code>show</code>, <code>assets</code>, <code>preflight</code>, <code>instructions</code>, <code>store list</code>, <code>migrate survey</code></td>
+                </tr>
+                <tr>
+                  <td><code>post</code></td>
+                  <td>creates something that was not there</td>
+                  <td><code>new change</code>, <code>new document</code>, <code>store add</code>, <code>run</code>, <code>migrate promote</code></td>
+                </tr>
+                <tr>
+                  <td><code>put</code></td>
+                  <td>creates or replaces a whole thing, and leaves it as one run did when run again</td>
+                  <td><code>init</code>, <code>format</code></td>
+                </tr>
+                <tr>
+                  <td><code>patch</code></td>
+                  <td>changes something that exists</td>
+                  <td><code>archive</code></td>
+                </tr>
+                <tr>
+                  <td><code>delete</code></td>
+                  <td>removes something</td>
+                  <td><code>store remove</code></td>
+                </tr>
+              </tbody>
+            </table>
+            <p>The verb is the most the operation writes in any invocation. So <code>get</code> is a promise about every invocation: an operation spelled with it never writes. Four operations that write have an invocation that does not: <code>format --check</code>, <code>archive --check</code>, <code>run --check</code>, and <code>migrate promote</code> without <code>--staged</code> or with <code>--check</code>. Each takes the verb of what it writes when it does, and under the verb spelling each option means what it means today, so <code>put format --check</code> writes nothing. <code>archive --check</code> keeps its one exception under both spellings: before it reports, it settles an archival interrupted earlier, completing it or rolling it back.</p>
+            <p><strong>Considered: the effect of the default invocation.</strong> Rejected after the review of this proposal, where the first version stood. <code>migrate promote</code> with no option checks a plan's coverage and writes nothing, and moves a project into place only with <code>--staged</code>, an option that adds writes. Judged by its default it would have been <code>get</code>, a verb that promises no writes, for an operation that can put a whole project where there was none.</p>
+            <p><strong>Considered: <code>get</code> for every <code>--check</code> invocation</strong>, so <code>format --check</code> would be <code>get format</code>. Rejected. Two spellings of one operation would then differ in which options they accept and in what an option means, and the spelling would stop being a spelling. An option is the same option under both.</p>
+            <p><code>init</code> is <code>put</code> and not <code>post</code>. It creates the project where there is none and refreshes the installed instructions where there is one ("Safe to re-run"), and running it twice leaves what running it once did, which is what HTTP's <code>PUT</code> means. <code>post</code> is kept for an operation that makes something that was not there: a change, a document, a registration, a run record, a promoted project. The first version of this proposal had <code>post project</code>, and the contributor chose <code>put</code> after the review. <code>format</code> is <code>put</code> for the same reason: it replaces each document whole, and a second run changes nothing.</p>
+            <p><code>archive</code> is <code>patch</code> and not <code>delete</code> or <code>post</code>: it moves a change that exists into the archive and writes its <code>VERSION</code>, which changes the change's standing, and creates nothing a reader asks for. Measured at task 1.2, it also writes its bookkeeping where the project holds a runbook: the inventory <code>runbooks.json</code> beside the <code>VERSION</code>, and, at the project's first such publication, the adoption marker <code>runbook-releases.json</code> at the planning root. Neither is a document a reader asks for, so the verb stands. <code>run</code> is <code>post</code>, because a run writes a record that was not there. <code>migrate promote</code> is <code>post</code>, because with <code>--staged</code> it puts a project where there was none. <code>store remove</code> is <code>delete</code>, and its object says what it deletes: the registration, never the project it names.</p>
+          </section>
+          <section id="hs-decision-3">
+            <h3>3. The objects</h3>
+            <p>The objects are fixed by this table, and the test in task 2.1 asserts that no two operations share a spelling of either kind.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Operation</th>
+                  <th>Object</th>
+                  <th>Why</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>validate</code></td>
+                  <td><code>validity</code></td>
+                  <td>the operation's name, as a noun</td>
+                </tr>
+                <tr>
+                  <td><code>list</code>, <code>status</code>, <code>sync</code>, <code>show</code>, <code>assets</code>, <code>preflight</code>, <code>instructions</code>, <code>run</code>, <code>format</code>, <code>archive</code></td>
+                  <td>the operation's own name</td>
+                  <td>the name already says what it acts on</td>
+                </tr>
+                <tr>
+                  <td><code>init</code></td>
+                  <td><code>project</code></td>
+                  <td>what it creates or refreshes</td>
+                </tr>
+                <tr>
+                  <td><code>new change</code>, <code>new document</code></td>
+                  <td><code>change</code>, <code>document</code></td>
+                  <td>what it creates</td>
+                </tr>
+                <tr>
+                  <td><code>store add</code>, <code>store remove</code></td>
+                  <td><code>registration</code></td>
+                  <td>what it adds or removes, which is never the project it names</td>
+                </tr>
+                <tr>
+                  <td><code>store list</code></td>
+                  <td><code>registrations</code></td>
+                  <td>what it lists</td>
+                </tr>
+                <tr>
+                  <td><code>migrate survey</code>, <code>migrate promote</code></td>
+                  <td><code>survey</code>, <code>promotion</code></td>
+                  <td>the subcommand's name, as a noun</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>The table follows a pattern, but the pattern is how the objects were chosen and not a rule a program applies. The first version of this decision stated it as a rule, and the review of this proposal showed that the rule did not produce the names it listed: applied as written, it gave <code>init</code> and <code>migrate promote</code> the same object, and <code>list</code> and <code>store list</code> the same spelling.</p>
+            <p>The contributor chose nine in their request: <code>get validity</code>, <code>get list</code>, <code>get status</code>, <code>get sync</code>, <code>post change</code>, <code>post project</code>, <code>put format</code>, <code>patch archive</code>, and <code>delete store</code>. After the review, on 2026-10-06, they changed two of them: <code>init</code> is <code>put project</code>, and the three <code>store</code> operations take <code>registration</code>. <code>show</code>, which <code>show-what-a-modification-changed</code> added and which never writes, became <code>get show</code> at task 1.0.</p>
+            <p><strong>Considered: <code>hx-get</code> and its siblings verbatim.</strong> Rejected by the contributor's choice of the verb-and-object form. The prefix says "htmx attribute", which is not what a subcommand is.</p>
+          </section>
+          <section class="decision" id="decision-one-closed-type-states-both-spellings" data-change="added" data-status="accepted">
+            <h3>4. One closed type states both spellings <span class="hs-id">decision-one-closed-type-states-both-spellings</span></h3>
+            <pre><code>/// Every operation the command line offers.
+pub enum Operation { Validate, Format, Assets, Archive, Init, List, Run, Preflight, Status, Sync,
+    Show, StoreAdd, StoreList, StoreRemove, Instructions, NewChange, NewDocument, MigrateSurvey,
+    MigratePromote }
+
+pub enum Verb { Get, Post, Put, Patch, Delete }
+
+impl Operation {
+    /// The OpenSpec spelling, as words: `["store", "add"]`.
+    pub const fn spelling(self) -&gt; &amp;'static [&amp;'static str];
+    /// The request-verb spelling: the verb and its object.
+    pub const fn request(self) -&gt; (Verb, &amp;'static str);
+}</code></pre>
+            <p>Both functions are exhaustive matches, so an operation added later does not compile until it has both spellings. A unit test checks that no two operations share a spelling of either kind. In <code>main.rs</code>, each verb is a subcommand whose objects are an enum carrying the same <code>Args</code> struct the OpenSpec subcommand carries, and both reach the handler through <code>Operation</code>. Clap's <code>alias</code> cannot do this, because an alias is one word and <code>get validity</code> is two.</p>
+            <p data-field="rationale"><strong>Considered: rewriting the arguments before clap parses them.</strong> Rejected. Help and error messages would then speak of a command the contributor did not type.</p>
+            <p data-field="note">Migration note: as built, both spellings reach the handler through <code>Invocation</code>, not through <code>Operation</code>, which carries no arguments. <code>Invocation</code> has one variant per operation, each carrying that operation's <code>Args</code> struct, and <code>Operation</code> stays the table of spellings. <a href="evidence/what-the-implementation-revealed-2026-10-09.md"><code>evidence/what-the-implementation-revealed-2026-10-09.md</code></a> records this in section 3, and <a href="tasks.html#task-3-2">task 3.2</a> states it as its deviation. The design was not amended for it.</p>
+          </section>
+          <section id="hs-decision-5">
+            <h3>5. Help</h3>
+            <p><code>htmlspec --help</code> lists the operations as today, then the five verbs under their own heading. <code>htmlspec get --help</code> lists each object with the OpenSpec spelling it runs. An object's own help is its operation's help, so the options are documented once.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, the five verbs are not under a heading of clap's own: clap 4 gives a command one heading for all of its subcommands. The verbs are declared hidden, so the "Commands:" list reads as it did, and a "Request verbs:" section, written as help text from the operation table, follows the options. A hidden verb gets no suggestion from clap when it is mistyped. <a href="evidence/what-the-implementation-revealed-2026-10-09.md"><code>evidence/what-the-implementation-revealed-2026-10-09.md</code></a> records this in sections 1 and 2, and <a href="tasks.html#task-3-2">task 3.2</a> records it in its notes. The design was not amended for it.</p>
+            </aside>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>[Two spellings double what an agent can call.]</strong> → The instructions name one, and help says the two are one operation. The parity tests pin that they are.</li>
+            <li><strong>[The verbs suggest a server.]</strong> → Help says the verbs name the effect and send nothing.</li>
+            <li><strong>[A later OpenSpec operation takes one of the five words.]</strong> → The requirement fixes OpenSpec's spelling for an operation OpenSpec provides, so the OpenSpec meaning would win and this change's verb would move. None of the five is an OpenSpec command today (<a href="evidence/the-measurement-2026-10-05.md">evidence, section 3</a>).</li>
+            <li><strong>[An operation's effect changes later, so its verb is wrong.]</strong> → The <code>get</code> test runs every <code>get</code> operation in a project and checks the tree is unchanged, so an operation that starts writing fails it.</li>
+            <li><strong>[<code>show-what-a-modification-changed</code> lands with a different shape.]</strong> → Task 1.0 reads it as built.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p><strong>The document contract does not move.</strong> No unit, field, attribute, or projection rule changes. <strong>The release is a minor version</strong>, the next after whatever precedes it in landing order, because the command line gains operations' spellings and loses none. The contributor confirms the increment at the release task. Rollback is a revert, and nothing written with the OpenSpec spellings depends on it.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

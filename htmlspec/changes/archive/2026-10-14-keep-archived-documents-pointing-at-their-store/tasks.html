@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Keep archived documents pointing at their store: tasks</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Keep archived documents pointing at their store: tasks</h1>
+        <p>Tests that fail on 0.29.1 for both defects, then archival's rewrite inside its transaction, validation's path check, the two requirements at archival, and release 0.30.0.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Keep archived documents pointing at their store: tasks</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-tests-first">1. Tests first</a></li>
+          <li><a href="#hs-the-fix">2. The fix</a></li>
+          <li><a href="#hs-the-contract">3. The contract</a></li>
+          <li><a href="#hs-release">4. The release</a></li>
+          <li><a href="#hs-review-and-archive">5. Review and archival</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-tests-first">
+          <h2>1. Tests first</h2>
+          <p>Each test is run against the unrepaired build before the fix, and the run is recorded in this change's evidence: each one that tests a defect must fail there for the reason the defect gives.</p>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Add a CLI test that archives a change and checks every reference its documents carry. <span class="hs-id">task-1-1</span></h3>
+              <p>In a scratch project, archive a change whose documents reference the store, an accepted specification through <code>../../specs/</code>, and a file of their own through <code>evidence/</code> and <code>tasks.html#…</code>, and whose evidence holds an HTML file with a <code>../../assets/</code> reference. Assert that the archived documents reference <code>../../../assets/</code> and <code>../../../specs/</code>, that the references within the change are unchanged, that the evidence is byte for byte what it was, and that <code>htmlspec validate</code> and <code>htmlspec format --check</code> accept the archive.</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Add unit tests for the rewrite, in <code>htmlspec-format</code>. <span class="hs-id">task-1-2</span></h3>
+              <p>A reference leaving the directory is re-expressed from the new one. One inside it is unchanged. A scheme, an absolute path, a bare fragment, and an empty value are unchanged. A query and a fragment are kept. A value in text, or in an attribute outside the two sets, is unchanged. Every byte outside a rewritten value is copied through. A reference that leaves the directory and comes back into it is re-expressed by where it lands.</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Add validation tests for a reference's path. <span class="hs-id">task-1-3</span></h3>
+              <p>A document whose asset reference names stored bytes through a path that reaches another directory fails <code>htmlspec validate</code> with <code>asset/unresolved</code>, and the message names where the path leads and where the store is. The same reference spelled to reach the store is accepted. <code>htmlspec format</code> leaves the misplaced reference as it was written.</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Add recovery tests for the staged documents. <span class="hs-id">task-1-4</span></h3>
+              <p>An interruption before the move removes the staged copies with the inventory, and leaves each document as it was. An interruption after the move puts each staged copy in place of its document and clears the journal. A v1 journal is still settled. A change that already holds a staged copy is refused, naming it.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-the-fix">
+          <h2>2. The fix</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Add the rewrite to <code>htmlspec-format</code>, beside <code>asset_references</code>. <span class="hs-id">task-2-1</span></h3>
+              <p>It finds values with the tag scanner, reads <code>REFERENCING_ATTRIBUTES</code> and <code>a href</code> and <code>area href</code>, resolves each relative path lexically against the directory before the move, and re-expresses it from the directory after (design decisions 1 and 2).</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Stage, journal, and promote the rewritten documents in archival's transaction. <span class="hs-id">task-2-2</span></h3>
+              <p>In <code>perform</code>, write each rewritten document beside the inventory as <code>.&lt;name&gt;.archiving</code>, journal it, and replace the document with it after the rename. The journal becomes v2. Recovery completes the replacements, and reads v1. The leftover check refuses a change holding a staged copy (design decision 3).</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Resolve an asset reference through its path in validation. <span class="hs-id">task-2-3</span></h3>
+              <p>Give the store a view from a document's directory, add the resolution for a reference whose path reaches another directory, report it as <code>asset/unresolved</code>, and have <code>htmlspec validate</code> hand the rule the store seen from each document's directory (design decision 4).</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Run the tests from 1.1 to 1.4, and the existing archival, validation, and formatting suites, and see every one pass. <span class="hs-id">task-2-4</span></h3>
+              <p data-field="note">The first full run failed two existing fixtures in <code>tests/cli.rs</code> that archived a change by renaming it, which is the defect: their documents referenced <code>../../assets/</code>, and validation now rejects that. Neither test is about the store, so the fixtures were corrected to re-express their references as archival now does, and kept every assertion. <a href="evidence/the-tests-before-and-after-the-fix-2026-10-14.md"><code>evidence/the-tests-before-and-after-the-fix-2026-10-14.md</code></a> records both runs.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-the-contract">
+          <h2>3. The contract</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done" data-refs="req-archival-produces-the-specification-and-updates-the-accepted-contract">
+              <h3>3.1 At archival, state the rewrite in a modification of <a href="../../../specs/toolchain-packaging/spec.html#req-archival-produces-the-specification-and-updates-the-accepted-contract">"Archival produces the specification and updates the accepted contract"</a>. <span class="hs-id">task-3-1</span></h3>
+              <p>Archival re-expresses each relative reference in the change's documents that would otherwise reach another file from the archive, leaves evidence as it was, and does so inside the transaction, with a scenario for each.</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done" data-refs="req-an-asset-reference-must-match-the-bytes-it-names">
+              <h3>3.2 At archival, state the path in a modification of <a href="../../../specs/document-validation/spec.html#req-an-asset-reference-must-match-the-bytes-it-names">"An asset reference must match the bytes it names"</a>. <span class="hs-id">task-3-2</span></h3>
+              <p>An asset reference resolves only where its path, from the document, reaches the store's directory, with a scenario for a reference that names stored bytes through a path reaching another directory.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-release">
+          <h2>4. The release</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Advance the release to 0.30.0. <span class="hs-id">task-4-1</span></h3>
+              <p>Set the version in <code>Cargo.toml</code> and <code>Cargo.lock</code>, and add a <code>CHANGELOG.md</code> entry naming both repairs in a contributor's terms. <code>spec.nix</code> waits for archival, which advances the project's version.</p>
+              <p data-field="note"><code>Cargo.toml</code>, <code>Cargo.lock</code>, and <code>CHANGELOG.md</code> were advanced to 0.30.0 during implementation. The lock changed only the seven workspace crates' versions. <code>spec.nix</code> waits for archival, which advances the project's version.</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Regenerate the installed instruction files for 0.30.0, with <code>htmlspec init --tools claude,codex,pi</code>. <span class="hs-id">task-4-2</span></h3>
+              <p>The diff must change only the <code>generatedBy</code> line in each file.</p>
+              <p data-field="note">The regeneration changed one line in each of the 45 files under <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code>, <code>generatedBy: htmlspec 0.29.1</code> to <code>0.30.0</code>, and nothing else.</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Run <code>scripts/check</code> in full. <span class="hs-id">task-4-3</span></h3>
+              <p>On this machine, the <code>prompt</code>, <code>installed</code>, <code>release-fixtures</code>, and <code>release</code> stages fail inside <code>nix develop</code>, because macOS's <code>python3</code> shim cannot find its tool there. Run those four outside the shell, with <code>cargo</code> from the shell on the path, and record both runs.</p>
+              <p data-field="note">Run on 2026-10-14 at 0.30.0. Inside <code>nix develop</code>, <code>format</code>, <code>lint</code>, <code>test</code>, <code>doctest</code>, <code>self-conformance</code>, <code>self-format</code>, <code>self-runbooks</code>, <code>self-runbooks-format</code>, and <code>self-assets</code> passed, and the four Python stages failed with <code>tool 'python3' not found</code>, as expected. Outside the shell, with the shell's <code>cargo</code> on the path, all four passed: <code>prompt</code> (4 cases), <code>installed</code> (45 files match what <code>init</code> writes), <code>release-fixtures</code> (23 cases), and <code>release</code> (36 archived changes record a version, and 0.30.0 has a changelog entry). Both runs were repeated after task 5.1's two edits, with the same results, and the <code>test</code> stage ran 1456 tests with none failing.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-review-and-archive">
+          <h2>5. Review and archival</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Prove the tests can fail: undo each repair in turn, and record which tests fail. <span class="hs-id">task-5-1</span></h3>
+              <p>Undo the rewrite, the promotion after the rename, the recovery's completion, and the path check, one at a time, and record in this change's evidence the tests each one fails. Then restore the repair.</p>
+              <p data-field="note">Seven repairs were undone in turn. Six were each caught by at least one test. The leftover check was caught by none, because the test's leftover was for a document archival rewrites, and staging the rewrite refused over it for another reason. The test now also leaves one for a document archival does not rewrite, and fails with the check undone. <a href="evidence/mutation-testing-2026-10-14.md"><code>evidence/mutation-testing-2026-10-14.md</code></a> records every run.</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Take the code review, and settle each finding. <span class="hs-id">task-5-2</span></h3>
+              <p data-field="note">The review of pull request #58 (medium) found two low-severity issues, and both were taken. First, the path check compared a reference's directory with the store's as text relative to the document, so <code>../../../htmlspec/assets/</code>, which a browser loads from the store, was rejected. A reference now leads to the store when the directory it names, followed lexically from the document's absolute directory, is the store's; the filesystem is never asked, so the verdict is the same on every machine (design decision 4). Second, a staged copy written part-way by a run killed before the move was refused as somebody's edit. Recovery now removes a staged copy in a change that never moved whatever it holds, and still refuses an edited one after the move (design decision 3). Each repair has a test that failed against the reviewed head. <a href="evidence/the-code-review-of-pull-request-58-2026-10-14.md"><code>evidence/the-code-review-of-pull-request-58-2026-10-14.md</code></a> records both runs.</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Archive the change with <code>htmlspec archive</code>. <span class="hs-id">task-5-3</span></h3>
+              <p>It is the first archival that runs the rewrite on this repository, so check that its documents reference <code>../../../assets/</code> without a hand repair, and record it.</p>
+              <p data-field="note">Archived on 2026-10-14 as <code>2026-10-14-keep-archived-documents-pointing-at-their-store</code>, at version 0.30.0, by the binary this change builds. Archival reported "re-expressed 30 reference(s) in 4 document(s), so each reaches from the archive what it reached from the change": the 28 asset references now climb to <code>../../../assets/</code>, and the two links to the accepted requirements this change modifies to <code>../../../specs/</code>. No staged copy and no journal were left behind. Every relative reference in the project's 165 documents was then checked against the files on disk, and none names nothing. The archive's <code>runbooks.json</code> lists no runbook, because the release runbook still sits outside the project. Archival asked about this task, the only one open while it ran, and was answered with <code>--yes</code>.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

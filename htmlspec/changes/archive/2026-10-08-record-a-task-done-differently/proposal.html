@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Record a task done differently</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Record a task done differently</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Record a task done differently</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-08-record-a-task-done-differently/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><strong>A task can be marked done or dropped, and nothing can record that it was done another way than its words say.</strong> document-schema's "<a href="../../../specs/document-schema/spec.html#req-a-task-declares-completion-state">A task declares completion state</a>" gives a task four states, <code>todo</code>, <code>in-progress</code>, <code>done</code>, and <code>dropped</code>, and requires a dropped task to state why. When work lands differently from a task's words, an author has two ways to write it, and both misreport. <a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a> section 3 measured each one against HEAD:</p>
+          <ul>
+            <li><strong><code>done</code> with a note.</strong> A note is prose that no field and no count reads. <code>list</code> shows <code>2/4</code> whether the note is there or not, so the task claims its words were carried out.</li>
+            <li><strong><code>dropped</code> with the difference as its reason.</strong> The work happened, and <code>list</code> counts it as abandoned: <code>1/4</code>, with two tasks dropped instead of one.</li>
+          </ul>
+          <p>The paragraph that would say it, <code>data-field="deviation"</code>, is refused. <code>validate</code> exits 1 with <code>schema/projection</code> (section 4.0), because it "names no field of this unit".</p>
+          <p>OpenSpec, which html-spec comes from, is coarser still: a box is ticked or it is not. <a href="evidence/the-measurement-2026-09-30.md">Section 1</a> measured <code>openspec</code> 1.13.1 on two of this project's archived changes. <code>accept-a-described-change</code> reports 27/28, because its task 5.2 is marked <code>[~]</code> and will never be finished. <code>sync-a-change-into-the-accepted-contract</code> reports "complete" at 31/31, although its task 4.5 is struck through and was never done. html-spec already separates those two cases with <code>dropped</code>. Migrated, they read <code>27/28 done</code> and <code>30/31 done</code>, each with one dropped task. The third case, done but not as written, neither format can state.</p>
+          <p><strong>This project's own history shows how often that case occurs.</strong> The staged migration of this repository carries 76 task units with a migration note (<a href="evidence/the-measurement-2026-09-30.md">section 2</a>). By one reader's classification, 33 of those notes say the work was done another way than the task's words, or only part of it, or more than it. All 33 tasks are <code>done</code>, and every count reads them as done as written. The source authors met the same gap from the other side. Four task lines in <code>2026-09-06-distinguish-a-requirement-from-an-example</code> carry "<strong>Amended during implementation.</strong>" or "<strong>Widened during implementation.</strong>" inside the task's text. Three of them rewrote the task's own words to match the work, because no field held the account. The words that were planned survive only in git.</p>
+          <p>The migration's drafting brief contradicts itself on this case. Its convention 2 says a task "that was done differently, or that was struck through keeps its source state, and a note names the disagreement". Its task rule says a struck-through task "is <code>dropped</code> only if the source states why". A migration that must choose between two wrong mappings needs a third one.</p>
+          <p><strong>Why now.</strong> This repository's migration out of OpenSpec is staged and waiting. Without this change, each of those 33 tasks is carried as <code>done</code> with a note, which every count reads as done as written. The alternative is to record each one as open under project-migration's "<a href="../../../specs/project-migration/spec.html#req-a-source-distinction-the-destination-cannot-express-is-recorded-as-open-not-mapped-to-the-nearest-state">A source distinction the destination cannot express is recorded as open, not mapped to the nearest state</a>".</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong>A done task may state a deviation.</strong> One paragraph marked <code>data-field="deviation"</code> states what was done, where that departs from the task's words. It projects into a new <code>deviation</code> field on the task. The task stays <code>done</code>, because the work happened, and its words stay as written. A <code>done</code> task with no deviation is read as done as its words say.</li>
+            <li><strong>A deviation belongs only to a done task, and only once.</strong> Validation rejects a deviation on a <code>todo</code>, <code>in-progress</code>, or <code>dropped</code> task, as a new error <code>schema/deviation-not-done</code>. It also rejects a second deviation paragraph in one task, as a projection fault. A dropped task keeps its <code>reason</code>, and a task whose work partly happened is <code>done</code>, with a deviation that says which part.</li>
+            <li><strong>The listing and the completion report count it apart.</strong> <code>list</code> and <code>status</code> report how many <code>done</code> tasks state a deviation, from the one counter they already share. <code>status</code> also names each one. Such a task still counts as <code>done</code>: the fraction keeps meaning every <code>done</code> task over every task.</li>
+            <li><strong>The human listing shows it after the state, and only where there is one</strong>: <code>measure-a-deviation  2/4  in-progress  1 done differently</code>. A change with no such task prints exactly what it prints today.</li>
+            <li><strong>The structured payloads gain a field.</strong> Each change in <code>list --json</code> carries <code>doneDifferently</code> beside <code>total</code>, outside <code>tasks</code>, so the per-state counts in <code>tasks</code> still sum to <code>total</code>. <code>status --json</code> carries <code>doneDifferently</code> and <code>doneDifferentlyTasks</code> under <code>tasks</code>, beside <code>open</code> and <code>openTasks</code>.</li>
+            <li><strong>The template and the instructions teach it.</strong> The tasks template gains a third example task, done with a deviation, beside the dropped one. The <code>apply</code> instructions say how to settle such a task. The <code>verify</code> and <code>archive</code> instructions say to read its deviation, not its words, as what was done.</li>
+            <li><strong>The document contract moves one minor version</strong>, because this adds a field.</li>
+            <li>
+              <p><strong>Unchanged:</strong></p>
+              <ul>
+                <li>the four states, and what each counts toward;</li>
+                <li><code>dropped</code> and its required reason;</li>
+                <li>a change's total, its open tasks, and the state derived from them;</li>
+                <li>archival's refusals and questions;</li>
+                <li>a task's words carry no change markup, as decided for this whole set of changes. A deviation is stated beside the words and never by striking them through.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <section id="hs-new-capabilities">
+            <h3>New Capabilities</h3>
+            <p>None.</p>
+          </section>
+          <section id="hs-modified-capabilities">
+            <h3>Modified Capabilities</h3>
+            <ul>
+              <li><code>document-schema</code>: "<a href="specification.html#req-a-task-declares-completion-state">A task declares completion state</a>" gains the deviation, and the three conditions that make one invalid. The requirement is modified rather than joined by a new one, because the deviation qualifies the <code>done</code> state this requirement defines. The rule that a deviation needs <code>done</code> mirrors the rule the requirement already states, that <code>dropped</code> needs a reason. Split into two requirements, the one question of what a task's state claims would be answered in two places.</li>
+              <li>
+                <p><code>toolchain-packaging</code>:</p>
+                <ul>
+                  <li>"<a href="specification.html#req-the-command-surface-reports-what-a-project-holds">The command surface reports what a project holds</a>" carries the count of tasks done differently beside the per-state counts. It keeps the fraction's meaning, and it derives the new count from the same source as the rest.</li>
+                  <li>"<a href="specification.html#req-the-command-surface-reports-a-change-s-completion">The command surface reports a change's completion</a>" states the same count and names each task.</li>
+                  <li>Both are modified rather than joined by a new requirement, because the count is one more projection of the counter they already share, and "the same source" is already stated in them. A third requirement would state the agreement a third time.</li>
+                  <li>"<a href="../../../specs/toolchain-packaging/spec.html#req-archival-refuses-on-the-contract-and-asks-about-the-work">Archival refuses on the contract and asks about the work</a>" is <strong>not</strong> modified. It asks about incomplete tasks, and a <code>done</code> task with a deviation is complete. A report of it at archival would carry no question, and the <code>archive</code> instructions already direct the agent to read the tasks for what was done.</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li><code>crates/htmlspec-schema/schema/document.schema.json</code>: the task gains an optional <code>deviation</code> property, and <code>schemaVersion</code> gains the new version. The task's description says a deviation needs <code>done</code>, which the validator checks, as it does for a dropped task's reason.</li>
+            <li><code>crates/htmlspec-schema/doc/projection.md</code>: the section 4.0 field table, section 4.5, a new section 4.5.1 for a repeated deviation, section 10.1, and the declared version. <code>crates/htmlspec-schema/CHANGELOG.md</code>, <code>CONTRACT_VERSION</code> in <code>src/lib.rs</code>, and <code>tests/contract.rs</code> move with the version.</li>
+            <li><code>crates/htmlspec-parse/src/model.rs</code> (<code>Task</code> gains <code>deviation</code>) and <code>src/project.rs</code> (<code>project_task</code> accepts the field and reports a second one).</li>
+            <li><code>crates/htmlspec-validate/src/rules/relations.rs</code>: the rule <code>schema/deviation-not-done</code>, beside <code>dropped_tasks_state_a_reason</code>, reading <code>done</code> from the schema. <code>tests/schema_rust_split.rs</code> gains <code>done</code> as a literal rule code may not restate.</li>
+            <li><code>crates/htmlspec-cli/src/commands.rs</code>: <code>Completion</code>, <code>completion()</code>, the listing's human and structured output, and <code>status</code>.</li>
+            <li>
+              <p>Tests and fixtures:</p>
+              <ul>
+                <li>projection tests in <code>crates/htmlspec-parse/tests/projection.rs</code>;</li>
+                <li>mapping fixtures under <code>fixtures/projection/</code>;</li>
+                <li>conformance fixtures for <code>schema/deviation-not-done</code> through <code>conformance/src/bin/generate_fixtures.rs</code>, with the rule registered in <code>conformance/tests/conformance.rs</code>;</li>
+                <li>unit tests for the counter and both reports in <code>commands.rs</code>.</li>
+              </ul>
+            </li>
+            <li><code>assets/template-tasks.html</code> gains the example task. Every template's declared contract version moves, with its sha256 pin in <code>assets/vendor.lock.json</code>.</li>
+            <li><code>crates/htmlspec-assets/instructions/apply.md</code>, <code>verify.md</code>, and <code>archive.md</code>, and the installed copies regenerated from them.</li>
+            <li>
+              <p><strong>Not in this change</strong>, and recorded so it is not assumed to follow:</p>
+              <ul>
+                <li>Migrating the 33 tasks. <code>migrate-into-the-extended-vocabulary</code> maps the new vocabulary.</li>
+                <li>A repeated <code>reason</code>, <code>mitigation</code>, or <code>method</code> paragraph. <a href="evidence/the-measurement-2026-09-30.md">Measured</a>: two <code>reason</code> paragraphs validate, and the projection silently keeps the first. No unit in the 116 staged documents repeats one. Making that an error for every single-valued field is a change of its own.</li>
+                <li>A stylesheet label for the deviation paragraph. A <code>reason</code> has none either, and a new stylesheet revision moves every template's asset address.</li>
+                <li>The 20 migration notes saying nothing records a task's result. A deviation states what was done, and those notes exist because nobody recorded it.</li>
+                <li>An archival report of tasks done differently.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

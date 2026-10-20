@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://html-spec.dev/schema/payload/1/list.schema.json",
+  "title": "htmlspec list --json",
+  "description": "The payload `htmlspec list --json` (`get list`) writes, in one of three shapes: the active changes by default, the accepted specifications with --specs, and the runbooks with --runbooks. A later 1.x release can add a property to any object in this payload, and only a major release removes, renames, or retypes one, so a consumer ignores a property it does not know.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "changes",
+        "followsCycles"
+      ],
+      "properties": {
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/change"
+          }
+        },
+        "followsCycles": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "specifications"
+      ],
+      "properties": {
+        "specifications": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "runbooks"
+      ],
+      "properties": {
+        "runbooks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "documents"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "documents": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "specification",
+                    "tasks"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "change": {
+      "description": "One active change. state, total, tasks, and doneDifferently are present together, only for a change with a tasks document. follows is present only for a change that states a predecessor.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "todo",
+            "in-progress",
+            "done"
+          ]
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tasks": {
+          "type": "object",
+          "required": [
+            "todo",
+            "inProgress",
+            "done",
+            "dropped",
+            "undeclared"
+          ],
+          "properties": {
+            "todo": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "inProgress": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "done": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dropped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "undeclared": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "doneDifferently": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "follows": {
+          "type": "object",
+          "required": [
+            "change",
+            "resolution",
+            "resolved"
+          ],
+          "properties": {
+            "change": {
+              "type": "string"
+            },
+            "resolution": {
+              "type": "string",
+              "enum": [
+                "archived",
+                "active",
+                "unmatched"
+              ]
+            },
+            "resolved": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    }
+  }
+}

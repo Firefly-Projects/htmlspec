@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Content-address runtime assets</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Content-address runtime assets</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Content-address runtime assets</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-13-content-address-runtime-assets/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>The project stores its browser-side runtime as a copy per document, and one of those copies is already wrong. The archived <code>deterministic-formatting.html</code> ships <code>class="hs-skip-link"</code> markup against a stylesheet containing no rule for it, <a href="evidence/group-8-verification.md">so the first control a keyboard user reaches does nothing</a>. That copy was not left behind by later maintenance: <code>assets/htmlspec.css</code> has a single commit and arrived correct at <code>36rem</code> with the skip link, while the document's copy arrived two commits later at <code>778e451</code> carrying <code>34rem</code> and no skip link. It was written stale.</p>
+          <p>Two accepted requirements in <code>document-template</code> cannot both hold under the current layout. "<a href="specification.html#scenario-shared-assets">Shared assets</a>" requires each library to appear once in the project rather than once per document, which two 6.0 MB copies violate. "<a href="specification.html#scenario-runtime-version-is-recorded">Runtime version is recorded</a>" requires that a rendered document reproduce later, which a single mutable <code>assets/</code> directory breaks the moment a library is upgraded. Neither requirement is wrong. The directory layout is what cannot serve both.</p>
+          <p>Nothing detects this today. <code>openspec validate --all --strict</code> passes all six items with the broken document sitting in the archive, because validation reads documents and not the shape of the asset tree around them.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li>Store each runtime asset once under a name derived from the hash of its bytes, so identical bytes occupy one location and different bytes coexist without overwriting each other.</li>
+            <li>Have every document reference the exact asset hashes it was authored against, rather than a mutable path whose contents can change under it.</li>
+            <li>Reject a document whose asset references do not resolve to stored bytes matching their recorded hash, closing the gap that let a stale copy ship undetected.</li>
+            <li>Reject a project that holds more than one copy of the same asset bytes, making the existing "<a href="specification.html#scenario-shared-assets">Shared assets</a>" scenario checkable rather than aspirational.</li>
+            <li>Re-render the archived <code>deterministic-formatting.html</code> against the current stylesheet, <a href="evidence/group-8-verification.md">so the skip link it declares works</a>.</li>
+            <li><strong>BREAKING</strong> Documents referencing assets by the mutable <code>assets/vendor/&lt;file&gt;</code> path no longer conform. Every existing document needs its references rewritten, which <code>format</code> performs.</li>
+          </ul>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Section 8.4 of <a href="evidence/group-8-verification.md"><code>evidence/group-8-verification.md</code></a> qualifies the third item's "closing the gap that let a stale copy ship undetected". The archive's actual defect was an unaddressed reference, naming no hash. Reconstructed and run against the built toolchain, it passes <code>htmlspec validate</code>, exit 0, and fails <code>htmlspec format --check</code>, exit 1. The record finds the defect caught through the formatter, and not by the validation rule the item describes.</p>
+          </aside>
+          <p>Out of scope, recorded here because both were raised and deliberately excluded:</p>
+          <ul>
+            <li><strong>Git LFS for the vendored libraries.</strong> <code>crates/htmlspec-assets/src/lib.rs</code> embeds these bytes with <code>include_bytes!</code>, and <code>flake.nix</code> reads <code>${./assets}</code> directly. LFS pointer stubs would compile cleanly into a binary shipping a broken runtime, and Nix has no smudge filter to prevent it. LFS also makes <code>git-lfs</code> a prerequisite, which contradicts the "<a href="../../../specs/toolchain-packaging/spec.html#scenario-clean-machine-build">Clean machine build</a>" scenario in <code>toolchain-packaging</code>. The libraries are write-once anyway: 8 distinct blobs across all history in an 8.8 MB repository.</li>
+            <li><strong><code>README.html</code>.</strong> At 4.0 MB it is the largest blob in the history and the only one that rewrites in full on every regeneration, but it raises a separate question about tracking generated output.</li>
+          </ul>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <section id="hs-new-capabilities">
+            <h3>New Capabilities</h3>
+            <p>None. This change alters how an existing capability stores and references its runtime, and adds rules to an existing validator.</p>
+          </section>
+          <section id="hs-modified-capabilities">
+            <h3>Modified Capabilities</h3>
+            <ul>
+              <li><code>document-template</code>: The "<a href="specification.html#req-documents-share-one-pinned-runtime">Documents share one pinned runtime</a>" requirement gains content-addressed storage and per-document hash references as the mechanism by which its shared-assets and version-recording scenarios both hold. Initialization must establish the store and write hash references.</li>
+              <li><code>document-validation</code>: New requirements rejecting an asset reference whose bytes do not match its hash, and rejecting duplicate copies of identical asset bytes within a project. Asset topology becomes a checked property.</li>
+            </ul>
+          </section>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li><code>assets/</code> — layout changes from <code>vendor/&lt;file&gt;</code> to hash-named storage. <code>assets/vendor.lock.json</code> already records a <code>sha256</code> per file and becomes the input to the naming scheme rather than only an audit record.</li>
+            <li><code>crates/htmlspec-assets</code> — <code>include_bytes!</code> paths and the <code>Asset.path</code> values move to hash-derived locations. The offline lockfile check continues to verify committed bytes.</li>
+            <li><code>flake.nix</code> — the <code>assetProvenance</code> derivation reads <code>${./assets}/${file.path}</code>, so its path construction follows the new layout. Its re-fetch and hash comparison logic is unchanged.</li>
+            <li><code>crates/htmlspec-validate</code> — two new rules, each needing a stable diagnostic identifier and conformance fixtures per the "<a href="../../../specs/document-schema/spec.html#req-conformance-is-pinned-by-fixtures">Conformance is pinned by fixtures</a>" requirement.</li>
+            <li>Formatter — rewrites asset references to current hashes, which must remain idempotent under <code>deterministic-formatting</code>.</li>
+            <li><a href="../2026-08-10-html-spec/evidence/documents/deterministic-formatting.html"><code>openspec/changes/archive/2026-08-10-html-spec/documents/deterministic-formatting.html</code></a> — re-rendered, and <a href="evidence/group-8-verification.md">its duplicated 6.0 MB asset tree collapses into the shared store</a>.</li>
+            <li><code>scripts/check</code> — gains the topology check so continuous integration and a contributor verify the same property.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

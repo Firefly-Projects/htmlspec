@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Finish the archival</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Finish the archival</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Finish the archival</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-30-finish-the-archival/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><code>htmlspec archive</code> is named for an operation it does not perform. It checks a change's specification, reports that archival <em>may</em> proceed, and exits. <a href="evidence/the-version-gate-never-fired-2026-08-30.md">The change is still sitting in <code>changes/</code>.</a> The accepted specifications still say what they said before. Four steps remain — merge the contract, move the directory, name it, record the version — and the program has no opinion about whether any of them happened. It reported success, because it succeeded at the only thing it does.</p>
+          <p>The workflow instructions carry those four steps as prose. Prose is not a gate. An agent that runs <code>htmlspec archive</code>, sees a zero exit, and stops has done exactly what the command told it, and the project is left with a change that is archived in the report and active on disk.</p>
+          <p><strong><a href="evidence/the-version-gate-never-fired-2026-08-30.md">The gate that does exist has never fired.</a></strong> <code>last_archived_version</code> (<code>crates/htmlspec-cli/src/commands.rs:1352</code>) finds the previous version by scanning archive <em>directory names</em> for a part that parses as a version. This project records the version somewhere else: a <code>VERSION</code> file inside each archived change, which is what <code>toolchain-packaging</code>'s release-hygiene requirement asks for and what all 11 archived changes carry. No directory name in <code>changes/archive/</code> holds a version. So the scan finds nothing, falls back to <code>0.0.0</code>, and every declared version above that passes. The one mechanical check archival enforces has been inert since it was written, and the reason is that the program reads a convention that nothing writes — because nothing in the program writes the archive at all.</p>
+          <p><strong>Who wants this and what they cannot do.</strong> Every plausible adopter arrives from OpenSpec; the README says HTMLSpec is a spinoff in its second paragraph. There, <code>archive</code> finishes the job. A contributor who learns the command here finds a checker wearing the name of an operation, and discovers the difference by finding an unmoved directory some days later.</p>
+          <p><strong>The commands the workflow already assumes.</strong> The OpenSpec workflow instructions vendored in this repository <a href="evidence/the-command-usage-measured-2026-08-30.md">make 170 command invocations across 8 commands</a>. Ranked: <code>status</code> 52, <code>instructions</code> 48, <code>store</code> 22, <code>new</code> 14, <code>list</code> 14, <code>archive</code> 10, <code>schemas</code> 6, <code>context</code> 4. Four of the top five have no HTMLSpec counterpart. <code>status</code> and <code>instructions</code> alone account for 100 of the 170. The HTMLSpec prompts do not paper over the gap — they invoke <code>validate</code>, <code>archive</code>, <code>new</code>, and <code>format</code>, and carry no change-selection step at all, because there is no command that lists changes.</p>
+          <p><strong>What working looks like the first time you see it.</strong> A contributor finishes a change and types <code>htmlspec archive</code>. With no argument it lists the active changes and asks which. It checks the version, checks the specification, and reports that two tasks are still open and that three requirements in the change's specification do not yet appear in the accepted specifications. It asks whether to proceed. On yes, it moves the change to <code>changes/archive/2026-08-30-&lt;name&gt;/</code>, writes the <code>VERSION</code> file recording <code>0.6.0</code>, and reports what moved and what the project now guarantees. On no, nothing has moved and nothing is half done.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li>
+              <p><strong><code>archive</code> performs the archival.</strong> It moves the change directory into the archive, names it, writes its <code>VERSION</code> file, and reports. The operation either completes or leaves the project exactly as it found it.</p>
+            </li>
+            <li>
+              <p><strong>An accepted obligation is withdrawn.</strong> The closing sentence of <code>project-bootstrap</code>'s version requirement states that <em>a command whose stated job is checking SHALL NOT write to the project it checks</em>. <a href="evidence/the-write-restriction-search-2026-08-30.md">That sentence is why archival is half an operation.</a> What it was protecting — that the program never decides what a version increment means, and never writes the declaration — is restated as the narrower obligation it always was, on the act rather than on the command's name.</p>
+            </li>
+            <li>
+              <p><strong>The version gate reads what the project actually records.</strong> <code>last_archived_version</code> stops scanning directory names and reads the <code>VERSION</code> file inside each archived change, which is the form <code>toolchain-packaging</code> already requires and which all 11 archived changes already carry. <code>archive</code> writes that file as it moves the change, so the convention the gate reads and the convention the project records become one convention with one author. The gate starts working against the existing archive on the first run, with nothing renamed.</p>
+            </li>
+            <li>
+              <p><strong>The contract still gates absolutely, and the work only informs.</strong> A missing specification, a wrong declared kind, a validation error, or a version that does not advance refuses with no prompt, exactly as today. Incomplete tasks and unmerged requirements warn and ask. That is OpenSpec's policy, stated in its own workflow as <em>don't block archive on warnings — just inform and confirm</em>, and it is right: the contract is the thing archival makes permanent, and the rest is a contributor's business.</p>
+            </li>
+            <li>
+              <p><strong>The merge stays agent-driven, and archival gains a way to tell whether it happened.</strong> Deciding which accepted requirement a new scenario belongs under is judgment, and <code>artifact-kinds</code> says so. Observing that a requirement identifier present in the change's specification is absent from every accepted specification is not judgment. Archival assesses, reports, and asks. It never merges.</p>
+            </li>
+            <li>
+              <p><strong>Four commands are added:</strong> <code>list</code>, <code>status</code>, <code>instructions</code>, and <code>store</code>. <code>archive</code> needs the first two to select a change and to report completion, and the workflow instructions have been written against all four since they were vendored.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-non-goals">
+          <h2>Non-Goals</h2>
+          <ul>
+            <li>
+              <p><strong>A merge performed by the program.</strong> <code>artifact-kinds</code> requires every contract update to be agent-driven and gives the reason: a proposal and a design have no imposed structure, so no rule locates an obligation inside them. That requirement is untouched by this change. <a href="evidence/what-openspec-archival-does-2026-08-30.md">OpenSpec does not merge programmatically either — its own workflow delegates the merge to an agent-driven sync</a> — so this is not even a gap against the tool being matched.</p>
+            </li>
+            <li>
+              <p><strong>An extractor that produces a specification from a proposal.</strong> Same requirement, same reason. <code>archive</code> continues to refuse a change with no <code>specification.html</code> and to say why.</p>
+            </li>
+            <li>
+              <p><strong><code>view</code>, <code>workset</code>, <code>feedback</code>, <code>doctor</code>, <code>completion</code>, <code>schema</code>, <code>schemas</code>, <code>templates</code>, and <code>config</code>.</strong> Nine of OpenSpec's remaining commands. Some serve its runtime-schema model, which HTMLSpec rejects in favour of a closed set of four artifact kinds. Others are conveniences no workflow here invokes. Adding a command because another tool has one is how a command surface stops being a surface.</p>
+            </li>
+            <li>
+              <p><strong>Advancing the version.</strong> <code>archive</code> still compares and never edits the declaration. Deciding whether a change earned a patch, a minor, or a major increment is judgment.</p>
+            </li>
+            <li>
+              <p><strong>Migrating this repository.</strong> This change makes archival complete. Whether <code>html-spec</code> itself moves off OpenSpec is <code>migrate-an-openspec-project</code>'s subject and is decided separately.</p>
+            </li>
+            <li>
+              <p><strong>Retrofitting the 11 existing archived changes.</strong> Their directory names carry no version and this change does not rename them. The gate reads the <code>VERSION</code> file, which they already have.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

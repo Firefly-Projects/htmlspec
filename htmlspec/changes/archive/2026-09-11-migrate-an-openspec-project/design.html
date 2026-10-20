@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Migrate an OpenSpec project</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Migrate an OpenSpec project</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Migrate an OpenSpec project</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-11-migrate-an-openspec-project/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>An OpenSpec project has a fixed layout. This repository's is representative and is the test case. The counts below were measured at commit <code>f57f640</code> and recorded in <a href="evidence/the-source-inventory-2026-09-07.md"><code>evidence/the-source-inventory-2026-09-07.md</code></a>; an earlier draft of this design carried counts from a stale snapshot, and every one of them was wrong by the time the change was implemented.</p>
+          <pre><code>openspec/
+├── config.yaml                                  schema, plus optional context, rules, operations
+├── specs/&lt;capability-path&gt;/spec.md              9 capabilities, 97 requirements, 401 scenarios
+└── changes/
+    └── archive/&lt;date&gt;-&lt;name&gt;/
+        ├── proposal.md, design.md, tasks.md     prose, no imposed structure
+        ├── specs/&lt;capability-path&gt;/spec.md      28 delta files across 16 changes
+        ├── evidence/**                          75 transcripts and measurements, some nested
+        ├── documents/*.html                     4 already-converted HTMLSpec documents
+        ├── .openspec.yaml                       per-change schema marker and created date
+        └── VERSION                              the version the change shipped in</code></pre>
+          <p>193 files in total. An HTMLSpec project has a different layout, and the differences are not cosmetic. Each row below cites the accepted requirement that fixes the destination, by requirement heading rather than by capability, as <code>contract-authority</code> requires. <strong>Rows citing nothing are marked silent</strong>, and the full sixteen-row table is in <a href="evidence/the-mapping-table-and-its-audit-2026-09-07.md"><code>evidence/the-mapping-table-and-its-audit-2026-09-07.md</code></a>.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>OpenSpec</th>
+                <th>HTMLSpec</th>
+                <th>Why they differ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>specs/&lt;capability-path&gt;/spec.md</code></td>
+                <td><code>htmlspec/specs/&lt;capability-path&gt;/spec.html</code></td>
+                <td><strong>Silent.</strong> No requirement states a layout beneath <code>htmlspec/specs/</code>, so the source's nested path is preserved</td>
+              </tr>
+              <tr>
+                <td>N delta files per change</td>
+                <td>one <code>specification.html</code></td>
+                <td><code>artifact-kinds</code> — "Archival produces the specification and then updates the accepted contract": a change directory holds <strong>at most one</strong> specification artifact</td>
+              </tr>
+              <tr>
+                <td><code>## ADDED Requirements</code></td>
+                <td>change state on the unit</td>
+                <td><code>document-schema</code> — "Semantic units declare a change state": the delta is expressed per unit rather than per file</td>
+              </tr>
+              <tr>
+                <td><code>## RENAMED Requirements</code></td>
+                <td><em>no state exists</em></td>
+                <td><code>changeState</code> is exactly <code>added</code>, <code>modified</code>, <code>removed</code>, <code>unchanged</code>. <strong>An open question, named rather than filled</strong></td>
+              </tr>
+              <tr>
+                <td><code>VERSION</code> file</td>
+                <td><code>VERSION</code> file, carried unchanged</td>
+                <td><code>project-bootstrap</code> — "Archival requires the project version to advance": the version <strong>SHALL NOT</strong> be derived from an archive directory's name</td>
+              </tr>
+              <tr>
+                <td><code>config.yaml</code> context, rules, operations</td>
+                <td><em>nothing</em></td>
+                <td><code>project-bootstrap</code> — "A project declares its name, version, and expected toolchain": the declaration <strong>SHALL NOT</strong> carry authoring rules or project context</td>
+              </tr>
+              <tr>
+                <td><code>.openspec.yaml</code> schema and created date</td>
+                <td><em>nothing</em></td>
+                <td><strong>Silent.</strong> No requirement reaches a per-change source config; dropped with the reason recorded</td>
+              </tr>
+              <tr>
+                <td><code>documents/*.html</code></td>
+                <td>carried as evidence</td>
+                <td><strong>Silent.</strong> Already the destination format, at contract version 0.1.0, with asset references resolving to nothing</td>
+              </tr>
+              <tr>
+                <td>no asset store</td>
+                <td><code>htmlspec/assets/</code>, content-addressed</td>
+                <td><code>project-bootstrap</code> — "A project has a declared root holding one asset store": documents render offline, so the runtime is part of the project</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>Several of those rows are lossy, in both directions, and every one of them is a decision somebody has to make about a specific file. That is what makes this agent-driven rather than a transform.</p>
+        </section>
+        <section id="hs-goals">
+          <h2>Goals</h2>
+          <ul>
+            <li>An existing OpenSpec project reaches HTMLSpec with its argument, its reasoning, and its evidence intact — not only its requirements.</li>
+            <li>Every source entity is accounted for, and a contributor can see the accounting before anything is written.</li>
+            <li>A failed or abandoned migration leaves the repository exactly as it found it.</li>
+          </ul>
+        </section>
+        <section id="hs-non-goals">
+          <h2>Non-Goals</h2>
+          <ul>
+            <li>A converter, a second source format, deleting the source, round-tripping. See the proposal.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-the-split-two-exact-operations-and-judgment-in-between">
+            <h3>The split: two exact operations, and judgment in between</h3>
+            <p>The project's standing division is judgment where judgment is needed, mechanical checking where a rule is exact. Applied here, three things are exact and everything else is not.</p>
+            <p><strong>Exact — enumerating the source.</strong> OpenSpec's layout is fixed, so listing every capability, change, delta, evidence file, and version is enumeration with no reading involved. <code>htmlspec migrate survey</code> does it, emits a structured payload, and writes nothing.</p>
+            <p><strong>Exact — checking the plan covers the survey.</strong> Comparing a set of accounted-for entities against a set of found ones is set difference. <code>htmlspec migrate promote</code> refuses while the difference is non-empty.</p>
+            <p><strong>Exact — the existing checks.</strong> <code>htmlspec validate</code>, <code>htmlspec format --check</code>, and <code>htmlspec assets</code> already exist and already say what a conforming project is. The migration adds no check of its own; it runs those three over the staged tree.</p>
+            <p><strong>Not exact — everything in the middle.</strong> Which paragraph of a design states an obligation. Whether a three-column comparison should stay a table or become a diagram. Which of five delta files' requirements belong under which heading of one specification. Whether a proposal's "Why" section is the value argument or the need. <code>artifact-kinds</code> already settled that these have no grammar, and a migration does not get a different answer because it does them in bulk.</p>
+            <p>So <code>htmlspec migrate</code> has exactly two subcommands, <code>survey</code> and <code>promote</code>, and a <code>migrate</code> workflow whose instructions carry the reading and the writing. The alternative — one command that migrates — was rejected because it is the extractor <code>artifact-kinds</code> forbids, and it would produce 161 documents that pass every check and misstate what they came from.</p>
+          </section>
+          <section id="hs-the-order-and-why-the-checks-are-last">
+            <h3>The order, and why the checks are last</h3>
+            <p>The workflow's stages, in order:</p>
+            <ol>
+              <li><strong>Survey.</strong> Enumerate. Write nothing.</li>
+              <li><strong>Read.</strong> Open every source file and record what each one is <em>for</em>, in one line. Not what it says — what it is doing in the project. This is the pass that finds the three proposals arguing the same defect class, and the design whose middle section is a state machine written as prose.</li>
+              <li><strong>Gather the evidence.</strong> Pull the 75 evidence files, the VERSION values, the archive dates, and the changelog into the record, because these are the facts about <em>why</em> the project is shaped this way and they are the first thing a bulk conversion loses.</li>
+              <li><strong>Plan.</strong> Write the <code>tasks</code> document: one task per surveyed entity, its destination, its disposition, and — for anything being folded or dropped — the reason. Stop here and report.</li>
+              <li><strong>Stage.</strong> Build the whole migrated project in the staging location.</li>
+              <li><strong>Check.</strong> <code>validate</code>, <code>format --check</code>, <code>assets</code>, over the complete staged tree.</li>
+              <li><strong>Promote.</strong> Move it into place, in one step.</li>
+            </ol>
+            <figure id="figure-the-workflow-s-seven-stages" data-migration="drawn">
+              <figcaption>The workflow's seven stages as this decision lists them: stages 1 through 4 produce nothing a validator can look at and end with the plan reported, and stages 5 to 7 follow only after that stop. This change's specification states the same order in "The stages that capture the work run before the stages that produce documents". Drawn when this document was migrated, from the text beside it.</figcaption>
+              <details>
+                <summary>Diagram source</summary>
+                <pre class="mermaid">flowchart TD
+  subgraph capture["Stages 1 to 4: nothing a validator can look at"]
+    S1["1. Survey: enumerate, write nothing"] --&gt; S2["2. Read: what each file is for"]
+    S2 --&gt; S3["3. Gather the evidence"]
+    S3 --&gt; S4["4. Plan: the tasks document"]
+  end
+  S4 --&gt; STOP{{"Stop here and report"}}
+  STOP --&gt; S5["5. Stage: the whole migrated project"]
+  S5 --&gt; S6["6. Check: validate, format --check, assets, over the complete staged tree"]
+  S6 --&gt; S7["7. Promote: move it into place, in one step"]</pre>
+              </details>
+            </figure>
+            <p>Stages 1 through 4 are the ones that carry the migration's value, and they produce nothing a validator can look at. That is deliberate and worth saying plainly: the artifact of the first four stages is a plan a person reads.</p>
+            <p><strong>The checks are stage 6 rather than continuous, and this is a real choice with a cost.</strong> <code>htmlspec new document</code> validates each document as it writes it, so an agent staging 100 documents gets one verdict per document for free and could stop at the first failure. The migration does not stop, for two reasons.</p>
+            <p>The first is that a partial tree is worse than no tree. Stopping at document 40 leaves 39 migrated documents, 61 unmigrated ones, and a contributor holding both. Staging plus a single promotion means the repository is only ever in one of two states.</p>
+            <p>The second matters more. A mapping defect is systematic. If the rule chosen for turning <code>#### Scenario:</code> bullets into scenario units is wrong, it is wrong 401 times in the accepted specifications alone and 545 times across the deltas. Halting on the first occurrence presents a systematic defect as a single document's problem, and the agent repairs that document by hand and continues into 309 more. Completing the tree first makes the shape of the failure visible — "every scenario in every specification reports the same diagnostic" is a different finding from "specification 3 is broken", and it is the finding that leads to the actual repair.</p>
+            <p>An agent may of course check a document while drafting it. What is forbidden is a migration that <em>ends</em> at the first failure rather than at the last.</p>
+          </section>
+          <section id="hs-staging-is-outside-the-destination-and-mirrors-it-exactly">
+            <h3>Staging is outside the destination, and mirrors it exactly</h3>
+            <p>The staged tree is a complete HTMLSpec project: <code>spec.nix</code>, <code>htmlspec/specs/</code>, <code>htmlspec/changes/</code>, <code>htmlspec/changes/archive/</code>, and one <code>htmlspec/assets/</code> store. It is not a bag of files.</p>
+            <p><strong>Complete, because the checks must run in it.</strong> <code>ProjectRoot::resolve</code> ascends looking for a child <code>htmlspec/</code> directory and stops at the repository boundary. A staging area that is not a resolvable project cannot be validated, which would push the checks past promotion and make promotion the risky step.</p>
+            <p><strong>Outside the destination, because the destination is a project.</strong> A staging tree under the target repository would put a second asset store in a repository that is supposed to hold exactly one, which is the defect <code>htmlspec assets</code> exists to report and the reason <code>ProjectRoot::assets()</code> derives the store's location from the project root rather than from each document.</p>
+            <p><strong>Mirroring the destination's depth, because asset references are relative.</strong> <code>write_document</code> computes the reference from the document's own directory to the project's store (<code>crates/htmlspec-cli/src/commands.rs:574</code>), so <code>htmlspec/changes/x/proposal.html</code> references <code>../../assets/</code> and <code>htmlspec/specs/y.html</code> references <code>../assets/</code>. Stage a document at the wrong depth and promotion has to rewrite every reference it moves, which is a second transformation applied after the checks that would have caught its mistakes.</p>
+            <p>So the staging root holds the same relative paths the destination will, and promotion is a move.</p>
+          </section>
+          <section class="decision" id="decision-the-plan-is-a-tasks-document" data-change="added" data-status="accepted">
+            <h3>The plan is a <code>tasks</code> document <span class="hs-id">decision-the-plan-is-a-tasks-document</span></h3>
+            <p>A plan is a list of work items with states. That is the definition of the <code>tasks</code> kind, which already requires each task to be individually addressable so that settling one is a change to one unit rather than to a list — which is exactly what a contributor rejecting one entity's disposition needs.</p>
+            <p data-field="rationale">The alternative was a fifth artifact kind, <code>plan</code>. Rejected: <code>artifact-kinds</code> states the set of four is closed and that a document declaring a kind outside it is invalid. Reopening a closed vocabulary for one operation's working record would mean every consumer of the kind set — validation, the templates, the archival flow — grows a case for a kind that appears once per project, ever.</p>
+            <p data-field="rationale">The second alternative was a structured file, <code>migration-plan.json</code>. Rejected for the reason this project chose HTML in the first place: the plan is the document the contributor reviews, and a JSON file is not reviewed, it is diffed.</p>
+          </section>
+          <section id="hs-the-delta-collapse-is-the-hardest-mapping-and-it-is-the-one-with-no-rule">
+            <h3>The delta collapse is the hardest mapping, and it is the one with no rule</h3>
+            <p>An OpenSpec change carries N delta files, one per capability it touches, each with <code>## ADDED Requirements</code>, <code>## MODIFIED Requirements</code>, or <code>## REMOVED Requirements</code>. An HTMLSpec change carries at most one <code>specification.html</code>, and change state lives on the unit as <code>data-change="added"</code>.</p>
+            <p>For fourteen of this repository's sixteen archived changes N is 1 or 2 and the collapse is nearly mechanical. For <code>2026-08-10-html-spec</code> it is 5, and those five span every capability the project then had: 47 requirements and 138 scenarios into one document.</p>
+            <p>There is no rule to write for the arrangement and this change does not write one. The workflow states the constraint — one specification, change state per unit, every delta's content accounted for including the parts that are not requirements, identifiers slugged from full headings and recorded per (change, heading) — and leaves the arrangement to the agent, which is the same latitude <code>archive.md</code> already gives for producing a specification from a completed change.</p>
+            <p>What the constraint has to say beyond arrangement came out of writing this case by hand, and is recorded in "The collapse's hard part is not arrangement" above: the <code>## Purpose</code> paragraphs, the within-change identifier collision, the per-change keying of the derivation table, and the omitted verification units. Those are the parts a rule about requirements alone would lose.</p>
+          </section>
+          <section id="hs-where-the-destination-s-contract-is-silent-the-source-s-shape-is-preserved">
+            <h3>Where the destination's contract is silent, the source's shape is preserved</h3>
+            <p>An earlier draft of the table above mapped <code>specs/&lt;cap&gt;/spec.md</code> to <code>htmlspec/specs/&lt;cap&gt;.html</code> and justified it: a directory holding one file is a directory OpenSpec needs and HTMLSpec does not. Both halves were wrong, and the way they were wrong is the reason this decision exists.</p>
+            <p><strong>Nothing in the accepted contract states a layout beneath <code>htmlspec/specs/</code>.</strong> <code>project-bootstrap</code> — "A project has a declared root holding one asset store" — says only that the project directory holds its accepted specifications, its active changes, and its archive, "each in its own place". <code>ProjectRoot::specs()</code> (<code>crates/htmlspec-cli/src/project.rs:160</code>) resolves <code>htmlspec/specs</code> and constrains nothing below it. <code>archive.md:255</code> directs an agent at <code>&lt;accepted-specs-dir&gt;</code> without naming a file.</p>
+            <p>The flat spelling <code>htmlspec/specs/&lt;name&gt;.html</code> <a href="evidence/the-mapping-table-and-its-audit-2026-09-07.md">appears in <strong>eight</strong> places</a>: once in each of the eight installed workflow bodies. In every one it is the worked example of a sentence that <em>owes a requirement</em> (<code>crates/htmlspec-assets/instructions/archive.md:81</code>):</p>
+            <blockquote>
+              <ul>
+                <li><strong>Owes one.</strong> "Accepted specifications live at <code>htmlspec/specs/&lt;name&gt;.html</code>." Nothing else in the sentence carries that claim.</li>
+              </ul>
+            </blockquote>
+            <p>So the spelling that produced this fault is, in the current tree, the project's own illustration of a claim requiring a citation — and the fault was to read the illustration as the claim.</p>
+            <p>An earlier draft of this decision attributed the spelling to the README instead. It is not there: <code>grep -n 'htmlspec/specs' README.md</code> returns nothing. The README's layout block (<code>README.md:78–90</code>) does show a flat <code>specs/theme-selection.html</code>, which is where the impression came from, but the sentence describing its position was invented. A design that misattributes its own founding evidence is the same defect at one remove, and it is corrected here rather than quietly.</p>
+            <p><strong>And the justification was false about the source.</strong> <code>&lt;capability-path&gt;</code> is a path rather than a wrapper — the workflow bodies give <code>identity/user-auth</code> as an example and instruct an agent to preserve an existing capability's full path. Flattening it to a filename either discards the hierarchy or encodes it as <code>identity-user-auth.html</code>, which is a naming convention invented during a migration and enforced by nothing.</p>
+            <p>So the migration takes no position. Where the destination's contract states a layout, migration conforms to it; where the contract is silent, migration preserves the source's shape. <code>openspec/specs/identity/user-auth/spec.md</code> becomes <code>htmlspec/specs/identity/user-auth/spec.html</code>. Depth costs nothing: each document's asset reference is computed from its own directory, so a specification three levels down references <code>../../../assets/</code> and resolves like any other.</p>
+            <p>The rule generalizes past this row, which is why it is stated rather than fixed in place. A migration is the worst moment to settle an open question about the destination format. It settles it at bulk, under a deadline, for a hundred files at once, in a change whose subject is something else — and every later reader finds a convention with a hundred instances behind it and no requirement anywhere. If the flat spelling is right, a change whose subject is the layout should state it, and this migration will follow it the day it exists.</p>
+          </section>
+          <section id="hs-identifiers-are-derived-once-and-reused-everywhere">
+            <h3>Identifiers are derived once and reused everywhere</h3>
+            <p>OpenSpec addresses a requirement by its heading text. HTMLSpec addresses it by a <code>req-</code> identifier that must be unique within its document and stable across the project, because <code>data-refs</code> on verification units and cross-references between changes point at it.</p>
+            <p>The migration derives each identifier once, from the requirement's full heading, and records the derivation in the plan. Every later reference — a delta in an archived change naming a requirement that also appears in an accepted specification, a verification unit naming what it checked — resolves through that one table. Deriving independently at each site produces <code>req-a-project-has-a-declared-root</code> in one document and <code>req-declared-root</code> in another, and nothing catches it because both are locally valid.</p>
+            <p><strong>The table is keyed on (change, source heading) rather than on the heading alone</strong>, and this is the correction the hand-written collapse forced. A renamed requirement has different headings in different changes while being one continuous obligation: the requirement that began as <em>A single command exposes validate, format, and init</em> was renamed twice and is now <em>The command surface names its operations as OpenSpec names them</em>. Each archived specification states what its own change established, per <code>artifact-kinds</code> — "A specification states the settled contract as built" — so that obligation legitimately carries four identifiers across the migrated project. Keying on the heading alone would either collapse them into one, misstating three changes, or report three collisions that are not collisions.</p>
+            <p><strong>Deriving from the full heading is load-bearing rather than incidental.</strong> <code>deterministic-formatting</code>'s "Formatting can be checked without writing" and <code>toolchain-packaging</code>'s "Formatting can check without writing" are distinct obligations whose full-heading slugs differ; a rule that truncated or dropped stop-words would map them together and manufacture a collision the next rule then fires on.</p>
+            <p>Two requirements whose full headings derive the same identifier is a collision the plan reports rather than resolving by suffix. A suffix would silently make two obligations look like versions of one.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> A later change reversed what this decision concludes for a renamed requirement. <a href="../2026-09-26-record-a-renamed-requirement/specification.html#req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation">2026-09-26-record-a-renamed-requirement</a> modified "Identifiers are derived once and every reference resolves through that derivation" so that a requirement the source records as renamed keeps the identifier derived from the heading it was first established under, through every change that renamed it and into the accepted specification. Under it, the obligation this decision says carries four identifiers carries one.</p>
+            </aside>
+          </section>
+          <section id="hs-version-history-is-carried-in-the-file-the-gate-reads-and-the-mapping-is-the-identity">
+            <h3>Version history is carried in the file the gate reads, and the mapping is the identity</h3>
+            <p><code>VERSION</code> becomes <code>VERSION</code>. Both formats record an archived change's version in a file of that name beside its documents, so this row is the identity and there is nothing to reconstruct.</p>
+            <p><strong>An earlier draft of this design said the opposite, and it was the worst kind of wrong.</strong> It had migration compose each archive directory as <code>&lt;date&gt;-&lt;version&gt;-&lt;name&gt;</code>, justified by "<code>last_archived_version</code> scans directory names (<code>crates/htmlspec-cli/src/commands.rs:1352</code>)". Two accepted requirements forbid exactly that:</p>
+            <p><code>project-bootstrap</code> — "Archival requires the project version to advance" (<a href="../../../specs/project-bootstrap/spec.html#req-archival-requires-the-project-version-to-advance"><code>openspec/specs/project-bootstrap/spec.md:57</code></a>):</p>
+            <blockquote>
+              <p>The last archived version SHALL be read from the version each archived change records, in the form <code>toolchain-packaging</code> requires. <strong>It SHALL NOT be derived from an archive directory's name.</strong> A directory name is a display string that is shortened and renamed, and a gate derived from one depends on a convention nothing enforces — which is how this gate came to compare against a value no project ever had.</p>
+            </blockquote>
+            <p><code>toolchain-packaging</code> — "An archived change is named for its date and refuses to collide" (<a href="../../../specs/toolchain-packaging/spec.html#req-an-archived-change-is-named-for-its-date-and-refuses-to-collide"><code>spec.md:403</code></a>) states archival names the directory "for the date of archival followed by the change's name" — no version component. So the composed name contradicts a stated requirement about what an archived directory is called, not merely the gate's implementation.</p>
+            <p><strong><a href="evidence/the-mapping-table-and-its-audit-2026-09-07.md">The citation was true once, which is why it survived review.</a></strong> At <code>cf11132^</code> that function sat at exactly line 1352 and read <code>archived_version(&amp;entry.file_name().to_string_lossy())</code> — it did scan directory names. <code>cf11132</code> is titled <em>"Finish the archival, and fix the gate that never fired"</em>, and the requirement quoted above is the contract that change established. Today the function is at <code>commands.rs:2799</code> and calls <code>recorded_version</code>, which reads the file. The design cited real code from before the fix whose entire subject was this defect.</p>
+            <p>The spelling <code>&lt;date&gt;-&lt;version&gt;-&lt;name&gt;</code> comes from <code>README.md:88</code>, under a heading reading "Proposed project layout", below <code>**Status:** early design proposal</code>. <code>contract-authority</code> — "The project's obligations are what its accepted specifications state" — makes that non-normative, and its scenario "A layout stated only in a README" is this case exactly. <strong>This is the second README-as-contract fault in this change</strong>; the first is recorded below as the reason the layout-preservation requirement exists. One change producing the same fault twice, the second time inside the decision written to prevent it, is the argument for that requirement rather than a footnote to it.</p>
+            <p>The declaration's <code>version</code> is set to the greatest version found among the migrated archives — <code>0.10.0</code> in this repository — not to something higher. <code>htmlspec archive</code> refuses unless the declared version is ordered <em>after</em> the last archived one, so a migrated project's next archival is correctly forced to advance, which is the behavior a project that just migrated should have.</p>
+            <p>Where a source change records no version, the migration does not invent one. <code>recorded_version</code> returns <code>None</code> for an absent file, an unreadable one, and contents that do not parse, and <code>last_archived_version</code> folds that into a <code>max</code>, so a change with no version cannot lower the answer. The plan records that the source had none. This repository has no such case — all 16 record one — so task 3.7 proves it against a constructed project.</p>
+            <p><strong>A migrated project inherits a version collision, and must carry the baseline that explains it.</strong> <code>toolchain-packaging</code> — "An archived change records the version it shipped in" (<a href="../../../specs/toolchain-packaging/spec.html#req-an-archived-change-records-the-version-it-shipped-in"><code>spec.md:310</code></a>) — requires recorded versions to be distinct, with a stated exception: where several changes were archived under one version before the obligation existed, the changelog carries a single baseline entry naming them. <strong><a href="evidence/no-capability-reaches-a-source-project-2026-09-07.md">Seven of this repository's changes record <code>0.1.0</code></a></strong>, and <code>scripts/check-release</code> holds <code>BASELINE = (0, 1, 0)</code> for them. So migration carries the changelog and its baseline entry, and a migrated project whose changelog lost that entry fails its own release check the moment it arrives — with a diagnostic about version distinctness that names seven changes and explains none of them.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> What was built departed from this decision where the destination already holds a release record. After a review of the change's pull request, promotion places the source's changelog only where the destination holds none and leaves a destination's own in place, reading a destination that already holds a release record as satisfying "Migrated archives carry their versions where the archival gate reads them"; the shared-version check reads the record that survives, the destination's where it has one and the staged copy otherwise. Recorded in <a href="evidence/three-defects-a-review-found-2026-09-11.md"><code>evidence/three-defects-a-review-found-2026-09-11.md</code></a>, its first defect, and <a href="evidence/five-more-defects-a-review-found-2026-09-13.md"><code>evidence/five-more-defects-a-review-found-2026-09-13.md</code></a>, its third.</p>
+            </aside>
+          </section>
+          <section id="hs-four-entity-kinds-the-mapping-table-originally-missed">
+            <h3>Four entity kinds the mapping table originally missed</h3>
+            <p>The table above has nine rows because the audit added four entity kinds the first draft had none for. They matter more than their file count suggests: <strong><a href="evidence/the-source-inventory-2026-09-07.md">a survey enumerating only the original six rows reports full coverage over a set that omits 15 files</a></strong>, so the gate in stage 4 would pass while they went missing. A coverage check is only as good as the enumeration it compares against, which is why the survey's entity set is derived from a measurement of the source rather than from this table.</p>
+            <p><strong><code>documents/*.html</code> — the destination format already, and unusable.</strong> Two archived changes carry four HTMLSpec documents from an earlier hand-migration. All four declare contract version 0.1.0 and reference an asset store by a relative path that resolves to nothing, because <code>86c33f4</code> deleted the store they were written against. Every obvious disposition is wrong: carrying them verbatim imports dangling references into a project whose asset-topology check exists to report exactly that, converting them re-does work already done, and dropping them discards the project's own first attempt at what this change automates. So they cross as <strong>evidence</strong>, byte-identical, referenced from the migrated change's design as what they are. This is the agent's reversible choice under silence rather than the project's rule, and it is stated as such: a later change that wants them as documents re-points their references and moves them.</p>
+            <p><strong><code>.openspec.yaml</code> — present and dropped, which is the counterpart case.</strong> Eight files holding <code>schema: spec-driven</code> and <code>created: &lt;date&gt;</code>. The schema names the source format's workflow and has no destination. The date is a fact the destination records in the archive directory name — and in all eight it <strong>disagrees</strong> with that name, every one reading <code>created: 2026-08-24</code> including <code>2026-09-06-distinguish-a-requirement-from-an-example</code>. The field was copied forward rather than written per change, so carrying it would import eight wrong dates. Dropped, with the reason and the disagreement recorded.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> The eight files did not all read <code>created: 2026-08-24</code>. At <code>f57f640</code>, the commit <code>evidence/the-source-inventory-2026-09-07.md</code> measured, they held six distinct dates, from 2026-08-04 to 2026-09-02, and in two of them the date equals the archive directory's: <a href="../2026-08-31-sync-a-change-into-the-accepted-contract/evidence/.openspec.yaml"><code>2026-08-31-sync-a-change-into-the-accepted-contract</code></a> reads <code>created: 2026-08-31</code>, and <a href="../2026-09-02-state-a-changes-place-in-a-sequence/evidence/.openspec.yaml"><code>2026-09-02-state-a-changes-place-in-a-sequence</code></a> reads <code>created: 2026-09-02</code>. Two read <code>created: 2026-08-24</code>: <code>2026-09-06-distinguish-a-requirement-from-an-example</code>, and this change, whose own file is carried as <a href="evidence/.openspec.yaml"><code>evidence/.openspec.yaml</code></a>. Each change's file is carried unchanged in its own <code>evidence/</code>.</p>
+            </aside>
+            <p><strong><code>## RENAMED Requirements</code> — an open contract question, not a mapping choice.</strong> Two delta files record a rename with <code>- FROM:</code> / <code>- TO:</code> heading pairs, and the destination's <code>changeState</code> enum is exactly <code>added</code>, <code>modified</code>, <code>removed</code>, <code>unchanged</code>. A rename states that one requirement <em>is</em> another under a new heading, and mapping it to <code>modified</code> loses the identity link — which is precisely what the identifier derivation is keyed on, since the source addresses a requirement by heading text and the destination by a <code>req-</code> identifier. A rename is the one case where the heading changed and the requirement did not.</p>
+            <p><code>contract-authority</code> — "Silence is recorded and not filled" — offers three routes, and this takes the third: record the question as open and name the change that closes it. A <code>renamed</code> state is a contract-vocabulary addition affecting validation, the formatter's attribute ordering, and the presentation rules, and settling it inside a migration is settling a contract question in a change whose subject is something else — the fault the layout requirement exists to prevent. For this migration the requirement carries <code>data-change="modified"</code> and the rename is stated in prose naming both headings. <strong>The change that closes it is one whose subject is the <code>changeState</code> vocabulary.</strong></p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> A later change reversed this route. <a href="../2026-09-26-record-a-renamed-requirement/specification.html#req-a-source-rename-is-carried-as-the-heading-the-requirement-replaced">2026-09-26-record-a-renamed-requirement</a> gave a requirement a paragraph stating the heading it replaced, and its "A source rename is carried as the heading the requirement replaced" has migration carry a source rename as that paragraph, on the identifier the requirement already held, and not record it as an open question.</p>
+            </aside>
+            <p><strong>Nested evidence.</strong> <code>evidence/transcripts/</code> holds four files in one change. A survey globbing <code>evidence/*</code> finds nine where thirteen exist, so the enumeration recurses.</p>
+          </section>
+          <section id="hs-the-collapse-s-hard-part-is-not-arrangement">
+            <h3>The collapse's hard part is not arrangement</h3>
+            <p>Working <code>2026-08-10-html-spec</code>'s five deltas by hand before writing anything (<a href="evidence/the-collapse-written-by-hand-2026-09-07.md"><code>evidence/the-collapse-written-by-hand-2026-09-07.md</code></a>) changed what this design says about the collapse. Arrangement — the thing the decision below calls the open question — turned out to be the easy part: 47 requirements in a flat sequence is unreadable, and the capability boundary is the only structure the source expresses, so grouping by capability is forced rather than chosen.</p>
+            <p>The genuinely hard part is that <strong>each delta carries a <code>## Purpose</code> paragraph, and those are not requirements.</strong> Five of them, and they have nowhere to go: one document has one masthead and five statements cannot sit in it. They are also the current definitions of five of the project's nine capabilities, so dropping them loses content the accepted specifications still carry. They become the paragraph introducing each capability's group — which follows from the grouping rather than being a separate decision. The reason this matters for the requirement text is that <strong>a rule written about requirement units alone would drop all five silently</strong>, so the requirement states that a delta's non-requirement content is accounted for too.</p>
+            <p>Three further findings the hand-write produced, each of which the requirement text has to carry:</p>
+            <p><strong>A collapse can collide identifiers within a single change.</strong> <code>deterministic-formatting</code> states "Formatting can be checked without writing" and <code>toolchain-packaging</code> states "Formatting can check without writing"; both survive in the accepted specifications as distinct obligations. The collapse is where collisions are most likely, because it is the only operation putting several capabilities' requirements into one identifier namespace. The resolution is to slug the <strong>full heading</strong> — a rule that truncates or normalizes aggressively manufactures the collision that the report-rather-than-suffix rule then fires on.</p>
+            <p><strong>The derivation table is keyed on (change, source heading), not heading alone.</strong> <code>req-a-single-command-exposes-validate-format-and-init</code> is renamed twice by later changes, so one continuous obligation legitimately holds four identifiers across the migrated project — three in archived specifications and one in the accepted specifications. That is correct rather than a defect: <code>artifact-kinds</code> — "A specification states the settled contract as built" — requires each archived specification to state what <em>its</em> change established. The decision below reads as though one obligation gets one project-wide identifier; for a renamed requirement it cannot, and should not.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> <a href="../2026-09-26-record-a-renamed-requirement/specification.html#req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation">2026-09-26-record-a-renamed-requirement</a> later reversed this finding for a requirement the source records as renamed: under its modified "Identifiers are derived once and every reference resolves through that derivation", such a requirement keeps the identifier derived from its first heading in every change that renamed it and in the accepted specification, so it holds one identifier across the migrated project rather than four.</p>
+            </aside>
+            <p><strong>Verification units are omitted, with the reason recorded.</strong> A specification carries requirement, scenario, evidence, and verification units, and the source format has no verification unit at all. Manufacturing 47 of them from a tasks document invents a record. Evidence units are carried, because the eight evidence files are real sources. A reader comparing a migrated specification against a natively-archived one will notice the absence, so the plan states the reason rather than leaving it to be inferred.</p>
+          </section>
+          <section id="hs-config-yaml-has-no-destination-and-that-is-the-interesting-case">
+            <h3><code>config.yaml</code> has no destination, and that is the interesting case</h3>
+            <p><code>openspec/config.yaml</code> carries <code>schema</code>, and optionally <code>context</code> (project background shown to an agent), <code>rules</code> (per-artifact authoring constraints), and <code>operations</code> (advisory guidance for apply and archive). <strong><a href="evidence/absent-is-not-dropped-2026-09-07.md">Three optional fields rather than two</a></strong> — the survey reads the field set from the file, because a list of two written into this design would have missed the third.</p>
+            <p><code>project-bootstrap</code> — "A project declares its name, version, and expected toolchain" (<a href="../../../specs/project-bootstrap/spec.html#req-a-project-declares-its-name-version-and-expected-toolchain"><code>spec.md:34</code></a>) — states that the declaration <strong>SHALL NOT</strong> carry authoring rules or project context, and gives the reason: a field no command reads states nothing that can be wrong, so nothing reports it when it is.</p>
+            <p>So there is nowhere for this content to go, and the migration must not pretend otherwise. The plan names it as dropped and states the reason. Where the field is empty or absent — as in this repository, where all three are commented-out examples and the file's one live key is <code>schema: spec-driven</code> — the plan says that too, because "there was nothing there" and "there was something and it is gone" are different facts and a contributor needs to know which one they have.</p>
+            <p><code>schema</code> itself is dropped rather than absent: it names the source format's workflow schema, and the destination has one artifact vocabulary rather than a choice among several.</p>
+            <p><strong>This repository supplies both sides of the distinction, but not from one file.</strong> <code>config.yaml</code> gives the absent side; its one dropped field is a scalar rather than the block of content the rule is written about. The present-and-dropped side with real content is <code>.openspec.yaml</code>'s <code>created:</code> in eight changes — content that existed, was read, and is gone. Task 3.7's version-absence case is a third instance, and it needs a constructed project because all 16 archived changes here record a version.</p>
+            <p>This is the general rule the coverage gate enforces: an entity with no destination is reported, never omitted.</p>
+          </section>
+          <section id="hs-risk-an-agent-that-converts-rather-than-migrates">
+            <h3>Risk: an agent that converts rather than migrates</h3>
+            <p><strong>Accepted, and mitigated by the order rather than by a check.</strong> Nothing mechanically distinguishes a thoughtfully migrated document from a mechanically converted one. Both validate. The mitigation is that stages 2 and 3 come before stage 5 and produce a plan the contributor reads: an agent that skipped the reading pass writes a plan whose per-entity lines say nothing, and that is visible to a person at a glance.</p>
+            <p>Stating the limit rather than implying a test could cover it follows what the last three changes each concluded: guidance whose only verification is reading the output.</p>
+          </section>
+          <section id="hs-risk-161-documents-is-a-lot-of-judgment-in-one-pass">
+            <h3>Risk: 161 documents is a lot of judgment in one pass</h3>
+            <p><strong>Accepted, with the plan as the pressure valve.</strong> A migration of this size will get individual documents wrong. The plan is reviewed before staging, promotion is one step, and the source survives untouched, so a wrong call is corrected by fixing the plan and running again rather than by unpicking a half-migrated tree.</p>
+          </section>
+          <section class="risk" id="risk-the-staged-tree-diverges-from-the-source-while-the-plan-is-under-review" data-change="added" data-response="accepted">
+            <h3>Risk: the staged tree diverges from the source while the plan is under review <span class="hs-id">risk-the-staged-tree-diverges-from-the-source-while-the-plan-is-under-review</span></h3>
+            <p><strong>Accepted, unmitigated.</strong> A contributor who edits <code>openspec/</code> between the survey and the promotion gets a migration of what the survey saw. Re-running the survey is cheap and detecting the divergence would mean hashing the source tree and storing it, which is machinery for a case that resolves itself the moment anyone runs the survey again.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <ul>
+            <li><strong>An agent that converts rather than migrates.</strong> Mitigated above by the stage order and by a reviewed plan. Not checkable.</li>
+            <li><strong>161 documents of judgment.</strong> Accepted above; the plan and the surviving source are the recovery path.</li>
+            <li><strong>Source edited mid-migration.</strong> Accepted above, unmitigated.</li>
+            <li><strong>A collapsed delta that misstates what a change established.</strong> The same risk archival already carries, and the same mitigation: the agent reads the change's implemented result, and the implementation is what happened.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

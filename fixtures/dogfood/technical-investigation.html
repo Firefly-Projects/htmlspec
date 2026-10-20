@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="0.1.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Why HTML is the canonical format</title>
+  </head>
+  <body>
+    <header>
+      <h1>Why HTML is the canonical format</h1>
+      <p>A technical investigation exercising diagrams, charts, equations, and code excerpts. Hand-authored with no tooling. Task 3.3. The source material is the project README and the foundation-change explainer.</p>
+    </header>
+    <main>
+      <h2>The pipeline under investigation</h2>
+      <figure id="figure-pipeline">
+        <figcaption>The toolchain pipeline. Shape rules live in the schema, relational rules live in Rust, and the formatter is a fixed point over conforming documents.</figcaption>
+        <details>
+          <summary>Diagram source</summary>
+          <pre class="mermaid">graph LR
+  A[HTML document] --&gt; B[html5ever parse]
+  B --&gt; C[Projection to model]
+  C --&gt; D[JSON Schema: shape]
+  C --&gt; E[Rust rules: relations]
+  D --&gt; F[Diagnostics]
+  E --&gt; F</pre>
+        </details>
+      </figure>
+      <h2>Measured diff cost</h2>
+      <figure id="figure-diff-cost">
+        <figcaption>Changed diff lines for a one-word insertion near the start of a four-sentence paragraph, measured on a prototype in task 1.3 of the design work.</figcaption>
+        <details>
+          <summary>Chart source</summary>
+          <pre class="vega-lite">{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "data": {"values": [
+    {"formatter": "rewrapping", "lines": 10},
+    {"formatter": "no rewrap", "lines": 2}
+  ]},
+  "mark": "bar",
+  "encoding": {
+    "x": {"field": "formatter", "type": "nominal", "title": null},
+    "y": {"field": "lines", "type": "quantitative", "title": "changed diff lines"}
+  },
+  "config": {"range": {"category": ["#4a5d6b", "#8a9aa5"]}}
+}</pre>
+        </details>
+      </figure>
+      <h2>The contrast threshold</h2>
+      <figure id="figure-contrast">
+        <figcaption>The contrast ratio the print stylesheet must clear for every declared color pair.</figcaption>
+        <math :xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+<mfrac><mrow><msub><mi>L</mi><mn>1</mn></msub><mo>+</mo><mn>0.05</mn></mrow><mrow><msub><mi>L</mi><mn>2</mn></msub><mo>+</mo><mn>0.05</mn></mrow></mfrac>
+<mo>≥</mo><mn>4.5</mn>
+</math>
+      </figure>
+      <h2>The unit of work is a requirement</h2>
+      <figure id="figure-requirement-markup">
+        <figcaption>A requirement as the projection sees it. The identifier is the stable address, and the change state is machine-readable.</figcaption>
+        <pre><code>&lt;section class="requirement" id="req-theme-selection" data-change="added"&gt;
+  &lt;h2&gt;Theme selection&lt;/h2&gt;
+  &lt;p&gt;The application MUST let the user select a light or dark theme.&lt;/p&gt;
+&lt;/section&gt;</code></pre>
+      </figure>
+      <h2>Requirements this investigation tests</h2>
+      <section class="requirement" id="req-visible-visualization-source" data-change="added">
+        <h3>A visualization source is visible content</h3>
+        <p>A figure MUST carry its visualization source as ordinary visible content, and MUST NOT carry it in a script element.</p>
+        <p>The renderer MUST draw into a sibling element, so that a page saved from a rendered DOM keeps its source.</p>
+        <article class="scenario" id="scenario-source-survives-save" data-change="added">
+          <h4>A saved page keeps its diagram source</h4>
+          <dl>
+            <dt>Given</dt>
+            <dd>A document rendered in a browser with scripting enabled.</dd>
+            <dt>When</dt>
+            <dd>A reader saves the rendered page and the validator projects the copy.</dd>
+            <dt>Then</dt>
+            <dd>The copy projects the same model as the file on disk.</dd>
+          </dl>
+        </article>
+        <article class="scenario" id="scenario-no-script-fallback" data-change="added">
+          <h4>The fallback is the default state of the markup</h4>
+          <dl>
+            <dt>Given</dt>
+            <dd>A reader with scripting disabled.</dd>
+            <dt>When</dt>
+            <dd>The document opens.</dd>
+            <dt>Then</dt>
+            <dd>The caption is visible and the source can be expanded, with no noscript branch involved.</dd>
+          </dl>
+        </article>
+      </section>
+      <h2>Conclusions</h2>
+      <section class="decision" id="decision-sibling-rendering" data-change="added" data-status="accepted" data-refs="req-visible-visualization-source">
+        <h3>The renderer draws into a sibling</h3>
+        <p>Mermaid is configured to render into an element beside the source rather than over it.</p>
+        <p data-field="rationale">Mermaid's default behavior replaces the source block, which destroys the source the moment anyone saves a rendered DOM. A saved page is how these artifacts get shared, so the default is unusable and a test asserts the sibling behavior.</p>
+      </section>
+      <section class="evidence" id="evidence-mermaid-gap" data-change="added" data-refs="req-visible-visualization-source">
+        <h3>Mermaid source cannot be fully validated in Rust</h3>
+        <p>No Rust implementation of the Mermaid grammar exists, so validation checks that a block is non-empty and opens with a recognized diagram keyword. The diagram in <a href="#figure-pipeline">the pipeline figure</a> is checked only that far.</p>
+        <p data-field="summary">The visible-source fallback limits the damage: a broken diagram still shows its caption and its source, so the document stays reviewable.</p>
+      </section>
+    </main>
+  </body>
+</html>

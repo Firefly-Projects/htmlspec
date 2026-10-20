@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Read a document whose stylesheet cannot load</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Read a document whose stylesheet cannot load</h1>
+        <p>What this change established. Every document the toolchain writes carries a fallback stylesheet that keeps the page readable where the store's stylesheet cannot load, as in Safari opening a document from disk, and that changes nothing where it loads. Existing documents gain it only on request, through <code>htmlspec format --fallback</code>. Release 0.31.0, with the contract at 0.7.0.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Read a document whose stylesheet cannot load</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-document-template">document-template</a></li>
+          <li><a href="#hs-deterministic-formatting">deterministic-formatting</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-document-template">
+          <h2>document-template</h2>
+          <section class="requirement" id="req-a-document-stays-readable-when-its-stylesheet-cannot-load" data-change="added">
+            <h3>A document stays readable when its stylesheet cannot load <span class="hs-id">req-a-document-stays-readable-when-its-stylesheet-cannot-load</span></h3>
+            <p>Every document the toolchain writes SHALL carry one fallback stylesheet in its head: a <code>&lt;style&gt;</code> element whose rules sit in the cascade layer <code>htmlspec-fallback</code>. The fallback SHALL set a property on a selector only where the stylesheet the document references sets the same property on the same selector, in a rule outside any cascade layer and any at-rule. So whenever that stylesheet loads, it overrides every declaration the fallback makes, and the page is the one it would be without the fallback.</p>
+            <p>The fallback SHALL reach nothing: it carries no <code>url(</code>, no <code>@import</code>, and no <code>!important</code>. It SHALL be the same text in every document a release writes, held once in the toolchain. Where the stylesheet cannot load, it SHALL leave the page readable: a centred column in the house serif and ink, monospace code, and a skip link that is hidden until it takes focus.</p>
+            <p>The fallback is neither the shared runtime that "Documents share one pinned runtime" governs, because it draws no diagram, chart, or equation and replaces nothing the store holds, nor a copy of a stored asset, which "A project can be initialized with a conforming document" forbids, because its bytes are no stored asset's bytes. A document without the fallback SHALL remain valid, and validation SHALL report nothing about a fallback that is absent or differs from the current text.</p>
+            <article class="scenario" id="scenario-the-stylesheet-loads" data-change="added">
+              <h4>The stylesheet loads</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document carrying the fallback, opened where its stylesheet loads</dd>
+                <dt>When</dt>
+                <dd>the page renders</dd>
+                <dt>Then</dt>
+                <dd>it renders exactly as the same document without the fallback</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-stylesheet-cannot-load" data-change="added">
+              <h4>The stylesheet cannot load</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document carrying the fallback, opened where its stylesheet cannot load, as in Safari opening it from disk</dd>
+                <dt>When</dt>
+                <dd>the page renders</dd>
+                <dt>Then</dt>
+                <dd>it reads as a centred serif column with monospace code, and its skip link appears only when it takes focus</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-new-document-carries-the-fallback" data-change="added">
+              <h4>A new document carries the fallback</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the toolchain writes a document, from a template or as a run's record</dd>
+                <dt>Then</dt>
+                <dd>the document's head carries the fallback exactly once, and the document validates and is canonical</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-written-earlier-is-valid-without-it" data-change="added">
+              <h4>A document written earlier is valid without the fallback</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document written before the fallback existed</dd>
+                <dt>When</dt>
+                <dd>it is validated</dd>
+                <dt>Then</dt>
+                <dd>it reports the diagnostics it reported before, and none about the fallback</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-deterministic-formatting">
+          <h2>deterministic-formatting</h2>
+          <section class="requirement" id="req-formatting-preserves-meaning" data-change="modified">
+            <h3>Formatting preserves meaning <span class="hs-id">req-formatting-preserves-meaning</span></h3>
+            <p>Formatting SHALL NOT change a document's semantic content. It SHALL preserve every semantic unit, every identifier, every attribute value, every cross-reference, and the document order of content. It SHALL NOT add, remove, or reorder semantic units.</p>
+            <p>One kind of attribute value is excepted. Where an asset reference names bytes the project's store does not hold, formatting SHALL fill it with the address of the bytes the toolchain ships. A reference that names bytes the store holds SHALL be left as written, even when the store also holds a newer revision, because the reference records what the document was authored against.</p>
+            <p>An asset reference SHALL be the value of an attribute through which an element loads an asset. These are the same attributes that document-validation's "An asset reference must match the bytes it names" judges, so the formatter and the validator SHALL NOT disagree about which values are references. A hyperlink is a citation, not something the document loads, and SHALL NOT be filled. Text SHALL NOT be read as an asset reference. Prose that quotes one, whether as characters in a code element or escaped in an example, is content, and formatting SHALL leave it as the author wrote it.</p>
+            <ins>
+              <p>A second exception is made only on a contributor's request. Where the request is made, formatting SHALL add the fallback stylesheet that "A document stays readable when its stylesheet cannot load" describes to a document that lacks one, SHALL replace a fallback whose text differs from the current one, and SHALL change nothing else. It SHALL NOT do so for a document of an archived change or a run's record, which are history, whether reached directly or through a symbolic link. Without the request, formatting SHALL leave a document's fallback present, absent, or stale as written.</p>
+            </ins>
+            <article class="scenario" id="scenario-identifiers-survive-formatting" data-change="unchanged">
+              <h4>Identifiers survive formatting</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is formatted</dd>
+                <dt>Then</dt>
+                <dd>every semantic unit retains the identifier it had before</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-content-order-preserved" data-change="unchanged">
+              <h4>Content order preserved</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document with requirements in a deliberate order is formatted</dd>
+                <dt>Then</dt>
+                <dd>the requirements appear in the same order</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-whitespace-sensitive-content-untouched" data-change="unchanged">
+              <h4>Whitespace-sensitive content untouched</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains a preformatted code excerpt</dd>
+                <dt>Then</dt>
+                <dd>formatting leaves that content's internal whitespace and line breaks exactly as authored</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-formatting-an-invalid-document" data-change="unchanged">
+              <h4>Formatting an invalid document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>formatting is applied to a document that fails validation</dd>
+                <dt>Then</dt>
+                <dd>the formatter either produces canonically formatted output without altering meaning, or refuses and reports why — it never silently repairs or discards content</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-prose-that-quotes-an-asset-reference" data-change="unchanged">
+              <h4>Prose that quotes an asset reference</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose store does not hold the bytes <code>assets/htmlspec.css</code> names</dd>
+                <dt>When</dt>
+                <dd>a document's prose quotes <code>href="assets/htmlspec.css"</code> in a code element, and the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the quoted words are unchanged, and only references on the document's own loading elements are filled</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-hyperlink-to-an-asset" data-change="unchanged">
+              <h4>A hyperlink to an asset</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose store does not hold the bytes a document's hyperlink names</dd>
+                <dt>When</dt>
+                <dd>the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the hyperlink is left as written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reference-that-names-stored-bytes" data-change="unchanged">
+              <h4>A reference that names stored bytes</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document whose stylesheet reference names a revision the store holds, and a store that also holds a newer revision</dd>
+                <dt>When</dt>
+                <dd>the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the reference still names the revision it was authored against</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-plain-formatting-leaves-the-fallback-as-written" data-change="added">
+              <h4>Plain formatting leaves the fallback as written</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document without the fallback</dd>
+                <dt>When</dt>
+                <dd>it is formatted without the request</dd>
+                <dt>Then</dt>
+                <dd>it still has no fallback</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-request-adds-the-fallback" data-change="added">
+              <h4>The request adds the fallback</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document without the fallback</dd>
+                <dt>When</dt>
+                <dd>it is formatted on the request</dd>
+                <dt>Then</dt>
+                <dd>its head gains the fallback once and nothing else changes, and a second request changes nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-request-replaces-a-stale-fallback" data-change="added">
+              <h4>The request replaces a stale fallback</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document whose fallback differs from the current text</dd>
+                <dt>When</dt>
+                <dd>it is formatted on the request</dd>
+                <dt>Then</dt>
+                <dd>the fallback's text is replaced and nothing else changes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-request-leaves-history-as-written" data-change="added">
+              <h4>The request leaves history as written</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document of an archived change, or a run's record, without the fallback</dd>
+                <dt>When</dt>
+                <dd>the project is formatted on the request</dd>
+                <dt>Then</dt>
+                <dd>that document is left as written, and the request reports it as skipped</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-the-measurement-2026-10-16" data-change="added" data-refs="req-a-document-stays-readable-when-its-stylesheet-cannot-load">
+            <h3>What was measured before the change <span class="hs-id">evidence-the-measurement-2026-10-16</span></h3>
+            <p>Safari refuses a stylesheet one and two folders up from a page opened from disk, and Chrome and Firefox load it. Every kind of document reaches the store in a parent folder. The store's stylesheet sets every property the fallback sets on its selectors, unconditionally and with no layer, and a document carrying the block validates with the same diagnostics as one without it. <a href="evidence/the-measurement-2026-10-16.md"><code>evidence/the-measurement-2026-10-16.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-renders-2026-10-16" data-change="added" data-refs="req-a-document-stays-readable-when-its-stylesheet-cannot-load">
+            <h3>The renders with and without the store <span class="hs-id">evidence-the-renders-2026-10-16</span></h3>
+            <p>Rendered by Chrome headless with the store reachable, the runbook-portability specification with the fallback and without it gave identical screenshots. With the store unreachable, the fallback gave a centred serif column with monospace code, and the copy without it rendered edge to edge in the browser's defaults. <a href="evidence/the-renders-2026-10-16.md"><code>evidence/the-renders-2026-10-16.md</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-the-fallback-is-inert" data-change="added" data-outcome="passed" data-refs="req-a-document-stays-readable-when-its-stylesheet-cannot-load">
+            <h3>The fallback is inert against the store's stylesheet <span class="hs-id">verify-the-fallback-is-inert</span></h3>
+            <p data-field="method"><code>crates/htmlspec-assets/tests/fallback.rs</code> parses the fallback and the embedded store stylesheet. <code>the_fallback_is_inert_against_the_store_stylesheet</code> requires every property on every fallback selector to be set by an unconditional, unlayered store rule naming the same selector. <code>the_store_stylesheet_declares_no_cascade_layer</code> and <code>the_fallback_is_one_layer_that_reaches_nothing</code> hold the layer and the absence of <code>url(</code>, <code>@import</code>, and <code>!important</code>. Four more hold the checker to crafted failures. With <code>text-align: left</code> added to the fallback's body, the first test failed naming that property, and passed once it was removed.</p>
+          </section>
+          <section class="verification" id="verify-the-skip-link-returns-on-focus" data-change="added" data-outcome="passed" data-refs="req-a-document-stays-readable-when-its-stylesheet-cannot-load">
+            <h3>The skip link returns on focus <span class="hs-id">verify-the-skip-link-returns-on-focus</span></h3>
+            <p data-field="method"><code>the_fallback_brings_the_skip_link_back_on_focus</code> failed against the block before the code review's fix and passes now. <code>the_skip_link_check_reports_a_link_hidden_for_good</code> holds the check itself.</p>
+          </section>
+          <section class="verification" id="verify-every-writer-carries-the-fallback" data-change="added" data-outcome="passed" data-refs="req-a-document-stays-readable-when-its-stylesheet-cannot-load">
+            <h3>Every document the toolchain writes carries the fallback <span class="hs-id">verify-every-writer-carries-the-fallback</span></h3>
+            <p data-field="method"><code>every_rendered_template_carries_the_fallback_once_in_its_head</code> in <code>crates/htmlspec-validate/tests/template_conformance.rs</code> renders every kind's template, and <code>the_rendered_template_is_already_canonical</code> now covers every kind. <code>the_record_carries_the_fallback_stylesheet_once</code> in <code>crates/htmlspec-cli/tests/run.rs</code> starts a run and reads the fallback once in the record's head, and the record passes strict validation and <code>format --check</code>. It failed against the record's previous head.</p>
+          </section>
+          <section class="verification" id="verify-format-adds-the-fallback-only-on-request" data-change="added" data-outcome="passed" data-refs="req-formatting-preserves-meaning">
+            <h3>Formatting adds the fallback only on request <span class="hs-id">verify-format-adds-the-fallback-only-on-request</span></h3>
+            <p data-field="method">In <code>crates/htmlspec-cli/tests/cli.rs</code>: <code>plain_format_leaves_a_document_without_the_fallback_without_one</code>, <code>format_fallback_adds_it_once_and_is_then_idempotent</code>, <code>format_check_fallback_reports_a_document_without_it_and_writes_nothing</code>, <code>a_stale_fallback_is_replaced_only_on_request</code>, <code>format_fallback_leaves_history_as_written</code>, and <code>put_format_takes_the_fallback_request</code>. In <code>crates/htmlspec-format/src/fallback.rs</code>, seven unit tests hold the transformation, among them that a stale fallback is replaced and nothing else moves. <code>a_document_reached_through_a_symbolic_link_into_history_is_history</code> in <code>crates/htmlspec-cli/src/project.rs</code> failed before the code review's fix and passes now.</p>
+          </section>
+          <section class="verification" id="verify-the-repository-carries-it" data-change="added" data-outcome="passed" data-refs="req-a-document-stays-readable-when-its-stylesheet-cannot-load req-formatting-preserves-meaning">
+            <h3>This repository's accepted specifications carry the fallback <span class="hs-id">verify-the-repository-carries-it</span></h3>
+            <p data-field="method"><code>htmlspec format --fallback htmlspec/specs</code> changed each of the 13 accepted specifications by exactly the block's lines and nothing else. The release runbook and the archived changes kept their bytes. <code>htmlspec validate htmlspec</code> reported 0 errors and the same 1073 warnings as before, and <code>scripts/check</code> passed all 13 stages.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

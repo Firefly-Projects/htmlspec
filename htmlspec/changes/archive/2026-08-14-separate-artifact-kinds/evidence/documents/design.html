@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.1.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Separate a change into four artifact kinds: design</title>
+    <link href="../../../../assets/sha256-e4f5de7cecc4f691/htmlspec.css" rel="stylesheet">
+    <link href="../../../../assets/sha256-0350261bb5666167/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Separate a change into four artifact kinds: design</h1>
+        <p>Where the kind vocabulary lives, why the advisory rule sits in a different namespace from the other two, and how a guarantee about what validation does <em>not</em> report can be pinned rather than asserted.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.1.0</dd>
+          <dt>Subject</dt>
+          <dd>Separate a change into four artifact kinds: design</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <h2>The constraints that decided the approach</h2>
+        <p>Three existing project facts shaped this more than any preference did.</p>
+        <p>The first is that <code>status</code> was <em>projected</em>, not merely declared. <code>project.rs</code> read <code>&lt;meta name="htmlspec-status"&gt;</code> into the model, and section 9.3 of the projection specification made that mapping normative. So replacing the field was a change to four things at once — the JSON Schema, the normative projection specification, the Rust model, and the projection code — rather than a metadata rename.</p>
+        <p>The second is that the projection specification is a public artifact in its own right. The archived foundation design settled that the contract is three pieces, not one: the schema for the projected model, a normative HTML-to-model projection specification, and conformance fixtures pinning the mapping. A new metadata field has to appear in all three or the contract is incomplete.</p>
+        <p>The third is that a test already draws the line between the schema and Rust. <code>rule_code_does_not_restate_schema_expressible_values</code> fails if rule code restates a value the schema could express. The kind vocabulary is a closed enumeration, so it belongs in the schema; the three rules are relational, so they belong in Rust. That line was drawn for us, and drawing it again cost nothing.</p>
+        <section class="decision" id="decision-kind-in-schema-rules-in-rust" data-change="added" data-status="accepted">
+          <h2>The vocabulary lives in the schema and the rules live in Rust</h2>
+          <p>The four kind values are a closed enumeration on a required property, which is what JSON Schema expresses well. Rule code names a kind by a stem and resolves it through the schema at run time, the way the reference rules already read the change-state enumeration.</p>
+          <p data-field="rationale">A Rust constant listing the same four strings would fail the existing schema-Rust split test, and correctly: two copies of an enumeration drift the moment one moves. The three enforced rules are relational — a unit's presence against its document's kind, a count of tasks, a requirement against the verifications naming it — and JSON Schema cannot express any of them.</p>
+        </section>
+        <section class="decision" id="decision-advisory-rule-in-review" data-change="added" data-status="accepted">
+          <h2>The advisory rule is a review warning rather than a kind warning</h2>
+          <p>An unverified requirement in a specification is reported in the <code>review/*</code> namespace, not in <code>kind/*</code> alongside the two placement and completeness errors.</p>
+          <p data-field="rationale">This is the subtlest decision in the change and it turns on a property of the engine rather than on taxonomy. <code>review/*</code> is the one namespace strict mode refuses to promote. In <code>kind/*</code> the warning would be promotable, so <code>--strict</code> would fail a specification for being in progress — gating the work that produces the verification, which is exactly the phase gate the dependency model exists to avoid. The mutation testing bore this out: making the namespace promotable is invisible under default validation and fails only under <code>--strict</code>.</p>
+        </section>
+        <section class="decision" id="decision-required-and-undefaulted" data-change="added" data-status="accepted">
+          <h2>The kind is required, with no default</h2>
+          <p>An unmigrated document fails with a diagnostic naming the missing declaration.</p>
+          <p data-field="rationale">An optional kind with a default would make every unmigrated document silently become whatever the default is, and the most convenient default is <code>specification</code> — the strictest kind. A document that was a proposal would then acquire the one placement error the vocabulary has, and its author would be told their proposal must not carry tasks. Required and undefaulted means the migration is visible and the diagnostic names the actual problem.</p>
+        </section>
+        <section class="decision" id="decision-positive-fixtures-pin-absence" data-change="added" data-status="accepted">
+          <h2>Positive fixtures pin the guarantee about absence</h2>
+          <p>A proposal carrying a requirement unit and a design carrying a task unit are committed as fixtures declaring <code>valid: true</code> with no rules.</p>
+          <p data-field="rationale">"Validation reports nothing about which units a proposal carries" is a claim about absence, and absence is the hardest thing to pin: a rule that quietly stopped firing would pass every test written to assert silence. A positive fixture fails in the other direction. If someone later adds a placement matrix, the fixture declaring a proposal valid while carrying a requirement stops being valid, and the suite says so. A second guard states the boundary from the other side — a test asserting the kind namespace has exactly two rules — because a count is crude and it is the thing that fails when a third rule appears without a decision.</p>
+        </section>
+        <section class="decision" id="decision-archival-is-a-skill" data-change="added" data-status="accepted">
+          <h2>Archival synthesis is an agent's work and the program only checks</h2>
+          <p>An agent produces the change's specification from the completed change. The program validates it and refuses while it reports an error. That is the whole of the program's part.</p>
+          <p data-field="rationale">The upstream kinds have no imposed structure, so there is no grammar to parse. An extractor would have to guess which paragraph of a design states an obligation, and a wrong guess produces a specification that passes every check while misstating the contract — worse than producing nothing, because it looks authoritative. html-spec can hold this division in a way OpenSpec's Markdown sync cannot, because it has a validator: the agent's judgment is unconstrained and its output is not.</p>
+        </section>
+        <h2>What the split of the template cost</h2>
+        <p>One template served four purposes: the document <code>init</code> writes, the base every conformance fixture edits, the project's demonstration of all seven units, and the input to the presentation checks. Those agreed while there was one document shape. The declared kind pulled them apart, because a proposal must arrive with no unit scaffolding and a specification must not carry a task — so no single document can demonstrate all seven units any more.</p>
+        <p>The resolution was four templates and a union assertion: the vocabulary test still reads the unit list from the schema and now asks which shape demonstrates each unit, requiring the union to cover all seven. The available shortcut was to relax the test to "six of the seven", and it is worse — it turns a schema-derived check into a hardcoded exemption, and an eighth unit type added later would pass unnoticed.</p>
+        <p>I shipped three templates first and had the change directory write its design from the proposal template. Running it showed that wrong twice in one line of output: the tool announced "created a proposal" for a design, and it had imposed a proposal's headings on the one kind whose structure is explicitly the author's. An almost-empty design template is a different thing from no design template, and it is the honest one.</p>
+        <section class="risk" id="risk-guarantee-decays-silently" data-change="added" data-refs="decision-positive-fixtures-pin-absence">
+          <h2>The reports-nothing guarantee decays silently</h2>
+          <p>A rule added later could quietly begin constraining the upstream kinds, and every test asserting silence would keep passing.</p>
+          <p data-field="mitigation">Positive fixtures carrying would-be violations, plus a rule-count test. Both fail when a rule is added rather than passing quietly.</p>
+        </section>
+        <section class="risk" id="risk-agent-specifications-vary" data-change="added" data-refs="decision-archival-is-a-skill">
+          <h2>Agent-synthesized specifications vary between runs</h2>
+          <p>Two agents synthesizing the same change can produce differently worded specifications that both validate, so archival is not reproducible in the strict sense.</p>
+          <p data-field="mitigation">Accepted deliberately, and bounded by validation plus review at archival. The requirement is idempotence in effect — running twice must not alter the specification's meaning — which is weaker than byte-identity and the strongest property available when the operation is judgment. The alternative is the extractor the specs forbid.</p>
+        </section>
+        <section class="risk" id="risk-four-kinds-is-wrong" data-change="added">
+          <h2>Four kinds prove to be the wrong number</h2>
+          <p>The set is closed, so adding a fifth is a schema change with its own compatibility cost.</p>
+          <p data-field="mitigation">The same bet the seven-unit vocabulary made, and worth making again only because the four kinds come from OpenSpec's own working practice rather than from invention. A test asserts the count, so a fifth cannot arrive without a decision.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

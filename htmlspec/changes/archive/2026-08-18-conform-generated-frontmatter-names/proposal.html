@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Conform generated frontmatter names</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Conform generated frontmatter names</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Conform generated frontmatter names</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-18-conform-generated-frontmatter-names/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>A session load prints this:</p>
+          <pre><code>[Skill conflicts]
+  auto (user) ~/.agents/skills/_driver_add_schemas/SKILL.md
+    name contains invalid characters (must be lowercase a-z, 0-9, hyphens only)
+  … seven more …</code></pre>
+          <p>Those eight files belong to another repository. The reason they matter here is that <strong><code>htmlspec init</code> writes the same field, for five tools, with no rule about what may go in it.</strong> Every project a contributor bootstraps inherits whatever this program decides, and right now it decides two different things for no stated reason.</p>
+          <p><code>crates/htmlspec-cli/src/install.rs</code> has two writers of the same frontmatter key:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Writer</th>
+                <th>Source of <code>name:</code></th>
+                <th>Produces</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>write_skills</code> (<code>:107</code>)</td>
+                <td><code>workflow.directory</code></td>
+                <td><code>htmlspec-apply-change</code></td>
+              </tr>
+              <tr>
+                <td><code>write_commands</code> (<code>:149</code>)</td>
+                <td><code>tool.invocation(workflow.name)</code></td>
+                <td><code>/htmlspec:apply</code></td>
+              </tr>
+            </tbody>
+          </table>
+          <p>The command form carries a <code>/</code> and a <code>:</code>. The skill form conforms — and <a href="evidence/failing-name-check-2026-08-19.md">it conforms <em>by coincidence</em></a>, because a skill directory happens to be spelled in kebab-case. Nothing asserts it, so nothing would notice if a later workflow directory were named <code>htmlspec_bulk_archive</code>. That is one underscore away from the eight warnings above, in a field this program writes 35 times per project across five tools.</p>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> The figure 35, here and in the third item under What Changes, is carried as the author wrote it, and the change's own record disagrees with it. The per-tool table in <a href="evidence/failing-name-check-2026-08-19.md"><code>evidence/failing-name-check-2026-08-19.md</code></a> counts 14 files each for Claude Code, Cursor, and Pi, 7 for Codex, and 1 for the AGENTS.md region, which is 50. At commit <code>4972234</code> an install for all five tools writes 49 files that declare a name, plus that region. 35 is the count for the three tools this repository selects, <code>claude,codex,pi</code> (14, 7, and 14), as <a href="evidence/loading-after-rename-2026-08-19.md"><code>evidence/loading-after-rename-2026-08-19.md</code></a> records.</p>
+          </aside>
+          <p><strong>The <code>/htmlspec:apply</code> value does not warn today, and that is not the same as being right.</strong> I checked: the loader applies the character rule to skills, not to commands. <a href="evidence/loading-after-rename-2026-08-19.md">The vendored <code>opsx</code> commands in this repository declare <code>name: "OPSX: Apply"</code></a> and have loaded without complaint since <code>2989654</code>. So the current output works.</p>
+          <p>It works for one harness. <code>init</code> installs for five, and the tolerance being relied on is one loader's treatment of one file kind. A <code>name:</code> field holding <code>/htmlspec:apply</code> is not a name in the first place — it is the invocation, which the table already knows how to compute and the closing message already prints from <code>Tool::invocation</code>. Putting it in the name field states the same fact twice and states it in the one place a stricter reader will reject it.</p>
+          <p><strong>The precedent is the argument.</strong> The change that installed the full workflow set replaced a rule held in a code comment with a test over clap's command tree, because a rule a human remembers is a rule that ships broken. This is the same shape one layer out: the frontmatter this program generates has no stated contract, and the other repository demonstrates what that costs — six malformed markers passed review, shipped, and surfaced from a session load rather than from a diff.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong>A generated <code>name:</code> is a name, and it must be loadable.</strong> Both writers produce a value of lowercase letters, digits, and hyphens. The command writer stops putting the invocation there and uses the workflow's identity, the way the skill writer already does.</li>
+            <li><strong>The invocation keeps its one home.</strong> <code>Tool::invocation</code> exists to answer "what does a contributor type", and the closing message is where that answer is printed. Removing it from the frontmatter leaves one producer of the spelling instead of two, which is the same reasoning the table's <code>entry_point</code> flag rests on: one fact, one place.</li>
+            <li><strong>A test over every generated file.</strong> <code>htmlspec init</code> writes 35 files across five tools, and no test reads a <code>name:</code> value. The check walks every skill and command file a bootstrap produces and fails on a value outside the character set — so the skill form's accidental conformance becomes a guaranteed property, and a workflow directory added later with an underscore fails the build rather than a contributor's session.</li>
+            <li><strong>The contract states the rule.</strong> <code>project-bootstrap</code> requires that generated instructions record their version and says nothing else about their frontmatter. It gains the obligation that a generated name is loadable, and that the invocation is not a name.</li>
+          </ul>
+        </section>
+        <section id="hs-non-goals">
+          <h2>Non-Goals</h2>
+          <ul>
+            <li><strong>Changing how a contributor invokes anything.</strong> <a href="evidence/loading-after-rename-2026-08-19.md"><code>/htmlspec:apply</code> remains what you type.</a> Only the frontmatter key changes, and the closing message that teaches the spelling is untouched.</li>
+            <li><strong>Renaming a workflow, a skill directory, or a command file.</strong> The seven directories and their file names already conform. This is about a field's contents.</li>
+            <li><strong>Fixing the eight warnings.</strong> They come from <code>~/skills</code>, whose <code>_</code>-prefixed helper markers are Python package directories imported by 75 files — a constraint that repository's own contract records and that has nothing to do with this program. Two of the eight are not even a defect there: they are a synced destination running behind commit <code>d27e6fd</code>. This change prevents html-spec from ever producing that class of file; it does not reach into another repository to repair one.</li>
+            <li><strong>Auditing the five tools' loaders.</strong> The character rule is inferred from one warning's text rather than read from five published specifications. Conforming to the strictest rule observed is the cheap and safe direction, and this change does that rather than pretending to a survey it has not done.</li>
+          </ul>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> <a href="evidence/loading-after-rename-2026-08-19.md"><code>evidence/loading-after-rename-2026-08-19.md</code></a>, linked above, shows that the invocations did not move. It does not show that a command file declaring the same name as its skill file was harmless. 2026-08-21-distinguish-command-names-from-skill-names later called that shared name a regression this change introduced, made command files declare no name, and <a href="../2026-08-21-distinguish-command-names-from-skill-names/specification.html#scenario-one-identity-per-workflow">withdrew the scenario <em>One identity per workflow</em></a> that this change added.</p>
+          </aside>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

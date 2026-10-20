@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Catch a template's placeholder prose</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Catch a template's placeholder prose</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Catch a template's placeholder prose</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-15-catch-a-templates-placeholder-prose/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>A <code>tasks</code> document shipped with the template's own words as its masthead summary — <em>"Replace this paragraph with what this work delivers."</em> It passed <code>htmlspec validate</code> with <a href="evidence/the-gap-measured-2026-09-13.md"><strong>zero diagnostics</strong></a>, passed <code>format --check</code>, and would have passed archival. A human reader found it by opening the file and noticing that the other two changes in the same directory had real summaries.</p>
+          <p>This is not a one-off. The report naming it says <strong>"I have seen it happen several times."</strong></p>
+          <p>The gap is exact. <code>review/example-content</code> reports a unit whose <strong>identifier</strong> is one a template writes — <code>req-example</code>, <code>task-dropped-example</code>. <code>htmlspec_assets::example_identifiers</code> builds that list by scanning the templates for <code>id="…"</code> attributes, so it sees identifiers and nothing else. Every template also writes a masthead paragraph, and that paragraph carries no identifier:</p>
+          <pre><code>$ htmlspec new document tasks t.html --subject "A change"
+$ # replace the two example task units, leave the masthead alone
+$ htmlspec validate t.html
+  no diagnostics: the document is accepted</code></pre>
+          <p><strong>The summary is not trapped in markup — it is in the model.</strong> The projection specification, section 9.1.1, projects <code>summary</code> from every <code>p</code> element inside the document's <code>header</code>. So this is checkable, and the reason it goes unchecked is that nothing compares that projected text against what the templates write.</p>
+          <p>The cost is worse than an unhelpful paragraph. <code>document-schema</code> states what <code>summary</code> is for: <em>"What the document is for, in its own prose. Projected from the paragraphs of the document header, so that the argument a change rests on is addressable in the model rather than trapped in presentation."</em> A document whose summary is the placeholder has an empty answer where the model promises the argument — and every consumer reading <code>summary</code> gets instructions addressed to the author instead.</p>
+          <p>This is the same shape this project has now closed three times: a rule whose subject is real and whose check does not reach it. <code>project-bootstrap</code> states the general form — a rule nothing checks is not a rule.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong>Extend example-content detection from identifiers to prose.</strong> <code>htmlspec-assets</code> gains the placeholder paragraphs alongside the placeholder identifiers, read out of the templates rather than listed beside them, for the reason <code>example_identifiers</code> already gives: a list restates a fact the templates already make and goes stale the first time one changes.</li>
+            <li><strong>Report a document whose summary is a template's placeholder.</strong> <code>review/example-content</code> gains this case, at the same severity and for the same reason — <code>htmlspec new document</code> writes the template and the contract requires that result to be valid, so an error there would report a defect the program itself introduced.</li>
+            <li><strong>Refuse it at archival</strong>, where <code>review/example-content</code> already escalates. A change archived with a placeholder summary puts "Replace this paragraph" into <a href="evidence/the-gap-measured-2026-09-13.md">the project's permanent record</a>.</li>
+            <li><strong>Cover every artifact kind.</strong> All four templates write a masthead placeholder and all four are invisible today. A rule covering only <code>specification</code> would leave the kind this was reported on unchecked.</li>
+          </ul>
+          <p><strong>Not in scope:</strong> judging whether a real summary is a <em>good</em> one. That is reading, and <code>artifact-kinds</code> reserves it for an agent. This detects text the program itself wrote.</p>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <p><strong>New Capabilities:</strong> none.</p>
+          <p><strong>Modified Capabilities:</strong></p>
+          <ul>
+            <li><code>contract-authority</code> — its requirement <a href="specification.html#req-generated-example-content-is-non-normative-and-its-survival-is-reported"><em>"Generated example content is non-normative and its survival is reported"</em></a> is where this lives, not <code>document-validation</code>. I checked: the rule's contract is stated there, in the capability whose subject is what carries authority.</li>
+          </ul>
+          <p><strong>That requirement currently says the opposite of what this change needs</strong>, and the sentence is deliberate rather than incidental:</p>
+          <blockquote>
+            <p>The check SHALL be on the identifier rather than on the example's text. Text is edited while an identifier survives, so a half-replaced example carries new prose under the example's identifier — and that is the likely case rather than an edge one.</p>
+          </blockquote>
+          <p>That reasoning is sound and this change does not overturn it. <strong>A masthead placeholder is the case it does not cover</strong>, because the summary has no identifier to survive — so "check the identifier" is not a narrower rule there, it is no rule at all. The modification adds the summary as a second site with its own reason, and leaves the identifier rule standing as the primary one for units.</p>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li><code>crates/htmlspec-assets/src/lib.rs</code> — the placeholder prose beside <code>example_identifiers</code>, read out of the templates by the same discipline.</li>
+            <li><code>crates/htmlspec-validate/src/rules/review.rs</code> — <code>example_content_is_replaced</code> gains the summary case.</li>
+            <li><code>crates/htmlspec-cli/src/commands.rs</code> — <code>example_content_in</code>, which archival and <code>sync</code> share.</li>
+            <li><code>fixtures/conformance/</code> — a fixture pinning the case, which is what makes this a contract rather than an implementation detail.</li>
+            <li>No change to the schema, the projection, or the document model. The text this reads is already projected.</li>
+          </ul>
+          <p><strong>All 50 existing fixtures carry the placeholder prose, and <a href="evidence/mutation-testing-2026-09-13.md">none of them breaks</a>.</strong> I checked rather than assumed: <code>valid-minimal</code> already reports <code>review/example-content</code> seven times while its <code>expected.json</code> declares no rules, and it passes. The reason is that <code>every_fixture_reports_exactly_the_rules_it_declares</code> asserts each declared rule <em>is</em> reported and does not assert that nothing else is — so a new warning is invisible to the suite, and acceptance is unaffected because <code>review/*</code> never gates.</p>
+          <p><strong>That is worth recording as <a href="evidence/mutation-testing-2026-09-13.md">a second finding</a> rather than relief.</strong> A test named "exactly" that checks one direction is the same shape as the defect this change closes: a check whose name claims more than it reaches. It is not this change's subject, and the change that tightens it needs to decide what the 50 fixtures should declare — so it is named here and left open.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Project bootstrap CLI</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Project bootstrap CLI</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Project bootstrap CLI</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-17-project-bootstrap-cli/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>The program has five subcommands, all of which take paths and return an <code>Outcome</code>. None of them has a subject larger than a document, and none of them talks to a terminal. This change adds an operation whose subject is a project and whose input is partly a person pressing keys. Both are new, and each one is a way to make the rest of the program worse if it is added carelessly.</p>
+          <p>The constraints that actually bind:</p>
+          <ul>
+            <li><code>unsafe_code = "forbid"</code> and <code>unwrap_used = "warn"</code> at the workspace level.</li>
+            <li>Every dependency exact-pinned, because the reproducible-build requirement says two machines must agree.</li>
+            <li>One exit point, in <code>main</code>. Every command returns <code>Outcome</code> rather than exiting, which is what makes them testable without spawning a process.</li>
+            <li>Structured output must contain nothing but the payload on stdout.</li>
+          </ul>
+          <p>The last two are the ones a prompt threatens. A library that reads a keypress and writes to the terminal wants to own both streams and to exit on interrupt, and both would break a contract the program already keeps.</p>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals</strong></p>
+          <ul>
+            <li><code>htmlspec init</code> in an empty repository produces a working project and tells the user what to type next.</li>
+            <li>One asset store per project, referenced relatively by every document in it.</li>
+            <li>Commands work from any subdirectory.</li>
+            <li>The interactive path is thin enough that everything below it is testable without a terminal.</li>
+            <li>A sixth agent tool is a table entry.</li>
+          </ul>
+          <p><strong>Non-Goals</strong></p>
+          <ul>
+            <li>Implementing <code>explore</code>, <code>propose</code>, <code>apply</code>, or <code>verify</code> as commands. <code>init</code> installs their instruction files; only <code>archive</code> has program-side behavior today.</li>
+            <li>A project config file carrying rules or context. <code>spec.nix</code> holds a name, a version, and a binary pin — each read by a command. Authoring rules and project context of the kind <code>openspec/config.yaml</code> carries are out of scope, because no htmlspec command consumes them yet.</li>
+            <li>Global user-level configuration, profiles, or delivery modes. OpenSpec has all three; they exist because it accumulated tools and workflows over time, and adopting them before that pressure exists would be adopting the scar tissue without the wound.</li>
+            <li>Migration from an OpenSpec project layout.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-the-project-root-is-a-type-not-a-path">
+            <h3>The project root is a type, not a path</h3>
+            <p><code>ProjectRoot</code> wraps a directory known to contain <code>htmlspec/</code>, constructed only by a resolver that walked upward and found one, or by <code>init</code> which just created one. Every command that operates on a project takes a <code>ProjectRoot</code> rather than a <code>&amp;Path</code>.</p>
+            <p>This is the parse-at-the-boundary rule applied to the one ambiguity this change introduces. Once commands walk upward to find a root, "the path the user typed" and "the project this belongs to" are different things with the same representation, and the current signatures — <code>validate(path: Option&lt;&amp;Path&gt;)</code> — cannot tell them apart. A resolver returning <code>Result&lt;ProjectRoot, NotAProject&gt;</code> makes the failure explicit at one place instead of letting five commands each decide what to do in a directory that is not a project.</p>
+            <p>The asset store's location follows from the root rather than being computed per document: <code>root.assets()</code> is <code>&lt;root&gt;/htmlspec/assets</code>. <a href="evidence/asset-footprint.md">This is the whole fix for the 6 MB-per-change duplication.</a> <a href="evidence/current-cli-behavior.md">The current code derives the store from the <em>document's</em> directory</a>, which is why two changes get two stores; deriving it from the project makes one store the only thing that can happen.</p>
+            <p><code>validate</code> and <code>format</code> keep accepting a bare path for the single-file case. A contributor naming one file means that file, and requiring a project for that would be a regression.</p>
+          </section>
+          <section class="decision" id="decision-resolution-walks-upward-and-stops-at-a-boundary" data-change="added" data-status="accepted">
+            <h3>Resolution walks upward and stops at a boundary <span class="hs-id">decision-resolution-walks-upward-and-stops-at-a-boundary</span></h3>
+            <p>The resolver ascends from the starting directory looking for a child <code>htmlspec/</code> directory. It stops at a filesystem root or a <code>.git</code> directory, whichever comes first.</p>
+            <p data-field="rationale">Stopping at <code>.git</code> is the decision worth stating. Without it, a repository nested inside a directory that happens to contain an unrelated <code>htmlspec/</code> would resolve outward past its own boundary and write into a project it is not part of. Ascending forever is how a tool ends up writing to a sibling project because someone ran it in the wrong directory. <code>.git</code> is the marker for "this is a repository," and a repository is the outermost thing a command should reach.</p>
+            <p data-field="rationale">Rejected: requiring <code>--root</code> explicitly. It is correct and nobody would pass it. Rejected: a marker file inside <code>htmlspec/</code>. The directory's existence is already the marker, and a second one is a second thing to get out of sync.</p>
+          </section>
+          <section id="hs-interaction-is-a-decision-then-a-prompt-that-produces-one">
+            <h3>Interaction is a decision, then a prompt that produces one</h3>
+            <p>The layering:</p>
+            <pre><code>Selection { tools: Vec&lt;ToolId&gt;, cleanup: bool, ... }   // plain data
+    ↑                                    ↑
+resolve_from_flags(&amp;Args)          prompt(&amp;mut dyn Interaction)   // inquire lives here
+    ↓
+bootstrap(&amp;ProjectRoot, &amp;Selection) -&gt; Outcome         // pure, no terminal</code></pre>
+            <p><code>bootstrap</code> never sees a terminal. It takes a <code>Selection</code> and does the work, so every case that matters — first run, re-run, one tool, all tools, none, a tool whose directory exists — is a unit test constructing a <code>Selection</code> and asserting on files written. The prompt's only job is producing a <code>Selection</code>, and it is the only part with no test beyond "it compiles and a human ran it."</p>
+            <p>This is the answer to the impact the proposal named: without the split, the interactive path is the one part of the program with no test, and it is also the part a new user meets first.</p>
+            <p><code>inquire</code> is called from <code>prompt</code> alone. It does not appear in <code>bootstrap</code>'s signature or in the module that writes files. If it is ever replaced, one function changes.</p>
+          </section>
+          <section id="hs-deciding-whether-to-prompt-at-all">
+            <h3>Deciding whether to prompt at all</h3>
+            <p>Three conditions, all required: standard input is a terminal, standard output is a terminal, and no <code>--tools</code> flag was passed. Any one missing means non-interactive, and non-interactive means use detected tools without asking.</p>
+            <p><code>--tools</code> suppressing the prompt is the part that reads as surprising and is not. A user who named their tools has answered the question the prompt asks; showing it anyway would ask them to answer twice. This matches OpenSpec's <code>canPromptInteractively</code>, which returns false when <code>toolsArg !== undefined</code> for the same reason.</p>
+            <p>Checking stdout as well as stdin is because a prompt writes; if its writes are going into a pipe, the user cannot see what they are answering.</p>
+            <p>An interactive run also honors <code>--json</code> by refusing: structured output promises stdout contains nothing but the payload, and a prompt writing to stdout breaks that promise outright. <code>--json</code> implies non-interactive.</p>
+          </section>
+          <section id="hs-the-tool-table-is-data-and-its-shape-is-a-sum-type">
+            <h3>The tool table is data, and its shape is a sum type</h3>
+            <pre><code>pub struct Tool {
+    pub id: ToolId,               // enum: closed set, so a typo is a compile error
+    pub name: &amp;'static str,       // "Claude Code"
+    pub directory: &amp;'static str,  // ".claude"
+    pub detection: &amp;'static [&amp;'static str],
+    pub delivery: Delivery,
+}
+
+pub enum Delivery {
+    SkillsAndCommands { commands: &amp;'static str },  // ".claude/commands/htmlspec"
+    SkillsOnly,
+    SingleFile { path: &amp;'static str },             // "AGENTS.md"
+}</code></pre>
+            <p><code>Delivery</code> is a sum type because the three cases are genuinely different operations — write a directory of skills plus a directory of commands, write skills only, or append a section to one file — and <a href="evidence/current-cli-behavior.md">OpenSpec's equivalent is a set of booleans</a> (<code>shouldGenerateSkillsForTool</code>, <code>shouldGenerateCommandsForTool</code>, <code>shouldReconcileCommandFilesForTool</code>) resolved against a delivery mode and a per-tool capability. That arrangement has four functions deciding what a tool gets, and combinations that should be impossible are representable — <code>delivery=commands</code> on a skills-only tool yields a tool that gets nothing, which OpenSpec handles by printing a paragraph of apology at the end of <code>init</code>. A sum type makes that state unconstructible.</p>
+            <p>Five entries: Claude Code, Codex, Cursor, Pi, AGENTS.md.</p>
+            <p><code>detection</code> is a list of paths because a tool can be recognized by more than one thing and because a rename must not lose recognition of the old directory — the case OpenSpec handles with <code>detectionPaths: ['.devin', '.windsurf']</code>.</p>
+          </section>
+          <section id="hs-agents-md-is-a-marked-region-and-that-is-why-it-is-a-distinct-delivery">
+            <h3>AGENTS.md is a marked region, and that is why it is a distinct delivery</h3>
+            <p><code>SingleFile</code> appends a region delimited by HTML comment markers and rewrites only between them on re-run. A file the user also edits by hand cannot be overwritten wholesale, and it cannot be appended to blindly either or every <code>init</code> grows it.</p>
+            <p>If the markers are absent the region is appended. If they are present the content between them is replaced. If the opening marker is present without the closing one, <code>init</code> reports it and writes nothing to that file: a truncated region means someone edited across the boundary, and guessing where it ended could delete their prose.</p>
+          </section>
+          <section id="hs-skills-are-compiled-in-and-the-archive-skill-s-content-moves">
+            <h3>Skills are compiled in, and the archive skill's content moves</h3>
+            <p>Skill and command content is <code>include_str!</code>'d into the binary, the way templates already are. The standalone-artifact requirement means the packaged program runs with no source checkout, so reading skill files from disk at runtime is not available — the same reasoning <code>htmlspec-assets/build.rs</code> records for <code>include_bytes!</code>.</p>
+            <p>The existing <code>.claude/skills/htmlspec-archive-change/SKILL.md</code> becomes the source file for the archive skill, moved under the assets crate. This repository's copy then comes from <code>htmlspec init</code>, which is the only way the instructions get tested: a skill that is only ever hand-copied is never verified to be what the tool installs.</p>
+            <p>Skills carry the version they were generated by in their frontmatter, so a stale skill is identifiable. OpenSpec does this with <code>generatedBy</code> and it is the mechanism by which a re-run's value is visible.</p>
+          </section>
+          <section id="hs-re-run-refreshes-instructions-and-touches-nothing-else">
+            <h3>Re-run refreshes instructions and touches nothing else</h3>
+            <p>Extend mode is <code>htmlspec/</code> already existing. In it:</p>
+            <ul>
+              <li>Skills and commands for selected tools are rewritten unconditionally. They are program-owned output; the user's edits to them are not preserved because the file says which version generated it and refreshing is the point.</li>
+              <li><code>specs/</code>, <code>changes/</code>, and <code>changes/archive/</code> are created if absent and otherwise untouched.</li>
+              <li>The asset store is established if absent, and verified if present. A store whose bytes do not match the pinned lockfile is reported, not silently rewritten.</li>
+            </ul>
+            <p>Nothing is deleted. OpenSpec's <code>init</code> removes legacy artifacts and stale command files, which it needs because it has renamed things across versions. htmlspec has shipped nothing to be stale. A deletion path added before there is anything to delete is a deletion path with no test case.</p>
+          </section>
+          <section id="hs-spec-nix-is-written-because-it-has-a-consumer">
+            <h3><code>spec.nix</code> is written, because it has a consumer</h3>
+            <p><code>init</code> writes <code>spec.nix</code> at the project root carrying three fields: the project's name, its version, and a pinned reference to the <code>htmlspec</code> binary the project expects.</p>
+            <p>I deferred this file in the first draft on the grounds that nothing read it, and that a file nothing reads drifts from the truth silently because nothing fails when it is wrong. That objection is answered by giving it a consumer rather than by arguing about it. Archival reads the version and refuses when it has not moved, so the drift <em>is</em> the failure and the file cannot rot unnoticed. This is the difference in kind from OpenSpec's <code>config.yaml</code>, which holds project context an agent reads and no command enforces.</p>
+            <p>Nix rather than YAML or TOML, and the binary reference is why. A pinned tool reference is a flake input with a hash — the project already builds with a flake, and expressing the pin anywhere else means inventing a syntax for something Nix states directly and then writing a resolver for it. The other two fields are along for the ride, and a second configuration language for them is not worth it.</p>
+            <p>The binary pin closes a gap that is open today. <a href="evidence/relocation-and-orphans.md"><code>--version</code> reports <code>htmlspec 0.1.0 (9c3a3c79b1fe-dirty)</code></a>, so the binary knows what it is, but no project records which binary it expects. Two machines agree today because both enter the same development shell, which is convention rather than a checked fact. The reproducible-build requirement asks for more than convention.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, <code>init</code> writes the binary pin as <code>htmlspec = null;</code>, and no command reads it: <a href="evidence/testing-state-2026-08-17.md"><code>evidence/testing-state-2026-08-17.md</code></a>, section 6, item 4, records the pin as deferred deliberately.</p>
+            </aside>
+          </section>
+          <section id="hs-the-version-gate-checks-it-does-not-write">
+            <h3>The version gate checks; it does not write</h3>
+            <p>Archival compares the version in <code>spec.nix</code> against the last archived version and refuses unless the declared version is ordered after it. The contributor or the agent performs the bump. <code>htmlspec archive</code> never edits <code>spec.nix</code>.</p>
+            <p><code>init</code> writes <code>0.0.0</code>, which is what makes the comparison total. A project starts with a version already on record, so there is never a previous value to be absent, and the first archival is the same operation as the thousandth: advance past what is recorded, or be refused. The alternative — treating an absent previous version as a pass — is a branch that executes once per project, which means it is a branch nobody exercises twice.</p>
+            <p><code>0.0.0</code> also settles a question I had left implicit. I first wrote the gate as "refuses while they are equal", which is a test for difference, and a difference test accepts a downgrade: archiving at <code>0.1.0</code> after <code>0.2.0</code> passes. Once the initial value is <code>0.0.0</code> the versions are obviously meant to be ordered rather than merely distinct, so the comparison is an ordering. A version ordered <em>before</em> the last archived one is reported separately from one that has not moved, because the causes differ — work not yet done in the second case, and a version that went backwards in the first.</p>
+            <p>That makes the version a value the program parses into an ordering rather than a string it compares. Three dot-separated numbers, ordered componentwise. A version it cannot parse is reported rather than accepted, because a gate that cannot compare its inputs is not a gate. This stays within the checking side of the division: parsing <code>0.1.0</code> and asking whether it follows <code>0.0.0</code> is exact, while deciding whether the change deserved a minor or a major bump is judgment and stays with the agent.</p>
+            <figure data-migration="drawn">
+              <figcaption>The outcomes of the version gate as this decision states them: a declared version that cannot be parsed is reported, one that has not moved and one ordered before the last archived version are each refused and reported apart, and only one ordered after it passes the gate. The change's specification states the gate in <em>Archival requires the project version to advance</em>. Drawn when this document was migrated, from the text beside it.</figcaption>
+              <details>
+                <summary>Diagram source</summary>
+                <pre class="mermaid">flowchart TD
+  A["archive reads the version in spec.nix"] --&gt; B{"parses into an ordering?"}
+  B -- no --&gt; R1["reported rather than accepted"]
+  B -- yes --&gt; C{"ordered after the last archived version?"}
+  C -- "has not moved" --&gt; R2["refused: work not yet done"]
+  C -- "ordered before" --&gt; R3["refused, reported separately: went backwards"]
+  C -- "ordered after" --&gt; P["not refused"]</pre>
+              </details>
+            </figure>
+            <p>This follows the division the project already chose, and the choice is not a new one. An agent produces the change's specification and the program validates it, because the judgment is judgment and the checking is exact. A version an agent sets and the program checks is that same split. The alternative puts a write inside the one command whose stated job is checking, and <code>archive_check</code> is documented as reading one file and validating it.</p>
+            <p>The gate then reduces to a question the program answers exactly: is this version ordered after the last archived version? That is a comparison rather than a judgment, which is the test for what belongs in the program instead of in an instruction.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, the gate took the last archived version from the archive directory's name, where task 9.1 placed it, and no archived change's directory name carries a version, this change's own included, so the gate compared every declared version against <code>0.0.0</code>. <a href="tasks.html#task-9-1">Task 9.1</a>'s deviation records it. <a href="../2026-08-30-finish-the-archival/specification.html#req-archival-requires-the-project-version-to-advance">2026-08-30-finish-the-archival</a> made the gate read the version each archived change records.</p>
+            </aside>
+          </section>
+          <section class="decision" id="decision-an-ascending-asset-reference-makes-an-absent-store-suspicious" data-change="added" data-status="accepted">
+            <h3>An ascending asset reference makes an absent store suspicious <span class="hs-id">decision-an-ascending-asset-reference-makes-an-absent-store-suspicious</span></h3>
+            <p data-field="rationale">Every asset rule returns early when no store is present. That guard is correct — the 41 conformance fixtures carry symbolic references and never sit beside a store, so a rule firing without one fails all of them. Its consequence is that a fixture and a change directory copied out of its project are indistinguishable, and <a href="evidence/relocation-and-orphans.md">I measured that</a>: <code>htmlspec validate --strict</code> accepts an orphaned change whose seven asset references are all dead, reporting zero diagnostics.</p>
+            <p data-field="rationale">One store per project makes that case reachable in a way it currently is not, so this change closes it. The signal is the shape of the reference itself. A reference that ascends out of its own directory — one containing <code>../</code> — asserts that a store sits above the document. A fixture's reference never ascends: <a href="evidence/relocation-and-orphans.md">I checked all 341 asset references in the conformance fixtures</a> and <strong>none</strong> contains <code>../</code>, while every reference <code>init</code> generates for a change three levels down does.</p>
+            <p>So the rule is: an ascending asset reference with no store found anywhere above it is reported. A non-ascending reference with no store stays silent, which keeps every fixture passing. The document still cannot exempt itself, because ascent is a property of the reference the generator wrote rather than a marker an author can set.</p>
+            <p data-field="rationale">Rejected: requiring a store unconditionally, which fails 41 fixtures. Rejected: keying the rule on <code>spec.nix</code> being present. That reads better than it works — a change directory carries no <code>spec.nix</code>, so the orphan would look storeless and unmarked exactly as it does now.</p>
+          </section>
+          <section id="hs-cancellation-is-a-fourth-outcome">
+            <h3>Cancellation is a fourth outcome</h3>
+            <p><code>Outcome</code> gains <code>Cancelled</code> with a distinct code. The three existing outcomes were designed for documents: success, the document is wrong, the operation could not run. A user who pressed Escape at a menu is none of those, and mapping it onto <code>OperationalFailure</code> would make a continuous-integration job unable to distinguish "the tool broke" from "a human declined," which is the same distinction the exit-code requirement already draws between document violations and operational failures.</p>
+            <p>Interrupt during a prompt restores the terminal and returns <code>Cancelled</code> through the normal return path. The one-exit-point rule holds: nothing in the prompt layer calls <code>process::exit</code>. OpenSpec calls <code>process.exit(0)</code> inside its legacy-cleanup prompt, which is exactly the shortcut this program's structure exists to avoid.</p>
+          </section>
+          <section class="decision" id="decision-the-closing-message-names-the-literal-command-per-tool" data-change="added" data-status="accepted">
+            <h3>The closing message names the literal command per tool <span class="hs-id">decision-the-closing-message-names-the-literal-command-per-tool</span></h3>
+            <p>After a successful <code>init</code>, the output names what to type — <code>/htmlspec:archive</code> for a tool that got slash commands, the skill invocation for a tool that got skills only — and prints one line per distinct spelling when the selection disagrees.</p>
+            <p data-field="rationale">This is copied from OpenSpec deliberately, and the reason is in its own source comment: printing a canonical form that no selected tool actually answers to teaches the user a command that does not work. The spelling cannot be known until the tools are chosen, which is why this is the last thing printed rather than part of a banner.</p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>The rename breaks every documented invocation.</strong> <code>README.md</code>, <code>AGENTS.md</code>, <code>crates/htmlspec-cli/tests/cli.rs</code>, and the archive skill all spell <code>init &lt;path&gt;</code>. Mitigation: the removed spellings produce an error naming the replacement — <code>init</code> with a path says to use <code>new</code>, and clap's own unknown-argument error is not enough here because <code>init &lt;path&gt;</code> was valid yesterday.</li>
+            <li><strong>A pinned interactive dependency is a vendoring obligation.</strong> <code>inquire</code> brings four transitive crates the flake must fetch, and the reproducible-build check must still pass. Mitigation: the pin is exact, the lockfile is committed, and the flake's vendored set is regenerated as a task rather than assumed. The alternative — hand-rolled raw mode — trades a vendoring task for four classes of terminal bug, and one of them (failing to restore the terminal on interrupt) leaves the user's shell broken.</li>
+            <li><strong><code>ProjectRoot</code> touches every command's signature.</strong> Five commands change shape in one change, alongside a rename and a new interactive surface. Mitigation: the tasks sequence the type before the interaction, so the pure layer is complete and tested before a prompt exists to call it.</li>
+            <li><strong>One asset store is a different failure mode, not none.</strong> Today a change carries its own runtime and is self-contained: the directory can be copied anywhere and still opens. With one store per project, <a href="evidence/relocation-and-orphans.md">moving a change directory out of its project breaks its asset references</a>. This is the intended trade — the duplicate-detection requirement exists because the project decided sharing is correct — but it is a real property being given up, and <a href="evidence/asset-footprint.md"><code>assets</code> reporting project-wide</a> is what makes the remaining risk visible.</li>
+            <li><strong>Two skill sets coexist in this repository.</strong> <code>openspec-*</code> and <code>htmlspec-*</code> will both be in <code>.claude/skills/</code>. Mitigation: distinct prefixes, and <code>init</code> writes only the <code>htmlspec-*</code> names. It never scans for or removes anything it did not write.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <ol>
+            <li>Add <code>ProjectRoot</code> and the resolver. Nothing calls them; the type and its tests land first.</li>
+            <li>Repoint the existing commands at <code>ProjectRoot</code>, keeping the single-file path for <code>validate</code> and <code>format</code>. <a href="evidence/asset-footprint.md"><code>assets</code> becomes project-wide here</a>, which is where the duplication defect actually closes.</li>
+            <li>Rename <code>init</code> to <code>new</code>, reshaped as <code>new change &lt;name&gt;</code> and <code>new &lt;kind&gt; &lt;path&gt;</code>. The old spellings start erroring with a message naming the replacement.</li>
+            <li>Add the tool table, <code>Selection</code>, and <code>bootstrap</code> — the whole non-interactive path, driven by <code>--tools</code>. <code>init</code> is fully usable at this step with no prompt.</li>
+            <li>Add the prompt layer over it.</li>
+            <li>Move the archive skill's content into the crate and regenerate this repository's copy through <code>htmlspec init</code>.</li>
+            <li>Update <code>README.md</code>, <code>AGENTS.md</code>, and the flake's vendored dependencies.</li>
+          </ol>
+          <p>Steps 1–4 are independently valuable and independently testable. If step 5 is deferred, <code>init --tools claude</code> still bootstraps a project, which is why the flag path is built before the menu rather than after it.</p>
+        </section>
+        <section id="hs-resolved-questions">
+          <h2>Resolved Questions</h2>
+          <p>Both questions the first draft left open are now settled, and they are recorded here rather than deleted because the reasoning is what a later reader needs.</p>
+          <ul>
+            <li><strong>Where a new change goes.</strong> <code>new change &lt;name&gt;</code> places it at <code>&lt;root&gt;/htmlspec/changes/&lt;name&gt;</code> unconditionally and prints the resolved path. A path argument lets a change be created outside <code>changes/</code>, and a root that does not determine where changes live is not doing its job.</li>
+            <li><strong>Whether <code>init</code> writes a configuration file.</strong> It writes <code>spec.nix</code>. The deferral rested on the file having no consumer, and the version gate gives it one. See the two decisions above for the format and for why the gate checks rather than writes.</li>
+            <li><strong>What the first archival compares against.</strong> <code>init</code> writes <code>0.0.0</code>, and the gate compares against that rather than against nothing. The first archival is then an ordinary comparison: <code>0.0.0</code> is the version already on record, so archiving requires advancing past it exactly as every later archival requires advancing past its predecessor. There is no first-archival case, which is why this is settled rather than deferred — an absent-previous-version branch would be code that runs once per project and is therefore tested once, if at all.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

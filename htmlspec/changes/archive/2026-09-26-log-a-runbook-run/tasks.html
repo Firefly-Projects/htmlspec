@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Log a runbook run</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Log a runbook run</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Log a runbook run</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-26-log-a-runbook-run/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-re-measure-the-four-claims">1. Re-measure the four claims the design rests on, before writing any of it</a></li>
+          <li><a href="#hs-2-verify-the-guard-covers-runs">2. Verify the guard covers <code>runs/</code>, with a record actually on disk</a></li>
+          <li><a href="#hs-3-settle-the-three-decisions">3. Settle the three decisions the proposal leaves open, with reasoning</a></li>
+          <li><a href="#hs-4-the-contract">4. The contract</a></li>
+          <li><a href="#hs-5-the-layout">5. The layout</a></li>
+          <li><a href="#hs-6-the-conformance-rule">6. The conformance rule</a></li>
+          <li><a href="#hs-7-the-run-operation">7. The <code>run</code> operation</a></li>
+          <li><a href="#hs-8-fixtures">8. Fixtures</a></li>
+          <li><a href="#hs-9-prove-it">9. Prove it</a></li>
+          <li><a href="#hs-10-release">10. Release</a></li>
+          <li><a href="#hs-11-two-reviews">11. Two reviews found fourteen defects, and three of them were one pattern</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-re-measure-the-four-claims">
+          <h2>1. Re-measure the four claims the design rests on, before writing any of it</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Confirm a reference resolving within one document only, with a real run record on disk rather than from the proposal's word.</h3>
+              <p><strong>The proposal says this was measured and the instruction is to confirm it still holds</strong>, because the whole design rests on the copying being forced rather than chosen</p>
+              <ul>
+                <li>
+                  <p><strong>Confirmed, and it is an error rather than a warning.</strong> A verification in <code>runs/probe.html</code> naming <code>req-version-before-regenerate</code> in the runbook's <code>specification.html</code> one directory up: <code>error: refs/unresolved … no unit in the document declares that identifier</code>, exit 1. The copying is forced. Recorded in <a href="evidence/the-shape-is-forced-2026-09-18.md"><code>evidence/the-shape-is-forced-2026-09-18.md</code></a>.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Confirm <code>kind=specification</code> fails on every step, and confirm the accepting direction too: that a <code>tasks</code> document carrying requirements and verifications beside its tasks reports nothing</h3>
+              <ul>
+                <li>
+                  <p><strong><a href="evidence/the-shape-is-forced-2026-09-18.md">Both confirmed.</a></strong> Byte-identical bodies apart from the kind: as <code>tasks</code>, zero diagnostics under default <em>and</em> <code>--strict</code>; as <code>specification</code>, two <code>kind/task-in-specification</code> errors for two copied steps. So "on every step" is one diagnostic per task rather than one per document — a real release run copies four steps and would draw four.</p>
+                </li>
+                <li>
+                  <p>The accepting direction matters more and the proposal only implied it: a <code>tasks</code> document carrying task units, requirements with scenarios, and verifications <em>together</em> is accepted with zero diagnostics, because the tasks rule is completeness rather than placement.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Confirm the three further constraints — a scenario, a strong modal, and <code>data-change="unchanged"</code> — each with its own diagnostic from its own single edit</h3>
+              <ul>
+                <li>
+                  <p><a href="evidence/the-shape-is-forced-2026-09-18.md">All three, each isolated</a>: scenario removed → <code>error: schema/invalid … /requirements/0/scenarios: [] has less than 1 item</code>; <code>MUST</code> → <code>should</code> → <code>error: schema/weak-modal</code>; <code>unchanged</code> → <code>added</code> → <code>warning: review/stale-verification</code>. Two errors and one warning, which is the split the proposal states.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Measure what the existing rules report about a run record whose copied requirement no verification names.</h3>
+              <p><strong>This is the conformance rule's subject, so if something already reports it the rule is unnecessary</strong></p>
+              <ul>
+                <li>
+                  <p><strong><a href="evidence/the-shape-is-forced-2026-09-18.md">Nothing, at either strictness.</a></strong> <code>no diagnostics: the document is accepted</code>, twice. <code>requirements_are_verified</code> in <code>rules/review.rs</code> returns early unless the kind is <code>specification</code>, and task 1.2 forces the record to be <code>tasks</code> — so <strong>the two forced facts point in opposite directions</strong>, and the kind a record must be is exactly the kind the existing rule cannot see. That gap is the whole justification for the project-level rule, and it was measured rather than argued.</p>
+                </li>
+                <li>
+                  <p>The early return is <em>correct</em> for its own reason, which the rule's own doc comment states: a requirement unit in a proposal is an author arguing for one. So widening it is not the fix, which is why <code>an_unrecorded_requirement_is_not_reported_by_the_per_document_set</code> asserts the silence rather than treating it as a defect.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-5" data-change="added" data-state="done">
+              <h3>1.5 Confirm asset references resolve at <code>runs/</code> depth, and that <code>validate</code> and <code>format</code> reach a run record with no work</h3>
+              <ul>
+                <li>
+                  <p><code>href="../../../assets/sha256-…"</code> — <a href="evidence/the-shape-is-forced-2026-09-18.md">three levels, correctly</a>, because <code>runbooks/&lt;name&gt;/runs/</code> is three below <code>htmlspec/</code>. Needed nothing: the store is derived from the project by <code>ProjectRoot::assets()</code>.</p>
+                </li>
+                <li>
+                  <p><code>validate htmlspec/runbooks</code> walks into <code>runs/</code> and reports on each record; <code>format --check</code> likewise. Both are what is wanted, so this repository's <code>self-runbooks</code> stages would see a committed record with no change to them.</p>
+                </li>
+                <li>
+                  <p><strong>And <code>list --runbooks</code> does <em>not</em> see it</strong>, which is a finding rather than a defect: the enumeration reads which of <code>RUNBOOK_DOCUMENTS</code> a runbook holds, so a runbook with forty records lists identically to one with none. Recorded in the design; closing it is the aggregate, which is <code>record-a-runbooks-history</code>'s.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-verify-the-guard-covers-runs">
+          <h2>2. Verify the guard covers <code>runs/</code>, with a record actually on disk</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Re-measure the predecessor's one-word claim — <em>"Safe — <code>starts_with</code> covers descendants"</em> — which was reasoned about a directory that did not exist.</h3>
+              <p><strong>Set up the full clearing shape first</strong>: <a href="../2026-09-18-establish-a-runbook/evidence/the-guard-failed-open-2026-09-18.md"><code>the-guard-failed-open</code></a> records that four unrelated gates refuse before archival moves anything, so a half-built probe looks safe</p>
+              <ul>
+                <li>
+                  <p><strong>The claim holds.</strong> Measured with the release runbook's real documents, a conforming run record in <code>runs/</code>, and the project version advanced past <code>0.0.0</code>. Recorded in <a href="evidence/the-guard-covers-runs-2026-09-18.md"><code>evidence/the-guard-covers-runs-2026-09-18.md</code></a>.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Probe every resolution route with <code>runs/</code> as the target: the three path spellings, the runbook holding <code>runs/</code>, <code>status</code>, <code>sync</code>, and the <code>--store</code> arm</h3>
+              <ul>
+                <li>
+                  <p><a href="evidence/the-guard-covers-runs-2026-09-18.md">Six routes, all refused</a>, exit 2 each, with <code>runbooks/release</code> holding both documents and <code>runs/conforming.html</code> afterwards and <code>changes/archive/</code> empty. Each refusal states its own operation's reason, so the <code>Refusal</code> enum is doing its work one directory further down.</p>
+                </li>
+                <li>
+                  <p>One imprecision left alone deliberately: the message says "is a runbook" about a directory <em>inside</em> a runbook. The refusal and the reason are both correct; making the sentence distinguish the two would mean the guard reasoning about depth, which is structure for a message rather than for a decision.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Re-apply the three known bypasses at <code>runs/</code> depth — nested <code>htmlspec/</code>, nested <code>.git</code>, broken symlink at <code>htmlspec/runbooks</code> — and confirm each refuses</h3>
+              <ul>
+                <li>
+                  <p><a href="evidence/the-guard-covers-runs-2026-09-18.md">All three refuse.</a> A and B refuse because the project is a parameter now, so what sits inside the argument cannot choose which project the guard judges against. C produces the fail-closed message — <code>cannot read … Refusing rather than proceeding, because a runbook archived is a procedure destroyed</code>.</p>
+                </li>
+                <li>
+                  <p><strong>C has a cost worth stating</strong>: a project with a broken symlink at <code>htmlspec/runbooks</code> cannot archive <em>any</em> change until it is fixed. That is the fail-closed policy working as written rather than a defect, and it is the correct side to err on for an irreversible <code>rename</code>.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Do the bypass hunt from the question <em>what performs an irreversible filesystem operation on a path derived from user input?</em> and <strong>record what was checked even where nothing was found</strong>.</h3>
+              <p>Extend the shape of <a href="../2026-09-18-establish-a-runbook/evidence/the-guard-failed-open-2026-09-18.md"><code>the-guard-failed-open</code></a>'s negative list</p>
+              <ul>
+                <li>
+                  <p><a href="evidence/the-guard-covers-runs-2026-09-18.md">Thirteen probes in the evidence</a>, including the seven where nothing was found. <code>fs::rename</code> and <code>fs::remove_dir_all</code> in non-test code are still the same three sites; this change added neither.</p>
+                </li>
+                <li>
+                  <p><strong>The two new code paths cannot reach an irreversible operation, and that is structural rather than checked.</strong> The conformance rule takes gathered facts and no filesystem capability at all — there is no path from it to a <code>rename</code>. The <code>run</code> operation writes one new file, refuses an existing one (measured on <code>new document</code> first, because it is the property <code>run</code> depends on), and creates <code>runs/</code> with <code>create_dir_all</code>, which is idempotent.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-settle-the-three-decisions">
+          <h2>3. Settle the three decisions the proposal leaves open, with reasoning</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done" data-refs="req-a-report-answers-the-contributor-in-their-own-terms">
+              <h3>3.1 Decide where run progress is reported.</h3>
+              <p><a href="../2026-09-18-establish-a-runbook/evidence/the-status-gap-2026-09-17.md"><code>the-status-gap-2026-09-17.md</code></a> measured the gap, so read it before deciding rather than deciding from the proposal's summary of it. <code>workflow-reporting</code> governs</p>
+              <ul>
+                <li>
+                  <p><strong><code>status</code> is left alone; run progress is <code>htmlspec run --check</code>'s.</strong> The measurement decides it: the predecessor found that <code>status --change &lt;runbook-path&gt;</code> <em>works</em> and counts correctly, so the reusable part already reaches a runbook and what is wrong is the report's shape — <code>absent proposal.html</code> about documents a runbook never has. Teaching it a second shape means branching on what its argument turned out to be, and then <code>--change</code> is false for half its inputs.</p>
+                </li>
+                <li>
+                  <p><code>workflow-reporting</code>'s <em><a href="../../../specs/workflow-reporting/spec.html#req-a-report-answers-the-contributor-in-their-own-terms">A report answers the contributor in their own terms</a></em> is the governing clause, and its scenario is exact: a report whose first claim names a document count does not show the request was understood. A contributor asking about a run asks what it recorded.</p>
+                </li>
+                <li>
+                  <p><strong>The stronger reason is that the two reports are not one report with a branch.</strong> A run's reader wants outcomes, not a fraction — which is a different report built from different units, and it is the conformance rule's output.</p>
+                </li>
+                <li>
+                  <p><strong>Not closed:</strong> <code>status --change</code> by <em>name</em> pointed at a runbook is still a refusal, which is the form a workflow would use. Recorded in the design's risks on the same terms the predecessor recorded it.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Decide whether a run can be resumed, which decides whether a record is ever edited after it is written</h3>
+              <ul>
+                <li>
+                  <p><strong>A run can be resumed, so a record is edited after it is written.</strong> The argument is that the alternative contradicts the document's own kind: a <code>tasks</code> document's steps carry <code>in-progress</code>, and a record written once could never carry it honestly — it would mean "in progress at the instant the file was written and nobody knows what happened next". A model making a state in the vocabulary unreachable is the wrong model.</p>
+                </li>
+                <li>
+                  <p>The batch abandoned at step 6 is the case, and <strong>two records would each be wrong about it</strong>: the first says six done and four unstarted, which reads as a run that stopped; the second cannot say <code>done</code> for the six it did not do, nor <code>todo</code> for six that are finished.</p>
+                </li>
+                <li>
+                  <p><strong>This is what makes the <code>review/*</code> severity necessary rather than convenient.</strong> A resumed run legitimately has requirements nothing has recorded, so an error would fail every run at the moment it began. Asserted rather than argued: <code>a_just_started_run_has_recorded_nothing</code> drives the real binary and asserts exit 0.</p>
+                </li>
+                <li>
+                  <p><strong>Cost stated:</strong> two runs a week apart are indistinguishable on disk from one run interrupted for a week. No timestamp is recorded, for <code>project-bootstrap</code>'s reason about an uncompared version — the filesystem already has <code>mtime</code>, and when a run happened is <code>record-a-runbooks-history</code>'s question.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Decide whether <code>run</code> copies eagerly or lazily, and what it names the record.</h3>
+              <p><strong>Name every rejected candidate and what it broke</strong>, because a naming scheme is exactly where <code>runbook-authority</code>'s prohibition on deriving an ordering from a name gets violated quietly</p>
+              <ul>
+                <li>
+                  <p><strong>Eagerly, and the name is the contributor's with no default.</strong> <code>htmlspec run &lt;runbook&gt; --as &lt;record&gt;</code>.</p>
+                </li>
+                <li>
+                  <p>Eager because a lazy copy has no honest content for the steps it has not reached: between steps 2 and 3 the record would state a three-step procedure, and nothing in a list of steps says there are more. The record exists to say which version of the procedure ran, and a partial copy shows a version that never existed.</p>
+                </li>
+                <li>
+                  <p><strong>Two rejected naming schemes, each for a stated reason rather than taste.</strong> A date (<code>2026-09-18.html</code>) collides when a procedure runs twice in a day, and it would make the record's name the one place a time is recorded — which 3.2 declines to do. A sequence number (<code>run-7.html</code>) requires reading an ordering out of the directory's contents, and <code>runbook-authority</code> states that <em>nothing SHALL derive an ordering, a version, or a history</em> from a runbook's name; the maintained-list shape is what the contract refuses.</p>
+                </li>
+                <li>
+                  <p><code>--as</code> is required rather than defaulted, because an operation that invented a name would choose on the contributor's behalf and <code>artifact-kinds</code> requires a derived name to be reported. The failure message says why, so a contributor meets the reasoning rather than a bare usage error.</p>
+                </li>
+                <li>
+                  <p>Checked through <code>ProjectRoot::is_a_name</code>, which is where the predecessor moved this invariant after re-litigating it at three call sites. Verified that a refused name leaves <em>nothing</em> on disk, including no <code>runs/</code> directory — a name refused after a directory was created would have left the traversal's effect behind.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 Decide whether a run record is a canonical document, since <code>runbook-authority</code> already requires <code>unchanged</code> in a runbook's canonical documents and that sentence now binds.</h3>
+              <p>Decide from the measurement rather than from the word</p>
+              <ul>
+                <li>
+                  <p><strong>It is, and the measurement decides it rather than the word "canonical".</strong> A copied requirement declared <code>added</code> draws <code>review/stale-verification</code> — the record's own verification attesting to an obligation the record says does not exist yet. The obligation existed before the run started, which is the same fact as the runbook's own documents arriving at the same attribute.</p>
+                </li>
+                <li>
+                  <p>So the delta states it once for a runbook's documents <em>including</em> its records, rather than adding a second clause.</p>
+                </li>
+                <li>
+                  <p><strong><code>run</code> is the operation that knows what it is writing</strong>, which narrows <a href="../2026-09-18-establish-a-runbook/evidence/the-canonical-documents-change-state-2026-09-17.md"><code>the-canonical-documents-change-state-2026-09-17.md</code></a>'s finding without closing it: an author writing a record by hand still meets the warnings, and so does an author writing a runbook by hand. The delta says so explicitly.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-the-contract">
+          <h2>4. The contract</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 State the new capability <code>runbook-execution</code>: what a run is, where its record lives, what the record carries, and that the record is history rather than contract</h3>
+              <ul>
+                <li>
+                  <p>Five requirements. The fifth — that a record is history rather than contract, and is refused by the comparison — is the one <code>contract-authority</code> implies and that writing the delta showed was needed explicitly, exactly as the predecessor found for <code>runbook-authority</code>'s last requirement.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Modify <code>runbook-authority</code> so a runbook's specification states what its runs must record, and a runbook that states nothing has runs nothing checks</h3>
+              <p data-field="deviation">Done, and it gained a clause the task did not anticipate: <strong>a log requirement is not distinguished in the markup from a hazard requirement</strong>, so every requirement a runbook states is one its runs must record. That reading is forced — distinguishing them needs an attribute the closed vocabulary does not have — and the delta states the cost rather than leaving an author to find it: a runbook stating ten hazards obliges every run to record ten outcomes.</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 State the conformance obligation: that a run whose records do not satisfy the log contract is reported, that the report never gates, and what it deliberately does not report</h3>
+              <ul>
+                <li>
+                  <p>Three exclusions, each with its reason: a runbook nobody has run, a run whose recorded outcome says the check did not pass, and a run recording more than it owed.</p>
+                </li>
+                <li>
+                  <p><strong>The second needed a distinction the proposal did not draw</strong>, and the implementation is where it appeared: a verification recording <code>failed</code> recorded an outcome and satisfies the obligation, while one recording <code>not-run</code> recorded <em>none</em> and does not. That line is drawn in the caller rather than in the rule, so "which outcome it was" is not representable in the rule's input type at all.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 <strong>Confirm <code>document-schema</code>, <code>artifact-kinds</code>, and <code>document-validation</code> are untouched.</strong></h3>
+              <p>The proposal states this as a checkable claim; if one needs modifying, stop and report rather than widening scope</p>
+              <ul>
+                <li>
+                  <p><strong>Untouched, checked against the diff.</strong> <code>specs/</code> in the change holds exactly two capabilities, and <code>git diff --stat crates/htmlspec-schema/</code> is empty.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-4-5" data-change="added" data-state="done">
+              <h3>4.5 Run <code>openspec validate --all</code>.</h3>
+              <p><code>carry-a-runbook-to-another-machine</code> fails for having no deltas — pre-existing, expected, not to be fixed</p>
+              <ul>
+                <li>
+                  <p><code>change/log-a-runbook-run</code> passes. Totals: 12 passed, 1 failed, and the one failure is the successor holding only a proposal. Untouched.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-the-layout">
+          <h2>5. The layout</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Add the <code>RUNS</code> constant and the <code>runs(runbook)</code> accessor to <code>crates/htmlspec-cli/src/project.rs</code>, matching the shape the other four have.</h3>
+              <p>Private constant, public accessor</p>
+              <ul>
+                <li>
+                  <p>Done. Nothing composes <code>"runs"</code> outside that module.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Assert the accessor against the shape rather than against a spelled-out string, extending the existing tests.</h3>
+              <p>A test hard-coding <code>htmlspec/runbooks/x/runs</code> would state the layout a second time</p>
+              <ul>
+                <li>
+                  <p><code>a_runs_directory_lives_beneath_its_runbook</code>, which also asserts the three <code>starts_with</code> relationships — <strong>and the second of those is the property that makes the guard cover a record for free.</strong> <code>refuse_a_runbook</code> compares canonicalized paths with exactly that operation, so stating it here makes it a fact about the layout rather than something implicit in the guard. Verified end to end as well, since a path relationship and a refusal are two claims.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 <strong>Do not create <code>runs/</code> at bootstrap</strong>, and state why in the code rather than leaving the departure from <code>establish()</code>'s reasoning to be discovered</h3>
+              <ul>
+                <li>
+                  <p>Stated on <code>ProjectRoot::runs</code>: the bootstrap obligation is about the four places a contributor looks for, and a per-runbook place cannot exist before its runbook does. Pinned by <code>bootstrapping_creates_no_place_for_a_runs_record</code>, which is the <em>negative</em> — without it, creating the directory eagerly would pass every other test in the module.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-the-conformance-rule">
+          <h2>6. The conformance rule</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Write <code>crates/htmlspec-validate/src/rules/runs.rs</code>, built the way <code>topology.rs</code> is built: a plain function over gathered facts, not a <code>crate::engine::Rule</code>.</h3>
+              <p>The module header states why a project-subject rule cannot be a per-document one, in this rule's own terms rather than by pointing at <code>topology</code>'s</p>
+              <ul>
+                <li>
+                  <p>Done, and the reason is <strong>one step stronger than <code>topology</code>'s</strong>: duplication is a fact about the directory around a document, and an unrecorded requirement is a fact about <em>two documents at once</em>. There is no document to attach it to, because validating the record cannot know what was required and validating the specification cannot know what was recorded.</p>
+                </li>
+                <li>
+                  <p>The signature is the design: <code>conformance(&amp;RunbookUnderReview) -&gt; Vec&lt;Diagnostic&gt;</code>, taking gathered identifiers rather than paths, so the walk stays in the caller and the rule gets no filesystem capability. <code>AGENTS.md</code> §6.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 <strong>Leave it absent from <code>rules::ALL</code></strong>, and add the assertion that keeps it absent.</h3>
+              <p><code>duplication_is_not_reported_by_the_per_document_set</code> is the model</p>
+              <ul>
+                <li>
+                  <p>Absent, and <code>an_unrecorded_requirement_is_not_reported_by_the_per_document_set</code> asserts it — over a <code>tasks</code> document carrying a requirement no verification names, which is exactly what a short record looks like.</p>
+                </li>
+                <li>
+                  <p><strong>Its second assertion is the load-bearing one and it is not about this rule.</strong> It asserts the whole set reports <em>nothing</em> about that document, which is the measurement from task 1.4. A change widening <code>review/unverified-requirement</code> to every kind would fail here rather than quietly making this rule redundant — and that change would also start reporting every proposal arguing for a requirement.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Confirm the severity comes from the namespace rather than from the rule, and that <code>--strict</code> cannot promote it.</h3>
+              <p>Assert it rather than reading it</p>
+              <ul>
+                <li>
+                  <p><code>an_unrecorded_requirement_is_a_warning_strict_mode_cannot_promote</code> in the rule's own tests, and <code>no_report_about_a_run_ever_gates</code> in the fixture suite — the second asserting it from outside the validator across every fixture, which is where the other suites assert the <code>safety/*</code> floor.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-4" data-change="added" data-state="done">
+              <h3>6.4 Unit-test the rule over its own cases: a conforming run, a run missing a verification, a runbook with no runs, a run recording <code>failed</code>, and a run verifying something the runbook does not require</h3>
+              <p data-field="deviation">Eight tests, three beyond the five asked for. <code>each_short_run_is_reported_separately</code>, because a loop reporting the first short record and stopping would pass all five. <code>a_run_that_has_recorded_nothing_yet_is_reported</code>, which is the state <code>run</code> leaves behind and the other side of the <code>failed</code>/<code>not-run</code> line. And the severity assertion above.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-the-run-operation">
+          <h2>7. The <code>run</code> operation</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Add the <code>Run</code> subcommand to <code>crates/htmlspec-cli/src/main.rs</code> with <code>--as</code> and <code>--check</code></h3>
+              <ul>
+                <li>
+                  <p>Done. The two modes are resolved in one <code>match</code> on <code>(check, record)</code>, so the three wrong combinations each get a report naming which flag is missing or surplus rather than clap's generic conflict message.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done">
+              <h3>7.2 Implement the copy: read the runbook's two documents, compose a record carrying the procedure with <code>data-change="unchanged"</code>, the copied requirements with their scenarios, and one <code>not-run</code> verification per requirement</h3>
+              <ul>
+                <li>
+                  <p><strong>The one substantive implementation decision is that the copy is a DOM clone rather than a re-render from the projected model</strong>, and it is stated in the module header. The projection flattens a unit's text to strings, and the release runbook's four task notes carry 30-odd inline elements between them — so a record composed from the model would read as a worse version of the procedure that ran, which defeats the point of carrying the steps. It would also still validate, so no other test would notice. <code>a_record_carries_the_procedure_and_the_copied_requirements</code> asserts the <code>&lt;code&gt;</code> and <code>&lt;strong&gt;</code> survive.</p>
+                </li>
+                <li>
+                  <p><code>htmlspec_format::format</code> makes the composed result canonical, so <code>format --check</code> is not a second step a contributor has to know about.</p>
+                </li>
+                <li>
+                  <p><strong>An absent <code>specification.html</code> is not a failure</strong>, because <code>runbook-authority</code> says a runbook stating no log requirement is not reported — so a run of a runbook that states nothing is still a run worth recording.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-3" data-change="added" data-state="done">
+              <h3>7.3 <strong>Validate what was written before reporting success</strong>, which is what <code>write_document</code> already does and for the same reason: a failure is a defect in this program, not in a contributor's project</h3>
+              <ul>
+                <li>
+                  <p>Through <code>commands::validate_source_at</code>, which resolves a real store rather than passing <code>Absent</code> — the strong form of the promise, since the record is checked against the bytes actually beside it. Asserted under <strong>both</strong> strictnesses, because the four constraints are each a diagnostic and one mis-implemented could pass by default and fail strict.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-4" data-change="added" data-state="done">
+              <h3>7.4 Refuse to overwrite an existing record, and check the name through <code>ProjectRoot::is_a_name</code></h3>
+              <ul>
+                <li>
+                  <p>Both. <code>starting_a_run_does_not_overwrite_a_record</code> edits the record first and asserts the <em>edited bytes</em> survive, rather than asserting a file of the right name exists — otherwise a rewrite would pass.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-5" data-change="added" data-state="done">
+              <h3>7.5 Implement <code>--check</code>: gather, evaluate, report, write nothing, exit zero</h3>
+              <ul>
+                <li>
+                  <p>Exit zero whatever it finds, asserted. And it distinguishes its three silent cases — no runs, no stated requirements, and every run conforming — because a reader told "each run records what the runbook states" about a runbook with no runs would read it as a pass.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-6" data-change="added" data-state="done">
+              <h3>7.6 Emit the structured payload for both modes</h3>
+              <ul>
+                <li>
+                  <p>Both, keyed by the words the flags use. Asserted through parsed JSON rather than string matching.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-8-fixtures">
+          <h2>8. Fixtures</h2>
+          <ul>
+            <li class="task" id="task-8-1" data-change="added" data-state="done">
+              <h3>8.1 Add a conforming run record and one whose verification is missing to <code>fixtures/conformance/</code>.</h3>
+              <p><strong>That pair is what makes this a contract rather than an implementation detail</strong></p>
+              <ul>
+                <li>
+                  <p><code>valid-runbook-run-record</code> and <code>valid-runbook-run-record-missing-its-verification</code>, both generated from the base by stated edits. <strong>Both declare <code>valid: true</code> with no rules, and that pairing is the point</strong>: the first shows the shape is accepted, and the second shows a record that has recorded nothing is <em>also</em> accepted, because no per-document rule can decide it.</p>
+                </li>
+                <li>
+                  <p><strong>A defect in my own fixture generation, found by validating the output rather than by reading the code.</strong> Removing the verification <em>section</em> with a <code>find</code> on <code>"        &lt;/section&gt;\n"</code> matched inside the ten-space close of the unit nested within — eight spaces are a substring of ten — so the slice ended two characters early and left a <code>&gt;</code> behind. The result needed error recovery, which curtailed every rule, so the fixture pinned a parse failure instead of the silence it exists to pin. Fixed by anchoring on the leading newline, and the comment records the measurement.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-8-2" data-change="added" data-state="done">
+              <h3>8.2 Record the rule in the conformance suite's coverage machinery, or in <code>UNFIXTURABLE</code> with the reason a document cannot violate it — whichever is honest</h3>
+              <ul>
+                <li>
+                  <p><code>UNFIXTURABLE</code>, with the reason: the subject is a runbook and its records <em>together</em>, so the same record is conforming or not depending only on what the runbook beside it requires, and neither file holds both halves. One step stronger than <code>asset/duplicate</code>, whose subject is at least a directory a document sits in.</p>
+                </li>
+                <li>
+                  <p>Its fixtures are pairs, in <code>conformance/tests/runs.rs</code> — seven of them, driven through the public types only. Plus <code>the_record_fixtures_exist_and_validation_is_silent_about_the_short_one</code>, which is <strong>named rather than declared</strong> for the reason <code>a_summary_quoting_the_placeholder_reports_nothing</code> is named: a fixture whose whole point is silence cannot state that through its declaration, because the harness skips validating a fixture that declares no rules.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-8-3" data-change="added" data-state="done">
+              <h3>8.3 Confirm the fixture count and the generator stay in agreement</h3>
+              <p data-field="deviation"><strong>They do not, and it is a pre-existing trap I hit rather than caused.</strong> <code>generate_fixtures</code> deletes every fixture directory not in its own list, and <strong>two committed fixtures are hand-written and absent from that list</strong> — <code>valid-summary-quoting-the-placeholder</code> and <code>warning-review-placeholder-summary</code>, both added by hand in <code>0ce5ad5</code>. Running the generator deleted four files and 146 lines.</p>
+              <ul>
+                <li>
+                  <p>Restored with <code>git checkout</code> and confirmed the restoration survives a second run. The tree holds 52 fixtures; the generator's list names 50.</p>
+                </li>
+                <li>
+                  <p><strong>Not fixed, and the two available fixes are recorded with why each is out of scope</strong> in <a href="evidence/the-generator-deletes-two-fixtures-2026-09-18.md"><code>evidence/the-generator-deletes-two-fixtures-2026-09-18.md</code></a>. The general form worth keeping: a generator that deletes what it does not recognize must be the sole author of its output directory, and this one is not — nothing states the divided ownership.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-9-prove-it">
+          <h2>9. Prove it</h2>
+          <ul>
+            <li class="task" id="task-9-1" data-change="added" data-state="done">
+              <h3>9.1 <strong>Verify each new test fails without the fix it pins.</strong></h3>
+              <p>The predecessor proved a naive test passes for the wrong reason when several unrelated gates refuse first</p>
+              <ul>
+                <li>
+                  <p><strong>Ten mutations, each alone, recorded with its failure list in <a href="evidence/mutation-testing-2026-09-18.md"><code>evidence/mutation-testing-2026-09-18.md</code></a>.</strong> Nine were caught; two produced findings.</p>
+                </li>
+                <li>
+                  <p><strong>The guard test failed for the wrong reason and had to be rewritten.</strong> Neutering <code>refuse_a_runbook</code> made <code>a_records_directory_is_not_archivable</code> fail — with <code>htmlspec/runbooks/release/runs has no specification.html</code>. <code>runs/</code> holds no specification, so the absent-specification gate refuses it <em>whatever the guard does</em>, and the test would have passed against no guard at all. This is the predecessor's trap exactly, one directory down. Fixed by pointing the probe at the <strong>runbook</strong>, which clears every gate and reaches the move — taking <code>runs/</code> with it, since archival renames the whole directory — and by checking the record's survival after each route rather than once at the end.</p>
+                </li>
+                <li>
+                  <p><strong>One mutation was caught by nothing, and closing it needed a new test.</strong> Neutering <code>settle_change_states</code> left all fifteen tests green, because the fixture already wrote <code>unchanged</code> into the runbook — so the assertion "the record carries no <code>added</code>" was asserting a property of the fixture. Closed by <code>a_record_declares_its_copied_units_unchanged_whatever_the_runbook_declares</code>, which puts the runbook back into the state <code>new document</code> actually writes, and which fails under that mutation and nothing else.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-9-2" data-change="added" data-state="done">
+              <h3>9.2 Confirm the diff touches none of <code>document.schema.json</code>, the kind enum, <code>TEMPLATES</code>, <code>assets/vendor.lock.json</code>, or <code>rules::ALL</code></h3>
+              <ul>
+                <li>
+                  <p>Clean, checked against the diff. <code>git diff --stat</code> over <code>crates/htmlspec-schema/</code> and <code>assets/</code> is empty, and <code>rules::ALL</code> is unchanged — the new module is declared beside it and absent from it.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-9-3" data-change="added" data-state="done">
+              <h3>9.3 Run <code>cargo test --workspace</code>, then <code>scripts/check</code> — <strong>all 12 stages</strong>, including <code>self-runbooks</code> and <code>self-runbooks-format</code>, which are new since the predecessor</h3>
+              <ul>
+                <li>
+                  <p><code>cargo test --workspace --all-targets</code>: 30 targets, zero failures, exit 0.</p>
+                </li>
+                <li>
+                  <p><strong><code>scripts/check</code> failed 11 of 12 stages on the first attempt, and the cause was the environment rather than the change.</strong> <code>cargo</code> is not on this machine's <code>PATH</code> — a known fact about it — so every cargo-invoking stage failed with <code>FileNotFoundError: 'cargo'</code>, and <code>installed</code> failed the same way inside <code>check-installed</code>'s own subprocess. Re-run with the rustup toolchain's bin directory prepended.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-9-4" data-change="added" data-state="done">
+              <h3>9.4 Record what the implementation revealed, including the findings it hit and did not close</h3>
+              <ul>
+                <li>
+                  <p>Four findings, all in the design's last section or their own evidence file: the input gap stated more precisely than before (<strong>the <code>method</code> paragraph is the only home for a recorded value, and a release run putting three values in one prose paragraph means nothing can read one of them out</strong>); a record's invisibility to <code>list --runbooks</code>; a never-finished run never being reported as abandoned, which decision 3.2 is what makes reachable; and the generator's deletion of two fixtures.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-10-release">
+          <h2>10. Release</h2>
+          <ul>
+            <li class="task" id="task-10-1" data-change="added" data-state="done">
+              <h3>10.1 <strong>Run the release runbook at <code>runbooks/release/tasks.html</code></strong>, which is the procedure.</h3>
+              <p>This is its second real run, and the predecessor's stated success test is that a change's release section becomes one item saying to run the runbook. <strong><a href="evidence/the-runbook-ran-2026-09-18.md">Report whether it worked as written</a></strong> — one known defect to watch is that its regeneration step says <code>htmlspec init</code>, which resolves to the Nix profile binary at the previous version</p>
+            </li>
+            <li class="task" id="task-10-2" data-change="added" data-state="done">
+              <h3>10.2 <a href="evidence/the-runbook-ran-2026-09-18.md">Choose the increment and state the reasoning</a>.</h3>
+              <p><code>archive.md</code> reserves this for a human, so flag it for confirmation rather than presenting it as settled</p>
+            </li>
+            <li class="task" id="task-10-3" data-change="added" data-state="done">
+              <h3>10.3 Confirm <code>scripts/check-release</code> passes.</h3>
+              <p>The <code>VERSION</code> file beside this change's documents is written at archival, so this is half-done until then</p>
+              <p data-field="note">Migration note: nothing this change carries records that <code>scripts/check-release</code> passed. <a href="evidence/the-runbook-ran-2026-09-18.md"><code>evidence/the-runbook-ran-2026-09-18.md</code></a> names this item as the third of the release section's three, calls it redundant with the runbook's own fourth task, and shows no run of it.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-11-two-reviews">
+          <h2>11. Two reviews found fourteen defects, and three of them were one pattern</h2>
+          <ul>
+            <li class="task" id="task-11-1" data-change="added" data-state="done">
+              <h3>11.1 <strong>Find the pattern before fixing the symptoms.</strong></h3>
+              <p>Three findings are the same shape — a lesson this project already learned, stated in one place and not applied in the sibling — which is what made the predecessor's guard fail open twice. Sweep for other instances in both directions, and record where nothing was found</p>
+              <ul>
+                <li>
+                  <p><strong><a href="evidence/the-sweep-2026-09-20.md">The sweep found four more instances</a></strong>, all of the three named patterns: the <code>data-refs</code> attribute interpolation and the derived <code>verify-*</code> id (escaping); <code>requirement_ids</code> and <code>recorded_ids</code> parsing without the recovery gate (the read path); and <code>write_document</code>'s identical <code>Path::exists</code> symlink escape.</p>
+                </li>
+                <li>
+                  <p><strong>One instance was at a level a call-site sweep would have missed.</strong> <code>htmlspec-assets</code> already had <code>escape_text</code> <strong>and <code>escape_attribute</code></strong>, private, and <code>runs.rs</code> reimplemented the text half and had no attribute-escaping function at all — which is why the two attribute sites were invisible to a reviewer reading that file for missing <code>escape_text</code> calls. The pair is now <code>pub</code> in one place and the half-copy is deleted.</p>
+                </li>
+                <li>
+                  <p><strong><code>htmlspec new document</code> writes outside the project through a broken symlink, and has since before this change.</strong> Measured on the unmodified binary. Not fixed here: <code>write_document</code> is on the path of <code>new document</code> and <code>new change</code>, which this change does not touch, so a fix needs its own regression tests through both. <strong>Reported to the lead rather than folded in.</strong></p>
+                </li>
+                <li>
+                  <p>Nine places checked and found clean, listed with why in <a href="evidence/the-sweep-2026-09-20.md"><code>evidence/the-sweep-2026-09-20.md</code></a>.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-11-2" data-change="added" data-state="done">
+              <h3>11.2 Reorder to compose, validate, then write, which collapses three findings into one fix</h3>
+              <ul>
+                <li>
+                  <p><a href="evidence/the-review-fixes-2026-09-20.md">Done</a>, and it fixes four things rather than three: the invalid record on disk, the wedged retry, the <code>--json</code> payload announcing success on a process exiting 2, and — the worst — a record carrying an injected remote script existing as a file somebody could open.</p>
+                </li>
+                <li>
+                  <p><strong>The failure message was blaming the wrong thing and now does not.</strong> It said "a defect in the copy rather than in the runbook", and in every case produced the fault is in the runbook. The copy is faithful; that is the point of it.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-11-3" data-change="added" data-state="done">
+              <h3>11.3 Fix the eleven remaining findings, each with a regression test verified failing first</h3>
+              <ul>
+                <li>
+                  <p>Eleven mutations, all caught, in <a href="evidence/the-review-fixes-2026-09-20.md"><code>evidence/the-review-fixes-2026-09-20.md</code></a>. <strong>Two silently failed to apply on the first attempt</strong> — a pattern that did not match, so the run was against unmutated code and looked like "caught nothing". Both re-run with an assertion on the pattern. Same failure mode as a test passing for the wrong reason, one level up.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-11-4" data-change="added" data-state="done">
+              <h3>11.4 Decide whether the contract or the code is wrong on the dropped procedure prose</h3>
+              <ul>
+                <li>
+                  <p><strong><a href="evidence/the-review-fixes-2026-09-20.md">The contract was right and the code was wrong.</a></strong> <code>runbook-execution</code> requires a record to carry "the runbook's procedure, copied", and the record's own summary claims the steps are copied as they stood — copying only the task units made both false. Measured against this repository's real release runbook: the dropped section is the one stating the procedure needs <code>python3</code> and <strong>a repository that is not already an html-spec project</strong>, a hazard this project discovered by violating it.</p>
+                </li>
+                <li>
+                  <p>Narrowing the requirement was the alternative and it is worse: the input gap this change records means prose is the only place a prerequisite can live. <strong>No spec delta was edited.</strong></p>
+                </li>
+                <li>
+                  <p>It also fixed the invented <code>&lt;ul&gt;</code> wrapper for free, since the runbook's own list structure now comes across intact.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-11-5" data-change="added" data-state="done">
+              <h3>11.5 Record where a fix reproduced the pattern it was fixing</h3>
+              <ul>
+                <li>
+                  <p><strong><a href="evidence/the-review-fixes-2026-09-20.md">Twice, and both were caught rather than shipped.</a></strong> Excluding a withdrawn requirement on the write path and not the read path left <code>--check</code> demanding an outcome for a requirement the record was right not to carry. And extending the recovery gate to the contract made a runbook with <em>no</em> specification unrunnable, because <code>unwrap_or_default</code> made absent indistinguishable from empty and the empty string needs recovery — caught by two existing tests, which is the suite doing its job on a fix rather than on the original code.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-11-6" data-change="added" data-state="done">
+              <h3>11.6 Verify every reproduction is now refused or handled, with the project intact, and run the suite</h3>
+              <ul>
+                <li>
+                  <p>All seven the lead confirmed, re-run: the injection composes nothing and writes nothing; the symlink is refused and the file outside the project does not exist; <code>verify-req-real</code> preserves the repetition; a requirement with no id no longer steals its scenario's; the typo'd outcome reports unrecorded; the unreadable record is named and distinguished from absence; the wedge retries cleanly once the runbook is fixed.</p>
+                </li>
+                <li>
+                  <p><code>cargo test --workspace</code>: zero failures. <code>scripts/check</code>: <strong>all 12 stages.</strong> <code>openspec validate --all</code>: 12 passed, only <code>carry-a-runbook-to-another-machine</code> failing for having no deltas. 54 fixtures on disk, none deleted. Version still <code>0.14.0</code>.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

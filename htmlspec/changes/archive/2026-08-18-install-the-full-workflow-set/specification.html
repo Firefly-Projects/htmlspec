@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Install the full workflow set</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Install the full workflow set</h1>
+        <p>This change made bootstrapping install instructions covering the project's lifecycle from an idea to an archived change, rather than a single stage of it: a workflow is installed whether or not a command performs it, the set of workflows is data in the order the lifecycle moves through them, and no installed workflow's instructions may name a command the program does not provide, which is checked mechanically (<em>Bootstrapping installs agent instructions for the tools a project uses</em>). It also made the closing message name the command that begins the lifecycle, a property of the workflow set rather than a value fixed where the message is produced (<em>Bootstrapping ends by naming the command to run next</em>).</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Install the full workflow set</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-18-install-the-full-workflow-set/specs/project-bootstrap/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-project-bootstrap">project-bootstrap</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-project-bootstrap">
+          <h2>project-bootstrap</h2>
+          <section class="requirement" id="req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses" data-change="modified">
+            <h3>Bootstrapping installs agent instructions for the tools a project uses <span class="hs-id">req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses</span></h3>
+            <p>The bootstrap operation SHALL install, for each selected AI coding tool, the instructions that tool needs to drive the HTMLSpec workflow. Where a tool supports invocable commands, the operation SHALL install those as well as the instructions.</p>
+            <ins>
+              <p>The instructions SHALL cover the project's lifecycle from an idea to an archived change, rather than a single stage of it. A contributor who has bootstrapped a project and lists what was installed SHALL find the stage they are at. Instructions covering only the final stage leave every earlier stage to be improvised, which is the case the project's own contract for artifact kinds exists to prevent.</p>
+            </ins>
+            <ins>
+              <p>A workflow SHALL be installed whether or not a command performs it. Archival is already agent-driven — the program checks a specification it does not produce — so a stage whose work is judgment is the ordinary case rather than the exception.</p>
+            </ins>
+            <ins>
+              <p>An installed workflow's instructions SHALL NOT name a command the program does not provide, and this SHALL be checked mechanically rather than by review. Naming an absent command sends an agent to an error, and it is the hazard that a rule limiting how many workflows are installed was attempting to avoid.</p>
+            </ins>
+            <p>The set of supported tools SHALL be data rather than logic, so that supporting an additional tool is an entry in that set.<ins> The set of workflows SHALL likewise be data, so that covering an additional stage is an entry in that set together with its instructions.</ins></p>
+            <ins>
+              <p>The order of the workflows SHALL be the order the lifecycle moves through them, because instructions written into a shared file are presented in that order and a reader meets them as a document.</p>
+            </ins>
+            <p>How a tool receives instructions SHALL be a property of the tool with one value per tool, rather than a combination of independent settings. A tool for which no instructions could be written is a state the program SHALL NOT be able to reach.</p>
+            <p>Instructions SHALL record the version of the program that generated them, so an installation predating the instructions it should carry is identifiable.</p>
+            <article class="scenario" id="scenario-installing-for-a-tool-with-commands" data-change="modified">
+              <h4>Installing for a tool with commands</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions for a tool that supports invocable commands</dd>
+                <dt>Then</dt>
+                <dd>both the instructions and the commands are written where that tool reads them<ins>, one of each per workflow</ins></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-installing-for-a-tool-without-commands" data-change="unchanged">
+              <h4>Installing for a tool without commands</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions for a tool that supports instructions only</dd>
+                <dt>Then</dt>
+                <dd>the instructions are written and no command files are created</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-selected-tool-receives-something" data-change="unchanged">
+              <h4>Every selected tool receives something</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation completes for any selected tool</dd>
+                <dt>Then</dt>
+                <dd>that tool has received instructions, because a selected tool that receives nothing is not a representable outcome</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-lifecycle-is-covered" data-change="added">
+              <h4>The lifecycle is covered</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor lists the workflows installed by the bootstrap operation</dd>
+                <dt>Then</dt>
+                <dd>the stages from exploring an idea through to archiving a completed change are each named</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-workflow-with-no-command-behind-it" data-change="added">
+              <h4>A workflow with no command behind it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a stage of the lifecycle that no command performs</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions</dd>
+                <dt>Then</dt>
+                <dd>that stage's instructions are installed, and they state that the work is the agent's</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-instructions-naming-an-absent-command" data-change="added">
+              <h4>Instructions naming an absent command</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an installed workflow's instructions name an invocation the program does not provide</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks report it, rather than the invocation reaching a contributor</dd>
+              </dl>
+              <p data-field="note">Migration note: the check this change built resolves the words that follow <code>htmlspec</code> down the program's subcommand tree, and a flag, a placeholder, or an argument ends that path without being checked. So <code>htmlspec init doc.html</code>, a withdrawn spelling, is not reported. This was deliberate: the test <code>the_withdrawn_init_path_is_not_itself_an_invocation_fault</code> in <code>crates/htmlspec-cli/src/invocations.rs</code> asserts it, and its comment says the program reports the withdrawn spelling at runtime and the check claims only the narrower thing. That is so at commit <code>5f7e5cf</code>, which built the check, and still at <code>139b206</code>. Task 1.4's deviation records the same.</p>
+            </article>
+            <article class="scenario" id="scenario-workflows-are-presented-in-lifecycle-order" data-change="added">
+              <h4>Workflows are presented in lifecycle order</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>instructions for every workflow are written into one shared file</dd>
+                <dt>Then</dt>
+                <dd>they appear in the order the lifecycle moves through them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-generated-instructions-name-their-version" data-change="unchanged">
+              <h4>Generated instructions name their version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>instructions are installed</dd>
+                <dt>Then</dt>
+                <dd>they record the version of the program that generated them</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-bootstrapping-ends-by-naming-the-command-to-run-next" data-change="modified">
+            <h3>Bootstrapping ends by naming the command to run next <span class="hs-id">req-bootstrapping-ends-by-naming-the-command-to-run-next</span></h3>
+            <p>On success, the bootstrap operation SHALL state what was installed, where, and the literal command to invoke next for the tools that were selected.</p>
+            <ins>
+              <p>The command named SHALL be the one that begins the lifecycle. A bootstrap is a first run, and naming the stage a contributor reaches last describes work they have not started.</p>
+            </ins>
+            <ins>
+              <p>Which workflow begins the lifecycle SHALL be a property of the workflow set rather than a value fixed at the point the message is produced, so that the message follows the set when the set changes.</p>
+            </ins>
+            <p>Where the selected tools invoke the workflow by different spellings, the operation SHALL state each spelling and the tools it applies to. A single canonical form that no selected tool answers to would teach a command that does not work.</p>
+            <article class="scenario" id="scenario-naming-the-next-command" data-change="modified">
+              <h4>Naming the next command</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation succeeds for a single tool</dd>
+                <dt>Then</dt>
+                <dd>the output states the literal command that tool answers to<ins> for the workflow that begins the lifecycle</ins></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-tools-with-different-spellings" data-change="unchanged">
+              <h4>Tools with different spellings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation succeeds for tools that invoke the workflow differently</dd>
+                <dt>Then</dt>
+                <dd>each spelling is stated with the tools it applies to</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-named-command-is-the-entry-point" data-change="added">
+              <h4>The named command is the entry point</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation succeeds</dd>
+                <dt>Then</dt>
+                <dd>the workflow it names is the one that begins the lifecycle, not the one that ends it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-tools-selected" data-change="unchanged">
+              <h4>No tools selected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation succeeds having installed for no tools</dd>
+                <dt>Then</dt>
+                <dd>it reports the project was established and does not name a command no tool answers to</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each evidence and verification unit in this section and the next summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links, and the record is the authority.</p>
+          </aside>
+          <section class="evidence" id="evidence-seven-workflow-install-2026-08-18" data-change="added" data-refs="req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses req-bootstrapping-ends-by-naming-the-command-to-run-next">
+            <h3>Installing seven workflows, measured <span class="hs-id">evidence-seven-workflow-install-2026-08-18</span></h3>
+            <p>Tasks 10.1 through 10.3, run with <code>htmlspec 0.1.0</code> built from this change, in an empty scratch directory at <code>/tmp/g10</code> with <code>--tools all</code>. Claude Code, Cursor, and Pi each received 14 files, 7 skills and 7 commands, and Codex 7 skills and no commands: 49 generated <code>.md</code> files across the four skill-bearing tools, beside one marked region in <code>AGENTS.md</code> carrying all seven. The region measured 36,386 bytes and 779 lines, <code>archive.md</code> alone 27% of it, and the record judges the design's fallback not needed. The region's seven sections appear in lifecycle order, all 49 files carry <code>generatedBy: htmlspec 0.1.0</code>, and a second run changed no file, compared by MD5. The closing message named <code>new</code> in each spelling, with Cursor and Pi sharing a line, and not archival. The first run printed <code>ask your assistant to new</code>, a defect no test in the change would have caught, fixed by naming the workflow as a noun. <a href="evidence/seven-workflow-install-2026-08-18.md"><code>evidence/seven-workflow-install-2026-08-18.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-lifecycle-walkthrough-2026-08-18" data-change="added" data-refs="req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses">
+            <h3>Driving the lifecycle through the installed workflows <span class="hs-id">evidence-lifecycle-walkthrough-2026-08-18</span></h3>
+            <p>Task 10.4, run in the same scratch project. The seven invocations the seven bodies name were extracted and each was run, with the result the record lists for each; <code>explore</code> names none. One change, <code>add-a-greeting</code>, was then driven from <code>htmlspec new change</code> to archival: the version gate refused while the declared version was <code>0.0.0</code>, and after it was raised to <code>0.1.0</code> archival reported 0 errors and 2 <code>review/stale-reference</code> warnings, as <code>archive.md</code> describes. The record finds that nothing in the six new bodies named a command that does not exist, and that the commands, run in the order a body prescribes, produce the states the body claims. <a href="evidence/lifecycle-walkthrough-2026-08-18.md"><code>evidence/lifecycle-walkthrough-2026-08-18.md</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-what-each-tool-received" data-change="added" data-outcome="partial" data-refs="scenario-installing-for-a-tool-with-commands scenario-installing-for-a-tool-without-commands">
+            <h3>What each tool received <span class="hs-id">verify-what-each-tool-received</span></h3>
+            <p data-field="method"><code>htmlspec init --tools all</code>, built from this change, was run in an empty scratch directory and the files each tool received were counted: 14 each for Claude Code, Cursor, and Pi, 7 skills and 7 commands, and 7 skills and no command files for Codex, as <a href="evidence/seven-workflow-install-2026-08-18.md"><code>evidence/seven-workflow-install-2026-08-18.md</code></a> records.</p>
+            <p data-field="unchecked">written where that tool reads them</p>
+          </section>
+          <section class="verification" id="verify-section-order" data-change="added" data-outcome="passed" data-refs="scenario-workflows-are-presented-in-lifecycle-order scenario-the-lifecycle-is-covered">
+            <h3>Section order <span class="hs-id">verify-section-order</span></h3>
+            <p data-field="method">In the <code>AGENTS.md</code> that run wrote, the region's section headings were listed with their line numbers: <code>explore</code> at line 4, then <code>new</code>, <code>continue</code>, <code>ff</code>, <code>apply</code>, and <code>verify</code>, and <code>archive</code> at line 581, in lifecycle order, as <a href="evidence/seven-workflow-install-2026-08-18.md"><code>evidence/seven-workflow-install-2026-08-18.md</code></a> records.</p>
+          </section>
+          <section class="verification" id="verify-version-stamping" data-change="added" data-outcome="partial" data-refs="scenario-generated-instructions-name-their-version">
+            <h3>Version stamping <span class="hs-id">verify-version-stamping</span></h3>
+            <p data-field="method">Every one of the 49 generated skill and command files from that run was searched with grep, rather than a sample, and all 49 carry <code>generatedBy: htmlspec 0.1.0</code>, as <a href="evidence/seven-workflow-install-2026-08-18.md"><code>evidence/seven-workflow-install-2026-08-18.md</code></a> records.</p>
+            <p data-field="unchecked">That the instructions written into the one shared file, <code>AGENTS.md</code>, record the version of the program that generated them.</p>
+          </section>
+          <section class="verification" id="verify-the-closing-message" data-change="added" data-outcome="passed" data-refs="scenario-tools-with-different-spellings scenario-the-named-command-is-the-entry-point">
+            <h3>The closing message <span class="hs-id">verify-the-closing-message</span></h3>
+            <p data-field="method">The closing message of that run was captured: it names <code>/htmlspec:new</code> for Claude Code, <code>$htmlspec-new</code> for Codex, <code>/htmlspec-new</code> for Cursor and Pi on one line, and <code>ask your assistant to run the new workflow</code> for <code>AGENTS.md</code>, and it names the entry point and not archival, as <a href="evidence/seven-workflow-install-2026-08-18.md"><code>evidence/seven-workflow-install-2026-08-18.md</code></a> records.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

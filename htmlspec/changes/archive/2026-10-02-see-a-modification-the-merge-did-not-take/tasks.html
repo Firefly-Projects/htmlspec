@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>See a modification the merge did not take</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>See a modification the merge did not take</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>See a modification the merge did not take</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-02-see-a-modification-the-merge-did-not-take/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-re-measure-before-changing-anything">1. Re-measure before changing anything</a></li>
+          <li><a href="#hs-2-types-and-tests-first">2. Types and tests first</a></li>
+          <li><a href="#hs-3-the-comparison">3. The comparison</a></li>
+          <li><a href="#hs-4-the-instructions">4. The instructions</a></li>
+          <li><a href="#hs-5-prove-it">5. Prove it</a></li>
+          <li><a href="#hs-6-release">6. Release</a></li>
+          <li><a href="#hs-7-review">7. Review</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-re-measure-before-changing-anything">
+          <h2>1. Re-measure before changing anything</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Repeat the measurement in <a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a> against HEAD, with the scripts in its appendices and <code>./target/debug/htmlspec</code>.</h3>
+              <p>Done when every step is recorded with its exit statuses and payloads, and compared with the numbers there: <code>req-x</code> reached at every step; <code>req-y</code> reached in step 3a and absent in steps 3b, 4, and 5; step 6 reporting "applied in full" and "ready"; step 5 reporting "This change has not been synced" with <code>needsSync: true</code>; and <code>stated</code> holding <code>req-x</code>, <code>req-y</code>, and <code>req-z</code> in step 4. Any difference is recorded, not smoothed over</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done" data-refs="req-a-change-s-specification-states-a-modified-requirement-whole">
+              <h3>1.2 Confirm that <code>state-a-modified-requirement-whole</code> is archived, and that <a href="../../../specs/artifact-kinds/spec.html"><code>openspec/specs/artifact-kinds/spec.md</code></a> holds "<a href="../../../specs/artifact-kinds/spec.html#req-a-change-s-specification-states-a-modified-requirement-whole">A change's specification states a modified requirement whole</a>".</h3>
+              <p>This change follows that one and relies on its rule. Then re-read <code>crates/htmlspec-assets/instructions/sync.md</code> and <code>archive.md</code> as it left them, and list every sentence that names a set <code>htmlspec sync</code> reports, or says what happens to a withdrawn requirement. Done when the list is recorded in <code>evidence/</code>, and the lines tasks 4.1 and 4.2 cite are corrected against it</p>
+              <p data-field="deviation">Migration note: tasks 4.1 and 4.2 cite sections by name, not lines, and every section they name exists, so there were no lines in them to correct. The correction went instead to the line numbers that section 8 of <code>evidence/the-measurement-2026-09-30.md</code> gave from before <code>state-a-modified-requirement-whole</code>, recorded beside the list. The list also found two passages no task named, <code>sync.md</code>'s closing stop and <code>archive.md</code>'s step 5 stop and step 6 paragraph, whose reasons this change makes false, and left them to be corrected under tasks 4.1 and 4.2. Shown in <a href="evidence/the-measurement-repeated-2026-10-02.md"><code>evidence/the-measurement-repeated-2026-10-02.md</code></a>, "Corrections to what the tasks and the first measurement cite".</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Check that no other active change modifies any of the four toolchain-packaging requirements this change modifies, with <code>grep -rl</code> over <code>openspec/changes/*/specs/toolchain-packaging/spec.md</code> for each heading.</h3>
+              <p>Done when the result is recorded. If one does, add a task "1.0 Re-base" here before any other work</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-types-and-tests-first">
+          <h2>2. Types and tests first</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 In <code>crates/htmlspec-cli/src/commands.rs</code>, add the types design decisions 1, 5, and 6 name, with <code>merge_state</code> still leaving the new sets empty, so that the tests below compile and fail on their assertions rather than on the build: the closed three-case type for a requirement's declared state; <code>UntakenContent</code>; <code>MergeState::untaken_content</code>, <code>untaken_removals</code>, and <code>reached_in_full</code>; and <code>Findings</code> carrying the <code>MergeState</code> in place of <code>unmerged</code> and <code>untaken_renames</code>.</h3>
+              <p>Done when <code>nix develop -c cargo test -p htmlspec-cli</code> passes except for the tests 2.2 to 2.6 say fail on HEAD</p>
+              <p data-field="deviation">Migration note: the closed three-case type finds its establishing case by the stems of <code>added</code> and <code>modified</code>, as <code>runs::is_withdrawn</code> finds <code>removed</code>, and not by excluding the other two states as design decision 1 says, because the decision's two statements about that case could not both hold. <code>every_change_state_is_judged_one_way</code>, added after the mutation run, pins the case each schema state falls in. <code>UntakenContent</code> sits in a module of its own, with private fields and a constructor, <code>UntakenContent::new</code>, that returns <code>None</code> when nothing differs, and the tests build entries through it, where design decision 6 has the comparison function build it alone. Shown in <a href="evidence/what-the-implementation-revealed-2026-10-02.md"><code>evidence/what-the-implementation-revealed-2026-10-02.md</code></a> and <a href="evidence/mutation-testing-2026-10-02.md"><code>evidence/mutation-testing-2026-10-02.md</code></a>.</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done" data-refs="req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract">
+              <h3>2.2 Add unit tests for <code>merge_state</code>, one per new scenario in "<a href="specification.html#req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract">The command surface reports whether a change reached the accepted contract</a>".</h3>
+              <p>Extend <code>specification_with</code> so a fixture can state statements, scenarios, notes, and change states. Done when each is recorded failing or passing, as stated, on HEAD with 2.1's types in place:</p>
+              <ul>
+                <li>
+                  <p>failing on HEAD: <code>a_word_the_accepted_specifications_have_not_taken_is_not_reached</code>, <code>a_scenario_the_accepted_specifications_have_not_taken_is_named_by_its_identifier</code>, <code>a_withdrawn_scenario_the_accepted_requirement_still_holds_is_not_kept</code>, <code>statements_in_another_order_are_not_taken</code>, <code>an_added_requirement_is_compared_as_a_modified_one_is</code>, <code>a_removal_the_merge_applied_is_reached</code>, <code>a_removal_the_merge_did_not_apply_is_an_untaken_removal</code>, and <code>a_rename_and_a_modification_neither_taken_are_both_reported</code>;</p>
+                </li>
+                <li>
+                  <p>passing on HEAD, and kept as guards against an over-strict comparison: <code>scenario_order_and_notes_do_not_decide_reaching</code>, <code>a_requirement_carried_forward_is_compared_by_its_identifier</code>, and <code>a_modified_requirement_whose_identifier_is_not_held_is_absent_only</code></p>
+                </li>
+              </ul>
+              <p data-field="deviation">Migration note: <code>specification_with</code> was not extended. Its nine callers build fixtures from a tuple, and widening the tuple would have rewritten all of them, so a builder beside it, <code>Stated</code>, with <code>specification_stating</code>, writes the new fixtures, and the old ones are byte for byte as they were. Shown in <a href="evidence/what-the-implementation-revealed-2026-10-02.md"><code>evidence/what-the-implementation-revealed-2026-10-02.md</code></a>.</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Extend <code>every_stated_requirement_is_in_exactly_one_set</code> to design decision 4's partition.</h3>
+              <p>Its fixture gains a modification taken, one not taken, a withdrawal applied, one not applied, a carried-forward requirement whose text differs, and one requirement both renamed and modified with neither taken. Extend <code>archival_and_sync_name_the_same_untaken_renames</code> into <code>archival_and_sync_name_the_same_untaken_work</code>, over all four sets. Add a withdrawal the merge applied to the fixture of <code>archival_and_sync_name_the_same_absent_requirements</code>, so that parity also shows it absent from neither. Done when all three fail on HEAD</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Add findings and payload tests beside <code>a_change_whose_only_unapplied_work_is_a_rename_is_unsynced</code> and <code>the_payload_carries_each_untaken_rename</code>: <code>a_change_whose_only_unapplied_work_is_a_word_is_unsynced</code>, <code>a_change_whose_only_unapplied_work_is_a_withdrawal_is_unsynced</code>, <code>the_payload_carries_where_content_differs_and_no_text</code>, which asserts that no statement or scenario text of either side appears in the payload, and <code>the_question_counts_every_untaken_set</code>.</h3>
+              <p>Done when each fails on HEAD</p>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done">
+              <h3>2.5 Add end-to-end tests to <code>crates/htmlspec-cli/tests/archive.rs</code>, modeled on <code>a_change_whose_only_unapplied_work_is_a_rename_has_not_been_synced</code>.</h3>
+              <p>Done when all three fail on HEAD:</p>
+              <ul>
+                <li>
+                  <p><code>a_change_whose_only_unapplied_work_is_a_word_has_not_been_synced</code> covers <code>sync</code> human and <code>--json</code>, and <code>archive --check</code> human and <code>--json</code>. It then merges the word and shows the finding clears.</p>
+                </li>
+                <li>
+                  <p><code>a_withdrawal_the_merge_applied_has_reached_the_contract</code> shows <code>sync</code> reporting the requirement as reached, and archival reporting nothing about syncing.</p>
+                </li>
+                <li>
+                  <p><code>a_withdrawal_the_merge_did_not_apply_has_not_been_synced</code>.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-6" data-change="added" data-state="done">
+              <h3>2.6 Add <code>every_set_the_sync_payload_carries_is_named_in_its_instructions</code> to <code>crates/htmlspec-cli/tests/archive.rs</code>, as design decision 7 describes.</h3>
+              <p>Done when it passes on HEAD, fails once 3.3 adds the two keys, and passes again after 4.1</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-the-comparison">
+          <h2>3. The comparison</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Make <code>merge_state</code> read each stated requirement's declared state, and keep each accepted requirement's heading name and content in place of the heading name alone.</h3>
+              <p>Judge the requirement by design decision 1's table. Compare content as decision 2 defines it, through one function returning <code>Option&lt;UntakenContent&gt;</code>. Leave <code>untaken_rename</code> unchanged. Done when the tests in 2.2 and 2.3 pass</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Make <code>MergeState::reached_in_full</code> the one statement of "the contract arrived in full".</h3>
+              <p>Have <code>sync</code>'s "applied in full" line (2475) and <code>Findings::needs_sync</code> both call it, and leave no other expression of that condition in the file. Done when <code>grep -n "absent.is_empty()" crates/htmlspec-cli/src/commands.rs</code> finds no such conjunction outside <code>reached_in_full</code> and the tests, and 2.4 passes</p>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 In <code>sync</code>, add <code>untakenContent</code> and <code>untakenRemovals</code> to the payload (2439-2449), with decision 5's entry shape, and add the <code>differs</code> and <code>held</code> lines and one note per set to the human report.</h3>
+              <p>Change the absent note's "confirm it was withdrawn deliberately" to "abandoned". Done when 2.5's <code>sync</code> assertions pass</p>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 In archival, extend <code>report_findings</code>, <code>question_for</code>, and <code>emit_archive_payload</code> to the two sets, with the notes decision 5 words, and make the same wording change to the absent note.</h3>
+              <p>Done when 2.4 and 2.5 pass</p>
+            </li>
+            <li class="task" id="task-3-5" data-change="added" data-state="done">
+              <h3>3.5 Update the <code>sync</code> help in <code>crates/htmlspec-cli/src/main.rs</code> ("It compares requirement identifiers") and the <code>archive --yes</code> help ("Incomplete tasks and requirements that reached no accepted specification"), so that each says what is compared and reported.</h3>
+              <p>Done when <code>./target/debug/htmlspec sync --help</code> and <code>archive --help</code> read correctly</p>
+            </li>
+            <li class="task" id="task-3-6" data-change="added" data-state="done">
+              <h3>3.6 Add the new comparison function to the list in <code>the_archive_check_reads_only_the_specification</code> in <code>crates/htmlspec-cli/tests/archive.rs</code>, so it is held to reading no proposal or design.</h3>
+              <p>Done when that test passes</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-the-instructions">
+          <h2>4. The instructions</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 In <code>crates/htmlspec-assets/instructions/sync.md</code>, make the edits design decision 7 lists: the table and the partition sentence; the modified-requirement section working through <code>untakenContent</code>; a new "Merging a withdrawal" section; "A requirement you should not merge"; "Finish by asking again"; and "What to report".</h3>
+              <p>Done when 2.6 passes and <code>./target/debug/htmlspec instructions sync</code> names all six payload sets</p>
+              <p data-field="deviation">Migration note: the modified-requirement section reads <code>scenariosNotKept</code> as three kinds of entry, in place of design decision 7's "take out each scenario in <code>scenariosNotKept</code> that the change marks <code>removed</code> or does not state": one the change marks <code>removed</code>, which comes out; the accepted text of a scenario the change states as altered under the same identifier, which comes out; and one whose identifier the change never states, which is reported and holds the requirement. Task 7.1 records that the contributor accepted this reading. <code>sync.md</code> also gained three things the design did not list: an <code>added</code> requirement in <code>untakenContent</code>, which the agent finishes where it is the change's own and reports where it is a different obligation; an <code>added</code> scenario whose identifier the accepted document already uses, which goes in under another; and another change's later edit, as a third case that holds a requirement. The closing stop's reason, which no task named and this change made false, was rewritten, and the stop stays. Shown in <a href="evidence/what-the-implementation-revealed-2026-10-02.md"><code>evidence/what-the-implementation-revealed-2026-10-02.md</code></a> and <a href="evidence/the-measurement-repeated-2026-10-02.md"><code>evidence/the-measurement-repeated-2026-10-02.md</code></a>.</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 In <code>archive.md</code>, add the two findings to step 4, correct step 4's sentence that each absent identifier left after the merge "should be a requirement the change deliberately withdrew", and say in step 5's withdrawal bullet that archival then counts the requirement as reached.</h3>
+              <p>Add the two sets to step 6's list of what archival still asks about. Done when <code>grep -n "deliberately withdrew" crates/htmlspec-assets/instructions/archive.md</code> prints nothing and <code>instructions archive</code> names both new sets</p>
+              <p data-field="deviation">Migration note: <code>archive.md</code>'s step 5 stop and its step 6 paragraph, which no task named, were rewritten too, because this change made their reasons false, and the stop stays. <code>archive.md</code>'s count of the cases that hold a requirement went from two to three, with <code>sync.md</code>'s third case. Shown in <a href="evidence/the-measurement-repeated-2026-10-02.md"><code>evidence/the-measurement-repeated-2026-10-02.md</code></a>, "Corrections to what the tasks and the first measurement cite", and <a href="evidence/what-the-implementation-revealed-2026-10-02.md"><code>evidence/what-the-implementation-revealed-2026-10-02.md</code></a>.</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Confirm that <code>new.md</code>, <code>continue.md</code>, <code>ff.md</code>, <code>apply.md</code>, <code>verify.md</code>, <code>explore.md</code>, and <code>migrate.md</code> need no edit, with <code>grep -n "absent\|untakenRenames\|sync --change\|withdrawn"</code> and a read of each hit.</h3>
+              <p>Done when each is recorded in <code>evidence/</code> as silent or edited, with the reason</p>
+              <p data-field="deviation">Migration note: the task's pattern found no line in any of the seven bodies, so the search was widened to the stems <code>untaken</code>, <code>sync</code>, <code>withdraw</code>, <code>removed</code>, and <code>reached</code>, case-insensitive, and its three hits, each "the decisions reached", were read. Every body is recorded as silent. Shown in <a href="evidence/the-other-instructions-2026-10-02.md"><code>evidence/the-other-instructions-2026-10-02.md</code></a>.</p>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 Regenerate the installed copies with <code>./target/debug/htmlspec init --tools claude,codex,pi</code>, remove the stray <code>htmlspec/</code> and <code>spec.nix</code> it creates, and run <code>scripts/check-installed</code>.</h3>
+              <p>Done when it passes and <code>git status</code> shows exactly the ten <code>sync</code> and <code>archive</code> files changed under <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code></p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-prove-it">
+          <h2>5. Prove it</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Repeat 1.1 against the built change.</h3>
+              <p>Done when the results are recorded in <code>evidence/</code>, and they show:</p>
+              <ul>
+                <li>
+                  <p>step 1: <code>req-x</code> in <code>untakenContent</code> from paragraph 1, and "has not been synced";</p>
+                </li>
+                <li>
+                  <p>step 2: the same entry, with <code>scenario-x-c</code> not held;</p>
+                </li>
+                <li>
+                  <p>step 3a: <code>req-y</code> in <code>untakenRemovals</code>;</p>
+                </li>
+                <li>
+                  <p>step 3b: <code>req-y</code> reached;</p>
+                </li>
+                <li>
+                  <p>step 4: <code>req-x</code> in <code>untakenContent</code>, and <code>req-y</code> and <code>req-z</code> reached;</p>
+                </li>
+                <li>
+                  <p>step 5: "applied in full" and "ready";</p>
+                </li>
+                <li>
+                  <p>step 6: <code>req-x</code> in <code>untakenContent</code>, <code>req-y</code> in <code>untakenRemovals</code>, <code>req-z</code> reached, and "has not been synced".</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Mutation-test the change, restoring each file after each run, and record which test catches each mutation.</h3>
+              <p>Done when every mutation is caught, or a missing test is added:</p>
+              <ol>
+                <li>
+                  <p>Compare <code>modified</code> requirements by identifier only.</p>
+                </li>
+                <li>
+                  <p>Drop <code>added</code> from the compared states.</p>
+                </li>
+                <li>
+                  <p>Compare <code>unchanged</code> requirements' content too.</p>
+                </li>
+                <li>
+                  <p>Count a <code>removed</code> requirement as reached when it is held, as HEAD does.</p>
+                </li>
+                <li>
+                  <p>Compare scenarios in order.</p>
+                </li>
+                <li>
+                  <p>Compare statements as a collection.</p>
+                </li>
+                <li>
+                  <p>Include notes in the content.</p>
+                </li>
+                <li>
+                  <p>Stop leaving scenarios marked <code>removed</code> out of the change's side.</p>
+                </li>
+                <li>
+                  <p>Leave <code>untaken_content</code> out of <code>reached_in_full</code>.</p>
+                </li>
+                <li>
+                  <p>Leave <code>untaken_removals</code> out of <code>reached_in_full</code>.</p>
+                </li>
+                <li>
+                  <p>Put statement text into a payload entry.</p>
+                </li>
+                <li>
+                  <p>Report a requirement both renamed and modified in the rename set only.</p>
+                </li>
+                <li>
+                  <p>Remove <code>untakenContent</code> from <code>sync.md</code>.</p>
+                </li>
+              </ol>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Run <code>cargo test --workspace --all-targets</code>, then <code>scripts/check</code>.</h3>
+              <p>Done when every stage is green</p>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Record what the implementation revealed in <a href="evidence/what-the-implementation-revealed-2026-10-02.md"><code>evidence/what-the-implementation-revealed-&lt;date&gt;.md</code></a>, including any case where the comparison and the merging agent's reading disagreed</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-release">
+          <h2>6. Release</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Run the release runbook at <code>runbooks/release/tasks.html</code>, and report whether it worked as written</h3>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Choose the increment and state the reasoning.</h3>
+              <p><code>0.21.0</code>, a minor increment after <code>state-a-modified-requirement-whole</code>'s <code>0.20.0</code>, is expected, because <code>sync</code> and archival report findings they did not report before, and four accepted requirements change. The contract version stays <code>0.3.0</code>. Flag the choice for the contributor's confirmation</p>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Check that <code>scripts/check-release</code> passes after archival writes <code>VERSION</code> and the hand-written <code>runbooks.json</code> beside it</h3>
+              <ul>
+                <li>
+                  <p><code>openspec archive see-a-modification-the-merge-did-not-take --yes</code> (OpenSpec 1.13.1) archived the change as <code>2026-10-02-see-a-modification-the-merge-did-not-take</code>, continuing past this one open task. It modified four requirements in <a href="../../../specs/toolchain-packaging/spec.html"><code>openspec/specs/toolchain-packaging/spec.md</code></a>, and each merged block equals the delta's word for word. No other requirement changed</p>
+                </li>
+                <li>
+                  <p><code>VERSION</code> holds <code>0.21.0</code>. <code>runbooks.json</code> is a copy of the previous archive's, because the release runbook is unchanged: the sha256 of <code>runbooks/release/specification.html</code> and <code>tasks.html</code> still match the inventory's</p>
+                </li>
+                <li>
+                  <p><code>scripts/check-release</code>: <code>ok 27 archived change(s) record a version, and 21 version(s) are in the changelog</code> and <code>ok declared version 0.21.0 has a changelog entry</code></p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-review">
+          <h2>7. Review</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done" data-refs="req-a-change-s-specification-states-a-modified-requirement-whole scenario-a-scenario-changed-inside-a-requirement-marked-unchanged">
+              <h3>7.1 Resolve what a review of the pull request found, and record what was and was not taken.</h3>
+              <p>Settle explicitly, with the contributor, the three decisions the design marks or leans on: scenarios compared by text rather than identifier, and so whether <code>state-a-modified-requirement-whole</code>'s identifier sentence still has a reason to stay (design decision 2); a requirement renamed and modified reported in both sets (decision 4); and an <code>added</code> requirement compared as a <code>modified</code> one is (decision 1)</p>
+              <ul>
+                <li>
+                  <p><strong>Settled with the contributor on 2026-10-02, all four accepted as built.</strong> Seven scratch projects, run through the binaries built from this branch and from <code>main</code>, were the evidence:</p>
+                  <ul>
+                    <li>
+                      <p data-field="deviation"><strong>How <code>sync.md</code> reads <code>scenariosNotKept</code>.</strong> A withdrawn scenario and an omitted one produce the same entry, <code>differs req-x (not kept: scenario-x-b)</code>, so only the change's specification tells them apart. A scenario it marks <code>removed</code> comes out. The accepted text of a scenario it rewords comes out, because the reworded scenario appears in both lists under one identifier. A scenario it never states is reported and holds the requirement, as artifact-kinds' "<a href="../../../specs/artifact-kinds/spec.html#req-a-change-s-specification-states-a-modified-requirement-whole">A change's specification states a modified requirement whole</a>" requires. Design decision 7's "or does not state" is superseded by this reading</p>
+                    </li>
+                    <li>
+                      <p><strong>Decision 2, scenarios compared by text.</strong> A correct merge that wrote an added scenario under <code>scenario-x-c-2</code>, because another requirement in the accepted document already carried <code>scenario-x-c</code>, reads as reached. A comparison by identifier would report it as not taken. <code>state-a-modified-requirement-whole</code>'s identifier sentence stays, because the merging agent uses it to find which accepted scenario a stated one continues</p>
+                    </li>
+                    <li>
+                      <p><strong>Decision 4, a requirement renamed and modified reported in both sets.</strong> On <code>main</code> such a requirement showed only <code>renamed req-x</code>, and the word it added was invisible. On this branch it shows <code>renamed</code> and <code>differs</code> together, in one run</p>
+                    </li>
+                    <li>
+                      <p><strong>Decision 1, an <code>added</code> requirement compared as a <code>modified</code> one is.</strong> On <code>main</code>, an added requirement merged without one of its scenarios, and one whose identifier an unrelated accepted requirement already carried, both read "applied in full". On this branch both are reported</p>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <p><strong>Taken, from the code review of PR #42: a scenario changed inside a requirement marked <code>unchanged</code> was never compared.</strong> The requirement was judged by its own mark alone, so it was carried forward and compared by identifier. A scenario marked <code>added</code> inside it, which the accepted requirement never took, left <code>sync</code> saying "applied in full" and archival saying "ready". Reproduced with the built binary before the fix. Nothing in validation or the contract requires such a requirement to be marked <code>modified</code>. <code>Declared::of_requirement</code> now judges it as one the change modifies when any scenario in it is one the change adds, modifies, or withdraws. The spec delta's <code>unchanged</code> bullet says so and gains the scenario "<a href="specification.html#scenario-a-scenario-changed-inside-a-requirement-marked-unchanged">A scenario changed inside a requirement marked unchanged</a>". Design decision 1 records the case and the validation rule it rejected, and <code>sync.md</code>'s table and the changelog say the same. <code>a_scenario_changed_inside_an_unchanged_requirement_is_compared</code> and the end-to-end <code>a_scenario_added_inside_an_unchanged_requirement_has_not_been_synced</code> fail without the fix</p>
+                </li>
+              </ul>
+              <p data-field="note">Migration note: no file in this change's <code>evidence/</code> records the seven scratch projects. The account above is the only record of them.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

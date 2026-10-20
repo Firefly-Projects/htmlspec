@@ -1,0 +1,398 @@
+#!/usr/bin/env python3
+"""Publish the workspace's six crates to crates.io, one at a time, finishing what a run before left.
+
+Why one at a time, and why a rerun finishes
+-------------------------------------------
+crates.io lets an account publish a burst of five new crates and then refills slowly, so the
+sixth new crate of a first release is answered HTTP 429, "You have published too many new crates
+in a short period of time". `cargo publish --workspace` cannot finish that release: rerun, it
+checks every package first and stops at the first one that already exists, and cargo has no flag
+to skip existing versions. So this script publishes each crate with `cargo publish -p`, in
+dependency order, and before each asks the registry's sparse index whether that version is
+already there, skipping it when it is. When crates.io answers 429, it waits until the time the
+answer names and tries again, and when the next step would pass its budget of 30 minutes it stops
+and names the crates that remain. A first release therefore publishes in two waves, five crates
+and then `htmlspec-cli` once the limit refills, and a run stopped anywhere is finished by running
+it again. The limit binds new crates only, so a later release publishes in one wave.
+
+The budget is time on the clock from the moment the run begins, and everything spends it: each
+`cargo publish`, which builds the crate before it uploads it, each question to the index, and each
+wait. A wait is never shorter than ten seconds, even when the time crates.io names has already
+passed, so a run never asks again at once. The release job's timeout is the budget and one more
+publish, so the run stops itself, naming what remains, before the job is killed partway through.
+cargo builds a crate before it uploads it, so a crate refused with 429 has already built, and the
+next attempt passes `--no-verify` rather than build it again.
+
+Whether a crate is published is decided by the registry: the index, asked before each attempt and
+again after one that failed, since cargo can fail after the upload landed. cargo's own error is
+read too, and only that: the last `error:` line it prints and the causes under it. The build's log
+comes before it and can hold any words at all, so "429" or "already exists" in a compile error
+never reads as an answer from crates.io.
+
+What it sends
+-------------
+Every request this script makes carries one fixed User-Agent, which names the project and its
+public repository and nothing else: no account, no address, no host name. A review's probe once
+sent a contributor's email address to the crates.io API in that header, and a release must never
+repeat it. The upload itself is cargo's, and the script runs cargo with `CARGO_HTTP_USER_AGENT`
+set to the same User-Agent, so cargo's requests carry it too. cargo reads the token from
+`CARGO_REGISTRY_TOKEN`, and this script never reads it.
+
+Where it refuses to run
+-----------------------
+A crate records the repository it came from, and crates.io never forgets a published version. So
+the script publishes only a workspace whose `repository` is the public one, and refuses any other
+before it sends a request: a publish from anywhere else would announce that place to everyone.
+
+Usage:
+  scripts/publish-crates                     publish whatever of this release is missing
+  scripts/publish-crates --root R            the same, for the workspace rooted at R
+  scripts/publish-crates --index-url URL     ask another sparse index (the tests' stub)
+  scripts/publish-crates --cargo PROGRAM     publish with another program (the tests' stub)
+  scripts/publish-crates --budget SECONDS    run at most this long in all (default 1800)
+
+Exit codes: 0 every crate is published, 1 the run stopped with crates remaining, 2 it could not
+start.
+"""
+
+from __future__ import annotations
+
+import argparse
+import email.utils
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Union
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# The crates in dependency order, the public repository, and the User-Agent, stated once for every
+# script of the release. `publishable_members` checks CRATES against the workspace, so a crate
+# added to it cannot be left out silently.
+from release_facts import CRATES, PUBLIC_REPOSITORY, USER_AGENT, section_fields  # noqa: E402
+
+DEFAULT_INDEX = "https://index.crates.io"
+DEFAULT_BUDGET_SECONDS = 30 * 60
+
+# How long to wait after a 429 that names no time to try again. crates.io names one, so this is the
+# fallback for an answer that does not.
+UNNAMED_WAIT_SECONDS = 60
+
+# The shortest wait after any 429. A time to try again that has already passed, as a clock running
+# ahead of crates.io's reads it, would otherwise send the next attempt at once, and the one after.
+MINIMUM_WAIT_SECONDS = 10
+
+# A sparse index answers these for a crate it does not hold, as cargo itself reads them.
+ABSENT = {404, 410, 451}
+
+
+class Stop(Exception):
+    """The run cannot go on. The message says why, and the caller names what remains."""
+
+
+@dataclass(frozen=True)
+class Workspace:
+    root: Path
+    version: str
+    repository: str
+
+
+def read_workspace(root: Path) -> Workspace:
+    """The version and repository under `[workspace.package]`."""
+    manifest = root / "Cargo.toml"
+    try:
+        text = manifest.read_text(encoding="utf-8")
+    except OSError as error:
+        raise Stop(f"cannot read {manifest}: {error}") from error
+    fields = section_fields(text, "workspace.package")
+    if "version" not in fields or "repository" not in fields:
+        raise Stop(f"{manifest} declares no version or no repository under [workspace.package]")
+    return Workspace(root=root, version=fields["version"], repository=fields["repository"])
+
+
+def publishable_members(root: Path) -> set[str]:
+    """The name of every crate under `crates/` that does not declare `publish = false`."""
+    found = set()
+    for manifest in sorted((root / "crates").glob("*/Cargo.toml")):
+        text = manifest.read_text(encoding="utf-8")
+        name = re.search(r'(?m)^\s*name\s*=\s*"([^"]+)"', text)
+        if name and not re.search(r"(?m)^\s*publish\s*=\s*false\s*$", text):
+            found.add(name.group(1))
+    return found
+
+
+def index_path(name: str) -> str:
+    """The path of a crate's file in a sparse index, by the registry's layout rule."""
+    name = name.lower()
+    if len(name) <= 2:
+        return f"{len(name)}/{name}"
+    if len(name) == 3:
+        return f"3/{name[0]}/{name}"
+    return f"{name[0:2]}/{name[2:4]}/{name}"
+
+
+@dataclass(frozen=True)
+class Answer:
+    """What the index said about one crate's version."""
+
+    published: bool
+    # Set when the index asked to be asked later: the time to wait, in seconds.
+    retry_after: float | None = None
+
+
+def ask_index(index_url: str, name: str, version: str) -> Answer:
+    """Whether the index already holds `name` at `version`."""
+    request = urllib.request.Request(
+        f"{index_url.rstrip('/')}/{index_path(name)}",
+        headers={"User-Agent": USER_AGENT},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            body = response.read().decode("utf-8")
+    except urllib.error.HTTPError as error:
+        if error.code in ABSENT:
+            return Answer(published=False)
+        if error.code == 429:
+            return Answer(published=False, retry_after=header_wait(error.headers.get("Retry-After")))
+        raise Stop(f"the index answered HTTP {error.code} for {name}") from error
+    except (urllib.error.URLError, OSError) as error:
+        raise Stop(f"the index could not be asked about {name}: {error}") from error
+    for line in body.splitlines():
+        if not line.strip():
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise Stop(f"the index's entry for {name} is not JSON: {error}") from error
+        if entry.get("vers") == version:
+            return Answer(published=True)
+    return Answer(published=False)
+
+
+def header_wait(value: str | None) -> float:
+    """Seconds to wait from a Retry-After header, which is a number of seconds or an HTTP date."""
+    if value is None:
+        return UNNAMED_WAIT_SECONDS
+    if value.strip().isdigit():
+        return float(value.strip())
+    return until(value)
+
+
+def until(http_date: str) -> float:
+    """Seconds from now until an HTTP date, negative when it has passed."""
+    try:
+        moment = email.utils.parsedate_to_datetime(http_date)
+    except (TypeError, ValueError):
+        return UNNAMED_WAIT_SECONDS
+    if moment is None:
+        return UNNAMED_WAIT_SECONDS
+    return moment.timestamp() - time.time()
+
+
+@dataclass(frozen=True)
+class Published:
+    """cargo uploaded the crate, or reported that the registry already holds this version."""
+
+
+@dataclass(frozen=True)
+class RateLimited:
+    """crates.io refused the upload with 429. cargo builds a crate before it uploads it, so this
+    crate has built, and the next attempt need not build it again."""
+
+    # The time to wait, in seconds, before trying again; negative when the time named has passed.
+    retry_after: float
+
+
+@dataclass(frozen=True)
+class Failed:
+    """cargo failed for any other reason. What it said is in the log above."""
+
+    failure: str
+
+
+Outcome = Union[Published, RateLimited, Failed]
+
+# How cargo's own error states each answer this script acts on, read from that error alone. cargo
+# prints the registry's message among the causes, so a 429 carries crates.io's "Please try again
+# after <HTTP date>".
+UPLOAD_FAILED = re.compile(r"error: failed to publish\b")
+STATUS_429 = re.compile(r"\(status 429\b")
+TRY_AGAIN_AFTER = re.compile(r"try again after ([A-Z][a-z]{2}, \d{1,2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT)")
+
+
+def final_error(stderr: str) -> list[str]:
+    """cargo's own error: the last line it prints that begins `error: `, and every line after.
+
+    cargo ends a failed command with its error and the causes under it. Everything before is the
+    build's log, where a compile error, a test's name, or a quoted message can hold any words, so
+    nothing there is read as an answer.
+    """
+    lines = stderr.splitlines()
+    starts = [number for number, line in enumerate(lines) if line.startswith("error: ")]
+    return lines[starts[-1] :] if starts else []
+
+
+def read_failure(stderr: str, name: str, version: str) -> Outcome:
+    """What cargo's own error says about a publish that exited unsuccessfully."""
+    error = final_error(stderr)
+    if not error:
+        return Failed(f"cargo publish -p {name} failed and printed no error of its own")
+    already = re.compile(
+        rf"error: crate {re.escape(name)}@{re.escape(version)} already exists on .+ index"
+    )
+    if already.fullmatch(error[0].strip()):
+        # The index had not shown it yet when asked, and cargo found it: it is published.
+        return Published()
+    if UPLOAD_FAILED.match(error[0]) and any(STATUS_429.search(line) for line in error[1:]):
+        named = next(
+            (found for found in map(TRY_AGAIN_AFTER.search, error) if found is not None), None
+        )
+        return RateLimited(until(named.group(1)) if named else UNNAMED_WAIT_SECONDS)
+    return Failed(f"cargo publish -p {name}: {error[0].removeprefix('error: ')}")
+
+
+def publish(cargo: str, root: Path, name: str, version: str, verify: bool) -> Outcome:
+    """Publish one crate, and read what cargo reported."""
+    command = [cargo, "publish", "--locked", *([] if verify else ["--no-verify"]), "-p", name]
+    try:
+        result = subprocess.run(
+            command,
+            cwd=root,
+            env={**os.environ, "CARGO_HTTP_USER_AGENT": USER_AGENT},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as error:
+        return Failed(f"{cargo} could not be run: {error}")
+    sys.stdout.write(result.stdout + result.stderr)
+    if result.returncode == 0:
+        return Published()
+    return read_failure(result.stderr, name, version)
+
+
+class Budget:
+    """The time this run may still take, on the clock from the moment it began.
+
+    Everything spends it: each `cargo publish`, each question to the index, and each wait.
+    """
+
+    def __init__(self, seconds: float) -> None:
+        self.deadline = time.monotonic() + seconds
+
+    def remaining(self) -> float:
+        return self.deadline - time.monotonic()
+
+    def begin(self, what: str) -> None:
+        """Refuse to begin a step once the budget is spent."""
+        if self.remaining() <= 0:
+            raise Stop(f"the budget is spent, so {what} was not begun")
+
+    def wait(self, seconds: float, why: str) -> None:
+        seconds = max(seconds, MINIMUM_WAIT_SECONDS)
+        left = self.remaining()
+        if seconds > left:
+            raise Stop(
+                f"{why}, and waiting {seconds:.0f}s would pass the budget, "
+                f"which has {max(left, 0.0):.0f}s left"
+            )
+        print(f"  wait {seconds:.0f}s: {why}")
+        time.sleep(seconds)
+
+
+def run(workspace: Workspace, index_url: str, cargo: str, budget: Budget) -> list[str]:
+    """Publish each crate the index lacks, in order. Returns the crates still unpublished."""
+    pending = list(CRATES)
+    # The crates crates.io refused with 429 in this run, each built by the attempt it refused.
+    built: set[str] = set()
+    try:
+        while pending:
+            name = pending[0]
+            budget.begin(f"{name} {workspace.version}")
+            answer = ask_index(index_url, name, workspace.version)
+            if answer.retry_after is not None:
+                budget.wait(answer.retry_after, f"the index answered 429 for {name}")
+                continue
+            if answer.published:
+                print(f"  skip {name} {workspace.version}: the index already holds it")
+                pending.pop(0)
+                continue
+            verify = name not in built
+            print(
+                f"  publish {name} {workspace.version}"
+                + ("" if verify else ", without building it again")
+            )
+            outcome = publish(cargo, workspace.root, name, workspace.version, verify)
+            if isinstance(outcome, Failed):
+                # cargo can fail after the upload has landed, so the registry is asked whether it
+                # holds the version before the run stops.
+                after = ask_index(index_url, name, workspace.version)
+                if not after.published:
+                    raise Stop(outcome.failure)
+                print(f"  ok   {name} {workspace.version}: cargo failed, and the index holds it")
+            elif isinstance(outcome, RateLimited):
+                built.add(name)
+                budget.wait(outcome.retry_after, f"crates.io answered 429 for {name}")
+                continue
+            else:
+                print(f"  ok   {name} {workspace.version}")
+            pending.pop(0)
+    except Stop as stop:
+        print(f"publish-crates: stopped: {stop}", file=sys.stderr)
+    return pending
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="publish the workspace's crates to crates.io")
+    parser.add_argument("--root", type=Path, default=None, help="the workspace root")
+    parser.add_argument("--index-url", default=DEFAULT_INDEX, help="the sparse index to ask")
+    parser.add_argument("--cargo", default="cargo", help="the program that publishes")
+    parser.add_argument(
+        "--budget", type=float, default=DEFAULT_BUDGET_SECONDS, help="seconds the run may wait"
+    )
+    arguments = parser.parse_args()
+    root = (arguments.root or Path(__file__).resolve().parent.parent).resolve()
+
+    try:
+        workspace = read_workspace(root)
+    except Stop as stop:
+        print(f"publish-crates: {stop}", file=sys.stderr)
+        return 2
+    if workspace.repository != PUBLIC_REPOSITORY:
+        print(
+            f"publish-crates: this workspace's repository is {workspace.repository}, not "
+            f"{PUBLIC_REPOSITORY}. Crates publish only from the public repository, because a "
+            f"published crate names where it came from and crates.io never forgets it",
+            file=sys.stderr,
+        )
+        return 2
+    members = publishable_members(root)
+    if members != set(CRATES):
+        print(
+            f"publish-crates: the workspace publishes {sorted(members)}, and this script publishes "
+            f"{sorted(CRATES)}. Add a new crate to CRATES in dependency order",
+            file=sys.stderr,
+        )
+        return 2
+
+    print(f"publishing {len(CRATES)} crate(s) at {workspace.version}, asking {arguments.index_url}")
+    remaining = run(workspace, arguments.index_url, arguments.cargo, Budget(arguments.budget))
+    if remaining:
+        print(
+            f"publish-crates: {len(remaining)} crate(s) remain: {', '.join(remaining)}. "
+            f"Run this again to publish them; it skips what is already published",
+            file=sys.stderr,
+        )
+        return 1
+    print(f"every crate is published at {workspace.version}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

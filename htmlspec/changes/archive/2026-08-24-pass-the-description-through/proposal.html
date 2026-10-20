@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Pass the description through</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Pass the description through</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Pass the description through</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-24-pass-the-description-through/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><code>/htmlspec-new I want to start a new app that is a tally mark creator...</code> discards everything after the command name. The agent receives the instruction body alone and asks what the work is, because that is the correct behavior when nothing was described.</p>
+          <p>This is the same outcome <code>accept-a-described-change</code> was written to repair — a contributor states the work and is asked for it again — reached by a different mechanism. That change fixed the prose: a need may now be an absence, and an agent derives an unstated name rather than demanding one. The prose repair works. Its own verification run (<a href="../2026-08-22-accept-a-described-change/evidence/described-change-run-2026-08-22.md"><code>openspec/changes/archive/2026-08-22-accept-a-described-change/evidence/described-change-run-2026-08-22.md</code></a>) records an agent naming the absence form, declining to invent a need, and disclaiming the round trip to approve a name — and then creating nothing, because the description never arrived.</p>
+          <p><strong><a href="evidence/the-loss-2026-08-22.md">No generated file carries an argument placeholder.</a></strong></p>
+          <pre><code>grep -rc 'ARGUMENTS' .claude .codex .pi          # 0 in every file</code></pre>
+          <p><code>write_commands</code> at <code>crates/htmlspec-cli/src/install.rs:124</code> emits <code>description</code>, <code>allowed-tools</code>, and <code>generatedBy</code>. <code>write_skills</code> at <code>:88</code> emits <code>name</code>, <code>description</code>, <code>allowed-tools</code>, <code>license</code>, and <code>generatedBy</code>. Neither emits <code>argument-hint</code>, and no instruction body in <code>crates/htmlspec-assets/instructions/</code> contains <code>$ARGUMENTS</code>. The tools that load these files substitute the invocation's arguments into that token, so with no token there is nothing to substitute into and the text a contributor typed is dropped before an agent sees it.</p>
+          <p><a href="evidence/the-loss-2026-08-22.md">The convention is not in doubt.</a> Claude Code's own example plugin ships <code>argument-hint: &lt;required-arg&gt; [optional-arge]</code> with <code>The user invoked this command with: $ARGUMENTS</code> in both the command and the skill form, and states that the two layouts "are loaded identically". A Codex plugin command branches on <code>If "$ARGUMENTS" contains "prod"</code>. The mechanism is ordinary, documented, and this program does not use it.</p>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> The plugin's hint is quoted above as the author wrote it. <a href="evidence/the-loss-2026-08-22.md"><code>evidence/the-loss-2026-08-22.md</code></a>, which recorded the plugin's command file, has <code>[optional-arg]</code>.</p>
+          </aside>
+          <p><strong>Why this outranks an ordinary omission.</strong> Seven workflows are installed and every one of them takes a subject. <code>new</code> takes a description of the work, <code>apply</code> and <code>verify</code> take a change to act on, <code>explore</code> takes the idea to think through. <a href="evidence/the-checks-failing-2026-08-22.md">All seven silently discard it.</a> The failure is invisible from inside the program: <code>htmlspec init</code> writes the files, every one is valid, every generated-file test passes, and the loss happens in a tool this program does not control. Only a transcript shows it, which is why it survived two changes that were looking directly at the <code>new</code> workflow's text.</p>
+          <p><strong>Why the prose repair could not have caught it.</strong> <code>accept-a-described-change</code> amended instruction bodies. A body is what an agent reads <em>after</em> invocation, so no amendment to one can recover an argument the invocation already dropped. That change's task 5.2 is dropped for exactly this reason, and its dropped-task note is the boundary this change crosses: "a prose repair to authoring guidance cannot be verified end-to-end while the invocation withholds the contributor's input."</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong>Generated files declare and consume their arguments.</strong> Each command file and each skill file gains an <code>argument-hint</code> in its frontmatter and a placeholder its body substitutes into, so the text after the invocation reaches the agent.</li>
+            <li><strong>The hint is a property of the workflow.</strong> What <code>new</code> takes (a description of the work) differs from what <code>apply</code> takes (a change to work on), so the hint belongs in the <code>WORKFLOWS</code> table beside the summary rather than being one string for all seven. The table is already the single place a workflow's properties live and the contract already requires that.</li>
+            <li><strong>A test asserts the placeholder survives to the file.</strong> <code>install.rs</code> already checks <code>generatedBy</code> and name-loadability against produced files rather than against the table, for a stated reason: a value assembled by a format string at write time is invisible to a check on its inputs. An argument placeholder is assembled the same way, so it is checked the same way.</li>
+            <li><strong>The contract states the obligation.</strong> <code>project-bootstrap</code> gains the requirement that a generated invocation surface passes a contributor's arguments to the agent, since a workflow that silently drops its input asks for what it was already given.</li>
+          </ul>
+        </section>
+        <section id="hs-non-goals">
+          <h2>Non-Goals</h2>
+          <ul>
+            <li><strong>Changing any instruction body's guidance.</strong> The prose is correct as of 0.3.0. This change adds an arguments section to each body and touches nothing else in them. A body that argued differently about needs or names would be re-opening a settled change.</li>
+            <li><strong>Changing <code>htmlspec new change</code> or its arguments.</strong> <code>&lt;NAME&gt;</code> stays required and <code>--subject</code> stays optional. This is the same non-goal <code>accept-a-described-change</code> stated, and it holds for the same reason: the defect is in what the agent receives, not in the command it then runs.</li>
+            <li><strong>Making an argument required.</strong> A bare <code>/htmlspec-new</code> with no description must keep working and must keep asking. The amended guidance already handles an empty description correctly — "Where a request carries no description of the work at all, asking is right" — so an empty placeholder must reach the agent as an empty one rather than as an error.</li>
+            <li><strong>Supporting positional or named arguments.</strong> <code>$1</code>, <code>$2</code>, and flag parsing are a surface this project does not need: a workflow takes prose, not fields. One placeholder for the whole remainder is the whole requirement.</li>
+            <li><strong>Verifying 5.2 as part of this change.</strong> That task belongs to an archived change and stays dropped. This change is verified by its own run against its own request, and what it establishes about the earlier change's prose is a remark rather than a reopening.</li>
+            <li><strong>The <code>AGENTS.md</code> region.</strong> A marked region in a shared file has no invocation and takes no arguments, so there is nothing to pass through. It is untouched, and the requirement is written so it does not reach a delivery kind that has no command surface.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

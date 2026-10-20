@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Reject change markup inside a unit</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Reject change markup inside a unit</h1>
+        <p>Under "Change markup in or around a semantic unit is rejected", validation reports as an error every <code>ins</code> and <code>del</code> element that sits inside a semantic unit, encloses one, or is one, in a document of every kind and whatever contract version it declares, and this rule reports none outside every unit. The change named the rule <code>schema/change-markup</code>, left the projection and every projected model unchanged, and moved the document contract to <code>0.3.0</code>, with <code>0.1.0</code> and <code>0.2.0</code> still accepted.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Reject change markup inside a unit</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-02-reject-change-markup-inside-a-unit/specs/document-validation/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-document-validation">document-validation</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-document-validation">
+          <h2>document-validation</h2>
+          <section class="requirement" id="req-change-markup-in-or-around-a-semantic-unit-is-rejected" data-change="added">
+            <h3>Change markup in or around a semantic unit is rejected <span class="hs-id">req-change-markup-in-or-around-a-semantic-unit-is-rejected</span></h3>
+            <p>Validation SHALL reject a document in which an <code>ins</code> or a <code>del</code> element sits inside a semantic unit, encloses one, or is one because its own class names the unit. These two elements are HTML's change markup: <code>del</code> marks text an edit removed, and <code>ins</code> marks text an edit added. An element of the same name inside SVG or MathML belongs to that language and is not change markup. Each such element SHALL be reported as an error under a rule identifier of its own. The diagnostic SHALL name the element and the unit it sits in or encloses, and SHALL quote the element's text, so that an author can find the edit in a long statement.</p>
+            <p>The reason is that the projection gives change markup no meaning. An element that carries no reserved class is presentational, and its text contributes to whichever field encloses it. So a deleted phrase in a requirement's statement becomes part of the normative statement, run together with the words inserted beside it. A deleted paragraph becomes a second statement. A deleted link still counts as a reference. A unit wrapped whole in <code>del</code> projects as a unit the document still states. In each case the author reached for the right HTML and wrote a wrong contract, and nothing reported it.</p>
+            <p><strong>It SHALL be an error and not a warning.</strong> A warning reports a document that is incomplete or needs review, and it never gates work. Here the model is wrong: it states, as current, words the author withdrew. A document whose model says what its author did not mean does not conform, and a report that let it through would be read as saying it does.</p>
+            <p><strong>It SHALL cover <code>ins</code> as well as <code>del</code>.</strong> An inserted word does no harm to the model, because its text is current text and the projection keeps it. It is rejected anyway, because a unit that marks one side of an edit and not the other states half of a diff. A reader sees words marked as new and cannot see what they replaced.</p>
+            <p data-field="note">Migration note: the diagnostic first gave the reason this paragraph's last sentence states for every <code>ins</code>. The review of the pull request found that reason "false in the spec's own headline case", where a <code>del</code> beside the <code>ins</code> shows the words it replaced, and the diagnostic's reason for an <code>ins</code> now says that the projection keeps the inserted words as ordinary text, so the edit the page shows is in no field the model holds. The delta kept the sentence, and the rule rejects <code>ins</code> as the paragraph states. <a href="tasks.html#task-7-1">Task 7.1</a> records the finding, and <a href="evidence/the-rule-measured-2026-10-01.md"><code>evidence/the-rule-measured-2026-10-01.md</code></a> quotes the rewritten message.</p>
+            <p>The rule SHALL apply to every unit in every kind, and whatever contract version the document declares. A document SHALL NOT exempt itself from the rule by declaring an earlier version, because a rule a document can switch off protects nothing.</p>
+            <p>Change markup outside every unit SHALL NOT be reported by this rule. A unit is where a document states its contract, and prose outside every unit projects into no unit's field. A document MAY mark a wording change with <code>del</code> and <code>ins</code> in that prose, as a proposal showing a before and an after would.</p>
+            <p>An element that only draws a line through text, such as <code>s</code> or the obsolete <code>strike</code>, SHALL NOT be reported by this rule. HTML defines <code>s</code> as content that is no longer accurate or relevant, not as an edit to the document, and it stays presentational.</p>
+            <article class="scenario" id="scenario-a-deleted-phrase-and-an-inserted-word-in-one-statement" data-change="added">
+              <h4>A deleted phrase and an inserted word in one statement</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a requirement whose statement is <code>The spellings are fixed: &lt;code&gt;list&lt;/code&gt;, &lt;code&gt;status&lt;/code&gt;, &lt;code&gt;sync&lt;/code&gt;, &lt;code&gt;instructions&lt;/code&gt;, and &lt;del&gt;nothing else&lt;/del&gt;&lt;ins&gt;&lt;code&gt;store&lt;/code&gt;&lt;/ins&gt; SHALL name them.</code></dd>
+                <dt>When</dt>
+                <dd>the document is validated</dd>
+                <dt>Then</dt>
+                <dd>validation fails with one error for the <code>del</code> and one for the <code>ins</code>, each naming the requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deleted-paragraph-in-a-requirement" data-change="added">
+              <h4>A deleted paragraph in a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement holds a paragraph wrapped in <code>del</code></dd>
+                <dt>Then</dt>
+                <dd>validation fails and names the requirement, because the paragraph would otherwise be one of its statements</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-inserted-word-with-nothing-marked-as-removed" data-change="added">
+              <h4>An inserted word with nothing marked as removed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a unit's text contains an <code>ins</code> element and no <code>del</code> element</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the unit marks one side of an edit</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-change-markup-in-a-nested-unit" data-change="added">
+              <h4>Change markup in a nested unit</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a scenario's entry contains a <code>del</code> element</dd>
+                <dt>Then</dt>
+                <dd>validation fails and names the scenario</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-unit-wrapped-in-change-markup" data-change="added">
+              <h4>A unit wrapped in change markup</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a <code>del</code> element encloses a whole requirement</dd>
+                <dt>Then</dt>
+                <dd>validation fails and names the requirement, because the requirement would still project as one the document states</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-element-that-is-itself-a-unit" data-change="added">
+              <h4>A change element that is itself a unit</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a <code>del</code> element's own class names a unit, such as <code>&lt;del class="decision"&gt;</code></dd>
+                <dt>Then</dt>
+                <dd>validation fails and names that unit, because it would still project as one the document states</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-any-unit-of-any-kind" data-change="added">
+              <h4>Any unit of any kind</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a decision, task, evidence, risk, or verification unit carries change markup, in a document of any kind</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-declaring-an-earlier-contract-version" data-change="added">
+              <h4>A document declaring an earlier contract version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document declaring an earlier accepted contract version carries change markup inside a unit</dd>
+                <dt>Then</dt>
+                <dd>validation fails, exactly as it does for a document declaring the current version</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-change-markup-outside-every-unit" data-change="added">
+              <h4>Change markup outside every unit</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a proposal whose prose outside every unit marks a wording change with <code>del</code> and <code>ins</code></dd>
+                <dt>When</dt>
+                <dd>it is validated</dd>
+                <dt>Then</dt>
+                <dd>this rule reports nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-struck-through-phrase-is-not-change-markup" data-change="added">
+              <h4>A struck-through phrase is not change markup</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's statement contains an <code>s</code> element</dd>
+                <dt>Then</dt>
+                <dd>this rule reports nothing</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Every evidence and verification unit in this section and the next was written when this document was migrated. Each summarizes a record carried unchanged in this change's <code>evidence/</code>, as project-migration's "Evidence crosses unchanged" requires, and links it, and the record is the authority. One record bears on no requirement this specification states, and has no unit: <a href="evidence/the-runbook-ran-2026-10-01.md"><code>evidence/the-runbook-ran-2026-10-01.md</code></a> records the release.</p>
+          </aside>
+          <section class="evidence" id="evidence-the-measurement-2026-09-30" data-change="added" data-refs="req-change-markup-in-or-around-a-semantic-unit-is-rejected">
+            <h3>HTML's change markup read into the model, measured against HEAD <span class="hs-id">evidence-the-measurement-2026-09-30</span></h3>
+            <p>Measured on 2026-09-30 with <code>htmlspec 0.18.0</code>, against HEAD and before this change, in scratch documents declaring contract <code>0.2.0</code> (<a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a>). A requirement's statement with <code>nothing else</code> deleted and <code>store</code> inserted projected as "… and nothing elsestore SHALL name them.", and <code>validate</code> exited 0, with 6 warnings over the project and only <code>review/stale-reference</code> on the specification, under <code>--strict</code> and <code>--json</code> too. A paragraph wrapped in <code>del</code> became a second statement. A verification whose only reference sat inside a <code>del</code> still counted it, while the control with the words removed failed with <code>schema/invalid</code>. A requirement wrapped whole in <code>del</code> projected as <code>unchanged</code>. Outside every unit, free prose reached nothing, and the summary, a caption, and a link kept the deleted words. No change markup was found in the 121 tracked HTML files besides <code>README.html</code>, in <code>README.html</code>, or in the 116 staged files.</p>
+          </section>
+          <section class="evidence" id="evidence-the-measurement-repeated-2026-10-01" data-change="added" data-refs="req-change-markup-in-or-around-a-semantic-unit-is-rejected">
+            <h3>The measurement, repeated before anything changed <span class="hs-id">evidence-the-measurement-repeated-2026-10-01</span></h3>
+            <p>Tasks 1.1 and 1.2, measured on 2026-10-01 with <code>htmlspec 0.18.0</code> built from <code>6240365</code>, the merge of #38 (<a href="evidence/the-measurement-repeated-2026-10-01.md"><code>evidence/the-measurement-repeated-2026-10-01.md</code></a>). Every result of the 2026-09-30 measurement reproduced. One count differed only in when it was taken: 5 <code>&lt;ins</code> and 8 <code>&lt;del</code> in five scratch documents, against 5 and 7 in four. Three details the first record did not quote were settled by the diagnostics it records. The count of change markup was still zero in all three sets: 121 tracked files besides <code>README.html</code>, <code>README.html</code>, and 116 staged files. Its appendix holds <code>measure.sh</code> and <code>write_docs.py</code>, which task 5.1 reran unchanged.</p>
+          </section>
+          <section class="evidence" id="evidence-the-rule-measured-2026-10-01" data-change="added" data-refs="req-change-markup-in-or-around-a-semantic-unit-is-rejected">
+            <h3>The measurement, repeated against the built change <span class="hs-id">evidence-the-rule-measured-2026-10-01</span></h3>
+            <p>Task 5.1, on 2026-10-01, with the same script against the built change, run with <code>htmlspec 0.18.0</code> built before the release and again as <code>htmlspec 0.19.0</code> after the review's fixes (<a href="evidence/the-rule-measured-2026-10-01.md"><code>evidence/the-rule-measured-2026-10-01.md</code></a>). The statement with a <code>del</code> and an <code>ins</code> now failed with 2 errors, also under <code>--strict</code>, and <code>--json</code> reported two <code>schema/change-markup</code> diagnostics at <code>req-the-spellings-are-fixed</code>. The block-level <code>&lt;del&gt;&lt;p&gt;</code>, the deleted link in a verification's method, and the requirement wrapped whole in <code>del</code> each failed with 1 error. The proposal with markup in four places outside every unit still reported nothing, and the control was unchanged. Each of the eight arrays and objects <code>project-model</code> printed was byte-identical before and after.</p>
+          </section>
+          <section class="evidence" id="evidence-mutation-testing-2026-10-01" data-change="added" data-refs="req-change-markup-in-or-around-a-semantic-unit-is-rejected">
+            <h3>Tests first, and mutation testing <span class="hs-id">evidence-mutation-testing-2026-10-01</span></h3>
+            <p>Tasks 2.2 and 5.2, on 2026-10-01, and the review that followed (<a href="evidence/mutation-testing-2026-10-01.md"><code>evidence/mutation-testing-2026-10-01.md</code></a>). Against a <code>validate</code> that reported nothing, the 17 unit tests asserting a report failed and the 5 asserting silence passed, and the conformance run failed only on <code>invalid-schema-change-markup</code>. Each of 10 mutations, applied alone, was caught, and both suites passed after the last restore. After the review, 8 tests were added, and 5 of them failed against the rule as first committed (<code>8032003</code>), one for each defect. The review's 5 surviving mutations and 3 of the code it added were all caught, and the 10 original mutations were still caught.</p>
+          </section>
+          <section class="evidence" id="evidence-what-the-implementation-revealed-2026-10-01" data-change="added" data-refs="req-change-markup-in-or-around-a-semantic-unit-is-rejected">
+            <h3>What the implementation revealed <span class="hs-id">evidence-what-the-implementation-revealed-2026-10-01</span></h3>
+            <p>Task 5.4, on 2026-10-01 (<a href="evidence/what-the-implementation-revealed-2026-10-01.md"><code>evidence/what-the-implementation-revealed-2026-10-01.md</code></a>). The contract bump moved the twelve committed <code>schema/rename-*</code> fixtures from <code>0.2.0</code> to <code>0.3.0</code>, 24 lines in all, against task 4.3's expected result, and they were kept. The generator needs <code>--features generate-fixtures</code>, and its table of hand-authored fixtures checks itself in both directions. The first wording of the fix told the author to mark the unit <code>data-change="modified"</code> in every case, which was wrong for an added unit. A wrapped unit's quotation includes its identifier, and the quotation, unlike the projection, does not skip <code>script</code>, <code>style</code>, <code>template</code>, or <code>noscript</code>. Four statements of the version policy gave a reason <code>0.3.0</code> made false. <code>scripts/check</code> passed, with its four Python stages run outside the Nix shell.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-deleted-phrase-and-an-inserted-word-in-one-statement" data-change="added" data-outcome="passed" data-refs="scenario-a-deleted-phrase-and-an-inserted-word-in-one-statement">
+            <h3>The deleted phrase and the inserted word, validated by the built rule <span class="hs-id">verify-a-deleted-phrase-and-an-inserted-word-in-one-statement</span></h3>
+            <p data-field="method">Task 5.1 ran <code>measure.sh</code> and <code>write_docs.py</code>, from the appendix of <code>evidence/the-measurement-repeated-2026-10-01.md</code>, into a fresh scratch project, and validated the change whose specification holds a requirement with the statement this scenario gives: over the project, with <code>--strict</code>, and with <code>--json</code>.</p>
+            <p><code>validate</code> exited 1 with 2 errors. <code>--json</code> reported two <code>schema/change-markup</code> diagnostics with <code>"unitId": "req-the-spellings-are-fixed"</code>, one quoting <code>&lt;del&gt;nothing else&lt;/del&gt;</code> and one <code>&lt;ins&gt;store&lt;/ins&gt;</code>, each saying it sits in the requirement <code>req-the-spellings-are-fixed</code> (<a href="evidence/the-rule-measured-2026-10-01.md"><code>evidence/the-rule-measured-2026-10-01.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-a-deleted-paragraph-in-a-requirement" data-change="added" data-outcome="passed" data-refs="scenario-a-deleted-paragraph-in-a-requirement">
+            <h3>The deleted paragraph, validated by the built rule <span class="hs-id">verify-a-deleted-paragraph-in-a-requirement</span></h3>
+            <p data-field="method">The same run's block-level case: the requirement's statement followed by <code>&lt;del&gt;&lt;p&gt;No other spelling SHALL name a command.&lt;/p&gt;&lt;/del&gt;</code>, validated.</p>
+            <p><code>validate</code> exited 1 with 1 error at <code>req-the-spellings-are-fixed</code>: <code>&lt;del&gt;No other spelling SHALL name a command.&lt;/del&gt;</code> sits in the requirement <code>req-the-spellings-are-fixed</code> (<a href="evidence/the-rule-measured-2026-10-01.md"><code>evidence/the-rule-measured-2026-10-01.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-a-unit-wrapped-in-change-markup" data-change="added" data-outcome="passed" data-refs="scenario-a-unit-wrapped-in-change-markup">
+            <h3>The wrapped requirement, validated by the built rule <span class="hs-id">verify-a-unit-wrapped-in-change-markup</span></h3>
+            <p data-field="method">The same run's wrapped case: a second requirement, <code>req-no-other-spelling</code>, whole inside a <code>del</code>, validated.</p>
+            <p><code>validate</code> exited 1 with 1 error at <code>req-no-other-spelling</code>, saying the <code>del</code> encloses the requirement <code>req-no-other-spelling</code> and giving the fix of marking it <code>data-change="removed"</code> to withdraw it (<a href="evidence/the-rule-measured-2026-10-01.md"><code>evidence/the-rule-measured-2026-10-01.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-any-unit-of-any-kind-in-the-measurement" data-change="added" data-outcome="partial" data-refs="scenario-any-unit-of-any-kind">
+            <h3>The deleted link in a verification, validated by the built rule <span class="hs-id">verify-any-unit-of-any-kind-in-the-measurement</span></h3>
+            <p data-field="method">The same run's deleted-link case: a verification in a specification, whose method paragraph names the requirement only inside a <code>del</code>, validated.</p>
+            <p><code>validate</code> exited 1 with 1 error at <code>verify-the-spellings-are-fixed</code>: <code>&lt;del&gt;, as the requirement states them&lt;/del&gt;</code> sits in the verification <code>verify-the-spellings-are-fixed</code> (<a href="evidence/the-rule-measured-2026-10-01.md"><code>evidence/the-rule-measured-2026-10-01.md</code></a>). The run measured a verification unit in a specification and no other unit or kind.</p>
+            <p data-field="unchecked">a decision, task, evidence, or risk unit carries change markup</p>
+            <p data-field="unchecked">in a document of any kind</p>
+          </section>
+          <section class="verification" id="verify-change-markup-outside-every-unit" data-change="added" data-outcome="passed" data-refs="scenario-change-markup-outside-every-unit">
+            <h3>The proposal with markup outside every unit, validated by the built rule <span class="hs-id">verify-change-markup-outside-every-unit</span></h3>
+            <p data-field="method">The same run's proposal, which marks a wording change with <code>del</code> and <code>ins</code> in a paragraph of free prose, and also in its summary, a figure's caption, and a link, all outside every unit, validated.</p>
+            <p><code>validate</code> exited 0 with no diagnostics, as before the change (<a href="evidence/the-rule-measured-2026-10-01.md"><code>evidence/the-rule-measured-2026-10-01.md</code></a>).</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

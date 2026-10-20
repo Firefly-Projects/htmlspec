@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Read a document whose stylesheet cannot load: tasks</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Read a document whose stylesheet cannot load: tasks</h1>
+        <p>The work that puts one inert fallback stylesheet in every document the program writes, lets a contributor add it to the documents a project already holds, gives it to this repository's accepted specifications, and releases 0.31.0. The test that holds the fallback inert comes before anything writes it.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Read a document whose stylesheet cannot load: tasks</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-evidence">1. Evidence</a></li>
+          <li><a href="#hs-the-fallback">2. The fallback</a></li>
+          <li><a href="#hs-existing-documents">3. Existing documents</a></li>
+          <li><a href="#hs-this-repository">4. This repository</a></li>
+          <li><a href="#hs-the-release">5. The release</a></li>
+          <li><a href="#hs-review-and-archival">6. Review and archival</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-evidence">
+          <h2>1. Evidence</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Record what was measured before the change. <span class="hs-id">task-1-1</span></h3>
+              <p>The four-stylesheet test in Safari, Chrome, and Firefox; where each kind of document reaches the store; the store stylesheet's unconditional rules for the four selectors; and the scratch specification that validates with the same diagnostics with and without the block. In <code>evidence/the-measurement-2026-10-16.md</code>.</p>
+              <p data-field="note">Recorded in <a href="evidence/the-measurement-2026-10-16.md"><code>evidence/the-measurement-2026-10-16.md</code></a>: Safari refuses a stylesheet one and two folders up and Chrome and Firefox load it, every kind of document reaches the store in a parent folder, the store sets every property the fallback sets on the four selectors, unconditionally and with no layer, and a document carrying the block validates with the same diagnostics as one without it.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-the-fallback">
+          <h2>2. The fallback</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Hold the fallback once, in the asset crate. <span class="hs-id">task-2-1</span></h3>
+              <p>One constant holding the whole <code>&lt;style&gt;</code> element in its canonical form, with the store's values and the centred column (design decision 2, and "The mechanism").</p>
+              <p data-field="note"><code>htmlspec_assets::fallback::ELEMENT</code> in <code>crates/htmlspec-assets/src/fallback.rs</code>, with <code>css()</code> for its text and <code>is_fallback_text</code>, which recognizes a fallback, current or stale, by its <code>@layer htmlspec-fallback</code> opening. The values are the store stylesheet's own, resolved from its custom properties, except the body's padding, which centres a column of at most 44rem. The element was 735 bytes, and is 794 since the code review added the skip link's focus rule (6.1).</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Test that the fallback is inert against the store's stylesheet. <span class="hs-id">task-2-2</span></h3>
+              <p>Every property on every selector is set by an unconditional, unlayered store rule naming the same selector. The store declares no layer. The fallback is one <code>@layer htmlspec-fallback</code> block with no <code>url(</code>, <code>@import</code>, or <code>!important</code> (design decision 1). See the test fail with a property the store does not set, and pass without it.</p>
+              <p data-field="note">Seven tests in <code>crates/htmlspec-assets/tests/fallback.rs</code>. Three hold the real texts: <code>the_fallback_is_inert_against_the_store_stylesheet</code>, <code>the_store_stylesheet_declares_no_cascade_layer</code>, and <code>the_fallback_is_one_layer_that_reaches_nothing</code>. Four hold the checker to crafted inputs: a property the store does not set, a selector the store does not name, a store rule inside <code>@media</code>, and a rule outside the layer, <code>!important</code>, or <code>url(</code>. With <code>text-align: left</code> added to the fallback's body, the first test failed naming <code>("body", "text-align")</code>. Restored, all seven pass.</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Write the fallback into every template. <span class="hs-id">task-2-3</span></h3>
+              <p><code>{{FALLBACK}}</code> on its own line after the title in each of the four templates, substituted by <code>render_kind</code>. Update the templates' hashes in <code>assets/vendor.lock.json</code>. Extend <code>the_rendered_template_is_already_canonical</code> to every kind, and test that each rendered template carries the fallback exactly once.</p>
+              <p data-field="note">Each of <code>assets/template-*.html</code> holds <code>{{FALLBACK}}</code> on the line after its title, and <code>render_kind</code> substitutes <code>htmlspec_assets::FALLBACK_PLACEHOLDER</code> with the element. The four templates' hashes in <code>assets/vendor.lock.json</code> were re-pinned, and nothing else recorded the old ones. <code>the_rendered_template_is_already_canonical</code> now renders every kind, and <code>every_rendered_template_carries_the_fallback_once_in_its_head</code> is new. The 12 template tests and the asset crate's 99 tests pass.</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Write the fallback into a run's record. <span class="hs-id">task-2-4</span></h3>
+              <p>The record's head in <code>crates/htmlspec-cli/src/runs.rs</code> writes the same constant, and a test reads it from a record a run creates.</p>
+              <p data-field="note"><code>shell</code> in <code>crates/htmlspec-cli/src/runs.rs</code> writes <code>htmlspec_assets::fallback::ELEMENT</code> after the record's title. <code>the_record_carries_the_fallback_stylesheet_once</code> in <code>crates/htmlspec-cli/tests/run.rs</code> starts a run, reads the fallback once in the record's head, and checks that the record passes strict validation and <code>format --check</code>. Against the record's previous head it failed, finding no fallback. All 36 run tests pass.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-existing-documents">
+          <h2>3. Existing documents</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Add <code>htmlspec format --fallback</code>. <span class="hs-id">task-3-1</span></h3>
+              <p>Adds the fallback where it is absent and replaces one that differs, before canonicalization, and changes nothing else. It skips archived changes and run records and reports each one. It composes with <code>--check</code>, and the request-verb spelling takes it too. Plain <code>format</code> leaves a fallback present, absent, or stale as written (design decision 3). Test each of those, and that a second run changes nothing.</p>
+              <p data-field="note"><code>htmlspec_format::fallback::apply</code> in <code>crates/htmlspec-format/src/fallback.rs</code> works on the parsed head and serializes canonically. It places the element, parsed from the constant itself, before the head's first <code>&lt;link&gt;</code>, replaces a stale one's text, and returns a current one unchanged. The CLI composes it after reference filling, behind <code>FallbackRequest::Apply</code>. <code>ProjectRoot::is_history</code> names what it leaves alone: anything beneath the archive, and a document directly within a runbook's <code>runs</code>. Seven unit tests cover adding, current, stale, a second request, another <code>&lt;style&gt;</code> left alone, a head with no link, and refusing an ambiguous document. Six CLI tests in <code>crates/htmlspec-cli/tests/cli.rs</code> cover plain format leaving it absent, the request adding it once, <code>--check --fallback</code> reporting without writing, a stale one replaced only on request, history left as written, and <code>put format --fallback</code>. The parse test now gives <code>format</code> its <code>--fallback</code>. The workspace's 1484 tests pass.</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Render a document with and without its store, and record it. <span class="hs-id">task-3-2</span></h3>
+              <p>In Chrome headless: with the store reachable, the document with the fallback and without it give identical screenshots. With the store unreachable, the fallback gives the readable column. Record the four renders in this change's evidence.</p>
+              <p data-field="note">Recorded in <a href="evidence/the-renders-2026-10-16.md"><code>evidence/the-renders-2026-10-16.md</code></a>. With the store reachable, the <code>runbook-portability</code> specification with the fallback and without it gave identical screenshots, both <code>abb92f5d652ecbec</code>. With the store unreachable, the fallback gave a centred serif column with monospace code and the skip link hidden, and the copy without it rendered edge to edge in the browser's defaults.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-this-repository">
+          <h2>4. This repository</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Give the accepted specifications and this change's documents the fallback. <span class="hs-id">task-4-1</span></h3>
+              <p><code>htmlspec format --fallback htmlspec/specs</code> and the same on this change's directory. The release runbook and the archived changes keep their bytes (design decision 4). <code>htmlspec validate htmlspec</code> reports 0 errors.</p>
+              <p data-field="note">Run with this change's binary. All 13 accepted specifications gained the fallback, each by exactly the block's 8 lines (9 since the code review, 6.1) and nothing else, and so did this change's three documents. <code>htmlspec/runbooks</code> and <code>htmlspec/changes/archive</code> are untouched. <code>htmlspec validate htmlspec</code>: 178 documents, 0 errors, 1073 warnings, the same count as before. <code>htmlspec format --check htmlspec</code> finds every document canonical.</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Say in the README what a reader sees in Safari now. <span class="hs-id">task-4-2</span></h3>
+              <p>Rewrite "Reading the documents": documents the program writes stay readable in Safari through the fallback, the store's scripts still draw diagrams and charts, serving the project shows the whole design, and <code>htmlspec format --fallback</code> gives documents written before 0.31.0 the fallback. List <code>--fallback</code> among the commands.</p>
+              <p data-field="note">Added after the change was rebased onto <code>558bb5e</code>, where #61 put the section. Whether Safari also refuses scripts in a parent folder was not measured, so the README states the figure's fallback as conditional. The two README tests in <code>crates/htmlspec-cli/tests/preflight.rs</code> still pass.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-the-release">
+          <h2>5. The release</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Advance the release to 0.31.0. <span class="hs-id">task-5-1</span></h3>
+              <p>Set the version in <code>Cargo.toml</code>, relock offline, and add a <code>CHANGELOG.md</code> entry that names <code>format --fallback</code> and says what the fallback does not do. <code>spec.nix</code> waits for archival (design decision 6).</p>
+              <p data-field="note"><code>Cargo.toml</code>, <code>Cargo.lock</code>, and <code>CHANGELOG.md</code> are at 0.31.0. The offline relock changed only the seven workspace crates' versions, and the built binary reports <code>htmlspec 0.31.0</code>. The entry names <code>format --fallback</code>, what it leaves as written, and what the fallback does not do. <code>spec.nix</code> stays at 0.30.2 until archival.</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Regenerate the installed instruction files for 0.31.0. <span class="hs-id">task-5-2</span></h3>
+              <p>With the 0.31.0 binary, run <code>htmlspec init --tools claude,codex,pi</code> from the repository root, as the release runbook says. Compare what <code>git status</code> lists before and after: only the installed files are new, each by its <code>generatedBy</code> line.</p>
+              <p data-field="note">Run with the 0.31.0 binary from the repository root. It reported <q>extending the project in</q> the root and <q>spec.nix already exists, so it was left as it is</q>. <code>git status</code> listed 4 paths before, the release's uncommitted edits, and the 45 paths it added were all installed files under <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code>, each changed by one line, <code>generatedBy: htmlspec 0.30.2</code> to <code>0.31.0</code>. Nothing else was new.</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Run <code>scripts/check</code> in full. <span class="hs-id">task-5-3</span></h3>
+              <p>Outside <code>nix develop</code>, with the shell's toolchain first on the path, so the Python stages run.</p>
+              <p data-field="note">Run on 2026-10-16 at 0.31.0, outside <code>nix develop</code>, with the shell's toolchain first on the path. All 13 stages passed: format, lint, test and doctest (1484 tests, none failed), self-conformance, self-format, self-runbooks, self-runbooks-format, self-assets (26 stored assets in 6 stores, each once), prompt, installed, release-fixtures, and release (40 archived changes, 35 versions in the changelog, 0.31.0 declared and headed).</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-review-and-archival">
+          <h2>6. Review and archival</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Take the code review, and settle each finding. <span class="hs-id">task-6-1</span></h3>
+              <p data-field="note">The review (medium) found two defects, and both were taken. First, the fallback moved the skip link off-screen and never brought it back, so where it applies a keyboard user tabbed onto a link nobody could see. The block gains <code>.hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }</code>, the store's own values with <code>--hs-gutter</code> resolved. It stays inert, because the store's stylesheet sets both properties on that selector, and the element is now 794 bytes. <code>the_fallback_brings_the_skip_link_back_on_focus</code> failed against the old block and passes, and <code>the_skip_link_check_reports_a_link_hidden_for_good</code> holds the checker.</p>
+              <p data-field="note">Second, <code>ProjectRoot::is_history</code> resolved links before comparing, so an archived change or a <code>runs</code> directory reached through a link was judged by its target, and <code>format --fallback</code> rewrote through it. It now judges the path as spelled as well, as <code>is_archived_change</code> does. <code>a_document_reached_through_a_symbolic_link_into_history_is_history</code> failed before the fix and passes. The 13 accepted specifications and this change's documents were reformatted with <code>--fallback</code>, each gaining exactly the focus rule's line, and the release runbook and the archive are untouched.</p>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Archive the change with <code>htmlspec archive</code>. <span class="hs-id">task-6-2</span></h3>
+              <p>Its specification adds document-template's requirement and states deterministic-formatting's "Formatting preserves meaning" whole, modified. Raise <code>spec.nix</code> to 0.31.0. The release runbook's inventory should record it unchanged at 0.2.0.</p>
+              <p data-field="note">Archived on 2026-10-17 with the 0.31.0 binary, after <code>spec.nix</code> was raised to 0.31.0. The specification adds document-template's "A document stays readable when its stylesheet cannot load" and states deterministic-formatting's "Formatting preserves meaning" whole, modified by one paragraph and four scenarios. <code>htmlspec show --diff</code> found only this change's own edits, and both were merged into the accepted specifications as insertions. Archival reported only this task open, answered with <code>--yes</code>. It wrote <code>VERSION</code> 0.31.0, re-expressed 36 references in the 4 documents, and published <code>release</code> unchanged at 0.2.0 with <code>sha256:dd55ef6e868b…</code> and <code>sha256:085652211b98…</code>. <code>scripts/check-release</code> then passed with 41 archived changes.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

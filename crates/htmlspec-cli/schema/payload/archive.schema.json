@@ -1,0 +1,158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://html-spec.dev/schema/payload/1/archive.schema.json",
+  "title": "htmlspec archive --json",
+  "description": "The payload `htmlspec archive --json` (`patch archive`) writes, with --check and without: whether the change moved, and every finding archival asks about. A later 1.x release can add a property to any object in this payload, and only a major release removes, renames, or retypes one, so a consumer ignores a property it does not know.",
+  "type": "object",
+  "required": [
+    "moved",
+    "archivedTo",
+    "openTasks",
+    "unmergedRequirements",
+    "untakenRenames",
+    "untakenContent",
+    "untakenRemovals",
+    "needsSync",
+    "outOfOrder",
+    "unresolvedPredecessor",
+    "followsCycle"
+  ],
+  "properties": {
+    "moved": {
+      "type": "boolean"
+    },
+    "archivedTo": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "openTasks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "unmergedRequirements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "untakenRenames": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/untakenRename"
+      }
+    },
+    "untakenContent": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/untakenContent"
+      }
+    },
+    "untakenRemovals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "needsSync": {
+      "type": "boolean"
+    },
+    "outOfOrder": {
+      "type": "boolean"
+    },
+    "unresolvedPredecessor": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "change",
+            "resolution"
+          ],
+          "properties": {
+            "change": {
+              "type": "string"
+            },
+            "resolution": {
+              "type": "string",
+              "enum": [
+                "active",
+                "unmatched"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "followsCycle": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "definitions": {
+    "untakenRename": {
+      "description": "A rename the accepted specifications have not taken. acceptedHeading is null where the accepted requirement has no heading.",
+      "type": "object",
+      "required": [
+        "id",
+        "heading",
+        "acceptedHeading"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "heading": {
+          "type": "string"
+        },
+        "acceptedHeading": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "untakenContent": {
+      "description": "A requirement whose content the accepted specifications do not hold, naming where the two differ and never what either says.",
+      "type": "object",
+      "required": [
+        "id",
+        "firstDifferingStatement",
+        "scenariosNotHeld",
+        "scenariosNotKept"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "firstDifferingStatement": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "scenariosNotHeld": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scenariosNotKept": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

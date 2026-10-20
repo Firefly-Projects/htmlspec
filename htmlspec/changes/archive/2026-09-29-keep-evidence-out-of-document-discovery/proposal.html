@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Keep evidence out of document discovery</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Keep evidence out of document discovery</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Keep evidence out of document discovery</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-29-keep-evidence-out-of-document-discovery/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><strong>A project cannot hold evidence written as HTML and still pass its own checks.</strong> <code>validate</code> and <code>format</code>, given a directory or no path at all, operate on every <code>.html</code> file beneath it. <code>crates/htmlspec-cli/src/discover.rs</code> collects those files, and nothing in it knows that a change's <code>evidence/</code> directory is not a place a project keeps documents. The conformance check promotion runs over a staged tree uses the same walk.</p>
+          <p>Two requirements put HTML files there:</p>
+          <ul>
+            <li>project-migration's "<a href="specification.html#req-evidence-crosses-unchanged">Evidence crosses unchanged</a>" carries a change's evidence byte-identical, whatever its format.</li>
+            <li>"<a href="../../../specs/project-migration/spec.html#req-a-source-entity-already-in-the-destination-format-is-not-assumed-usable">A source entity already in the destination format is not assumed usable</a>" requires a document that no longer conforms to be <em>preserved</em> rather than carried as a document.</li>
+          </ul>
+          <p>Both routes end in a file under <code>evidence/</code> that declares a superseded contract version or names asset bytes the project never stored. <a href="../2026-09-11-migrate-an-openspec-project/evidence/migrating-this-repository-2026-09-09.md"><code>2026-09-11-migrate-an-openspec-project/evidence/migrating-this-repository-2026-09-09.md</code></a> measured what happens next:</p>
+          <ul>
+            <li><code>validate</code> reports <code>asset/unresolved</code> errors against files nobody should be resolving.</li>
+            <li>
+              <p><code>format</code> <strong>rewrote one of them</strong>, destroying the byte-identity that evidence exists for.</p>
+              <aside data-migration="note">
+                <p><strong>Migration note.</strong> This change's own measurement found more. Run over a whole project, <code>format</code> rewrote all seven of this repository's HTML records, not one, as <a href="evidence/evidence-read-as-documents-2026-09-29.md"><code>evidence/evidence-read-as-documents-2026-09-29.md</code></a> records. Section 1 of <a href="evidence/what-the-implementation-revealed-2026-09-29.md"><code>evidence/what-the-implementation-revealed-2026-09-29.md</code></a> puts the difference down to scope: the 2026-09-09 record had run <code>format</code> over one directory.</p>
+              </aside>
+            </li>
+            <li>Promotion's "<a href="../../../specs/project-migration/spec.html#scenario-checks-gate-promotion">Checks gate promotion</a>" scenario <a href="evidence/evidence-read-as-documents-2026-09-29.md">then refuses the whole migration</a>, because the staged tree cannot pass <code>validate</code> while those files are in it.</li>
+          </ul>
+          <p>That record named the fix and declined to make it: "Excluding <code>evidence/</code> from discovery is the right shape and it is a contract question about what a project's documents are." It left the question to a change whose subject is document discovery. This is that change.</p>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> The quoted sentence is not in that record word for word. The record's table of options says "Correct in shape, and <strong>out of scope</strong>" and "That is a contract question about what a project's documents are". The sentence as quoted is closest to a note on <a href="../2026-09-11-migrate-an-openspec-project/tasks.html#task-8-5">task 8.5</a> of <code>2026-09-11-migrate-an-openspec-project</code>, which reads "Excluding <code>evidence/</code> from discovery is the right shape and <strong>out of scope</strong> — it changes what <code>validate</code> reads for every project, which is a contract question about what a project's documents are, decided in a change whose subject is something else." The quotation leaves out that sentence's middle.</p>
+          </aside>
+          <p><strong>Why now.</strong> This repository's own migration is blocked on it. <a href="evidence/evidence-read-as-documents-2026-09-29.md">Seven HTML files are affected</a>:</p>
+          <ul>
+            <li>three evidence files in <code>migrate-an-openspec-project</code>;</li>
+            <li>the four documents converted by hand in August, which the plan preserves as evidence because they reference a deleted store.</li>
+          </ul>
+          <p>Every other obstacle to that migration has been removed: renames by <code>record-a-renamed-requirement</code>, and the asset topology by <code>confine-the-asset-check-to-the-project</code>.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong>A change's evidence has a stated place.</strong> A change directory, active or archived, may hold an <code>evidence/</code> directory. Every file beneath it, at any depth, is that change's evidence: a record kept as it was written. <a href="evidence/what-the-implementation-revealed-2026-09-29.md">Today only the non-normative <code>migrate</code> instruction names this location</a>, so the contract states it for the first time.</li>
+            <li><strong>Evidence is not a document of the project.</strong> When <code>validate</code>, <code>format</code>, or promotion's conformance check walks a directory, it does not descend into a change's evidence. The same holds for any other command that collects a project's documents by walking.</li>
+            <li><strong>Naming evidence explicitly still reaches it.</strong> A contributor who passes an evidence file, or an evidence directory, as the path argument gets that path checked. The existing rule that "a file means that file" is extended to a directory named on purpose. The exclusion applies to what a walk finds, never to what a contributor names.</li>
+            <li><strong>The exclusion is positional, not by name.</strong> A directory called <code>evidence</code> is excluded only when it sits directly inside a change directory. A capability whose path is <code>evidence</code>, at <code>htmlspec/specs/evidence/spec.html</code>, is still a specification and is still validated.</li>
+            <li><strong>Unchanged:</strong> outside a project, where no change directories exist, a walk collects every <code>.html</code> file as it does now. That covers the conformance fixtures and a loose directory of documents. The asset topology is also unchanged, because no evidence in this repository holds a store and the duplicate check reads stores rather than documents.</li>
+          </ul>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <section id="hs-new-capabilities">
+            <h3>New Capabilities</h3>
+            <p>None.</p>
+          </section>
+          <section id="hs-modified-capabilities">
+            <h3>Modified Capabilities</h3>
+            <ul>
+              <li><code>artifact-kinds</code>: a new requirement, "<a href="specification.html#req-a-change-s-evidence-is-kept-in-the-change-and-is-not-one-of-its-documents">A change's evidence is kept in the change and is not one of its documents</a>". It states where a change's evidence lives and that evidence is not a document of the project. It is added rather than folded into "<a href="../../../specs/artifact-kinds/spec.html#req-a-change-is-a-directory-of-kinded-documents">A change is a directory of kinded documents</a>", because that requirement's closed set of kinds is about documents, and evidence is exactly what is not one.</li>
+              <li><code>toolchain-packaging</code>: a new requirement, "<a href="specification.html#req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence">An operation over a directory collects documents and not a change's evidence</a>". Validating a project is specified today only as scenarios inside "<a href="../../../specs/toolchain-packaging/spec.html#req-a-single-command-exposes-validate-format-and-init">The command surface names its operations as OpenSpec names them</a>", and that requirement is about spelling. Putting the exclusion there would bury a rule about what gets checked inside a rule about what commands are called.</li>
+              <li><code>project-migration</code>: "<a href="specification.html#req-evidence-crosses-unchanged">Evidence crosses unchanged</a>" states that carried evidence does not participate in the conformance checks run over the staged project. It is neither validated nor formatted there, so a record in the destination format at a superseded version does not gate promotion.</li>
+            </ul>
+          </section>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li><code>crates/htmlspec-cli/src/project.rs</code>: the project layout gains the evidence location. It lives beside <code>changes()</code> and <code>archive()</code>, so the one module that derives the layout also answers whether a directory is a change's evidence.</li>
+            <li><code>crates/htmlspec-cli/src/discover.rs</code>: <code>documents</code> stops descending into a change's evidence when the walked root is inside a project. The root itself is never excluded.</li>
+            <li><code>crates/htmlspec-cli/src/commands.rs</code>: <code>validate</code>, <code>format</code>, the specification listings, and promotion's <code>conformance</code> all reach the exclusion through the one discovery function. None of them filters on its own.</li>
+            <li>
+              Tests:
+              <ul>
+                <li>unit tests for the positional rule;</li>
+                <li>CLI tests showing that <code>validate</code> and <code>format --check</code> pass a project holding non-conforming HTML evidence, and that <code>format</code> leaves such a file byte-identical;</li>
+                <li>a promotion test showing that a staged tree holding such evidence promotes.</li>
+              </ul>
+            </li>
+            <li><code>crates/htmlspec-assets/instructions/migrate.md</code>: the <code>evidence/**</code> row cites the requirement instead of standing on its own.</li>
+            <li>
+              <strong>Not in this change</strong>
+              , and recorded so it is not assumed to follow:
+              <ul>
+                <li>Stores beneath evidence. None exist, and the topology check reads stores, not documents.</li>
+                <li>Migrating this repository, which this change unblocks.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

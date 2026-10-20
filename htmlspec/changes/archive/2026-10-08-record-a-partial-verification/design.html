@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Record a partial verification</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Record a partial verification</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Record a partial verification</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-08-record-a-partial-verification/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>See <a href="proposal.html"><code>proposal.md</code></a> for why. The shape of the current system that the approach depends on:</p>
+          <ul>
+            <li><strong>The outcome is a string the schema enumerates.</strong> <code>data-outcome</code> projects into <code>Verification.outcome: Option&lt;String&gt;</code> (<code>crates/htmlspec-parse/src/model.rs</code>). The four values live only in <code>document.schema.json</code>, lines 613-621. The model holds whatever the attribute says, because it is the projection of documents that may be invalid, and the validator judges them.</li>
+            <li><strong>A conditional field is a validator rule.</strong> The schema "keeps to a conservative subset with no conditional composition, which is what makes type generation work" (the header of <code>crates/htmlspec-validate/src/rules/relations.rs</code>). So "a <code>dropped</code> task states a reason" is <code>dropped_tasks_state_a_reason</code> in that file, reported as <code>schema/missing-reason</code>. It finds the <code>dropped</code> value through <code>status_named("dropp", …)</code>, a stem read against the schema, because <code>tests/schema_rust_split.rs</code> forbids enumerated literals in rule code. <code>every_conditional_rule_finds_its_state</code> fails if a stem stops matching.</li>
+            <li>
+              <p><strong>Every reader of the outcome takes its values from the schema.</strong> There are two, and neither names a value:</p>
+              <ul>
+                <li><code>review.rs</code> <code>has_run</code> decides between <code>review/stale-verification</code> and <code>review/stale-reference</code>. It counts every value except the "not run" one as having run.</li>
+                <li><code>runs.rs</code> <code>has_run</code> decides whether a run's record recorded an outcome. It counts a value as recorded when the schema enumerates it and it is not the "not run" one.</li>
+              </ul>
+              <p><code>requirements_are_verified</code> does not read the outcome at all.</p>
+            </li>
+            <li><strong>Presentation labels each outcome by value.</strong> <code>assets/sha256-ebf35a36fe4dc1a7/htmlspec.css</code>, the revision <code>own</code> records since <code>mark-the-words-a-modification-changed</code>, has one <code>content</code> rule per outcome and deliberately no <code>attr()</code>. <code>conformance/tests/presentation.rs</code> <code>every_enumerated_state_value_has_a_label</code> fails for any enumerated value without a rule.</li>
+            <li><strong>A second single-valued paragraph is dropped silently.</strong> Measured in <a href="evidence/the-measurement-2026-09-30.md">section 6 of the evidence</a>: two <code>method</code> paragraphs validate clean, and the model keeps the first.</li>
+          </ul>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> The stylesheet digest in this section and in decision 7, the line numbers in this section and in decision 6, and the version in the Migration Plan were corrected at <a href="tasks.html#task-1-0">task 1.0</a>, against <code>main</code> at <code>b768860</code>, before any code. <a href="evidence/what-it-builds-on-2026-10-08.md"><code>evidence/what-it-builds-on-2026-10-08.md</code></a> records what the design first assumed and what it was corrected to.</p>
+          </aside>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong></p>
+          <ul>
+            <li>A check that reached part of what it names can be recorded as what it was, with the part it missed held in the model rather than in prose.</li>
+            <li>A partial record that does not name what it missed is rejected.</li>
+            <li><code>partial</code> behaves as a verification that ran, everywhere a verification is read, with no new branch in any code that reads outcomes.</li>
+          </ul>
+          <p><strong>Non-Goals:</strong></p>
+          <ul>
+            <li><strong>Addressing part of a scenario.</strong> A reference still names a unit. The <code>unchecked</code> paragraph says in words which clause went unchecked.</li>
+            <li><strong>Rejecting a contradiction such as <code>passed</code> with an <code>unchecked</code> paragraph.</strong> See decision 4.</li>
+            <li><strong>Making the review warning read outcomes.</strong> The contributor settled that <code>partial</code> clears <code>review/unverified-requirement</code> like every other outcome.</li>
+            <li><strong>Fixing the two pre-existing faults the measurement found</strong>: <code>review.rs</code>'s <code>has_run</code> treating an unenumerated value as run, and the silent drop of a repeated single-valued paragraph. Each is recorded under "Not in this change".</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-partial-is-a-fifth-outcome-value" data-change="added" data-status="accepted">
+            <h3>1. <code>partial</code> is a fifth outcome value <span class="hs-id">decision-partial-is-a-fifth-outcome-value</span></h3>
+            <p>The value means that the check ran against the requirement or scenario the verification names, reached part of it, and found that part to hold. If the part it reached did not hold, the outcome is <code>failed</code>, and the verification may still say what the check never reached (decision 4).</p>
+            <p data-field="rationale"><strong>Considered: <code>passed</code>, with the gap stated in the method paragraph.</strong> This is what the migration did for <code>verify-reference-names-a-fabricated-address</code> and <code>verify-a-second-copy-of-one-library</code>. Rejected, because the model says <code>passed</code>, and nothing that reads the model can see the prose.</p>
+            <p data-field="rationale"><strong>Considered: a second attribute beside the outcome</strong>, such as <code>data-coverage="part"</code>. Rejected. It combines with <code>not-run</code> into a statement that means nothing. Every measured case is a check whose reached part held. And a failed check that reached part of its scenario is already expressible, as <code>failed</code> with an <code>unchecked</code> paragraph.</p>
+            <p data-field="rationale"><strong>Considered: one verification per clause.</strong> Rejected, because a reference addresses a unit, and the smallest unit is a scenario. A verification naming the scenario as <code>passed</code> claims its whole Then, whatever its title says.</p>
+          </section>
+          <section class="decision" id="decision-the-paragraph-is-data-field-unchecked" data-change="added" data-status="accepted">
+            <h3>2. The paragraph is <code>data-field="unchecked"</code> <span class="hs-id">decision-the-paragraph-is-data-field-unchecked</span></h3>
+            <p>The field names its content directly: what the check did not check. It pairs with <code>method</code>, which says what the check did. The word already carries this meaning in the project's own prose. For example, <code>crates/htmlspec-cli/src/preflight.rs</code> line 923 says "reported as unchecked rather than guessed at".</p>
+            <p data-field="rationale"><strong>Considered: <code>unverified</code>.</strong> Rejected. It collides with <code>review/unverified-requirement</code>, which means that no verification names a requirement, and a partial verification does name it.</p>
+            <p data-field="rationale"><strong>Considered: <code>gap</code>.</strong> Rejected, because it is ambiguous. This project already uses the word for a hole in the contract (contract-authority's "a measured gap rather than a hypothetical one") and for what a record lacks (this change's own proposal). A field should not need the reader to guess which.</p>
+            <p data-field="rationale"><strong>Considered: <code>uncovered</code>.</strong> Rejected. "Covered" already means fixture coverage here (<code>conformance/tests/conformance.rs</code> calls a rule without fixtures <code>uncovered</code>) and appears in project-migration's coverage check.</p>
+            <p data-field="rationale"><strong>Considered: <code>scope</code></strong>, stating what the check did cover. Rejected. The risk that remains is the part not checked, and a reader should not have to subtract the scope from the scenario to find it.</p>
+          </section>
+          <section class="decision" id="decision-unchecked-is-repeatable" data-change="added" data-status="accepted">
+            <h3>3. <code>unchecked</code> is repeatable <span class="hs-id">decision-unchecked-is-repeatable</span></h3>
+            <p>Every <code>data-field="unchecked"</code> paragraph projects, in document order, into an array, as a decision's <code>rationale</code> does.</p>
+            <p data-field="rationale"><strong>Considered: single-valued, like <code>reason</code> and <code>method</code>.</strong> Rejected, on <a href="evidence/the-measurement-2026-09-30.md">the measurement</a>. The projection keeps the first single-valued paragraph and drops the rest, and nothing reports it. <code>Paragraphs::single</code> says "the caller reports the repetition", and no caller does. For this field a dropped paragraph would understate what a check missed, which is the overstatement this change exists to remove. A check can miss more than one clause, and an author will write one paragraph for each.</p>
+          </section>
+          <section id="hs-decision-4">
+            <h3>4. The rule is an error beside the dropped-task rule</h3>
+            <p><code>relations.rs</code> gains <code>MISSING_UNCHECKED</code>, <code>schema/missing-unchecked</code>, and <code>partial_verifications_state_what_they_did_not_check</code>, which finds <code>partial</code> with <code>status_named("parti", "definitions/verification/properties/outcome")</code>. A <code>partial</code> verification whose <code>unchecked</code> field is empty is reported against the verification. <code>every_conditional_rule_finds_its_state</code> gains the stem. The rule reads the field, so an unmarked paragraph does not satisfy it. Section 4.0.2 makes an unmarked paragraph in a verification a note, and a consumer should find the gap without parsing notes.</p>
+            <p><strong>Considered: a conditional in the schema</strong> (<code>if</code> outcome is <code>partial</code>, <code>then</code> require <code>unchecked</code>). Rejected, because the schema keeps to a subset with no conditional composition. That is why the dropped task's reason is a validator rule too.</p>
+            <p><strong>Considered: a <code>review/*</code> warning.</strong> Rejected. <code>review/unverified-requirement</code> is advisory because a specification in progress legitimately lacks verifications. A <code>partial</code> with no stated gap is not work in progress. The author who wrote <code>partial</code> knew at that moment what was left, and document-validation's "<a href="../../../specs/document-validation/spec.html#req-violations-are-classified-by-severity">Violations are classified by severity</a>" makes structural conformance an error.</p>
+            <p><strong>Considered: rejecting <code>unchecked</code> on a <code>passed</code> verification.</strong> That combination contradicts itself, and it is not added. The overstatements <a href="evidence/the-measurement-2026-09-30.md">the measurement</a> found carried no <code>unchecked</code> paragraph: their authors wrote the gap into the method instead. So the rule would not have caught the case that exists. A reason on a task that is not dropped is likewise accepted today. A later change can add it against a real case.</p>
+            <p><strong><code>unchecked</code> is accepted on every outcome.</strong> On <code>failed</code> or <code>blocked</code> it says what the check never reached. On <code>not-run</code> it is redundant and harmless.</p>
+          </section>
+          <section class="decision" id="decision-the-requirement-lives-in-document-schema-and-does-not-restate-the-outcome-set" data-change="added" data-status="accepted" data-refs="req-a-partial-verification-states-what-it-did-not-check req-a-task-declares-completion-state req-a-decision-records-its-outcome-and-rationale req-the-element-contract-is-published-as-a-machine-readable-schema">
+            <h3>5. The requirement lives in document-schema and does not restate the outcome set <span class="hs-id">decision-the-requirement-lives-in-document-schema-and-does-not-restate-the-outcome-set</span></h3>
+            <p>The new requirement, "<a href="specification.html#req-a-partial-verification-states-what-it-did-not-check">A partial verification states what it did not check</a>", sits beside "<a href="../../../specs/document-schema/spec.html#req-a-task-declares-completion-state">A task declares completion state</a>" and "<a href="../../../specs/document-schema/spec.html#req-a-decision-records-its-outcome-and-rationale">A decision records its outcome and rationale</a>". Each of those states its unit's conditional field.</p>
+            <p data-field="rationale"><strong>Considered: stating all five outcomes in the requirement</strong>, as "<a href="../../../specs/document-schema/spec.html#req-a-task-declares-completion-state">A task declares completion state</a>" states its four states. Rejected. "<a href="../../../specs/document-schema/spec.html#req-the-element-contract-is-published-as-a-machine-readable-schema">The element contract is published as a machine-readable schema</a>" makes the schema "the single source of truth for … permitted attribute values". A prose list would be a second copy that every added value must also edit, and adding a value is this change. The requirement names <code>partial</code> alone, because it attaches an obligation to that value. The task requirement's list is left alone. Changing it is not this change's subject.</p>
+            <p data-field="rationale"><strong>Considered: document-validation.</strong> Rejected. That capability states how validation reports, and what a unit must contain is document-schema's. The dropped-task and superseded-decision conditions are both stated there.</p>
+          </section>
+          <section id="hs-decision-6">
+            <h3>6. What a partial verification counts as</h3>
+            <p><strong>It clears <code>review/unverified-requirement</code>.</strong> The contributor settled this. <code>failed</code> and <code>not-run</code> clear it today, measured in <a href="evidence/the-measurement-2026-09-30.md">evidence section 5</a>, because <code>requirements_are_verified</code> never reads the outcome. No code changes. What changes is document-validation's text, which now says so. No test asserts it today. The review module's own tests declare a <code>tasks</code> document, where the rule does not run. The conformance harness checks that a fixture's declared rules fire, and never that others stay silent. So a test is added that iterates every outcome the schema enumerates.</p>
+            <p><strong>It draws <code>review/stale-verification</code>, not <code>review/stale-reference</code>, when its target moves. This is intended:</strong> a partial check did run, and a recorded result against an obligation that has since moved is the stronger case that warning exists for. <code>has_run</code> needs no change, because it excludes only the "not run" value. <code>the_not_run_outcome_is_found_in_the_schema</code> needs no edit either. It asserts <code>has_run</code> for every enumerated value other than <code>not-run</code>, so it covers <code>partial</code> the moment the schema lists it, and it catches a mutation that excludes <code>partial</code>. On HEAD the warning already fires for <code>partial</code>, but for the wrong reason: the function counts any unenumerated value as run.</p>
+            <p><strong>In a run's record it is a recorded outcome.</strong> <code>runs.rs</code> <code>has_run</code> counts an enumerated value that is not "not run", so <code>partial</code> clears <code>review/unrecorded-requirement</code> once the schema lists it. On HEAD it does not, because the value is outside the enumeration. runbook-execution's principle already covers this: the obligation is that the run recorded an outcome. Its text needs no edit. runbook-portability needs none either: preflight writes <code>passed</code> or <code>not-run</code> (<code>runs.rs</code> lines 1597-1615), and a machine check has no part to miss.</p>
+          </section>
+          <section class="decision" id="decision-the-screen-stylesheet-labels-partial-in-a-new-revision" data-change="added" data-status="accepted">
+            <h3>7. The screen stylesheet labels <code>partial</code>, in a new revision <span class="hs-id">decision-the-screen-stylesheet-labels-partial-in-a-new-revision</span></h3>
+            <p><code>htmlspec.css</code> gains <code>[data-outcome="partial"] &gt; h2::after</code> (and <code>h3</code>, <code>h4</code>), with <code>content: "partial"</code>, colored <code>--hs-state-modified</code> as <code>blocked</code> is: a result that asks for attention. The change is a new content-addressed revision, added through <code>assets/vendor.lock.json</code>'s procedure. The <code>own</code> digest moves to it, and <code>ebf35a36fe4dc1a7</code>, the revision <code>mark-the-words-a-modification-changed</code> added, joins <code>retained</code> beside <code>aac8967609f80d9f</code>, which that change retired. The new revision is <code>ebf35a36fe4dc1a7</code>'s bytes with the one rule added, so it carries that change's marks for <code>ins</code> and <code>del</code>. The print stylesheet needs nothing, because it recolors every <code>[data-outcome]</code> label generically.</p>
+            <p data-field="rationale"><strong>Considered: <code>attr(data-outcome)</code>.</strong> Rejected for the reason the stylesheet gives: it "would render an invalid value as though the vocabulary contained it".</p>
+            <p data-field="rationale"><strong>Considered: a generated label on the <code>unchecked</code> paragraph</strong>, as <code>renamed-from</code> has. Rejected. <code>renamed-from</code> holds a bare heading, which a reader could take for a claim, so it needs a label. <code>unchecked</code> holds a sentence the author writes, like <code>method</code> and <code>reason</code>, and neither of those is labelled.</p>
+          </section>
+          <section id="hs-decision-8">
+            <h3>8. The instructions say when, and when not</h3>
+            <p><code>archive.md</code>'s Verification paragraph gains the rule for a check that reached part of what it names: record <code>partial</code>, and name each part it did not check in an <code>unchecked</code> paragraph. It also states the boundary: a check whose condition or subject differs from the scenario's is not a partial check of it, and gets no verification. <a href="evidence/the-measurement-2026-09-30.md">The measurement</a> found eight declines of that kind, and they should stay declined.</p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>[<code>partial</code> becomes the easy answer for a check of something nearby.]</strong> → The requirement defines <code>partial</code> as a check of the right thing that stopped short, and the instructions say a nearby check gets no verification. Eight of the thirteen measured declines were of that kind, so this boundary is the one authors will meet.</li>
+            <li><strong>[An author records <code>partial</code> to silence the unverified warning.]</strong> → Any verification already silences it, including <code>not-run</code>, which is what the specification template writes. <code>partial</code> adds no new route, and it costs the author a stated gap.</li>
+            <li><strong>[A document on an older stylesheet revision shows no label for <code>partial</code>.]</strong> → The outcome is in the markup and the model either way, and each <code>unchecked</code> paragraph is ordinary text that reads under any stylesheet. Only the badge is missing.</li>
+            <li><strong>[The contract version moves in several changes of one set.]</strong> → Task 1.3 reads <code>CONTRACT_VERSION</code> at implementation time, and this change moves it one minor version from whatever it then is.</li>
+            <li><strong>[<code>partial</code> in a document read by an older toolchain.]</strong> → It fails <code>schema/invalid</code>, as measured on HEAD. A downgrade is loud.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p>This is additive for documents. No existing document carries <code>partial</code> or <code>unchecked</code>, and no existing outcome changes meaning.</p>
+          <p><strong>The document contract moves one minor version</strong>, because a value and a field are added. When this was written it was <code>0.2.0</code>. <code>reject-change-markup-inside-a-unit</code> and <code>mark-the-words-a-modification-changed</code> moved it to <code>0.4.0</code>, and <code>record-a-task-done-differently</code>, the change below this one in the stack, moves it to <code>0.5.0</code>. So this change moves it from <code>0.5.0</code> to <code>0.6.0</code>. The new version joins the <code>schemaVersion</code> enumeration, and every earlier version stays, as the CHANGELOG's bump table requires of a minor bump.</p>
+          <p><strong>The release is expected to be <code>0.26.0</code></strong>, the next minor after the change before it in this set. The contributor confirms the increment at the release task.</p>
+          <p>Rollback is a revert. A document that adopted <code>partial</code> then fails <code>schema/invalid</code>, and one that adopted <code>unchecked</code> fails <code>schema/projection</code>, so a rollback is loud, never silent.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

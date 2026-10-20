@@ -1,0 +1,57 @@
+[package]
+name = "htmlspec-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "The htmlspec command: create, validate, format, and archive HTMLSpec documents"
+readme = "README.md"
+
+build = "build.rs"
+
+[[bin]]
+name = "htmlspec"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+htmlspec-assets = { workspace = true }
+htmlspec-format = { workspace = true }
+htmlspec-parse = { workspace = true }
+# The contract version a run's record declares, `CONTRACT_VERSION`. Already in the tree through the
+# validator, and read directly because a record is a document the program writes and declares the
+# version a new document declares, as the templates do.
+htmlspec-schema = { workspace = true }
+htmlspec-validate = { workspace = true }
+# The DOM, for copying a runbook's units into a run's record. Direct rather than through
+# `htmlspec-parse`'s re-export, because `parse_document` already returns a `NodeRef` and naming the
+# type requires the crate. The workspace pins one version, so this cannot select a second tree.
+kuchikiki = { workspace = true }
+clap = { workspace = true }
+inquire = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+command-group = { workspace = true }
+signal-hook = { workspace = true }
+
+# The build script reads the commit a packaged crate records in `.cargo_vcs_info.json`, so a
+# build from crates.io reports a revision. Already a dependency of this crate, so this adds
+# nothing to the tree.
+[build-dependencies]
+serde_json = { workspace = true }
+
+[dev-dependencies]
+# The integration tests build documents from the real template, so a template change
+# reaches them rather than being shadowed by a hand-written sample.
+htmlspec-assets = { workspace = true }
+serde_json = { workspace = true }
+# A test digest, computed rather than read from a program the build sandbox does not have. The same
+# crate the asset store uses for the same question, so this adds nothing to the dependency tree.
+sha2 = { workspace = true }
+# The tests hold every `--json` payload to its published schema under `schema/payload/`. The same
+# validator, pinned and without its remote resolver, that checks documents against the contract, so
+# this adds nothing to the dependency tree.
+jsonschema = { workspace = true }

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.1.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Separate a change into four artifact kinds</title>
+    <link href="../../../../assets/sha256-e4f5de7cecc4f691/htmlspec.css" rel="stylesheet">
+    <link href="../../../../assets/sha256-0350261bb5666167/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Separate a change into four artifact kinds</h1>
+        <p>The project set out to port OpenSpec to HTML and built a single document shape carrying all seven semantic units at once. That shape loses the feature that made OpenSpec worth porting: the separation of a change into stages, each with a different job and a different degree of formality.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.1.0</dd>
+          <dt>Subject</dt>
+          <dd>Separate a change into four artifact kinds</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>OpenSpec separates a change into stages. A proposal argues value and need. A design turns that argument into architecture. Tasks enumerate the work. A specification is the settled contract that survives. The stages are not filing conveniences: each has a different job, and a proposal needs substantially more freedom in how it is written than a specification does.</p>
+          <p>The schema represented none of this. It defined one document shape with a required <code>status</code> field enumerating six lifecycle stages — six stages of one document, where the project needed four kinds of document. The separation was not rejected. It was flattened into optionality: every unit optional, so a proposal and an as-built specification were distinguishable only by which sections they happened to contain. Nothing told an author or an agent which content was appropriate to the artifact in front of them.</p>
+          <p>Two facts made the problem concrete. First, <code>status</code> did no work: no validation rule read it, and no behavior differed between <code>exploring</code> and <code>archived</code>. Second, the field recorded the wrong subject. A stage describes a change as it moves; a document's role is fixed for its life. A proposal is a proposal forever, and a specification does not become a proposal again — so a status drifted from reality on every document that outlived one stage, and nothing noticed.</p>
+          <p>There is a third observation worth acting on in the same change. Four of the seven units acquire their authoritative form retrospectively: evidence and verification can only be recorded after implementation, and requirements and scenarios reach their final wording once the built behavior is known. The seven-unit vocabulary is therefore not the shape of a proposal at all. It is the shape of a <em>specification</em>, produced when a change is archived, describing what the change actually established.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <p>Every document declares one of four kinds — <code>proposal</code>, <code>design</code>, <code>tasks</code>, or <code>specification</code> — and the set is closed. The kind identifies the document's role and replaces <code>status</code>, whose stages belong to the change rather than to each file in it.</p>
+          <p>Two of the four kinds constrain their content and two do not. A <code>tasks</code> document must carry at least one task unit, and a <code>specification</code> must carry none. Those are the only two enforced placement and completeness rules in the vocabulary. A third rule is advisory: a specification requirement that no verification names is reported as a warning, never an error.</p>
+          <p>The upstream kinds are unconstrained, and that is the point rather than an omission. Validation reports nothing about which units a proposal or a design carries or omits. Prose alone conforms. A requirement unit inside a proposal also conforms — an author discussing a prospective requirement, in prose or as a unit, is doing the proposal's job. That requirement is not authoritative: the contract is what the specification states, not what the proposal considered. The distinction is between permitted and binding, and it is a statement about authority rather than about validity.</p>
+          <p>The contract rules continue to apply to every kind without relaxation. Unambiguous markup, resolvable references, no remote or executable content, and asset references whose declared types match their bytes remain required everywhere. A kind decides how much semantic structure is required. It never decides whether the document opens.</p>
+          <p>A change becomes a directory of documents rather than one file carrying every stage, and <code>init</code> can create either one document of a named kind or a whole change directory. Archival is specified end to end: an agent produces the change's specification from the completed change, validation checks it, and the change directory is archived intact with every document preserved.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <p>Both fields could have coexisted — <code>kind</code> for role, <code>status</code> for stage — and that was the more conservative move. It was rejected because the two would immediately disagree, and nothing reads <code>status</code> to notice. Keeping a field that no rule reads, that describes something other than its own document, and that a reader would reasonably trust is worse than removing it. Removal is breaking, and the breakage is mechanical.</p>
+          <p>Deprecating <code>status</code> silently was the next option. A required field cannot be deprecated without either making it optional, which changes the schema anyway, or leaving every document carrying a value nothing believes.</p>
+          <p>A general placement matrix — a rule for every unit-and-kind combination — was in an earlier draft of this proposal and was removed. It put constraints exactly where the work needs freedom: an author arguing for a requirement in a proposal would have been told the requirement was misplaced. Three rules, stated individually, replaced it.</p>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <p>Deferred deliberately: the rest of the command lifecycle beyond archival, the Markdown-to-HTML converter, and any change to the definitions of the seven semantic units. This change decides the intended role of each artifact kind and enforces the three downstream rules stated above.</p>
+          <p>This is breaking. Every document that conforms today declares a lifecycle status and is invalid until it declares a kind instead. The project has 69 such documents and no external consumers, and <code>kind</code> is required with no default so that an unmigrated document fails by naming the missing declaration rather than silently becoming whichever kind is most convenient.</p>
+          <p>Nothing above is a requirement. This document argues that the separation is worth making; what the tool must actually do is settled in the specification, and stating it here would be claiming a contract at the stage meant for arguing about one.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

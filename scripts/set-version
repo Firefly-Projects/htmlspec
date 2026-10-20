@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""Move the workspace's version and every internal dependency pin together, then relock.
+
+Why one command
+---------------
+The six crates release together, so each `htmlspec-*` entry in `[workspace.dependencies]`
+pins the others to exactly the workspace's version, `version = "=X.Y.Z"`. Cargo cannot read
+the workspace version into a dependency entry, so those pins are strings, and a pin can only
+be right if it moves with the version. Raising the version under `[workspace.package]` alone
+and relocking fails: cargo 1.90 exits 101 with "failed to select a version for the requirement
+`htmlspec-parse = "=0.32.0"`", and every stage of `scripts/check` that builds fails the same way
+before `scripts/check-release` can name the stale pin. So the version, the pins, and the lockfile
+move in one command, and the release runbook's version step runs it.
+
+What it does
+------------
+It writes the version under `[workspace.package]` and in every internal pin as one edit of
+`Cargo.toml`, then runs `cargo update --workspace --offline`, which rewrites the workspace's own
+entries in `Cargo.lock` and nothing else. Offline because a version step has no reason to reach
+the network: no external dependency changes. When the relock fails, the manifest is put back as
+it was, so the tree is never left with a new version and an old lockfile.
+
+Running it with the version the workspace already declares repairs stale pins and relocks, and
+changes nothing else.
+
+Usage:
+  scripts/set-version X.Y.Z             set the version and relock
+  scripts/set-version --root R X.Y.Z    the same, for the workspace rooted at R
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+# The prefix every crate this workspace publishes is named with, as `scripts/check-release`
+# spells it for the question that keeps the pins equal to the version.
+INTERNAL_CRATE = "htmlspec-"
+
+# A release version: three numeric components with no leading zeros, and nothing after them. The
+# project has never shipped a pre-release, and a tag, a crate, and a formula must all name the same
+# string, so a version this refuses is one a release could not carry.
+RELEASE_VERSION = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)")
+
+
+class ManifestError(Exception):
+    """The manifest does not have the shape this script edits."""
+
+
+def parse_release_version(text: str) -> str:
+    if not RELEASE_VERSION.fullmatch(text):
+        raise argparse.ArgumentTypeError(
+            f"{text!r} is not a release version; give three numbers, as in 0.33.0"
+        )
+    return text
+
+
+def set_version(manifest: str, version: str) -> tuple[str, list[str]]:
+    """The manifest with the version and every internal pin set, and the pins it set.
+
+    Refuses a manifest with no `version` under `[workspace.package]`, or with more than one,
+    because either is a manifest whose version this script cannot name.
+    """
+    lines = manifest.splitlines(keepends=True)
+    section = None
+    package_versions = 0
+    pinned: list[str] = []
+    for index, line in enumerate(lines):
+        header = re.fullmatch(r"\s*\[([^\]]+)\]\s*", line)
+        if header:
+            section = header.group(1).strip()
+            continue
+        if section == "workspace.package":
+            match = re.fullmatch(r'(\s*version\s*=\s*")[^"]*("\s*)', line)
+            if match:
+                lines[index] = match.group(1) + version + match.group(2)
+                package_versions += 1
+        elif section == "workspace.dependencies":
+            entry = re.match(r"\s*(" + re.escape(INTERNAL_CRATE) + r"[A-Za-z0-9_-]+)\s*=\s*\{", line)
+            if not entry:
+                continue
+            pin = f'version = "={version}"'
+            if re.search(r'\bversion\s*=\s*"[^"]*"', line):
+                lines[index] = re.sub(r'\bversion\s*=\s*"[^"]*"', pin, line, count=1)
+            else:
+                lines[index] = line[: entry.end()] + f" {pin}," + line[entry.end() :]
+            pinned.append(entry.group(1))
+    if package_versions != 1:
+        raise ManifestError(
+            f"expected one version under [workspace.package], found {package_versions}"
+        )
+    return "".join(lines), pinned
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="set the workspace version and every internal pin")
+    parser.add_argument("--root", type=Path, default=None, help="the workspace root")
+    parser.add_argument("version", type=parse_release_version, help="the version, X.Y.Z")
+    arguments = parser.parse_args()
+    root = (arguments.root or Path(__file__).resolve().parent.parent).resolve()
+
+    manifest_path = root / "Cargo.toml"
+    try:
+        before = manifest_path.read_text(encoding="utf-8")
+    except OSError as error:
+        print(f"set-version: cannot read {manifest_path}: {error}", file=sys.stderr)
+        return 2
+    try:
+        after, pinned = set_version(before, arguments.version)
+    except ManifestError as error:
+        print(f"set-version: {manifest_path}: {error}", file=sys.stderr)
+        return 2
+
+    manifest_path.write_text(after, encoding="utf-8")
+    try:
+        relock = subprocess.run(
+            ["cargo", "update", "--workspace", "--offline"],
+            cwd=root,
+            check=False,
+        )
+        failure = None if relock.returncode == 0 else f"exited {relock.returncode}"
+    except OSError as error:
+        failure = f"could not run: {error}"
+    if failure is not None:
+        manifest_path.write_text(before, encoding="utf-8")
+        print(
+            f"set-version: cargo update --workspace --offline {failure}; "
+            f"{manifest_path} is restored as it was",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(f"version {arguments.version}, and {len(pinned)} pin(s): {', '.join(pinned)}")
+    print("Cargo.lock relocked offline")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

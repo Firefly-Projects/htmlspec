@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Confine the asset check to the project</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Confine the asset check to the project</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Confine the asset check to the project</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-28-confine-the-asset-check-to-the-project/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>See <a href="proposal.html">proposal.md</a> for why. The current mechanism is in <code>assets</code> in <code>crates/htmlspec-cli/src/commands.rs</code>:</p>
+          <ol>
+            <li><code>ProjectRoot::resolve</code> walks upward and succeeds at the first directory with an <code>htmlspec/</code> child. It stops at a <code>.git</code> boundary.</li>
+            <li><code>root</code> becomes the resolved project's <strong>path</strong> — the directory <em>holding</em> <code>htmlspec/</code>, which in a repository is the repository root.</li>
+            <li><code>crate::discover::stores(root)</code> finds every directory under that root with an <code>assets/</code> child, skipping dot-directories, <code>node_modules</code>, <code>result</code>, and <code>target</code>.</li>
+            <li>Each store is checked for duplicates within itself. Then, if a project resolved (<code>one_project</code>), <code>rules::topology::duplicates_across</code> compares every store with every other.</li>
+          </ol>
+          <p>Step 2 is where the subject escapes the project. A project's documents live in <code>htmlspec/specs/</code>, <code>htmlspec/changes/</code>, and <code>htmlspec/runbooks/</code>, and its one store is <code>htmlspec/assets/</code> (<code>ProjectRoot::establish</code>). Nothing the project owns lives outside <code>htmlspec/</code> except the declaration, <code>spec.nix</code>, which is not an asset.</p>
+          <p>Promotion (<code>migrate promote --staged</code>) runs a second copy of the same topology loop over the staged tree, near the end of its conformance function. It is written separately from <code>assets</code>.</p>
+          <figure data-migration="drawn">
+            <figcaption>The duplicate check in <code>assets</code> before this change, as the four numbered steps above state it: the comparison across stores is made only when a project resolved, and step 2 is marked where the paragraph after the steps says the subject escapes the project. Promotion's copy of the loop, which the last paragraph says is written separately, is drawn apart from it. Drawn when this document was migrated, from the text beside it.</figcaption>
+            <details>
+              <summary>Diagram source</summary>
+              <pre class="mermaid">flowchart TD
+  subgraph assets["assets, in crates/htmlspec-cli/src/commands.rs"]
+    S1["1. ProjectRoot::resolve walks upward to the first directory&lt;br&gt;with an htmlspec/ child, and stops at a .git boundary"]
+    S2["2. root becomes the resolved project's path:&lt;br&gt;the directory holding htmlspec/"]
+    S3["3. crate::discover::stores(root) finds every directory&lt;br&gt;under that root with an assets/ child"]
+    S4["4. Each store is checked for duplicates within itself"]
+    G{"a project resolved?&lt;br&gt;(one_project)"}
+    X["rules::topology::duplicates_across&lt;br&gt;compares every store with every other"]
+    S1 --&gt; S2 --&gt; S3 --&gt; S4 --&gt; G
+    G --&gt;|"yes"| X
+  end
+  E["Step 2 is where the subject escapes the project"]
+  S2 -.- E
+  subgraph promote["Promotion, migrate promote --staged"]
+    P["a second copy of the same topology loop, over the staged tree,&lt;br&gt;written separately from assets"]
+  end</pre>
+            </details>
+          </figure>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong></p>
+          <ul>
+            <li>A project's duplicate check compares only the project's own stores.</li>
+            <li>Every store in view is still checked for duplication within itself.</li>
+            <li><code>assets</code> and promotion share one partition, so they cannot disagree.</li>
+          </ul>
+          <p><strong>Non-Goals:</strong></p>
+          <ul>
+            <li><strong>Making this repository an html-spec project.</strong> The release runbook, <code>scripts/check-release</code>, and <code>tests/migrate.rs</code> still assume <code>openspec/</code>. See the proposal's Impact.</li>
+            <li><strong>Changing asset-reference resolution.</strong> "<a href="../../../specs/document-validation/spec.html#req-an-asset-reference-must-match-the-bytes-it-names">An asset reference must match the bytes it names</a>" resolves a document's references against the nearest store above it, and that is unaffected. A project document's nearest store is <code>htmlspec/assets/</code>, found before any store at the repository root.</li>
+            <li><strong>A declaration that excludes paths.</strong> No <code>exclude:</code> list in <code>spec.nix</code>. The project's extent is a fact the layout already states, and a list would be a second statement of it that can drift.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-the-extent-is-htmlspec-read-from-the-resolved-project" data-change="added" data-status="accepted">
+            <h3>1. The extent is <code>htmlspec/</code>, read from the resolved project <span class="hs-id">decision-the-extent-is-htmlspec-read-from-the-resolved-project</span></h3>
+            <p>The partition is: a store is the project's if its directory is <code>project.htmlspec()</code> or lies beneath it. Every other discovered store is "outside". This is <a href="evidence/what-the-implementation-revealed-2026-09-27.md">a path-prefix test on canonicalized paths</a>, which is exact, and it needs no new configuration.</p>
+            <p data-field="note"><strong>Alternatives considered.</strong></p>
+            <ul>
+              <li>
+                <p data-field="rationale"><strong>Compare only stores that project documents reference.</strong> This finds the stores a project actually depends on. It was rejected because it makes the topology check depend on parsing every document. A store that nothing references yet — <code>init</code>'s fresh store — would then escape the check.</p>
+              </li>
+              <li>
+                <p data-field="rationale"><strong>Skip known fixture directories by name.</strong> Rejected: it is this repository's layout encoded into the product, and it does nothing for an adopter's <code>vendor/</code> or <code>docs/assets/</code>.</p>
+              </li>
+              <li>
+                <p data-field="rationale"><strong>Make the repository's root <code>assets/</code> a symlink to <code>htmlspec/assets/</code>.</strong> Rejected: it fixes this repository and nobody else's, and a build input that points into a project the toolchain itself establishes is circular.</p>
+              </li>
+            </ul>
+          </section>
+          <section id="hs-decision-2">
+            <h3>2. Outside stores are checked on their own, and named</h3>
+            <p>Outside stores go through <code>rules::topology::duplicates</code> one at a time, exactly as the no-project path treats every store today. The human report gains one line naming how many stores were treated as the project's and how many were checked on their own. <a href="evidence/the-measurement-2026-09-27.md">The structured payload gains <code>projectStores</code> and <code>otherStores</code> path lists</a> beside the existing <code>stores</code> count, which is kept and means the total. The existing no-project note ("… is not a project, so its N stores were each checked on their own") stays for that case.</p>
+          </section>
+          <section id="hs-decision-3">
+            <h3>3. One partition function, used by <code>assets</code> and by promotion</h3>
+            <p>The partition lives in one function that takes a project root and a list of stores and returns the two sets. <code>assets</code> uses it on the resolved project. The promotion check uses it on the staged root, where the staged tree's only store is its <code>htmlspec/assets/</code>, <a href="evidence/what-the-implementation-revealed-2026-09-27.md">so the result is unchanged for every correct staging</a>. A staged tree with a second store outside <code>htmlspec/</code> is already refused by the staging structure check, "holds more than one asset store", which this change does not touch.</p>
+          </section>
+          <section id="hs-decision-4">
+            <h3>4. The <code>self-assets</code> comment is corrected, not the stage</h3>
+            <p>The stage still runs <code>htmlspec assets .</code>. Today the repository is not a project, so it keeps checking every store on its own. The comment claiming the repository root "is the project this suite judges" is false today, and the change corrects it.</p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>A project that deliberately keeps a second store outside <code>htmlspec/</code> for its own documents is no longer caught.</strong> → A project's documents live under <code>htmlspec/</code> by the layout <code>ProjectRoot::establish</code> creates, and a document outside it is not a project document. A document under <code>htmlspec/</code> that references a store outside it still resolves through "<a href="../../../specs/document-validation/spec.html#req-an-asset-reference-must-match-the-bytes-it-names">An asset reference must match the bytes it names</a>". So a dependency like that remains visible, as a reference, even though it is no longer a duplicate.</li>
+            <li><strong>The payload grows two keys.</strong> → Additive. <code>accepted</code>, <code>storedAssets</code>, <code>stores</code>, and <code>diagnostics</code> <a href="evidence/the-measurement-2026-09-27.md">keep their meanings</a>.</li>
+            <li><strong>The measured nine duplicates stop being reported, and a reader of the archive can think that the defect was fixed by hiding it.</strong> → <a href="evidence/mutation-testing-2026-09-27.md">The CLI tests pin both halves</a>: the fixture and toolchain cases pass, and a second store inside the project still fails.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p>No document changes. A project whose check passed still passes. <a href="evidence/the-measurement-2026-09-27.md">A repository that failed only because of stores outside its project now passes</a>, and that is the intended change. Rollback is a revert.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

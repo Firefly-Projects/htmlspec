@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Project bootstrap CLI</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Project bootstrap CLI</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Project bootstrap CLI</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-17-project-bootstrap-cli/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>The first thing anyone does with htmlspec is the thing htmlspec does worst.</p>
+          <p>OpenSpec's <code>openspec init</code> is the reason people adopt it. It detects which AI coding tools a project already uses, offers a searchable multi-select of them, writes the directory structure, installs a skill and a slash command per workflow, and closes with the exact command to type next. A new user goes from an empty repository to <code>/opsx:new "your idea"</code> without reading documentation.</p>
+          <p><code>htmlspec</code> has no equivalent, and the gap is not cosmetic. <a href="evidence/current-cli-behavior.md">Running the program in a fresh repository produces this</a>:</p>
+          <pre><code>$ htmlspec
+Validate, format, and create HTMLSpec documents
+Usage: htmlspec [OPTIONS] &lt;COMMAND&gt;
+...
+$ htmlspec init
+error: the following required arguments were not provided:
+  &lt;PATH&gt;</code></pre>
+          <p>Both are correct given the current design and both are dead ends. The program's <code>init</code> creates <em>one document</em>; it has no concept of a project. So there is nothing to run that establishes an htmlspec project, and the three behaviors a new user actually meets are these:</p>
+          <ol>
+            <li><strong><code>htmlspec init</code> demands a path with no default.</strong> There is no argument that means "set this repository up," because that operation does not exist.</li>
+            <li><strong><code>htmlspec init . --change</code> refuses.</strong> The obvious guess — initialize a change here — fails with <code>. already exists; init will not write into an existing change directory</code>. A contributor pointing at their own repository root gets told it exists, which they knew.</li>
+            <li><strong>Every change carries its own 6 MB of vendored runtime.</strong> <code>init --change</code> calls <code>establish_assets</code> against the new document's own directory unless <code>--assets</code> is passed. <a href="evidence/current-cli-behavior.md">Two changes in one project were measured at 6.0 MB each</a> — the same Mermaid and Vega bytes twice — and <code>htmlspec assets</code>, the command that exists to catch exactly this, reports <code>no asset store under .</code> because it looks only at the root the user named and the stores are two directories down. The duplicate-detection requirement is satisfied by a command that cannot see the duplicates the tool itself just created.</li>
+          </ol>
+          <p>None of this is a defect in the pieces. <code>validate</code>, <code>format</code>, and the four templates work. What is missing is the layer above them: an operation whose subject is a <em>project</em>, which is the layer OpenSpec's <code>init</code> occupies and the layer where a project's asset store, directory shape, and agent instructions are decided together.</p>
+          <p>There is a second reason to build this now. The <code>.claude/skills/</code> directory in this repository holds eleven <code>openspec-*</code> skills and one hand-written <code>htmlspec-archive-change</code>. The htmlspec workflow is currently delivered to agents by a file someone wrote by hand and copied. Until <code>htmlspec init</code> installs those skills, every htmlspec project is bootstrapped by imitation, and the archival instructions — which the artifact-kinds change made load-bearing, since archival is agent-driven by design — have no distribution mechanism at all.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li>
+              <p><strong><code>init</code> becomes the project bootstrap; <code>new</code> creates documents.</strong> <code>htmlspec init</code> takes no required path and sets up the project. Document and change creation moves to <code>htmlspec new</code>, matching <code>openspec new change</code>. This is the verb OpenSpec users already have in their fingers, and the collision is resolved in favor of the operation a new user needs first.</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Was</th>
+                    <th>Becomes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>htmlspec init doc.html --kind proposal</code></td>
+                    <td><code>htmlspec new proposal doc.html</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>htmlspec init dir --change</code></td>
+                    <td><code>htmlspec new change &lt;name&gt;</code></td>
+                  </tr>
+                  <tr>
+                    <td><em>(did not exist)</em></td>
+                    <td><code>htmlspec init</code></td>
+                  </tr>
+                </tbody>
+              </table>
+              <p><strong>BREAKING.</strong> The old spellings are removed rather than aliased. Keeping <code>init &lt;path&gt;</code> working would leave one verb meaning both "set up this project" and "write this file," and the ambiguity is the thing this change exists to remove. The project has no external consumers.</p>
+            </li>
+            <li>
+              <p><strong>A project has a declared root, and one asset store in it.</strong> <code>htmlspec init</code> creates <code>htmlspec/</code> with <code>specs/</code>, <code>changes/</code>, and <code>changes/archive/</code>, and establishes <strong>one</strong> asset store at <code>htmlspec/assets/</code>. Every document <code>new</code> writes afterward references that store relatively. Two changes then share one 6 MB runtime instead of carrying one each.</p>
+            </li>
+            <li>
+              <p><strong>Commands discover the project root by walking upward.</strong> <code>new</code>, <code>validate</code>, <code>format</code>, <code>assets</code>, and <code>archive</code> locate the nearest ancestor directory containing <code>htmlspec/</code> and operate on it, so they work from any subdirectory. <code>assets</code> checks the whole project rather than only the directory named, which is what makes it able to report the duplication described above.</p>
+            </li>
+            <li>
+              <p><strong><code>init</code> detects, offers, and installs agent instructions.</strong> It scans for the tool directories a project already has, presents them in an interactive multi-select with detected tools preselected, and writes a skill per workflow plus a slash command where the tool supports one. Five targets in this change: <strong>Claude Code</strong> (<code>.claude</code>), <strong>Codex</strong> (<code>.codex</code>), <strong>Cursor</strong> (<code>.cursor</code>), <strong>Pi</strong> (<code>.pi</code>), and a generic <strong>AGENTS.md</strong> fallback. The tool table is data, designed so a sixth is a table entry rather than a code change.</p>
+            </li>
+            <li>
+              <p><strong>The interactive surface degrades to flags.</strong> <code>--tools claude,codex</code>, <code>--tools all</code>, and <code>--tools none</code> skip the prompt entirely. When standard input is not a terminal, <code>init</code> uses detected tools without prompting and never blocks — an <code>init</code> that hung waiting for a keypress inside a continuous-integration job would be worse than one that did nothing.</p>
+            </li>
+            <li>
+              <p><strong><code>init</code> is idempotent and safe to re-run.</strong> Re-running it on an established project refreshes skills and commands, leaves <code>specs/</code> and <code>changes/</code> untouched, and never overwrites a config file that exists. This is how a project picks up a newer version's instructions, and it is the common case rather than the exception.</p>
+            </li>
+            <li>
+              <p><strong><code>init</code> ends by naming the next command.</strong> The closing output states the literal thing to type, spelled for the tools that were selected, because the spelling differs per tool and a generic form would be wrong for most of them.</p>
+            </li>
+            <li>
+              <p><strong>The workflow skills become shipped artifacts.</strong> The archival instructions currently living in a hand-written <code>.claude/skills/htmlspec-archive-change/SKILL.md</code> move into the binary as the source of what <code>init</code> installs. This repository's own copy then comes from <code>htmlspec init</code> like everyone else's.</p>
+            </li>
+            <li>
+              <p><strong><code>init</code> writes <code>spec.nix</code>, and archival depends on it.</strong> The file carries the project's name, its version, and a pinned reference to the <code>htmlspec</code> binary the project expects. Archival reads the version and refuses unless it is ordered after the last archived one, so the accepted contract acquires a version history rather than a sequence of undated merges.</p>
+              <p>The starting version is <code>0.0.0</code>, which makes the comparison total. A project always has a version on record, so the first archival is the same operation as the thousandth and there is no absent-previous-version branch — code that would run once per project and be tested once.</p>
+              <p>The comparison is an ordering rather than a test for difference, because a difference test accepts a downgrade: archiving at <code>0.1.0</code> after <code>0.2.0</code> would pass. A version ordered backwards is reported separately from one that has not moved, since one is a mistake and the other is work not yet done.</p>
+              <p>The bump is the contributor's or the agent's; the program only compares. This is the division archival already uses — an agent produces the specification and the program validates it — and it keeps <code>archive</code> a command that reads and checks rather than one that edits the project it is checking. Deciding whether a change earned a minor or a major bump is judgment. Asking whether <code>0.1.0</code> follows <code>0.0.0</code> is not.</p>
+              <p>Nix rather than YAML, because the binary pin is a flake input with a hash and the project already builds with a flake. The alternative invents a syntax for something Nix states directly, then needs a resolver for it.</p>
+            </li>
+            <li>
+              <p><strong>An asset reference that ascends with no store above it becomes an error.</strong> Every asset rule currently returns early when no store is present, which is correct for the 41 conformance fixtures whose references are symbolic. The consequence is that <code>htmlspec validate --strict</code> accepts a change directory copied out of its project with all seven of its asset references dead, reporting zero diagnostics. <a href="evidence/relocation-and-orphans.md">Measured, not inferred.</a></p>
+              <p>One store per project makes that case reachable, so this change closes it. A reference containing <code>../</code> asserts a store sits above the document, and <a href="evidence/relocation-and-orphans.md"><strong>none</strong> of the 341 asset references in the conformance fixtures ascends</a> while every generated one does. So ascent is the signal: an ascending reference with no store found above it is reported, and a non-ascending one stays silent.</p>
+            </li>
+          </ul>
+          <p>Non-goals, deferred deliberately: the rest of the <code>/htmlspec:*</code> command lifecycle (<code>explore</code>, <code>propose</code>, <code>apply</code>, <code>verify</code>) as <em>implemented commands</em> — this change installs the instruction files and ships only the <code>archive</code> skill's content, since archival is the one operation the program already gates; a global user-level configuration; authoring rules and project context in <code>spec.nix</code>, which stays to the three fields above; <a href="evidence/current-cli-behavior.md">the remaining thirty tools in OpenSpec's table</a>; and the Markdown-to-HTML converter.</p>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <section id="hs-new-capabilities">
+            <h3>New Capabilities</h3>
+            <ul>
+              <li><code>project-bootstrap</code>: Defines what an htmlspec project is — a declared root, one asset store, and a directory shape — how commands find it from a subdirectory, and the bootstrap operation that establishes it. Defines agent-instruction installation: tool detection, selection, per-tool delivery, idempotent re-run, and the non-interactive fallback.</li>
+            </ul>
+          </section>
+          <section id="hs-modified-capabilities">
+            <h3>Modified Capabilities</h3>
+            <ul>
+              <li><code>toolchain-packaging</code>: Splits the current single requirement covering <code>validate</code>, <code>format</code>, and <code>init</code>. <code>init</code>'s subject becomes the project; document and change creation moves to <code>new</code>. Adds the requirement that commands resolve the project root by walking upward, and that <code>assets</code> checks a project rather than a directory.</li>
+            </ul>
+          </section>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li><strong>Every documented invocation of <code>init</code> changes.</strong> <code>README.md</code>, <code>AGENTS.md</code>, the CLI integration tests, and the <code>htmlspec-archive-change</code> skill all spell <code>init &lt;path&gt;</code>. The rename is mechanical but it is not small, and the tests in <code>crates/htmlspec-cli/tests/cli.rs</code> pin the old argument shape directly.</li>
+            <li><strong>One new pinned dependency.</strong> <code>inquire</code>, exact-pinned, for the multi-select and confirm prompts; the banner and status lines stay hand-rolled ANSI with no dependency. This adds a subtree (<code>bitflags</code>, <code>dyn-clone</code>, <code>unicode-segmentation</code>, <code>unicode-width</code>) the flake must vendor, and the reproducible-build requirement means the pin is exact and the lockfile is committed. Hand-rolling raw-mode terminal handling was considered and rejected: TTY detection, arrow-key decoding, redraw, and terminal restore on signal are four well-understood ways to get a first impression wrong.</li>
+            <li><strong>The program acquires a terminal-interactive mode, which the test strategy must reach.</strong> Every command until now has been a pure function over paths returning an <code>Outcome</code>, testable without a process. A prompt is not. The design must keep the decision — which tools, which delivery — separable from the prompt that collects it, or the interactive path becomes the one part of the program with no test.</li>
+            <li><strong>Asset storage per project drops by a factor of the number of changes.</strong> <a href="evidence/asset-footprint.md">A project with five changes stores 6 MB rather than 30 MB.</a> This also makes <code>htmlspec assets</code> meaningful for the first time: with one store per project, a duplicate is a real defect rather than the tool's own default behavior.</li>
+            <li><strong>The <code>.claude/skills/openspec-*</code> directory becomes ambiguous.</strong> This repository currently uses OpenSpec to develop htmlspec while also carrying one htmlspec skill. Once <code>htmlspec init</code> installs <code>htmlspec-*</code> skills here, both sets are present and an agent must not confuse them. Naming keeps them apart, but the overlap is worth stating rather than discovering.</li>
+            <li><strong>Exit-code discipline extends to a new failure class.</strong> A user who declines the cleanup prompt, or interrupts the selection, has not failed an operation — but the process must still exit with something. The existing three outcomes were designed for document violations and operational failures, and cancellation is neither.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

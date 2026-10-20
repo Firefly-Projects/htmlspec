@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Confine the asset check to the project</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Confine the asset check to the project</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Confine the asset check to the project</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-28-confine-the-asset-check-to-the-project/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-re-measure-before-changing-anything">1. Re-measure before changing anything</a></li>
+          <li><a href="#hs-2-tests-first">2. Tests first</a></li>
+          <li><a href="#hs-3-the-partition">3. The partition</a></li>
+          <li><a href="#hs-4-the-suite">4. The suite</a></li>
+          <li><a href="#hs-5-prove-it">5. Prove it</a></li>
+          <li><a href="#hs-6-release">6. Release</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-re-measure-before-changing-anything">
+          <h2>1. Re-measure before changing anything</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 In a copy of HEAD, run <code>htmlspec init --tools none</code>, then <code>htmlspec assets .</code>, and record the exact count and every location reported.</h3>
+              <p>The expected count is nine. <a href="evidence/the-measurement-2026-09-27.md">Record the actual count</a>, because the proposal and the design both rest on it</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 In the same copy, run <code>htmlspec validate</code> over <code>fixtures/</code> and over the new <code>htmlspec/</code>.</h3>
+              <p>Check whether any stage other than <code>self-assets</code> changes result when <code>htmlspec/</code> exists, and <a href="evidence/the-measurement-2026-09-27.md">record the answer</a>. The proposal claims only the topology check is affected</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-tests-first">
+          <h2>2. Tests first</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done" data-refs="scenario-a-project-beside-a-fixture-that-carries-its-own-store scenario-a-project-beside-a-toolchain-s-source-copy-of-the-runtime scenario-two-stores-inside-the-project scenario-a-store-outside-the-project-that-duplicates-within-itself">
+              <h3>2.1 Add CLI tests for the four scenarios in <a href="specification.html#hs-document-validation"><code>specs/document-validation/spec.md</code></a>: <a href="specification.html#scenario-a-project-beside-a-fixture-that-carries-its-own-store">a project beside a fixture store</a>, <a href="specification.html#scenario-a-project-beside-a-toolchain-s-source-copy-of-the-runtime">a project beside a root toolchain store</a>, <a href="specification.html#scenario-two-stores-inside-the-project">two stores inside the project</a>, and <a href="specification.html#scenario-a-store-outside-the-project-that-duplicates-within-itself">an outside store that duplicates within itself</a>.</h3>
+              <p>Check that the first two fail on HEAD and the last two pass on HEAD</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Add a test that <code>assets</code> and the promotion check give the same verdict on the same tree, so that one of them cannot drift from the other</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-the-partition">
+          <h2>3. The partition</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Write one function that partitions discovered stores into the project's and the others by canonical path prefix against <code>ProjectRoot::htmlspec()</code>, and unit-test it with a symlinked path and with a store at <code>htmlspec/assets</code> itself</h3>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Use it in <code>assets</code>: compare across the project's stores only, and check each outside store on its own.</h3>
+              <p>Check that the tests from 2.1 pass</p>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Use it in the promotion check in place of its separate topology loop.</h3>
+              <p>Check with <code>cargo test -p htmlspec-cli --test promote</code></p>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 Report the partition in the human report and as <code>projectStores</code> and <code>otherStores</code> in the structured payload.</h3>
+              <p>Check that the existing payload keys keep their values in the existing tests</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-the-suite">
+          <h2>4. The suite</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Correct the <code>self-assets</code> comment in <code>scripts/check</code></h3>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Repeat 1.1 against the built change and <a href="evidence/the-measurement-2026-09-27.md">record the result</a>.</h3>
+              <p>The expected result is zero duplicates. If any are reported, record what they are before changing anything else</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-prove-it">
+          <h2>5. Prove it</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 <a href="evidence/mutation-testing-2026-09-27.md">Mutation-test the change.</a></h3>
+              <p>Make the partition return every store as the project's, then make it return none, and check that a test catches each case</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Run <code>cargo test --workspace --all-targets</code>, then <code>scripts/check</code>, with every stage green</h3>
+              <p data-field="note">Migration note: no record is of this task's own run. <a href="evidence/the-runbook-ran-2026-09-27.md"><code>evidence/the-runbook-ran-2026-09-27.md</code></a> records that in the release run, once the stray <code>htmlspec/</code> and <code>spec.nix</code> were removed, "<code>scripts/check</code> then passed all 13 stages", and <code>scripts/check</code> at <code>dfb2b04</code> runs <code>cargo test --workspace --all-targets --locked</code> as its <code>test</code> stage. Nothing records <code>cargo test --workspace --all-targets</code> run on its own.</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 <a href="evidence/what-the-implementation-revealed-2026-09-27.md">Record what the implementation revealed</a></h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-release">
+          <h2>6. Release</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Run the release runbook at <code>runbooks/release/tasks.html</code>, and <a href="evidence/the-runbook-ran-2026-09-27.md">report whether it worked as written</a></h3>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Choose the increment and <a href="evidence/the-runbook-ran-2026-09-27.md">state the reasoning</a>, and flag it for confirmation</h3>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Check that <code>scripts/check-release</code> <a href="evidence/the-runbook-ran-2026-09-27.md">passes after archival writes <code>VERSION</code></a></h3>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>
