@@ -1,0 +1,283 @@
+#!/usr/bin/env python3
+"""The interactive prompt, driven through a real terminal.
+
+Why this is a script rather than a Rust test
+--------------------------------------------
+Every other check in this project is a `cargo test`, and this one cannot be. A test
+that drives the prompt needs a pseudo-terminal, `openpty` is an `unsafe` FFI call, and
+this workspace sets `unsafe_code = "forbid"`. The alternative is a pinned pty crate
+plus its subtree, vendored into the flake, for one test binary. Python's `pty` is in
+the standard library, so this costs nothing to depend on.
+
+Why a bare interpreter rather than `uv run --script`
+---------------------------------------------------
+The shebang was `#!/usr/bin/env -S uv run --quiet --script` with an inline metadata
+block. That form failed in the Nix build sandbox — `/usr/bin/env: bad interpreter` —
+and it took CI red from the moment this script joined the suite. Two reasons it cannot
+work there: `uv` was never a build input, and `uv run` resolves an interpreter over the
+network, which a sandboxed build has no route to.
+
+The metadata block it fed declared `dependencies = []`, so `uv` was managing an empty
+dependency set. Every import below is standard library. A bare `python3` shebang is
+therefore not a downgrade — it asks for exactly what the script uses, and
+`patchShebangs` rewrites it to the interpreter the derivation pins.
+
+What it covers that no Rust test can
+------------------------------------
+`prompt.rs` unit tests cover `can_prompt` (the decision to prompt) and `preselected`
+(what opens checked). Neither reaches `inquire`. Three behaviors live only here:
+
+  1. A fresh repository opens with every row checked.
+  2. Confirming an empty selection is refused, and the prompt asks again.
+  3. Cancelling exits with code 3 and writes nothing.
+
+Item 3 was the only one of the four exit codes with no test that read it from a real
+process. Items 1 and 2 are the guards added in `prompt-selection-guards`.
+
+Usage:
+  scripts/check-prompt              run every case
+  scripts/check-prompt --binary P   use the binary at P
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import pty
+import re
+import select
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+# Long enough for a debug-profile binary to start and paint the list on a loaded
+# machine. Every read is a drain loop rather than a single blocking read, so a fast
+# machine does not pay this in full.
+STARTUP = 1.2
+SETTLE = 0.8
+KEYSTROKE = 0.15
+
+ANSI = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]")
+
+
+class Terminal:
+    """A child process attached to a pseudo-terminal."""
+
+    def __init__(self, binary: Path, arguments: list[str], directory: Path) -> None:
+        self.output = b""
+        self.status: int | None = None
+        self.pid, self.fd = pty.fork()
+        if self.pid == 0:
+            # The child. Nothing here may raise past execv, so failure exits loudly
+            # rather than returning into the parent's code path.
+            try:
+                os.chdir(directory)
+                os.execv(str(binary), [binary.name, *arguments])
+            except BaseException:  # pragma: no cover - child process only
+                os._exit(127)
+
+    def drain(self, seconds: float) -> None:
+        end = time.time() + seconds
+        while time.time() < end:
+            ready, _, _ = select.select([self.fd], [], [], 0.1)
+            if not ready:
+                continue
+            try:
+                chunk = os.read(self.fd, 65536)
+            except OSError:
+                break
+            if not chunk:
+                break
+            self.output += chunk
+
+    def send(self, keys: bytes) -> None:
+        os.write(self.fd, keys)
+        time.sleep(KEYSTROKE)
+
+    def finish(self) -> int:
+        try:
+            os.close(self.fd)
+        except OSError:
+            pass
+        _, status = os.waitpid(self.pid, 0)
+        self.status = os.waitstatus_to_exitcode(status)
+        return self.status
+
+    @property
+    def text(self) -> str:
+        return ANSI.sub("", self.output.decode(errors="replace"))
+
+    def boxes(self) -> list[str]:
+        """Every checkbox drawn, in draw order."""
+        return re.findall(r"\[[ x]\]", self.output.decode(errors="replace"))
+
+
+def a_repository(stack: list[tempfile.TemporaryDirectory]) -> Path:
+    """A fresh git repository, so project resolution stops at its boundary."""
+    holder = tempfile.TemporaryDirectory(prefix="htmlspec-prompt-")
+    stack.append(holder)
+    directory = Path(holder.name)
+    subprocess.run(
+        ["git", "init", "--quiet", "."],
+        cwd=directory,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    return directory
+
+
+def installed(directory: Path) -> list[str]:
+    """What init left behind, ignoring the repository itself."""
+    return sorted(
+        entry.name for entry in directory.iterdir() if entry.name not in {".git"}
+    )
+
+
+# ---------------------------------------------------------------------------
+# The cases
+# ---------------------------------------------------------------------------
+
+
+def a_fresh_repository_opens_with_every_row_checked(binary: Path, stack) -> None:
+    directory = a_repository(stack)
+    terminal = Terminal(binary, ["init"], directory)
+    terminal.drain(STARTUP)
+    drawn = terminal.boxes()
+    terminal.send(b"\x1b")  # esc, so this case writes nothing
+    terminal.drain(SETTLE)
+    terminal.finish()
+
+    assert drawn, "the prompt drew no checkboxes"
+    checked = [box for box in drawn if box == "[x]"]
+    assert len(checked) == len(drawn), (
+        f"a fresh repository opened with unchecked rows: {drawn}. "
+        "Nothing detected must preselect every tool"
+    )
+
+
+def an_empty_confirmation_is_refused_and_asks_again(binary: Path, stack) -> None:
+    directory = a_repository(stack)
+    terminal = Terminal(binary, ["init"], directory)
+    terminal.drain(STARTUP)
+
+    # Uncheck every row: space, then down, five times.
+    for index in range(5):
+        terminal.send(b" ")
+        if index < 4:
+            terminal.send(b"\x1b[B")
+    terminal.drain(SETTLE)
+
+    terminal.send(b"\r")  # confirm nothing
+    terminal.drain(SETTLE)
+
+    assert "select at least one tool" in terminal.text, (
+        "an empty confirmation was accepted rather than refused:\n" + terminal.text[-600:]
+    )
+
+    # Still in the list rather than exited: re-check a row and confirm.
+    terminal.send(b" ")
+    terminal.send(b"\r")
+    terminal.drain(STARTUP + SETTLE)
+    status = terminal.finish()
+
+    assert status == 0, f"the run after the refusal exited {status}"
+    assert "the project is ready" in terminal.text, (
+        "the prompt did not ask again; it exited instead:\n" + terminal.text[-600:]
+    )
+    left = installed(directory)
+    assert "spec.nix" in left and "htmlspec" in left, left
+
+
+def cancelling_writes_nothing_and_exits_three(binary: Path, stack) -> None:
+    directory = a_repository(stack)
+    terminal = Terminal(binary, ["init"], directory)
+    terminal.drain(STARTUP)
+    terminal.send(b"\x1b")  # esc
+    terminal.drain(SETTLE)
+    status = terminal.finish()
+
+    assert status == 3, (
+        f"cancellation exited {status} rather than 3. Cancellation must differ from "
+        "success, from a document violation, and from an operational failure"
+    )
+    assert installed(directory) == [], (
+        f"a cancelled run left files behind: {installed(directory)}"
+    )
+
+
+def the_flag_still_means_no_tools(binary: Path, stack) -> None:
+    """The asymmetry the refusal must not break, measured through a real process."""
+    directory = a_repository(stack)
+    finished = subprocess.run(
+        [str(binary), "init", "--tools", "none"],
+        cwd=directory,
+        capture_output=True,
+        text=True,
+    )
+    assert finished.returncode == 0, (
+        f"`--tools none` exited {finished.returncode}: {finished.stderr}"
+    )
+    left = installed(directory)
+    assert "spec.nix" in left, left
+    assert ".pi" not in left and ".claude" not in left, (
+        f"`--tools none` installed instructions: {left}"
+    )
+
+
+CASES = [
+    a_fresh_repository_opens_with_every_row_checked,
+    an_empty_confirmation_is_refused_and_asks_again,
+    cancelling_writes_nothing_and_exits_three,
+    the_flag_still_means_no_tools,
+]
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--binary",
+        type=Path,
+        default=Path("target/debug/htmlspec"),
+        help="the htmlspec binary to drive",
+    )
+    arguments = parser.parse_args()
+
+    binary = arguments.binary.resolve()
+    if not binary.exists():
+        print(f"no binary at {binary}: build it first", file=sys.stderr)
+        return 2
+    if shutil.which("git") is None:
+        print("git is required to create a test repository", file=sys.stderr)
+        return 2
+
+    stack: list[tempfile.TemporaryDirectory] = []
+    failed: list[str] = []
+    try:
+        for case in CASES:
+            name = case.__name__
+            try:
+                case(binary, stack)
+            except AssertionError as error:
+                failed.append(name)
+                print(f"!!! {name}\n    {error}", file=sys.stderr)
+            except Exception as error:  # noqa: BLE001
+                failed.append(name)
+                print(f"!!! {name} raised {error!r}", file=sys.stderr)
+            else:
+                print(f"  ok  {name}")
+    finally:
+        for holder in stack:
+            holder.cleanup()
+
+    if failed:
+        print(f"\nFAILED: {' '.join(failed)}", file=sys.stderr)
+        return 1
+    print(f"\nall {len(CASES)} prompt cases passed")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

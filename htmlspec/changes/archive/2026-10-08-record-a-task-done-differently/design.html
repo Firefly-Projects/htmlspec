@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Record a task done differently</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Record a task done differently</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Record a task done differently</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-08-record-a-task-done-differently/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>See <a href="proposal.html">proposal.md</a> for why. The shape of the current system that the approach depends on:</p>
+          <ul>
+            <li><strong>A task's fields come from marked paragraphs.</strong> <code>project_task</code> in <code>crates/htmlspec-parse/src/project.rs</code> accepts <code>reason</code> and <code>note</code>. Any other <code>data-field</code> value is projection fault 4.0, reported as <code>schema/projection</code>. <a href="evidence/the-measurement-2026-09-30.md">The measurement confirms this</a> for the name the field was first proposed under (decision 7). The fault does not depend on the name.</li>
+            <li><strong>A single-valued field takes its first paragraph.</strong> <code>reason</code> is read through <code>Paragraphs::single</code>, whose comment says "the caller reports the repetition". No caller reports it for <code>reason</code>. Two <code>reason</code> paragraphs validate with no diagnostic, and the second is dropped from the model (<a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a>, section 3).</li>
+            <li><strong>A rule that depends on a task's state lives in Rust.</strong> The schema keeps to a subset with no conditional composition, so "a dropped task states a reason" is <code>dropped_tasks_state_a_reason</code> in <code>crates/htmlspec-validate/src/rules/relations.rs</code>. It reads the value <code>dropped</code> from the schema by a stem, through <code>status_named</code>. <code>tests/schema_rust_split.rs</code> forbids rule code from restating a schema value as a literal.</li>
+            <li>
+              <p><strong>One counter feeds every report of completion.</strong> <code>Completion</code> in <code>crates/htmlspec-cli/src/commands.rs</code> counts <code>todo</code>, <code>in_progress</code>, <code>done</code>, <code>dropped</code>, and <code>undeclared</code>, and carries the identifiers of the open tasks. <code>completion()</code> builds it from the projection of an unvalidated tasks document. Three reports use it:</p>
+              <ul>
+                <li><code>list</code> renders <code>{done}/{total}</code>, then the change's state, then its predecessor. Its JSON puts the per-state counts under <code>tasks</code>, with <code>total</code> and <code>state</code> beside them.</li>
+                <li><code>status</code> renders <code>N of T task(s) done or dropped</code>. Its JSON is <code>tasks: {total, open, openTasks}</code>.</li>
+                <li>Archival's <code>open_tasks</code> is a projection of the same counter.</li>
+              </ul>
+            </li>
+            <li><strong>The tasks template has two example tasks</strong>, one <code>todo</code> and one <code>dropped</code> with its reason. <code>review/example-content</code> derives the example identifiers it reports from the templates, so a new example is covered without a code change.</li>
+            <li><strong>The contract is <code>0.4.0</code>.</strong> A minor bump adds its version to the <code>schemaVersion</code> enumeration and keeps the earlier ones, under the bump table in <code>crates/htmlspec-schema/CHANGELOG.md</code>. Every template declares the current version, <code>0.4.0</code>, in its <code>htmlspec-version</code> meta and its masthead. <em>Corrected on 2026-10-08:</em> this said <code>0.2.0</code> when it was written. <code>reject-change-markup-inside-a-unit</code> moved the contract to <code>0.3.0</code> and <code>mark-the-words-a-modification-changed</code> to <code>0.4.0</code> before this change was implemented (<a href="evidence/what-it-builds-on-2026-10-08.md"><code>evidence/what-it-builds-on-2026-10-08.md</code></a>).</li>
+            <li><strong>"Outcome" already names something in the contract</strong>: a verification unit's <code>data-outcome</code> attribute, which is <code>passed</code>, <code>failed</code>, <code>blocked</code>, or <code>not-run</code>, and which the stylesheet labels. Decision 7 names the task's field so that the two do not share a word.</li>
+          </ul>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong></p>
+          <ul>
+            <li>A <code>done</code> task can state what was done where that departs from its words, readably and in the model.</li>
+            <li>The counts tell a task done as written from one done another way, and no existing count changes meaning.</li>
+            <li>A deviation cannot be stated where it cannot be true: on a task that is not done, or twice in one task.</li>
+            <li>The instructions an agent settles tasks by say when a deviation is the right record.</li>
+          </ul>
+          <p><strong>Non-Goals:</strong></p>
+          <ul>
+            <li><strong>Migrating this repository's tasks.</strong> <code>migrate-into-the-extended-vocabulary</code> maps the new vocabulary.</li>
+            <li><strong>Repeated <code>reason</code>, <code>mitigation</code>, or <code>method</code> paragraphs.</strong> See decision 3.</li>
+            <li><strong>A stylesheet label for the paragraph.</strong> A <code>reason</code> has none either. A new stylesheet revision moves every template's asset address, which <code>record-a-renamed-requirement</code> showed is a piece of work of its own. Without a label, the deviation is a paragraph of prose under a heading marked <code>done</code>.</li>
+            <li><strong>A deviation on any unit but a task.</strong> A decision already has a status and a rationale, and a verification already has its own outcome.</li>
+            <li><strong>Detecting a task done differently.</strong> The program cannot know it. The author states it, and the <code>verify</code> stage checks it.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-a-deviation-is-a-field-of-a-done-task-not-a-fifth-state" data-change="added" data-status="accepted">
+            <h3>1. A deviation is a field of a <code>done</code> task, not a fifth state <span class="hs-id">decision-a-deviation-is-a-field-of-a-done-task-not-a-fifth-state</span></h3>
+            <p>A task states a deviation in one <code>&lt;p data-field="deviation"&gt;</code>: what was done, where it departs from the task's words. The paragraph projects into the task's <code>deviation</code> field as normalized text, typed <code>nonEmptyText</code> like <code>reason</code>. The task keeps <code>data-state="done"</code>, and its heading keeps its words.</p>
+            <p data-field="rationale"><strong>Considered: a fifth state, such as <code>amended</code>.</strong> Rejected, for two reasons. First, every consumer of the four states would have to learn that it counts as done: <code>Completion::resolved</code>, the open tasks, the change's derived state, archival's question, the stylesheet's state label, and migration's mapping. Each one that did not learn it would count finished work as outstanding. Second, a state carries no text, and the difference has to be said.</p>
+            <p data-field="rationale"><strong>Considered: a note, which is today's workaround.</strong> Rejected. A note is "prose inside the unit that carries no field of its own", in the schema's words. <a href="evidence/the-measurement-2026-09-30.md">The measurement shows</a> that <code>list</code>, <code>list --json</code>, and <code>status</code> count a <code>done</code> task with a note exactly as they count one without.</p>
+            <p data-field="rationale"><strong>Considered: rewriting the task's words</strong>, as three source task lines did beside "<strong>Amended during implementation.</strong>" or "<strong>Widened during implementation.</strong>" (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 2</a>). Rejected. The words are what designs and evidence cite a task by. Rewriting them loses the plan, and change markup inside a task is ruled out for this whole set of changes, so the old words would survive only in git.</p>
+            <p data-field="rationale"><strong>Considered: an attribute on the task.</strong> Rejected. An attribute is invisible without a stylesheet, and a deviation is prose a reader has to see. <code>record-a-renamed-requirement</code> (decision 1) chose a field paragraph over an attribute for that readability reason.</p>
+          </section>
+          <section id="hs-decision-2">
+            <h3>2. A deviation only on a <code>done</code> task, reported as an error</h3>
+            <p>The rule is <code>schema/deviation-not-done</code>: the constant <code>DEVIATION_NOT_DONE</code> and the function <code>deviations_are_on_done_tasks</code> in <code>relations.rs</code>, beside <code>dropped_tasks_state_a_reason</code>. It reads <code>done</code> with <code>status_named("don", "definitions/task/properties/state")</code>. The stem matches only <code>done</code> among the four states. <code>every_conditional_rule_finds_its_state</code> gains that assertion, and <code>schema_rust_split.rs</code> gains <code>done</code> as a literal rule code may not restate. No rule code contains <code>"done"</code> today. The one occurrence in <code>relations.rs</code> is in its test module.</p>
+            <p><em>Corrected on 2026-10-08:</em> the stem was <code>"done"</code>, the whole value. <code>schema_rust_split.rs</code> matches each owned literal as a whole quoted string on every line of rule code, so the stem <code>"done"</code> is the literal the same decision forbids, and the test would fail on the rule. The stem is a fragment of the state's name, as <code>dropp</code> and <code>supersed</code> already are, which is what <code>status_named</code> asks for (<a href="evidence/what-it-builds-on-2026-10-08.md"><code>evidence/what-it-builds-on-2026-10-08.md</code></a>).</p>
+            <p>Each state is rejected for its own reason:</p>
+            <ul>
+              <li><strong><code>todo</code> and <code>in-progress</code>.</strong> Nothing is finished, so no account of finished work can be true yet. A difference found midway belongs in a note, and the <code>apply</code> instructions say to state it as the deviation when the task is done. A task reopened from <code>done</code> keeps a deviation that no longer describes finished work, and the rule names it.</li>
+              <li><strong><code>dropped</code>.</strong> The work did not happen, and the reason says why. Allowing both would let one task claim that the work happened and that it did not. A task whose work partly happened is <code>done</code>, and its deviation says which part. The migration's own records draw the same line. Task 5.2 of <code>accept-a-described-change</code> ran, but the confirmation it asks for could not be made, so it is <code>dropped</code> with its reason. Task 4.4 of <code>sync-a-change-into-the-accepted-contract</code> was done, with one of three refusals done another way, so it is <code>done</code> with a deviation.</li>
+            </ul>
+            <p>A runbook's canonical procedure is <code>todo</code> at every moment, under runbook-authority's "<a href="../../../specs/runbook-authority/spec.html#req-the-canonical-procedure-carries-no-completion-state">The canonical procedure carries no completion state</a>", so it can never carry a deviation. The record of a run advances its states, so a step done another way can say so.</p>
+            <p><strong>Considered: allowing a deviation on <code>in-progress</code></strong>, to record a difference as soon as it is known. Rejected. The work is still changing, and a note already records a difference found along the way.</p>
+            <p><strong>Considered: a review warning.</strong> Rejected. This is a contradiction inside one document, like a dropped task with no reason, and that is an error.</p>
+          </section>
+          <section id="hs-decision-3">
+            <h3>3. One deviation per task; a second is a projection fault</h3>
+            <p>The projection specification gains section 4.5.1: "A task containing more than one <code>deviation</code> paragraph is invalid. The projection does not choose between two accounts of what was done." <code>project_task</code> reports fault 4.5.1 and keeps the first paragraph's text in <code>deviation</code>. It keeps the first because the counter reads the projections of unvalidated documents. A task whose author stated two deviations was done differently, and dropping the field would count it as done as written.</p>
+            <p><strong>Considered: a repeatable field, like a decision's rationale.</strong> Rejected. The count asks one question of each task, and one paragraph answers it. Supporting detail goes in a note, which a task already accepts.</p>
+            <p><strong>Considered: a validator rule with its own code, as <code>schema/rename-repeated</code> is.</strong> Rejected. The rename rules need the model to keep paragraphs that project nowhere (section 4.1.1). A repeated deviation is the projection's own ambiguity, and section 4.0.1 already treats that ambiguity as a projection fault for a single-valued primary field. This takes one sentence in section 4.5, one fault, and no change to the model's shape.</p>
+            <p><strong>Considered: making every repeated single-valued field invalid.</strong> This would cover <code>reason</code>, <code>mitigation</code>, <code>method</code>, and <code>deviation</code> together. Deferred, and not in this change. It changes the contract of three existing fields, and it deserves its own measurement. None of the 116 staged documents repeats one. This change corrects the comment on <code>Paragraphs::single</code>, so it no longer says that every caller reports a repetition.</p>
+            <p>An empty <code>deviation</code> paragraph is discarded, as every empty paragraph except <code>renamed-from</code> is, so the task reads as done as written. That is what its text supports, because it states no difference.</p>
+          </section>
+          <section id="hs-decision-4">
+            <h3>4. The one counter carries the tasks done differently</h3>
+            <p><code>Completion</code> gains <code>done_differently: Vec&lt;String&gt;</code>. It holds the identifiers of the <code>done</code> tasks whose projection carries a <code>deviation</code>, in document order, falling back to the title as <code>open</code> does. The count is its length. <code>completion()</code> fills it in the same loop that counts states, so there is no second traversal. A task in any other state that carries a deviation is counted under its own state only. That document is invalid, and this is the reading the counter already takes for an undeclared task.</p>
+            <p><code>total()</code>, <code>resolved()</code>, <code>open</code>, and <code>state()</code> are unchanged. A <code>done</code> task with a deviation is resolved.</p>
+            <p><strong><code>status</code> reports on a resolved change through a function of its own.</strong> <em>Decided on 2026-10-08, because the design did not reach it:</em> <code>status</code> resolves its project from the working directory, so a unit test cannot call it, and the tests of its payload belong beside the counter's. It is split as <code>list</code> already is into <code>list</code> and <code>list_in</code>: <code>status</code> resolves, and <code>status_of</code> reports on the change directory it resolved. Nothing it prints or exits with changes (<a href="evidence/what-it-builds-on-2026-10-08.md"><code>evidence/what-it-builds-on-2026-10-08.md</code></a>).</p>
+            <p><strong>Considered: a bare count.</strong> Rejected. <code>status</code> names each task, and names computed anywhere else would be the second traversal that the one-counter design exists to prevent. <code>open</code> sets the precedent of carrying identifiers.</p>
+          </section>
+          <section id="hs-decision-5">
+            <h3>5. The listing keeps its fraction and adds a column after the state</h3>
+            <p>The intended rows, for the measured document and for a change whose every task was done as written:</p>
+            <pre><code>a-change-done-as-written  3/3  done
+measure-a-deviation       2/4  in-progress  1 done differently</code></pre>
+            <p>The count sits in its own column after the state and before the predecessor. It is widened to its widest member like the other columns, blank where the count is zero, and trimmed at the end of a line. The reasons:</p>
+            <ul>
+              <li><strong>The fraction keeps its meaning.</strong> Every <code>done</code> task is in the numerator, so a change whose every task is done, some of them differently, still reads <code>n/n  done</code>.</li>
+              <li><strong>The columns a reader compares stay where they are.</strong> The fraction and the state do not move, and <code>the_report_aligns_across_names_of_differing_length</code> keeps pinning the fraction's column.</li>
+              <li><strong>Nothing is shown for zero.</strong> A listing of changes done as written is byte-identical to today's.</li>
+              <li><strong>Words, not a symbol.</strong> A mark needs a legend.</li>
+            </ul>
+            <p><strong>Considered: subtracting the tasks from the numerator</strong> (<code>1/4</code>). Rejected. It reads as work outstanding, and it is exactly what dropping the task does today.</p>
+            <p><strong>Considered: a suffix in the fraction's column</strong>, such as <code>2/4 (1 differently)</code>. Rejected. That column is right-aligned, so a suffix moves the slash on the rows that carry one, and the fractions stop lining up.</p>
+            <p><strong>Considered: a column between the fraction and the state.</strong> Rejected. It would move the state column on every row whenever any change has a task done differently.</p>
+            <p><strong>Considered: a mark on the fraction</strong>, such as <code>2/4*</code> or <code>2/4~</code>. Rejected. A mark needs a legend, and <code>[~]</code> already means "unfinished" in the OpenSpec archive this project keeps.</p>
+            <p><code>status</code> keeps its line <code>3 of 4 task(s) done or dropped</code>. Where the count is not zero, it adds a second line, <code>1 done differently: task-done-differently</code>, naming each task.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, the column is not reserved on every listing. On a listing where some change follows another and no change has a task done differently, a column blank at zero, with the two spaces that separate every column, would still have put two more spaces before <code>follows …</code>, so the listing would not have been byte-identical to today's, as this decision's reasons require. The column and its separator are written only where some row has a count, and rows with a zero count are blank in it. <a href="tasks.html#task-5-2">Task 5.2</a> records the build, and <a href="evidence/what-the-implementation-revealed-2026-10-08.md"><code>evidence/what-the-implementation-revealed-2026-10-08.md</code></a> records why, under "A blank column still has a separator".</p>
+            </aside>
+          </section>
+          <section id="hs-decision-6">
+            <h3>6. The structured payloads</h3>
+            <ul>
+              <li><strong><code>list --json</code>.</strong> Each change gains <code>doneDifferently</code> beside <code>total</code> and <code>state</code>. It is present wherever <code>tasks</code> is, and omitted with it for a change that has no tasks document. It is not inside <code>tasks</code>, because <code>tasks</code> holds one count per state and those sum to <code>total</code>. A subset count among them would make a consumer's sum exceed the total. It is present when zero, as <code>undeclared: 0</code> already is, because a payload states the fact and a caller should not have to test for a key.</li>
+              <li><strong><code>status --json</code>.</strong> <code>tasks</code> gains <code>doneDifferently</code>, a count, and <code>doneDifferentlyTasks</code>, the identifiers. They sit beside <code>open</code> and <code>openTasks</code>, which they mirror.</li>
+            </ul>
+            <p>Both are additive, and no existing key changes meaning.</p>
+            <p><strong>Considered: naming the keys after the field, as <code>deviations</code>.</strong> Rejected. The keys name the count, not the field: how many tasks were done differently, in the words the listing prints. The field is what a task states, and the count is how many tasks state one.</p>
+          </section>
+          <section id="hs-decision-7">
+            <h3>7. The field is called <code>deviation</code></h3>
+            <p>A task states a deviation: what was done, where it departs from the task's words. The rule is <code>schema/deviation-not-done</code>. The listing's words "done differently" and the keys <code>doneDifferently</code> and <code>doneDifferentlyTasks</code> keep their names, because they name the count (decision 6).</p>
+            <p>The deviation is from the task's words, not from what the work should have been. A task that did more than its words ask departs from them as much as one that did less or did it another way, so the three of the 33 tasks that did more state a deviation too.</p>
+            <p><strong>The name is free.</strong> <code>grep -rni deviation openspec/specs crates assets/template-*.html</code> finds nothing on 2026-10-01, so no requirement, code, or template uses the word. Elsewhere in the repository it appears only as ordinary prose, in the installed OpenSpec verify skill and two archived evidence files, and inside vendored libraries.</p>
+            <p><strong>Considered: <code>outcome</code>.</strong> Rejected by the contributor on 2026-10-01. A verification unit already carries <code>data-outcome</code>, with the values <code>passed</code>, <code>failed</code>, <code>blocked</code>, and <code>not-run</code>. One word with two meanings breaks the project doctrine's "Use domain terminology consistently". The name would also have put two <code>outcome</code> fields of different types into the model: a task's paragraph of prose, and a verification's closed set of values. The markup would have kept the two apart, since the selector <code>[data-outcome]</code> does not match <code>[data-field="outcome"]</code>. The model, its schema, and the instructions that teach both would not have.</p>
+            <p><strong>Considered: <code>as-built</code></strong>, the phrase seven migration notes use. Rejected. Many tasks are runs, measurements, or confirmations rather than building. Task 6.9 of <code>html-spec</code>, for one, verified offline behavior another way.</p>
+          </section>
+          <section id="hs-decision-8">
+            <h3>8. The template and the instructions teach it</h3>
+            <p><strong>The template.</strong> <code>assets/template-tasks.html</code> gains a third example task, <code>task-deviation-example</code>. It is <code>done</code>, and its deviation paragraph says what a deviation is for and that the words stay as written. It sits beside the dropped example, which set the precedent: an author copies a working example. <code>review/example-content</code> covers the new identifier without a code change. The template's sha256 pin in <code>assets/vendor.lock.json</code> moves.</p>
+            <p><strong>Considered: explaining the deviation in the first example's note.</strong> Rejected, for the same reason.</p>
+            <p><strong>The instructions.</strong></p>
+            <ul>
+              <li><code>apply.md</code> gains a section after "Dropping a task". It says when to use a deviation and when to drop a task instead. It says to keep the words, to state which part was done when only part was, and to move a difference noted while the task was under way into the deviation when it is done. It says that a difference contradicting the design still takes the step "When the implementation contradicts the design": the deviation records the task, and the design records the decision. That step was 4 when this was written, and the new section, inserted before it as section 4, makes it step 5.</li>
+              <li><code>verify.md</code> says that for a <code>done</code> task with a deviation, the work to find is what the deviation states. It adds each such task to the accounting.</li>
+              <li><code>archive.md</code> names <code>doneDifferently</code> where it describes <code>list --json</code>. It also says to read a deviation, not the task's words, as what was done.</li>
+            </ul>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>[A deviation becomes a softer <code>dropped</code>.]</strong> An agent could write "nothing needed doing" as a deviation to keep a count high. → <code>apply.md</code> says that work which did not happen is dropped with its reason. <code>verify</code> checks each deviation against the work, and <code>status</code> names every one, so a reviewer reads them all.</li>
+            <li><strong>[A deviation absorbs a design decision.]</strong> A difference that contradicts a design decision could be recorded on the task and nowhere else. → <code>apply.md</code>'s step on a contradiction with the design, step 5 once the new section is in, still requires the design to record it, and the new section says a deviation does not replace that.</li>
+            <li><strong>[A reopened task keeps a stale deviation.]</strong> → <code>schema/deviation-not-done</code> names it. The author moves it into a note or removes it.</li>
+            <li><strong>[The new column pushes the predecessor right.]</strong> On a listing where any change has a task done differently, <code>follows …</code> moves right on every row. → The column is widened consistently, so the rows stay aligned. This is the same shift the listing accepted when it added the predecessor after the state.</li>
+            <li><strong>[A document with a deviation meets an older toolchain.]</strong> → It fails there with the 4.0 fault <a href="evidence/the-measurement-2026-09-30.md">the measurement recorded</a>, so the failure is loud.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p>This is additive for documents. On HEAD every <code>data-field="deviation"</code> paragraph is an error, so no valid document carries one, and none changes meaning.</p>
+          <p><strong>The document contract moves one minor version</strong>, because a field is added. That is the bump table's "A unit, field, or projection rule is added". The version is <code>0.5.0</code>, the minor version after the <code>0.4.0</code> HEAD declared when this was implemented. The new version joins the <code>schemaVersion</code> enumeration, and every earlier version stays in it. <code>CONTRACT_VERSION</code>, the schema's <code>$id</code>, the projection specification's header, every template, and the schema changelog move with it. <em>Corrected on 2026-10-08:</em> this named <code>0.3.0</code> if nothing moved the contract first, and two changes did (<a href="evidence/what-it-builds-on-2026-10-08.md"><code>evidence/what-it-builds-on-2026-10-08.md</code></a>).</p>
+          <p>The structured payloads gain keys and change none.</p>
+          <p><strong>Release.</strong> This is expected to ship as the next minor version after the change before it: 0.25.0, if changes 1 to 6 ship as 0.19.0 to 0.24.0. The contributor confirms the increment at the release task.</p>
+          <p><strong>Rollback</strong> is a revert. A document that adopted the field fails validation on the older toolchain with <code>schema/projection</code> (section 4.0), <a href="evidence/the-measurement-2026-09-30.md">as measured</a>, and a document that declares the new version fails on its version. So a downgrade is loud, not silent.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

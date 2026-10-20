@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Install the full workflow set</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Install the full workflow set</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Install the full workflow set</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-18-install-the-full-workflow-set/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p><code>htmlspec init</code> installs instructions for five tools by iterating a table of workflows. The table has one row. Everything downstream of it — skill writing, command writing, the marked region in a shared file — already loops, so the mechanical part of this change is adding rows.</p>
+          <p>The load-bearing part is not mechanical. Six instruction bodies have to be written, and an instruction body is the project's opinion about how a stage of the lifecycle is performed. <code>archive.md</code> is 196 lines and most of its length is reasoning about why the operation is arranged the way it is. Getting six more of those right is the work; the loop count is incidental.</p>
+          <p>Two constraints come from the existing design and neither is negotiable here:</p>
+          <ol>
+            <li>
+              <p><strong>Bodies are compiled in.</strong> <code>include_str!</code> into the binary, because the packaged program runs with no source checkout. Six new files under <code>crates/htmlspec-assets/instructions/</code>.</p>
+            </li>
+            <li>
+              <p><strong>A body must not name a command the program lacks.</strong> Stated as a comment and enforced by one narrow test that greps for <code>htmlspec init </code> with a trailing space.</p>
+            </li>
+          </ol>
+        </section>
+        <section id="hs-goals">
+          <h2>Goals</h2>
+          <ul>
+            <li>Seven workflows installed, covering the lifecycle from an idea to an archived change.</li>
+            <li>No instruction body can name a nonexistent command, enforced mechanically rather than by review.</li>
+            <li>Adding an eighth workflow stays a table entry plus a body file.</li>
+          </ul>
+        </section>
+        <section id="hs-non-goals">
+          <h2>Non-Goals</h2>
+          <ul>
+            <li>New CLI surface. See the proposal.</li>
+            <li>Changing how a tool receives instructions. <code>Delivery</code> is untouched.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-the-rule-becomes-a-test-over-the-cli-s-own-command-tree">
+            <h3>The rule becomes a test over the CLI's own command tree</h3>
+            <p>The current guard is one test asserting no body contains the literal <code>htmlspec init </code>. It was written for a specific regression — <code>init</code> took a path until the last release — and it generalizes badly: it would not catch <code>htmlspec propose</code>, <code>htmlspec sync</code>, or <code>htmlspec new spec</code> (the kind is <code>specification</code>).</p>
+            <p>Replace it with a test that extracts every <code>htmlspec &lt;words&gt;</code> occurrence from every body and resolves each against clap's command tree, which <code>htmlspec-cli</code> can hand over as data. A body naming <code>htmlspec verify</code> fails the build.</p>
+            <p>This inverts where the constraint lives. Today a human reads the comment in <code>instructions.rs</code> and is careful. After this, the compiler and the test suite are careful, and the comment describes a checked property rather than a convention. That inversion is the reason six bodies can be added in one change without the review burden scaling with them.</p>
+            <p>The test lives in <code>htmlspec-cli</code>, not <code>htmlspec-assets</code>, because that is where the clap definition is and assets must not depend on the CLI. <code>htmlspec-assets</code> keeps the two properties that are local to it — a body has length, and a body carries no frontmatter of its own.</p>
+            <p><strong>Extraction is deliberately crude.</strong> A regex for <code>htmlspec</code> followed by words, then walk the words down the subcommand tree until one is not a subcommand, and treat the prefix as the invocation. A body is prose with fenced code blocks, and a parser sophisticated enough to know which occurrences are invocations would be a parser with its own bugs. Crude and over-eager is the right failure direction: it flags a false positive, someone rewords a sentence, and no false negative reaches a contributor.</p>
+          </section>
+          <section id="hs-workflow-order-is-data-and-it-is-lifecycle-order">
+            <h3>Workflow order is data, and it is lifecycle order</h3>
+            <p><code>WORKFLOWS</code> becomes seven entries and their order is the order a change moves through them: <code>explore</code>, <code>new</code>, <code>continue</code>, <code>ff</code>, <code>apply</code>, <code>verify</code>, <code>archive</code>. Nothing currently depends on the order — with one row there was no order to depend on — and two things will: <a href="evidence/seven-workflow-install-2026-08-18.md">the marked region in <code>AGENTS.md</code> writes one section per workflow in table order</a>, and the <code>--json</code> payload lists them.</p>
+            <p>Alphabetical order would put <code>apply</code> first and <code>verify</code> last, which reads as a list of unrelated commands. Lifecycle order makes the region a document a contributor can read top to bottom, so the ordering is stated as a property of the table with a test that pins the first and last entries.</p>
+          </section>
+          <section class="decision" id="decision-ff-is-a-driver-over-the-other-bodies-not-a-fourth-copy-of-them" data-change="added" data-status="accepted">
+            <h3><code>ff</code> is a driver over the other bodies, not a fourth copy of them <span class="hs-id">decision-ff-is-a-driver-over-the-other-bodies-not-a-fourth-copy-of-them</span></h3>
+            <p data-field="rationale"><code>ff</code> produces every artifact in one pass. The tempting implementation is a body that restates what <code>new</code> and <code>continue</code> say. That is three copies of the proposal guidance, and the one that drifts is the one someone reads.</p>
+            <p>Instead <code>ff</code> states the sequence, the checkpoints, and what makes stopping early correct, and defers to the other workflows by name for what each artifact carries. The skill files land in one directory per tool, so a body can name <code>htmlspec-new-change</code> and the agent has it.</p>
+            <p data-field="rationale">The cost is honest: an agent running <code>ff</code> needs two files rather than one. The alternative cost is three descriptions of a proposal, which the artifact-kinds change exists to have exactly one of.</p>
+          </section>
+          <section id="hs-explore-ships-despite-having-no-command-at-all">
+            <h3><code>explore</code> ships despite having no command at all</h3>
+            <p><a href="evidence/lifecycle-walkthrough-2026-08-18.md"><code>explore</code> names no <code>htmlspec</code> invocation.</a> It is a stance — think, read, investigate, do not implement — and OpenSpec's version says so explicitly in its second paragraph.</p>
+            <p>A workflow with no command is worth installing because the failure it prevents is real and expensive: an agent asked to think about a problem starts writing code, and the change that results has no proposal because the work was done before anyone decided what it was for. The instruction that stops that is worth more than instructions for a stage that has a command to structure it.</p>
+            <p>It also settles the rule the proposal argues about, in the strongest available form. If a workflow with no command is legitimate, then "installing an instruction file for a command that does nothing" was never the right way to state the hazard. The hazard is naming a command that does not exist, and <code>explore</code> names none.</p>
+          </section>
+          <section id="hs-the-closing-message-names-the-entry-point">
+            <h3>The closing message names the entry point</h3>
+            <p><code>report_next_command</code> hardcodes <code>tool.invocation("archive")</code>. With seven workflows the useful thing to name on a first run is the entry point, so the workflow named becomes a property of the table — one entry flagged as the lifecycle's start — rather than a string literal at the call site.</p>
+            <p>A flag on the table rather than "the first entry" because those are different facts that happen to coincide today. Order is for reading; the entry point is what a contributor types first. A later change that adds <code>onboard</code> at the top of the region would silently repoint the closing message if the two were the same fact.</p>
+            <p><a href="evidence/seven-workflow-install-2026-08-18.md">The message keeps its per-spelling grouping</a> and the archival line moves into a second sentence, since a contributor who has just bootstrapped is not archiving anything yet.</p>
+          </section>
+          <section id="hs-bodies-are-written-against-the-accepted-contract">
+            <h3>Bodies are written against the accepted contract</h3>
+            <p>Where the accepted specifications already state what an artifact kind carries, the body says the same thing in the same terms, and names the diagnostic that reports a violation. <code>archive.md</code> does this well — it names <code>kind/task-in-specification</code> and explains why the rule exists — and the six new bodies follow it.</p>
+            <p>This is a writing constraint rather than a mechanism, and there is no test for it. Checking that a named diagnostic exists is a smaller version of the command-name test and is left out of scope: identifiers are stable and the six bodies name few of them.</p>
+            <p>There is a subtler hazard here than a misspelled rule id, and the bodies have to be written against it. <code>kind/*</code> has exactly two rules — a specification must not carry a task, a tasks document must carry at least one task — and the absence of any rule about a proposal's or a design's content is a stated design commitment, not a gap. So a body must not imply that a proposal is validated for what it carries. An agent told a rule exists writes to satisfy a check that never runs, and the freedom those two kinds have is the thing it would be writing away.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <ul>
+            <li>
+              <p><strong>Six bodies is a large amount of prose to get right at once, and prose has no compiler.</strong> The command-name test catches the mechanical error and nothing catches a body that is merely bad advice. Mitigation: each body is written against the accepted contract for its artifact kind, and <a href="evidence/lifecycle-walkthrough-2026-08-18.md">the change is exercised end to end by running the lifecycle in a scratch project</a> — the same way the archive skill's content was verified when it moved into the crate.</p>
+            </li>
+            <li>
+              <p><strong>The <code>AGENTS.md</code> region grows from one workflow to seven.</strong> The region is the whole instruction set inlined, so a shared-file tool gets a much longer file. <a href="evidence/seven-workflow-install-2026-08-18.md">Measure it</a>; if the result is unreasonable the region becomes a summary per workflow with the detail in the skill files, which is a change to <code>write_region</code> and not to the bodies.</p>
+            </li>
+            <li>
+              <p><strong><code>ff</code> deferring to other bodies by name assumes those files are present.</strong> True for skills-and-commands and skills-only tools. For a <code>SingleFile</code> tool every body is in the one region, so the reference resolves to a section of the same file. Both work; the phrasing has to be neutral about which, so it names the workflow rather than a path.</p>
+            </li>
+            <li>
+              <p><strong>The command-name test's crude extraction will flag prose.</strong> A sentence like "the archive command checks what you wrote" is fine, but "run htmlspec on the project" would be read as an invocation of a nonexistent subcommand. Accepted: rewording is cheap, and the alternative direction of failure is a shipped skill that sends an agent to an error.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-migration">
+          <h2>Migration</h2>
+          <p>Existing projects re-run <code>htmlspec init</code>, which is already documented as safe to re-run and already refreshes instructions. Six new files appear and <code>archive</code> is rewritten identically. <a href="evidence/seven-workflow-install-2026-08-18.md">The generated-version frontmatter makes a project still carrying the one-workflow install identifiable.</a></p>
+          <p>No accepted specification is withdrawn. The bootstrap requirements are written in terms of "the instructions that tool needs to drive the HTMLSpec workflow", which is satisfied better by seven than by one; the delta strengthens that requirement to say the lifecycle is covered and that a named command must exist.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>deterministic-formatting</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>deterministic-formatting</h1>
+        <p>Defines the canonical serialization of a specification document so that rich HTML still produces small, meaningful Git diffs, and so two agents editing the same document independently do not fight over formatting.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>deterministic-formatting</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/specs/deterministic-formatting/spec.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-requirements">Requirements</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-requirements">
+          <h2>Requirements</h2>
+          <section class="requirement" id="req-formatting-is-idempotent" data-change="unchanged">
+            <h3>Formatting is idempotent <span class="hs-id">req-formatting-is-idempotent</span></h3>
+            <p>Formatting a document SHALL be a fixed point: formatting an already-formatted document SHALL produce byte-identical output. Applying formatting repeatedly SHALL never continue to change the file.</p>
+            <article class="scenario" id="scenario-second-pass-changes-nothing" data-change="unchanged">
+              <h4>Second pass changes nothing</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is formatted twice in succession</dd>
+                <dt>Then</dt>
+                <dd>the output of the second pass is byte-identical to the output of the first</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-formatted-file-in-version-control" data-change="unchanged">
+              <h4>Formatted file in version control</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a formatted document committed to Git</dd>
+                <dt>When</dt>
+                <dd>formatting is run again with no content edits</dd>
+                <dt>Then</dt>
+                <dd>Git reports no changes</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-formatting-preserves-meaning" data-change="unchanged">
+            <h3>Formatting preserves meaning <span class="hs-id">req-formatting-preserves-meaning</span></h3>
+            <p>Formatting SHALL NOT change a document's semantic content. It SHALL preserve every semantic unit, every identifier, every attribute value, every cross-reference, and the document order of content. It SHALL NOT add, remove, or reorder semantic units.</p>
+            <p>One kind of attribute value is excepted. Where an asset reference names bytes the project's store does not hold, formatting SHALL fill it with the address of the bytes the toolchain ships. A reference that names bytes the store holds SHALL be left as written, even when the store also holds a newer revision, because the reference records what the document was authored against.</p>
+            <p>An asset reference SHALL be the value of an attribute through which an element loads an asset. These are the same attributes that document-validation's "An asset reference must match the bytes it names" judges, so the formatter and the validator SHALL NOT disagree about which values are references. A hyperlink is a citation, not something the document loads, and SHALL NOT be filled. Text SHALL NOT be read as an asset reference. Prose that quotes one, whether as characters in a code element or escaped in an example, is content, and formatting SHALL leave it as the author wrote it.</p>
+            <p>A second exception is made only on a contributor's request. Where the request is made, formatting SHALL add the fallback stylesheet that "A document stays readable when its stylesheet cannot load" describes to a document that lacks one, SHALL replace a fallback whose text differs from the current one, and SHALL change nothing else. It SHALL NOT do so for a document of an archived change or a run's record, which are history, whether reached directly or through a symbolic link. Without the request, formatting SHALL leave a document's fallback present, absent, or stale as written.</p>
+            <article class="scenario" id="scenario-identifiers-survive-formatting" data-change="unchanged">
+              <h4>Identifiers survive formatting</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is formatted</dd>
+                <dt>Then</dt>
+                <dd>every semantic unit retains the identifier it had before</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-content-order-preserved" data-change="unchanged">
+              <h4>Content order preserved</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document with requirements in a deliberate order is formatted</dd>
+                <dt>Then</dt>
+                <dd>the requirements appear in the same order</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-whitespace-sensitive-content-untouched" data-change="unchanged">
+              <h4>Whitespace-sensitive content untouched</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains a preformatted code excerpt</dd>
+                <dt>Then</dt>
+                <dd>formatting leaves that content's internal whitespace and line breaks exactly as authored</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-formatting-an-invalid-document" data-change="unchanged">
+              <h4>Formatting an invalid document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>formatting is applied to a document that fails validation</dd>
+                <dt>Then</dt>
+                <dd>the formatter either produces canonically formatted output without altering meaning, or refuses and reports why — it never silently repairs or discards content</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-prose-that-quotes-an-asset-reference" data-change="unchanged">
+              <h4>Prose that quotes an asset reference</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose store does not hold the bytes <code>assets/htmlspec.css</code> names</dd>
+                <dt>When</dt>
+                <dd>a document's prose quotes <code>href="assets/htmlspec.css"</code> in a code element, and the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the quoted words are unchanged, and only references on the document's own loading elements are filled</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-hyperlink-to-an-asset" data-change="unchanged">
+              <h4>A hyperlink to an asset</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose store does not hold the bytes a document's hyperlink names</dd>
+                <dt>When</dt>
+                <dd>the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the hyperlink is left as written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reference-that-names-stored-bytes" data-change="unchanged">
+              <h4>A reference that names stored bytes</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document whose stylesheet reference names a revision the store holds, and a store that also holds a newer revision</dd>
+                <dt>When</dt>
+                <dd>the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the reference still names the revision it was authored against</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-plain-formatting-leaves-the-fallback-as-written" data-change="unchanged">
+              <h4>Plain formatting leaves the fallback as written</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document without the fallback</dd>
+                <dt>When</dt>
+                <dd>it is formatted without the request</dd>
+                <dt>Then</dt>
+                <dd>it still has no fallback</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-request-adds-the-fallback" data-change="unchanged">
+              <h4>The request adds the fallback</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document without the fallback</dd>
+                <dt>When</dt>
+                <dd>it is formatted on the request</dd>
+                <dt>Then</dt>
+                <dd>its head gains the fallback once and nothing else changes, and a second request changes nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-request-replaces-a-stale-fallback" data-change="unchanged">
+              <h4>The request replaces a stale fallback</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document whose fallback differs from the current text</dd>
+                <dt>When</dt>
+                <dd>it is formatted on the request</dd>
+                <dt>Then</dt>
+                <dd>the fallback's text is replaced and nothing else changes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-request-leaves-history-as-written" data-change="unchanged">
+              <h4>The request leaves history as written</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document of an archived change, or a run's record, without the fallback</dd>
+                <dt>When</dt>
+                <dd>the project is formatted on the request</dd>
+                <dt>Then</dt>
+                <dd>that document is left as written, and the request reports it as skipped</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-serialization-is-canonical" data-change="unchanged">
+            <h3>Serialization is canonical <span class="hs-id">req-serialization-is-canonical</span></h3>
+            <p>For any given document content, there SHALL be exactly one canonical serialization. Attribute order, indentation, line breaking, quoting, character escaping, tag closing, and case SHALL be fully determined by the formatting rules rather than by authoring choices or generator behavior.</p>
+            <article class="scenario" id="scenario-two-agents-converge" data-change="unchanged">
+              <h4>Two agents converge</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>two agents that produce the same semantic document with different attribute order and indentation</dd>
+                <dt>When</dt>
+                <dd>both outputs are formatted</dd>
+                <dt>Then</dt>
+                <dd>the two files are byte-identical</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-attribute-order-is-fixed" data-change="unchanged">
+              <h4>Attribute order is fixed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a formatted element carries a class, an identifier, and a change state</dd>
+                <dt>Then</dt>
+                <dd>those attributes appear in the order the formatting rules prescribe, regardless of the order they were written in</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-escaping-is-consistent" data-change="unchanged">
+              <h4>Escaping is consistent</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>content contains characters that may be written either literally or as entities</dd>
+                <dt>Then</dt>
+                <dd>the formatted output uses one prescribed form for each such character</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-formatting-introduces-no-diff-churn" data-change="unchanged">
+            <h3>Formatting introduces no diff churn <span class="hs-id">req-formatting-introduces-no-diff-churn</span></h3>
+            <p>Formatting SHALL NOT widen a diff beyond the units a content edit touched. Editing, adding, or removing a unit SHALL NOT cause the formatter to reflow or reindent unrelated parts of the document.</p>
+            <p>This requirement constrains the formatter only. It does not promise a minimal Git diff for a given edit. Preserved author line breaks mean a one-line paragraph produces a whole-line change when one sentence changes, and that cost belongs to the line structure rather than to the formatter. Diff minimality SHALL be measured as a separate property.</p>
+            <article class="scenario" id="scenario-editing-one-requirement" data-change="unchanged">
+              <h4>Editing one requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the prose of one requirement is revised and the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the formatter changes no line outside that requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-whole-line-change-is-not-a-violation" data-change="unchanged">
+              <h4>Whole-line change is not a violation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>one sentence changes inside a paragraph held on a single long line</dd>
+                <dt>Then</dt>
+                <dd>the diff covers that whole line, and the formatter is still conformant</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-inserting-a-requirement" data-change="unchanged">
+              <h4>Inserting a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a new requirement is inserted between two existing ones</dd>
+                <dt>Then</dt>
+                <dd>the diff shows the added requirement and does not rewrite the surrounding requirements</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-long-prose-reflow" data-change="unchanged">
+              <h4>Long prose reflow</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a sentence within a paragraph is edited</dd>
+                <dt>Then</dt>
+                <dd>the diff does not rewrap the entire surrounding paragraph or section</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-generated-content-is-ordered-deterministically" data-change="unchanged">
+            <h3>Generated content is ordered deterministically <span class="hs-id">req-generated-content-is-ordered-deterministically</span></h3>
+            <p>Where a document contains content whose order is not authored — such as collected references, indexes, or navigation — that order SHALL be determined by a stable rule. Regenerating such content from unchanged inputs SHALL produce identical output.</p>
+            <article class="scenario" id="scenario-regenerating-navigation" data-change="unchanged">
+              <h4>Regenerating navigation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document's navigation is regenerated with no content change</dd>
+                <dt>Then</dt>
+                <dd>the navigation is byte-identical to before</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-incidental-ordering" data-change="unchanged">
+              <h4>No incidental ordering</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>generated content is produced twice from the same inputs in different runs</dd>
+                <dt>Then</dt>
+                <dd>the ordering does not vary with iteration order, timestamps, or filesystem order</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-formatting-can-be-checked-without-writing" data-change="unchanged">
+            <h3>Formatting can be checked without writing <span class="hs-id">req-formatting-can-be-checked-without-writing</span></h3>
+            <p>It SHALL be possible to determine whether a document is canonically formatted without modifying it, so that continuous integration can reject unformatted documents.</p>
+            <article class="scenario" id="scenario-check-passes" data-change="unchanged">
+              <h4>Check passes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a canonically formatted document is checked</dd>
+                <dt>Then</dt>
+                <dd>the check reports success and the file is not modified</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-check-fails" data-change="unchanged">
+              <h4>Check fails</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an unformatted document is checked</dd>
+                <dt>Then</dt>
+                <dd>the check reports failure, identifies the document, and the file is not modified</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-files-use-a-stable-text-encoding-and-line-ending" data-change="unchanged">
+            <h3>Files use a stable text encoding and line ending <span class="hs-id">req-files-use-a-stable-text-encoding-and-line-ending</span></h3>
+            <p>Formatted documents SHALL use UTF-8 encoding, SHALL use a single prescribed line ending, SHALL end with exactly one final newline, and SHALL NOT contain trailing whitespace on any line.</p>
+            <article class="scenario" id="scenario-line-endings-normalized" data-change="unchanged">
+              <h4>Line endings normalized</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document authored with mixed line endings is formatted</dd>
+                <dt>Then</dt>
+                <dd>the output uses the prescribed line ending throughout</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-cross-platform-round-trip" data-change="unchanged">
+              <h4>Cross-platform round trip</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>contributors on different operating systems</dd>
+                <dt>When</dt>
+                <dd>each formats the same document</dd>
+                <dt>Then</dt>
+                <dd>the results are byte-identical</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

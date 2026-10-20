@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Establish a runbook</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Establish a runbook</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Establish a runbook</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-18-establish-a-runbook/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>Five of this project's eighteen archived changes carry a <code>## N. Release</code> section, and all five state the same four steps in the same order: regenerate the installed instruction files, advance the workspace version and relock offline, write the changelog entry, record the version in <code>VERSION</code> at archival and confirm <code>scripts/check-release</code> passes.</p>
+          <p>The section number is different every time — 6, 8, 6, 9, 7 — because nothing is shared. The steps are retyped into each new <code>tasks.md</code>.</p>
+          <p><strong>The procedure has been got wrong, and the same lesson was learned twice.</strong> At 0.10.0, task 6.2 recorded that advancing the version restales every installed file, because <code>generatedBy</code> is written from <code>CARGO_PKG_VERSION</code> at run time:</p>
+          <blockquote>
+            <p><strong>The version bump restales every installed file, and this is the first release where a check says so.</strong> [...] the stage found, on its first release, the class of drift it was written for.</p>
+          </blockquote>
+          <p>Three weeks later, at 0.12.0, task 7.1 predicted that regeneration would be a no-op and rediscovered the same fact:</p>
+          <blockquote>
+            <p><strong>Not a no-op, and the task's own reasoning is what is slightly off.</strong> No workflow <em>body</em> changed, as predicted — but each installed file carries <code>generatedBy: htmlspec &lt;version&gt;</code> in its frontmatter, so <strong>advancing the version in 7.2 made all 45 files stale</strong>.</p>
+          </blockquote>
+          <p>That task then wrote down what it had learned, in as many words:</p>
+          <blockquote>
+            <p>The general form worth keeping: this check is coupled to the version, not only to workflow prose, so <strong>every</strong> release regenerates it.</p>
+          </blockquote>
+          <p><strong>There is nowhere for it to be kept.</strong> <code>contract-authority</code> states that the project's contract is what its accepted specifications state, "and nothing else SHALL be treated as stating an obligation of the project" — so a lesson recorded in an archived <code>tasks.md</code> binds nothing and is read by nobody. <code>archive.md</code> is an instruction body regenerated from source, so a step added there by hand is overwritten on the next <code>init</code>. The sixth release is therefore positioned to rediscover what the fourth and fifth both wrote down.</p>
+          <p>The same task found a second trap the same way: running <code>htmlspec init</code> to regenerate inside a repository that is already a project bootstraps a stray <code>htmlspec/</code> and a <code>spec.nix</code> at <code>0.0.0</code>, <a href="evidence/the-location-is-blocked-2026-09-17.md">which then fails <code>self-assets</code> with nine duplicate-asset errors</a>. That is knowledge with a half-life, and it currently has no home either.</p>
+          <p><strong>This is a shape the project has closed before.</strong> <code>artifact-kinds</code> states the general form, crediting the fault to <code>project-bootstrap</code>'s refusal of a gate derived from a directory name: "a rule nothing checks is not a rule." Here the subject is not a rule but a procedure: an ordered set of steps, run once per release, whose order carries constraints (version <em>before</em> regenerate) and whose hazards are known and written down where nothing reads them.</p>
+        </section>
+        <section id="hs-the-worked-example">
+          <h2>The worked example</h2>
+          <p>A recipe for chocolate-chip cookies is the same shape, and it is not only the easier thing to picture — <strong>it is the example that tests whether this artifact is what it claims to be.</strong> The release procedure is made of commands, so a proposal arguing only from it invites the reading that a runbook is a script with prose around it. A recipe settles that: nothing in a bowl of creamed butter automates.</p>
+          <p>So I built one before writing this. Nine steps, from creaming the butter to moving the cookies to a wire rack, with the source links the recipe came with. <a href="evidence/the-cookie-recipe-2026-09-17.md">It needed no code change</a>:</p>
+          <pre><code>$ htmlspec validate htmlspec/runbooks/chocolate-chip-cookies/tasks.html
+  no diagnostics: the document is accepted
+$ htmlspec validate --strict …            # same
+$ htmlspec format --check …               # is canonical
+9 task units, 10 external links, all preserved through formatting</code></pre>
+          <p>The ten citation links were the part I expected to fail, and the reason they do not is a line in <code>crates/htmlspec-validate/src/rules/safety.rs</code>:</p>
+          <blockquote>
+            <p><code>href</code> is deliberately absent for <code>a</code>: a hyperlink to an external page is a citation, not a dependency, and the document renders fine offline with it. It <em>is</em> checked on <code>link</code>, which loads.</p>
+          </blockquote>
+          <p>Somebody drew the exact line a cited recipe needs. <strong>Two findings came out of building it rather than describing it</strong>, and both appear below: the run record's shape is forced by reference resolution, and a runbook has nowhere to put its ingredients.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li>
+              <p><strong>A runbook becomes a place a project keeps a procedure</strong>, at <code>htmlspec/runbooks/&lt;name&gt;/</code>, a fourth place beneath the project root beside the accepted specifications, the active changes, and the archive. A procedure that is run repeatedly is not a change and does not archive, so it needs somewhere to live that is not <code>changes/</code>.</p>
+            </li>
+            <li>
+              <p><strong>A runbook is a directory of two documents, both of existing kinds.</strong> A <code>specification</code> states what the runbook is for, what it requires of the machine it runs on, and what its history taught; a <code>tasks</code> document carries the ordered procedure. <strong>The split is forced rather than tidy</strong> — <code>artifact-kinds</code> states that a specification SHALL NOT carry task units and that this is "the <strong>only</strong> placement rule in the vocabulary", so the procedure cannot live inside the canonical document.</p>
+            </li>
+            <li>
+              <p><strong>No fifth artifact kind.</strong> The set of four stays closed and <code>the_schema_enumerates_exactly_the_four_artifact_kinds</code> stays untouched and passing. A kind answers <em>which stage of one change's argument is this</em>; a runbook is not a stage, it is a destination. The precedent is already here: <code>htmlspec/specs/&lt;capability&gt;/</code> is a top-level accepted artifact whose documents are of kind <code>specification</code>, the same kind a change produces — so "a document outside a change directory that changes flow into" is a shape that needed no kind of its own.</p>
+            </li>
+            <li>
+              <p><strong>The procedure carries no completion state, because a run is a copy.</strong> A run instantiates the runbook by copying its <code>tasks</code> document; the states advance in the copy exactly as they do in a change. The canonical procedure's tasks stay <code>todo</code> forever because nobody works them. Two One thing falls out at no cost, and it is the one worth having: <code>dropped</code> already requires a <code>data-field="reason"</code> paragraph, and the refusal is an <strong>error</strong> rather than a warning — <code>schema/missing-reason</code>, measured against a run record with the reason deleted. A batch that skips a step cannot record the skip silently. <strong>The completion counting does not come free</strong>, and this proposal earlier claimed it did. <code>htmlspec status</code> takes a <code>--change</code> argument and reads only the changes directory, so it reports no change named <code>chocolate-chip-cookies</code> when pointed at a runbook. The logic is reusable and it does not reach a runbook today.</p>
+              <aside data-migration="note">
+                <p><strong>Migration note.</strong> This change's record of pointing <code>status --change</code> at a runbook, <a href="evidence/the-status-gap-2026-09-17.md"><code>evidence/the-status-gap-2026-09-17.md</code></a>, found that it refuses a runbook by name and, by path, reaches it and reports <code>0 of 9 task(s) done or dropped</code>, so "reads only the changes directory" is wrong about the path form. Task 2.1 records the same correction. Later in this change, the guard recorded in task 10.3 made <code>status</code> refuse a runbook by path as well.</p>
+              </aside>
+            </li>
+            <li>
+              <p><strong><code>htmlspec list --runbooks</code></strong>, a flag beside the existing <code>--specs</code>. Listing what the project holds is <code>list</code>, and a new top-level command would invent a second vocabulary for an operation that already exists.</p>
+            </li>
+            <li>
+              <p><strong>One real runbook ships with this change: the project's own release procedure</strong>, extracted from the five archived <code>## N. Release</code> sections and from <code>archive.md</code>. A location with nothing in it proves nothing, and the release procedure is the cheapest possible subject because this project is the one that pays if the shape is wrong.</p>
+            </li>
+          </ul>
+          <p><strong>Not in scope</strong>, each deferred to a named successor rather than dropped:</p>
+          <ul>
+            <li>
+              <p><strong>The <code>run</code> operation and the logging contract.</strong> Reading a runbook, instantiating a run, and recording what that run must record. <strong>A runbook's log is per-runbook rather than one fixed format</strong> — a cookie run records an oven temperature and a yield, a release run records a version and a check result — so the contract is stated when the runbook is authored. <code>log-a-runbook-run</code>.</p>
+            </li>
+            <li>
+              <p><strong>A workflow for authoring one.</strong> A tenth <code>WORKFLOWS</code> row and <code>/htmlspec:runbook</code> would take the installed instruction files from 45 to 50 and <code>check-installed</code> with them. That fan-out is the whole cost of that change, which is why it is its own — <code>author-a-runbook-through-the-change-lifecycle</code>. This change must be provable without a workflow.</p>
+            </li>
+            <li>
+              <p><strong>Carrying a runbook to another machine.</strong> Imported skills, self-containment, and the procedures for installing required software. These are <strong>contracts a runbook declares</strong> rather than a bundle it carries: the runbook states what it needs of a machine, and the tool reports what is missing before a run starts. <code>carry-a-runbook-to-another-machine</code>.</p>
+            </li>
+            <li>
+              <p><strong>A recorded run history.</strong> The aggregate — "this runbook has been run 47 times" — derived from the run records rather than stored, for the reason <code>project-bootstrap</code> refuses to read the last archived version out of a directory name: a value maintained beside the facts it summarizes depends on a convention nothing enforces. <code>record-a-runbooks-history</code>.</p>
+            </li>
+          </ul>
+          <p><strong>A per-runbook version and changelog are not deferred — the spec analogy answers them.</strong> The draft this proposal comes from asked for both, and the answer is the one the accepted specifications already give. <strong>An accepted specification carries no version and no changelog.</strong> <code>openspec/specs/&lt;capability&gt;/spec.md</code> holds a <code>## Purpose</code> and its requirements, and nothing else. A capability's version history is <em>derived</em>: it is the set of archived changes that touched it, each recording the release it shipped in. For <code>contract-authority</code> that history reads <code>0.10.0</code> and <code>0.12.0</code>, recovered from the archive rather than from a field anybody maintained.</p>
+          <p>A runbook inherits exactly that. It is changed by a change, that change records a project version, and its history is the archived changes that touched it. Adding a second version axis with nothing comparing it to the project's own is accuracy without authority, which <code>contract-authority</code> names as the failure mode rather than an untidiness: "Accuracy SHALL NOT confer authority." Storing a derivable fact is also how this project's version gate once came to compare against a value no project ever had.</p>
+          <p>One case genuinely needs a version of its own, and it is the only one: a runbook carried to a machine where the project is absent, so the project's version means nothing and derivation from the archive is impossible. That is <code>carry-a-runbook-to-another-machine</code>, and its honest cost is that <code>check-release</code> grows a fourth question and every runbook then owes a distinct version with a heading.</p>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> A later change reversed this. <a href="../2026-09-26-carry-a-runbook-to-another-machine/specification.html#req-a-runbook-carries-no-version-and-no-changelog-of-its-own">2026-09-26-carry-a-runbook-to-another-machine</a> withdrew the requirement this argument became, <em>A runbook carries no version and no changelog of its own</em>, because "A carried runbook must identify its release without the source archive", and stated in its place that a runbook carries an independently checked release version.</p>
+          </aside>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <p><strong>New Capabilities:</strong></p>
+          <ul>
+            <li>
+              <p><code>runbook-authority</code> — what a runbook is, where it lives, which of its documents carries authority, and that its run records do not. The last of those is the load-bearing part: a run record is history, and <code>contract-authority</code> already places "the output of any earlier run" among the non-normative.</p>
+            </li>
+          </ul>
+          <p><strong>Modified Capabilities:</strong></p>
+          <ul>
+            <li>
+              <p><code>project-bootstrap</code> — its requirement <em>"<a href="../../../specs/project-bootstrap/spec.html#req-a-project-declares-its-name-version-and-expected-toolchain">A project declares its name, version, and expected toolchain</a>"</em> states that the <code>htmlspec/</code> directory "SHALL hold the project's accepted specifications, its active changes, and its archive, each in its own place." A runbook is a fourth place, so that sentence is modified rather than quietly extended.</p>
+              <p><strong>That sentence is not declared closed, and the difference from the kind vocabulary is the argument.</strong> The kind enum says its set is <code>CLOSED</code> and has a guard test whose failure message calls adding one "a decision with a compatibility cost". The layout sentence has neither, and <code>migrate-an-openspec-project</code> already established that the layout beneath the project root is only partly specified. So this is a modification with a stated reason, not a closed set being reopened.</p>
+              <aside data-migration="note">
+                <p><strong>Migration note.</strong> The quoted sentence is not in that requirement. Section 1 of this change's record of the sync, <a href="evidence/the-sync-and-the-archival-2026-09-18.md"><code>evidence/the-sync-and-the-archival-2026-09-18.md</code></a>, shows that it opens <em>A project has a declared root holding one asset store</em>, and that the delta modifies that requirement and <em>Bootstrapping is repeatable without loss</em>. The merge followed the delta.</p>
+              </aside>
+            </li>
+          </ul>
+          <p><strong>Deliberately not modified:</strong> <code>artifact-kinds</code>, <code>document-schema</code>, <code>document-validation</code>. No new kind, no new unit in the closed seven, no schema change, no projection change. If this proposal is right, the diff touches none of them, and that claim is checkable.</p>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li><code>crates/htmlspec-cli/src/main.rs</code> — a <code>runbooks: bool</code> flag on <code>List</code>, beside the <code>specs: bool</code> at line 213.</li>
+            <li><code>crates/htmlspec-cli/src/commands.rs</code> — <code>list</code>, and the project-layout constants that name the places beneath <code>htmlspec/</code>.</li>
+            <li><code>htmlspec/runbooks/</code> — the new location, and this project's own release runbook inside it.</li>
+            <li><a href="../../../specs/project-bootstrap/spec.html"><code>openspec/specs/project-bootstrap/spec.md</code></a> — the fourth place.</li>
+            <li>No change to <code>crates/htmlspec-schema/schema/document.schema.json</code>, to <code>TEMPLATES</code>, to <code>assets/vendor.lock.json</code>, or to <code>crates/htmlspec-validate/src/rules/</code>.</li>
+          </ul>
+          <p><strong>Verification that this worked is one observation:</strong> the next change's <code>tasks.md</code> replaces four hand-written release items with one that says to run the release runbook.</p>
+        </section>
+        <section id="hs-the-counter-argument">
+          <h2>The counter-argument</h2>
+          <p><strong>A runbook is a shell script, and this project already has six.</strong> <code>scripts/check-release</code> is a procedure run hundreds of times that carries sixty lines of its own reasoning in a docstring, and it is executed rather than read. The release procedure could be <code>scripts/release</code>, and then it is code with tests, which is a stronger artifact than a document.</p>
+          <p>Half of that is true, and this change turns nothing in <code>scripts/</code> into prose: where a step is exact it belongs in a script. What a script cannot hold is a step whose content is judgment, and this project has already decided that the release contains one. <code>archive.md</code> says so:</p>
+          <blockquote>
+            <p>Deciding whether the change earned a patch, a minor, or a major increment is judgment, so it is yours; whether one version follows another is exact, so it is the program's.</p>
+          </blockquote>
+          <p><code>check-release</code>'s own docstring goes further and explains why the automated version is impossible rather than merely unbuilt:</p>
+          <blockquote>
+            <p>"Fail if the version has not advanced" is therefore unusable: a change under way legitimately has not advanced the version, because the patch-versus-minor decision is best made once the work's shape is known. Such a stage would be red from a change's first commit to its last, and a suite that is always red is one a contributor learns to skip.</p>
+          </blockquote>
+          <p>So the release procedure is provably not automatable end to end, by a decision this project already took and wrote down. What is left is an ordered set of judgments with exact checks between them, and a runbook whose step invokes <code>scripts/check-release</code> is the division <code>artifact-kinds</code> already names: judgment where judgment is needed, mechanical checking where a rule is exact.</p>
+        </section>
+        <section id="hs-findings-left-open">
+          <h2>Findings left open</h2>
+          <ul>
+            <li>
+              <p><strong>A change that produces no deliverable has not been tested.</strong> The proposal→design→tasks→specification rhythm assumes the work builds something. A change whose output is only a procedure is a shape that rhythm has not met. This change tests it exactly once, on the project's own release procedure, and the result is worth recording either way.</p>
+            </li>
+            <li>
+              <p><strong>A runbook edited after its fortieth run means runs 1–40 record a procedure that no longer exists.</strong> That is an audit feature and a storage cost at the same time, and which one it is depends on facts this project does not have yet. Named here rather than solved; it is the first question <code>record-a-runbooks-history</code> has to answer.</p>
+            </li>
+            <li>
+              <p><strong>A runbook has nowhere to put its inputs, and <a href="evidence/the-cookie-recipe-2026-09-17.md">the cookie recipe is what found it</a>.</strong> Building the recipe, the ingredients had no home, so "assemble the ingredients" became a task unit — and that is wrong. Ingredients are not a step somebody performs. They are what the procedure consumes. The release procedure has the same gap in a plainer form: it requires <code>cargo</code>, <code>python3</code>, and a clean working tree, and none of those is a step either. <strong>A runbook wants a notion of inputs</strong>, and neither this change nor its four successors names one. Recorded here because the shape of the answer is not obvious: an input is close to a machine requirement, which <code>carry-a-runbook-to-another-machine</code> settles, and close to a task's references, which already exist. Deciding which it is needs its own argument.</p>
+            </li>
+            <li>
+              <p><strong>"Run books" was named as a gap before this draft.</strong> <code>gpt_chats/html-spec-proposal-chats.org</code> lists it under "Things that are Hard for openspec", beside bug fixes, implementations, and mixed human/computer work. The other three are not addressed here and are not claimed to be.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

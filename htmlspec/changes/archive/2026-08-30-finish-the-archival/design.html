@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Finish the archival</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Finish the archival</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Finish the archival</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-30-finish-the-archival/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>Archival in HTMLSpec is six steps, of which the program performs one. The agent produces the change's specification, advances the version, runs <code>htmlspec archive</code>, merges the contract into the accepted specifications, moves the directory, and reports. Step three is the program. The other five are instructions in <code>.pi/skills/htmlspec-archive-change/SKILL.md</code>, and instructions do not fail.</p>
+          <p>The division was deliberate and it is mostly right. <code>artifact-kinds</code> states the reason: a proposal and a design carry no imposed structure, so no rule locates an obligation inside them, and an extractor that guessed would emit documents that satisfy every check while misrepresenting their source. That argument is sound and this change does not touch it.</p>
+          <p>What the division got wrong is the boundary. It placed <em>moving a directory</em> on the judgment side. Nothing about <code>mv</code> is judgment. <a href="evidence/the-write-restriction-search-2026-08-30.md">The sentence that put it there</a> is in <code>project-bootstrap</code>:</p>
+          <blockquote>
+            <p>A command whose stated job is checking SHALL NOT write to the project it checks.</p>
+          </blockquote>
+          <p>Read in context that sentence is defending something real — the paragraph around it is about the version, and it says advancing the version is the contributor's act and the program's part is the comparison alone. That is correct and it stays. But the sentence generalises from a version to every write, and from a specific act of judgment to a command's "stated job", and those two moves are what left archival unfinished. A command's stated job is a naming decision. It should not determine what the command is permitted to do.</p>
+        </section>
+        <section id="hs-goals">
+          <h2>Goals</h2>
+          <ul>
+            <li>Archival completes or leaves the project untouched. There is no state in which the report says archived and the directory says otherwise.</li>
+            <li>The version gate fires. It has never fired.</li>
+            <li>The contract gates absolutely. The work informs.</li>
+            <li>The merge stays agent-driven, and the program can tell whether it happened.</li>
+            <li>The four commands the workflow instructions already invoke exist.</li>
+          </ul>
+        </section>
+        <section id="hs-non-goals">
+          <h2>Non-Goals</h2>
+          <ul>
+            <li>Programmatic merging or extraction. <code>artifact-kinds</code> is untouched.</li>
+            <li>Advancing the version. <code>archive</code> compares and never edits the declaration.</li>
+            <li>Renaming the 11 existing archived changes.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> This design does not mention two things the change decided after it was written: a mode in which archival checks without performing (<code>--check</code>), and the rule that an operation OpenSpec also provides carries OpenSpec's name. <a href="tasks.html#task-2-12">Task 2.12</a> records the first, which came out of the search recorded in <a href="evidence/the-write-restriction-search-2026-08-30.md"><code>evidence/the-write-restriction-search-2026-08-30.md</code></a>; that record's last section says that "the design as written provides no mode that checks without performing". <a href="tasks.html#task-2-13">Task 2.13</a> records the second. This change's specification states them as <em>Archival supports a mode that checks without performing</em> and <em>The command surface names its operations as OpenSpec names them</em>.</p>
+          </aside>
+          <section id="hs-the-line-moves-from-which-command-to-which-act">
+            <h3>The line moves from "which command" to "which act"</h3>
+            <p>The old line asked what a command is called. The new line asks what an act requires.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Act</th>
+                  <th>Requires</th>
+                  <th>Who</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Deciding what a change established</td>
+                  <td>Reading prose whose structure was the author's</td>
+                  <td>Agent</td>
+                </tr>
+                <tr>
+                  <td>Deciding which accepted requirement a scenario belongs under</td>
+                  <td>Same</td>
+                  <td>Agent</td>
+                </tr>
+                <tr>
+                  <td>Deciding what a version increment signifies</td>
+                  <td>Judgment about significance</td>
+                  <td>Contributor</td>
+                </tr>
+                <tr>
+                  <td>Comparing two version numbers</td>
+                  <td>An ordering</td>
+                  <td>Program</td>
+                </tr>
+                <tr>
+                  <td>Checking a document against the schema</td>
+                  <td>Stated rules</td>
+                  <td>Program</td>
+                </tr>
+                <tr>
+                  <td>Observing that an identifier is absent</td>
+                  <td>A set membership test</td>
+                  <td>Program</td>
+                </tr>
+                <tr>
+                  <td>Moving a directory and writing a file</td>
+                  <td>Nothing</td>
+                  <td>Program</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>Every row is unchanged from what the project already believes. The change is that the last two rows are now allowed to be in the same command as the rows above them.</p>
+            <p>This is a narrowing of the old requirement rather than a reversal. What <code>project-bootstrap</code> was protecting survives verbatim: archival SHALL NOT modify the declaration, and advancing the version SHALL be the contributor's or the agent's act. That obligation is restated on the act, where it belongs, instead of on the command's name.</p>
+          </section>
+          <section id="hs-the-version-gate-reads-what-the-project-records">
+            <h3>The version gate reads what the project records</h3>
+            <p><code>last_archived_version</code> scans archive directory names for a dot-separated triple. <code>Version::parse</code> requires exactly three numeric components, and no archive directory name has one — they are <code>&lt;date&gt;-&lt;name&gt;</code>. The function therefore <a href="evidence/the-version-gate-never-fired-2026-08-30.md">returns the <code>0.0.0</code> fallback for every project in existence</a>, including this one, and any declared version passes.</p>
+            <p>Meanwhile <code>toolchain-packaging</code> already requires each archived change to record its version <em>in a form the project's own suite can read without version control history</em>, and all 11 archived changes carry a <code>VERSION</code> file. The convention exists. The gate reads a different one.</p>
+            <p>The fix is to read the <code>VERSION</code> file, not to start writing versions into directory names. Three reasons, in order of weight. It is the form an accepted requirement already fixes. It works against the existing archive immediately, with nothing renamed and no migration. And a directory name is a display string that people shorten and rename, while a file with one line in it is a record.</p>
+            <p><code>archive</code> writes that file as part of the move, which is what closes the loop: the program that reads the convention is the program that writes it, so the two cannot drift.</p>
+          </section>
+          <section class="decision" id="decision-assessment-is-mechanical-the-merge-is-judgment-and-archival-needs-only-the-first" data-change="added" data-status="accepted">
+            <h3>Assessment is mechanical, the merge is judgment, and archival needs only the first <span class="hs-id">decision-assessment-is-mechanical-the-merge-is-judgment-and-archival-needs-only-the-first</span></h3>
+            <p data-field="rationale">The merge must stay agent-driven. Archival still needs to know whether it happened, or the completion guarantee is empty.</p>
+            <p data-field="rationale">The resolution is that the two questions have different difficulty. <em>How should this requirement be folded into that capability?</em> is judgment — it needs a decision about which existing requirement a scenario belongs under, and about what to leave alone. <em>Does requirement <code>req-archival-completes</code> appear in any accepted specification?</em> is a set membership test over identifiers.</p>
+            <p>So <code>archive</code> collects the requirement identifiers in the change's <code>specification.html</code>, collects those in the accepted specifications, and reports the difference. It never proposes a merge, never edits an accepted specification, and never decides that an absent identifier is an error — a withdrawn requirement is legitimately absent, and only an agent knows which case it is. It warns and asks.</p>
+            <p data-field="rationale">This is the same shape OpenSpec uses, and worth being precise about because the CLI help misdescribes it. <code>openspec archive</code> advertises <em>update main specs</em>, but <a href="evidence/what-openspec-archival-does-2026-08-30.md">the workflow vendored in this repository routes the merge to <code>openspec-sync-specs</code></a>, which it labels an agent-driven intelligent merge. Both tools assess mechanically and merge by judgment. Only one of them currently assesses.</p>
+          </section>
+          <section id="hs-what-refuses-and-what-asks">
+            <h3>What refuses and what asks</h3>
+            <figure data-migration="captioned">
+              <figcaption>The design's flow for archival: the version comparison, then the specification's presence, kind, and validity, each refusing when it fails; then open tasks and unmerged requirements, which report and ask before the move. Caption written when this document was migrated.</figcaption>
+              <details>
+                <summary>Diagram source</summary>
+                <pre class="mermaid">graph TD
+  A["htmlspec archive"] --&gt; B{"version follows?"}
+  B -- no --&gt; R1["REFUSE"]
+  B -- yes --&gt; C{"specification present,&lt;br/&gt;right kind, valid?"}
+  C -- no --&gt; R2["REFUSE"]
+  C -- yes --&gt; D{"tasks open?&lt;br/&gt;requirements unmerged?"}
+  D -- yes --&gt; P["report and ask"]
+  D -- no --&gt; M["move + write VERSION"]
+  P -- approved --&gt; M
+  P -- declined --&gt; S["stop, nothing moved"]</pre>
+              </details>
+            </figure>
+            <p>The split is not arbitrary. Everything above the prompt concerns the contract, which is what archival makes permanent and what the rest of the project is checked against. Everything at the prompt concerns the work, which is the contributor's business and which they can legitimately decide is finished when a task list disagrees. A dropped task is a normal outcome and the archive workflow already says so.</p>
+            <p>The version gate keeps its position first, for the reason its own comment gives: a contributor sent to fix documents when the blocker is one line in the declaration has been sent to the wrong file.</p>
+          </section>
+          <section class="decision" id="decision-a-prompt-cannot-be-the-only-way-through" data-change="added" data-status="accepted">
+            <h3>A prompt cannot be the only way through <span class="hs-id">decision-a-prompt-cannot-be-the-only-way-through</span></h3>
+            <p data-field="rationale"><code>archive</code> runs inside agent loops. An operation that always stops for a human cannot be driven by one, and an operation that never stops will archive over a warning nobody read.</p>
+            <p>So the prompt appears when the stream is interactive, and <code>--yes</code> accepts the warnings without one. Under <code>--json</code> there is no prompt at all: the payload carries the warnings and a field saying whether the move happened, and without <code>--yes</code> a warned run exits nonzero having moved nothing. An agent that wants to proceed says so explicitly, which is the same contract <code>--yes</code> carries everywhere else.</p>
+          </section>
+          <section id="hs-the-move-is-atomic-and-the-collision-is-refused">
+            <h3>The move is atomic, and the collision is refused</h3>
+            <p>Target name is <code>&lt;YYYY-MM-DD&gt;-&lt;change-name&gt;</code>, with the date prefix skipped if the name already carries one — the same rule OpenSpec uses, and it exists because a change archived twice must not become <code>2026-08-30-2026-08-29-&lt;name&gt;</code>.</p>
+            <p>If the target exists, refuse. Do not suffix, do not merge into it, do not overwrite. A collision means either the change was already archived or two changes share a name on one day, and both want a person.</p>
+            <p>The move is a rename within one filesystem, so it is atomic. If the <code>VERSION</code> write fails after the rename, report the archive location and the failed write together — the change is archived and one file is missing, which is recoverable and must not be reported as a failed archival.</p>
+          </section>
+          <section id="hs-the-four-commands-and-what-each-one-is-here">
+            <h3>The four commands, and what each one is here</h3>
+            <p><code>list</code> and <code>status</code> are load-bearing for <code>archive</code>. The other two are here because the workflow instructions have invoked them since they were vendored.</p>
+            <ul>
+              <li><strong><code>list</code></strong> enumerates active changes, <code>--specs</code> enumerates accepted specifications, <code>--json</code> emits both for agents. This is the change-selection primitive, and <a href="evidence/the-command-usage-measured-2026-08-30.md">its absence is why the HTMLSpec prompts have no selection step</a>.</li>
+              <li><strong><code>status --change &lt;name&gt;</code></strong> reports which of a change's artifacts exist and which of its tasks are complete. <code>archive</code> calls the same code for its warning.</li>
+              <li><strong><code>instructions &lt;artifact&gt;</code></strong> prints the workflow instructions for an artifact kind, plus archival and application. <code>init</code> installs these into tool directories today. Printing them on demand means an agent gets the current text without knowing which tool directory it is in, and without a stale installed copy.</li>
+              <li><strong><code>store</code></strong> registers standalone HTMLSpec repositories on the machine, so specifications can live outside the repository being worked on. This is the largest of the four and the only one that adds a concept rather than a report.</li>
+            </ul>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> What was built takes a stage, not an artifact kind. <a href="tasks.html#task-6-1">Task 6.1</a> adds <code>htmlspec instructions &lt;stage&gt;</code>, this change's specification states the operation as emitting the instructions "for a named stage" (<em>The workflow instructions are available from the command surface</em>), and the program at <code>cf11132</code> accepts one of explore, new, continue, ff, apply, verify, or archive. The design was not corrected.</p>
+            </aside>
+          </section>
+          <section id="hs-risk-the-withdrawn-requirement-was-load-bearing-in-a-way-this-misses">
+            <h3>Risk: the withdrawn requirement was load-bearing in a way this misses</h3>
+            <p>It is an accepted requirement with a stated reason, and this change withdraws part of it on the argument that the reason is narrower than the sentence. The mitigation is that the narrower obligation is written down rather than assumed: archival SHALL NOT modify the declaration, stated on the act. If the argument is wrong, it is wrong visibly, in a requirement someone can disagree with.</p>
+          </section>
+          <section id="hs-risk-store-is-a-change-of-its-own">
+            <h3>Risk: <code>store</code> is a change of its own</h3>
+            <p>Three of the four commands report on what is already there. <code>store</code> introduces machine-level state outside any repository, with its own resolution rules and its own failure modes when a registered store moves or disappears. It is scoped last in the task list for that reason, and it is the part to cut if this change is too large. Cutting it does not block <code>archive</code>, which needs only <code>list</code> and <code>status</code>.</p>
+          </section>
+          <section id="hs-risk-warning-fatigue-turns-the-prompt-into-a-reflex">
+            <h3>Risk: warning fatigue turns the prompt into a reflex</h3>
+            <p>A prompt answered yes every time is a prompt that is not read. The mitigation is that the warnings are specific and countable — this many open tasks, these requirement identifiers absent — rather than a generic caution. A warning that names three identifiers is one a contributor can check in under a minute.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <p>The three above are the ones with mitigations worth stating. The residual risk is scope: this change alters an accepted requirement, changes a command from read-only to performing, and adds four commands. It is large. The task list sequences it so that the contract change and <code>archive</code> land before the commands that are not load-bearing, and so that <code>store</code> is severable.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

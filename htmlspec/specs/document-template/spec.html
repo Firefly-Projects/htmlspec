@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>document-template</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>document-template</h1>
+        <p>Defines the canonical page a reviewer opens — its structure, its restrained visual system, its print behavior, and the pinned offline runtime that renders diagrams, charts, and equations — so that a specification is legible in a browser, on paper, and with scripting disabled.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>document-template</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/specs/document-template/spec.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-requirements">Requirements</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-requirements">
+          <h2>Requirements</h2>
+          <section class="requirement" id="req-a-document-is-self-contained-and-offline" data-change="unchanged">
+            <h3>A document is self-contained and offline <span class="hs-id">req-a-document-is-self-contained-and-offline</span></h3>
+            <p>A document SHALL render completely without network access. It SHALL NOT reference remote scripts, stylesheets, fonts, images, or analytics. All referenced assets SHALL resolve to files within the project.</p>
+            <article class="scenario" id="scenario-opened-with-no-network" data-change="unchanged">
+              <h4>Opened with no network</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a machine with networking disabled</dd>
+                <dt>When</dt>
+                <dd>a reviewer opens a document in a browser</dd>
+                <dt>Then</dt>
+                <dd>the document renders fully, including its diagrams and charts</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-remote-reference-present" data-change="unchanged">
+              <h4>Remote reference present</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document references a script or font over <code>http:</code> or <code>https:</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-tracking" data-change="unchanged">
+              <h4>No tracking</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer opens a document</dd>
+                <dt>Then</dt>
+                <dd>no request leaves the machine</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-core-content-is-readable-without-javascript" data-change="unchanged">
+            <h3>Core content is readable without JavaScript <span class="hs-id">req-core-content-is-readable-without-javascript</span></h3>
+            <p>The semantic content of a document — its requirements, scenarios, decisions, tasks, evidence, risks, and verification — SHALL be present in the served markup and legible with JavaScript disabled. JavaScript SHALL only enhance presentation.</p>
+            <article class="scenario" id="scenario-scripting-disabled" data-change="unchanged">
+              <h4>Scripting disabled</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a browser with JavaScript disabled</dd>
+                <dt>When</dt>
+                <dd>a reviewer opens a document</dd>
+                <dt>Then</dt>
+                <dd>every requirement, scenario, decision, task, and verification result is readable, correctly ordered, and styled</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-diagram-with-scripting-disabled" data-change="unchanged">
+              <h4>Diagram with scripting disabled</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document containing a diagram is opened with JavaScript disabled</dd>
+                <dt>Then</dt>
+                <dd>the diagram's source or a textual description is visible in place of the rendered figure, rather than an empty region</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-content-injected-by-script" data-change="unchanged">
+              <h4>Content injected by script</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document supplies a requirement's text only by running JavaScript</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-documents-share-one-pinned-runtime" data-change="unchanged">
+            <h3>Documents share one pinned runtime <span class="hs-id">req-documents-share-one-pinned-runtime</span></h3>
+            <p>Diagram, chart, and equation support SHALL come from a fixed set of approved libraries at versions pinned by the project. The runtime SHALL be shared across documents in a project rather than duplicated into each file. Arbitrary generated scripts SHALL NOT be embedded in a document.</p>
+            <p>Each runtime asset SHALL be stored at a location derived from the hash of its bytes. Identical bytes SHALL therefore occupy exactly one location in a project, and bytes that differ SHALL occupy distinct locations rather than overwriting one another. A document SHALL reference each asset by the hash it was authored against, so the bytes a document renders with cannot change without changing the document.</p>
+            <p>An asset location SHALL NOT be rewritten in place. Replacing a library SHALL add a location and leave existing locations intact, so a document authored earlier continues to render as authored.</p>
+            <article class="scenario" id="scenario-approved-libraries" data-change="unchanged">
+              <h4>Approved libraries</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document renders a diagram or a chart</dd>
+                <dt>Then</dt>
+                <dd>it does so through the project's pinned diagram or charting library, and equations use native MathML with no library at all</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-shared-assets" data-change="unchanged">
+              <h4>Shared assets</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project containing many documents</dd>
+                <dt>When</dt>
+                <dd>the runtime is measured</dd>
+                <dt>Then</dt>
+                <dd>each library appears once in the project rather than once per document</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unapproved-script" data-change="unchanged">
+              <h4>Unapproved script</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document embeds an inline script that is not part of the pinned runtime</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-runtime-version-is-recorded" data-change="unchanged">
+              <h4>Runtime version is recorded</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer inspects a project's assets</dd>
+                <dt>Then</dt>
+                <dd>each vendored library's exact version and content hash are recorded, so a rendered document can be reproduced later</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-documents-needing-the-same-bytes" data-change="unchanged">
+              <h4>Two documents needing the same bytes</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>two documents that reference the same library version</dd>
+                <dt>When</dt>
+                <dd>the project's assets are measured</dd>
+                <dt>Then</dt>
+                <dd>one stored copy serves both documents</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-upgrading-a-library" data-change="unchanged">
+              <h4>Upgrading a library</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an existing document that references a library</dd>
+                <dt>When</dt>
+                <dd>a newer version of that library is added to the project</dd>
+                <dt>Then</dt>
+                <dd>the new bytes are stored at a new location, the existing document's references are unchanged, and it renders with the bytes it was authored against</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-documents-needing-different-bytes-of-one-file" data-change="unchanged">
+              <h4>Two documents needing different bytes of one file</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>two documents authored against different revisions of the same stylesheet</dd>
+                <dt>When</dt>
+                <dd>both are stored in one project</dd>
+                <dt>Then</dt>
+                <dd>both revisions are retained at distinct locations and neither document is silently re-pointed at the other's bytes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-asset-reference-identifies-its-bytes" data-change="unchanged">
+              <h4>An asset reference identifies its bytes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a consumer reads a document's asset reference</dd>
+                <dt>Then</dt>
+                <dd>it can determine the exact bytes the document expects without consulting any other file</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-document-declares-its-identity-and-provenance" data-change="unchanged">
+            <h3>A document declares its identity and provenance <span class="hs-id">req-a-document-declares-its-identity-and-provenance</span></h3>
+            <p>Every document SHALL declare, in machine-readable form, the schema version it conforms to, the change or spec it represents, and <strong>which artifact kind it is</strong>. A reviewer SHALL be able to see this information on the page without reading source.</p>
+            <p>The declared kind replaces the per-document lifecycle status. A stage — exploring, proposed, accepted, implementing, verified, archived — is a property of a <em>change</em> as it moves, not of each file in it: a proposal is a proposal for its whole life, and a specification does not become a proposal again. Declaring a stage per document therefore recorded the wrong thing about the wrong subject, and nothing in validation ever read it.</p>
+            <p>A document SHALL NOT declare a lifecycle status. Where a reviewer needs to know how far a change has progressed, the presence of its documents reports it: a change with a specification has been built, and a change with only a proposal has not.</p>
+            <article class="scenario" id="scenario-schema-version-present" data-change="unchanged">
+              <h4>Schema version present</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a consumer reads a document</dd>
+                <dt>Then</dt>
+                <dd>it can determine which version of the element contract the document targets before parsing its content</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-kind-visible-to-a-reviewer" data-change="unchanged">
+              <h4>Kind visible to a reviewer</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer opens a document</dd>
+                <dt>Then</dt>
+                <dd>the page shows which artifact it is, so a proposal under discussion is not mistaken for an accepted specification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-kind-readable-without-parsing-content" data-change="unchanged">
+              <h4>Kind readable without parsing content</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a consumer reads a document's metadata</dd>
+                <dt>Then</dt>
+                <dd>it can determine the artifact kind before reading the body, so it knows which units to expect</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-missing-schema-version" data-change="unchanged">
+              <h4>Missing schema version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document omits its schema version</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-missing-kind" data-change="unchanged">
+              <h4>Missing kind</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document declares no artifact kind</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because nothing determines which units belong in it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-declaring-a-lifecycle-status" data-change="unchanged">
+              <h4>A document declaring a lifecycle status</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document declares a lifecycle status</dd>
+                <dt>Then</dt>
+                <dd>validation reports it, because a stage describes a change rather than one of its documents</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-document-is-navigable" data-change="unchanged">
+            <h3>A document is navigable <span class="hs-id">req-a-document-is-navigable</span></h3>
+            <p>A document SHALL present its sections in a stable, predictable order and SHALL provide navigation to its semantic units. Every semantic unit SHALL be addressable by a fragment link that resolves within the document.</p>
+            <article class="scenario" id="scenario-deep-link-to-a-requirement" data-change="unchanged">
+              <h4>Deep link to a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer follows a link ending in <code>#req-theme-selection</code></dd>
+                <dt>Then</dt>
+                <dd>the browser scrolls to that requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-navigation-without-scripting" data-change="unchanged">
+              <h4>Navigation without scripting</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is opened with JavaScript disabled</dd>
+                <dt>Then</dt>
+                <dd>its navigation still lists the document's sections and its links still resolve</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-broken-internal-link" data-change="unchanged">
+              <h4>Broken internal link</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains a fragment link whose target does not exist</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-visual-system-favors-comprehension-over-decoration" data-change="unchanged">
+            <h3>The visual system favors comprehension over decoration <span class="hs-id">req-the-visual-system-favors-comprehension-over-decoration</span></h3>
+            <p>A document SHALL use the project's shared visual system: flat editorial layout, serif body text, high information density, and muted color. Color SHALL NOT be the only means of conveying meaning. Styling SHALL NOT hide or reorder semantic content.</p>
+            <article class="scenario" id="scenario-change-state-conveyed-without-color-alone" data-change="unchanged">
+              <h4>Change state conveyed without color alone</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer with a color-vision deficiency reads a document containing added, modified, and removed requirements</dd>
+                <dt>Then</dt>
+                <dd>each unit's change state is distinguishable by text or shape, not only by hue</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-styling-does-not-hide-content" data-change="unchanged">
+              <h4>Styling does not hide content</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is styled</dd>
+                <dt>Then</dt>
+                <dd>no semantic unit is visually hidden or moved out of its document order</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-readable-at-a-narrow-width" data-change="unchanged">
+              <h4>Readable at a narrow width</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is viewed in a narrow window</dd>
+                <dt>Then</dt>
+                <dd>its text reflows and remains readable without horizontal scrolling of body prose</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-documents-print-cleanly" data-change="unchanged">
+            <h3>Documents print cleanly <span class="hs-id">req-documents-print-cleanly</span></h3>
+            <p>A document SHALL provide print styling that produces a legible paper or PDF rendering. Navigation chrome and interactive controls SHALL be omitted from print output. Content SHALL NOT be truncated at page boundaries.</p>
+            <article class="scenario" id="scenario-printing-to-pdf" data-change="unchanged">
+              <h4>Printing to PDF</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer prints a document to PDF</dd>
+                <dt>Then</dt>
+                <dd>the result contains the full content with legible type, no clipped diagrams, and no navigation chrome</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-link-targets-in-print" data-change="unchanged">
+              <h4>Link targets in print</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document containing external references is printed</dd>
+                <dt>Then</dt>
+                <dd>those references remain identifiable on paper rather than appearing as unresolvable link text</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-project-can-be-initialized-with-a-conforming-document" data-change="unchanged">
+            <h3>A project can be initialized with a conforming document <span class="hs-id">req-a-project-can-be-initialized-with-a-conforming-document</span></h3>
+            <p>The project SHALL provide a way to create a new document that already conforms to the element contract, the visual system, and the runtime conventions, without hand-assembly.</p>
+            <p>Initialization SHALL write asset references that match the bytes it stores. It SHALL NOT copy a runtime asset that the project already stores, and SHALL NOT produce a document whose references and stored bytes disagree.</p>
+            <p>Initialization SHALL decide which project a new document belongs to from the location of the document it creates, never from the directory it runs in. A document created beneath a project's own directory, <code>htmlspec/</code>, SHALL reference that project's store, and establish it there if it is absent. Any other document SHALL be given a store beside it, because validation looks for a document's store in the document's own directory and above it, and the project's store is above only the documents beneath the project's own directory.</p>
+            <p>Whether a location is beneath a project's own directory SHALL be decided as the filesystem identifies that directory, whatever the location's spelling, and the store SHALL be referenced by the path the location spells.</p>
+            <article class="scenario" id="scenario-starting-a-new-change" data-change="unchanged">
+              <h4>Starting a new change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor initializes a new change document</dd>
+                <dt>Then</dt>
+                <dd>the resulting file passes validation immediately and opens as a readable page</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-into-a-project-without-assets" data-change="unchanged">
+              <h4>Initializing into a project without assets</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is created in a project whose shared assets are not yet present</dd>
+                <dt>Then</dt>
+                <dd>the assets are established as part of initialization, so the document renders offline without a further step</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-into-a-project-that-already-has-the-runtime" data-change="unchanged">
+              <h4>Initializing into a project that already has the runtime</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project already storing the runtime a new document needs</dd>
+                <dt>When</dt>
+                <dd>a contributor initializes that document</dd>
+                <dt>Then</dt>
+                <dd>it references the stored bytes and no second copy of any asset is written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initialization-cannot-emit-a-stale-reference" data-change="unchanged">
+              <h4>Initialization cannot emit a stale reference</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>initialization writes a document and its asset references</dd>
+                <dt>Then</dt>
+                <dd>every reference matches the hash of the bytes the project stores, so a document cannot be created already pointing at bytes it does not get</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-written-outside-the-project-it-is-created-from" data-change="unchanged">
+              <h4>A document written outside the project it is created from</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a contributor working in a directory inside a project</dd>
+                <dt>When</dt>
+                <dd>they initialize a document at a location outside that project</dd>
+                <dt>Then</dt>
+                <dd>the document is given a store beside it, and passes validation immediately</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-written-into-a-project-s-root-outside-its-own-directory" data-change="unchanged">
+              <h4>A document written into a project's root, outside its own directory</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is initialized in a project's root directory, or another directory there that is not beneath <code>htmlspec/</code></dd>
+                <dt>Then</dt>
+                <dd>the document is given a store beside it, which validation finds, so every reference it carries is checked</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-written-into-a-project-from-outside-it" data-change="unchanged">
+              <h4>A document written into a project from outside it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project already storing the runtime a new document needs</dd>
+                <dt>When</dt>
+                <dd>a contributor working outside that project initializes a document beneath its <code>htmlspec/</code></dd>
+                <dt>Then</dt>
+                <dd>the document references the project's store, and no second copy of any asset is written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-project-s-own-directory-named-another-way" data-change="unchanged">
+              <h4>The project's own directory named another way</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is initialized at a location that names a project's own directory in another case, on a filesystem that ignores case, or through a link at the level below the project's root</dd>
+                <dt>Then</dt>
+                <dd>the document references the project's store by that spelling, and no second copy of any asset is written</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-document-stays-readable-when-its-stylesheet-cannot-load" data-change="unchanged">
+            <h3>A document stays readable when its stylesheet cannot load <span class="hs-id">req-a-document-stays-readable-when-its-stylesheet-cannot-load</span></h3>
+            <p>Every document the toolchain writes SHALL carry one fallback stylesheet in its head: a <code>&lt;style&gt;</code> element whose rules sit in the cascade layer <code>htmlspec-fallback</code>. The fallback SHALL set a property on a selector only where the stylesheet the document references sets the same property on the same selector, in a rule outside any cascade layer and any at-rule. So whenever that stylesheet loads, it overrides every declaration the fallback makes, and the page is the one it would be without the fallback.</p>
+            <p>The fallback SHALL reach nothing: it carries no <code>url(</code>, no <code>@import</code>, and no <code>!important</code>. It SHALL be the same text in every document a release writes, held once in the toolchain. Where the stylesheet cannot load, it SHALL leave the page readable: a centred column in the house serif and ink, monospace code, and a skip link that is hidden until it takes focus.</p>
+            <p>The fallback is neither the shared runtime that "Documents share one pinned runtime" governs, because it draws no diagram, chart, or equation and replaces nothing the store holds, nor a copy of a stored asset, which "A project can be initialized with a conforming document" forbids, because its bytes are no stored asset's bytes. A document without the fallback SHALL remain valid, and validation SHALL report nothing about a fallback that is absent or differs from the current text.</p>
+            <article class="scenario" id="scenario-the-stylesheet-loads" data-change="unchanged">
+              <h4>The stylesheet loads</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document carrying the fallback, opened where its stylesheet loads</dd>
+                <dt>When</dt>
+                <dd>the page renders</dd>
+                <dt>Then</dt>
+                <dd>it renders exactly as the same document without the fallback</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-stylesheet-cannot-load" data-change="unchanged">
+              <h4>The stylesheet cannot load</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document carrying the fallback, opened where its stylesheet cannot load, as in Safari opening it from disk</dd>
+                <dt>When</dt>
+                <dd>the page renders</dd>
+                <dt>Then</dt>
+                <dd>it reads as a centred serif column with monospace code, and its skip link appears only when it takes focus</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-new-document-carries-the-fallback" data-change="unchanged">
+              <h4>A new document carries the fallback</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the toolchain writes a document, from a template or as a run's record</dd>
+                <dt>Then</dt>
+                <dd>the document's head carries the fallback exactly once, and the document validates and is canonical</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-written-earlier-is-valid-without-it" data-change="unchanged">
+              <h4>A document written earlier is valid without the fallback</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document written before the fallback existed</dd>
+                <dt>When</dt>
+                <dd>it is validated</dd>
+                <dt>Then</dt>
+                <dd>it reports the diagnostics it reported before, and none about the fallback</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

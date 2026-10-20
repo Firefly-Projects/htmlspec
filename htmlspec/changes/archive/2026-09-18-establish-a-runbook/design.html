@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Establish a runbook</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Establish a runbook</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Establish a runbook</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-18-establish-a-runbook/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>The proposal settles what a runbook <em>is</em>: a fourth place beneath the project root holding a procedure that is run repeatedly rather than archived, made of two documents of existing kinds. It leaves this design four questions, and building the cookie recipe before writing any of it answered three of them by measurement rather than by choice.</p>
+          <p>Three existing facts shape everything below:</p>
+          <ul>
+            <li><strong><code>ProjectRoot</code> is the only thing that knows the layout.</strong> <code>crates/htmlspec-cli/src/project.rs</code> holds <code>SPECS</code>, <code>CHANGES</code>, and <code>ARCHIVE</code> as private constants and exposes one accessor each. The module header states the discipline: the inner path is private, so no caller can widen a bare path into a project without checking, and <code>assets()</code> derives the store's location from the <em>project</em> rather than from any document — which is the whole fix for a defect measured at 6 MB per change.</li>
+            <li><strong><code>list</code> already has a sum type for what it enumerates.</strong> <code>Enumerated</code> is <code>Changes(Vec&lt;Listed&gt;)</code> or <code>Specifications(Vec&lt;String&gt;)</code>, and its doc comment says why it is a sum rather than one <code>Vec&lt;String&gt;</code>: the two arms no longer carry the same thing, and sharing a vector would make the arm that has counts and the arm that cannot have them indistinguishable downstream.</li>
+            <li><strong>A runbook's documents need no validation work, and this was verified rather than assumed.</strong> The cookie recipe validates, validates under <code>--strict</code>, and formats canonically on the binary at <code>HEAD</code> with no modification. Evidence: <a href="evidence/the-cookie-recipe-2026-09-17.md"><code>evidence/the-cookie-recipe-2026-09-17.md</code></a>.</li>
+          </ul>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals</strong></p>
+          <ul>
+            <li>A project has a fourth place, at <code>htmlspec/runbooks/&lt;name&gt;/</code>, derived in one location.</li>
+            <li><code>htmlspec list --runbooks</code> enumerates what is there, discovered from the filesystem.</li>
+            <li>The release procedure ships as a real runbook, extracted from the five archived <code>## N. Release</code> sections and from <code>archive.md</code>.</li>
+            <li>The two hazards that motivate the whole change are recorded where something reads them.</li>
+          </ul>
+          <p><strong>Non-Goals</strong></p>
+          <ul>
+            <li>The <code>run</code> operation, run records, and <code>htmlspec/runbooks/&lt;name&gt;/runs/</code>. <code>log-a-runbook-run</code>.</li>
+            <li>A fifth artifact kind. The enum is closed and its guard test stays untouched.</li>
+            <li>A per-runbook version or changelog. The proposal argues this at length from the accepted-specification analogy; the one exception is <code>carry-a-runbook-to-another-machine</code>'s.</li>
+            <li>A workflow, a <code>/htmlspec:runbook</code> command, or a tenth <code>WORKFLOWS</code> row. This change must be provable without one, and it is: everything below is reachable from <code>list</code>, <code>validate</code>, <code>format</code>, and <code>new document</code>.</li>
+            <li>Machine requirements and preflight. <code>carry-a-runbook-to-another-machine</code>.</li>
+            <li>Inputs. The recipe hit the gap and recorded it; see the last section.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-the-on-disk-layout-is-htmlspec-runbooks-name-specification-tasks-html">
+            <h3>The on-disk layout is <code>htmlspec/runbooks/&lt;name&gt;/{specification,tasks}.html</code></h3>
+            <pre><code>htmlspec/
+  specs/                       accepted specifications        (existing)
+  changes/                     active changes                 (existing)
+    archive/                   archived changes               (existing)
+  runbooks/                    the fourth place               (new)
+    &lt;name&gt;/
+      specification.html       kind=specification: what it is for, what its history taught
+      tasks.html               kind=tasks: the ordered procedure
+  assets/                      the project's one store        (existing)</code></pre>
+            <p><strong>The file names are the change directory's names, deliberately.</strong> <code>commands.rs</code> already fixes <code>specification.html</code> in <code>CHANGE_SPECIFICATION</code> and <code>tasks.html</code> in <code>CHANGE_DOCUMENTS</code>, and a runbook using different spellings for documents of the same two kinds would mean a reader learning two vocabularies for one thing. Nothing derives a runbook's file names from those constants — that would couple a runbook's shape to a change's for no reason — but the spellings agree.</p>
+            <p><strong>A runbook is a directory even though it holds a fixed pair of files.</strong> <code>&lt;name&gt;/tasks.html</code> rather than <code>runbooks/&lt;name&gt;.html</code> for two reasons, one now and one later: the two-document split is forced by <code>artifact-kinds</code> (<em><a href="../../../specs/artifact-kinds/spec.html#req-a-specification-states-the-settled-contract-as-built">A specification states the settled contract as built</a></em> — a specification SHALL NOT carry task units, the only placement rule in the vocabulary), so there were always going to be two files; and <code>log-a-runbook-run</code> puts <code>runs/</code> beneath the runbook, which needs a directory to be beneath.</p>
+            <p><strong>The name is the directory name, and nothing else records it.</strong> The precedent is a change, whose name is its directory name and which is renamed by moving it. <code>project-bootstrap</code>'s <em><a href="../../../specs/project-bootstrap/spec.html#req-archival-requires-the-project-version-to-advance">Archival requires the project version to advance</a></em> refuses to read a version out of a directory name because a version is a value a gate compares; a name is not compared to anything, it is how the thing is addressed.</p>
+            <p><strong>Asset references resolve at this depth with no new mechanism.</strong> Measured: <code>htmlspec new document tasks htmlspec/runbooks/&lt;name&gt;/tasks.html</code> writes <code>href="../../assets/sha256-…/htmlspec.css"</code>, which is correct — <code>runbooks/&lt;name&gt;/</code> is two levels below <code>htmlspec/</code>, exactly as <code>changes/&lt;change&gt;/</code> is. The store is derived from the project by <code>ProjectRoot::assets()</code>, so a runbook shares the one store and <code>asset/duplicate</code> has nothing to report.</p>
+          </section>
+          <section id="hs-the-location-is-named-in-project-rs-as-a-private-constant-with-one-accessor">
+            <h3>The location is named in <code>project.rs</code>, as a private constant with one accessor</h3>
+            <pre><code>/// Where a project keeps its runbooks.
+const RUNBOOKS: &amp;str = "runbooks";
+
+impl ProjectRoot {
+    /// Where the project's runbooks live.
+    pub fn runbooks(&amp;self) -&gt; PathBuf { self.htmlspec().join(RUNBOOKS) }
+
+    /// The directory a runbook of this name occupies.
+    pub fn runbook(&amp;self, name: &amp;str) -&gt; PathBuf { self.runbooks().join(name) }
+}</code></pre>
+            <p>Exactly the shape <code>specs()</code>, <code>changes()</code>, <code>archive()</code>, and <code>change(name)</code> already have. The constant is private and the accessor is public, so the layout stays a fact one module states.</p>
+            <p><strong><code>establish</code> gains <code>runbooks()</code>, and this is the one substantive question in the pair.</strong> <code>ProjectRoot::establish</code> currently creates <code>htmlspec/</code>, <code>specs/</code>, and <code>archive/</code> — note it does not create <code>changes/</code>, because <code>archive()</code> is beneath it and <code>create_dir_all</code> makes both. Bootstrapping now creates <code>runbooks/</code> too, empty.</p>
+            <p>The alternative is creating it lazily, on the first runbook. That was rejected because <code>project-bootstrap</code>'s <em><a href="specification.html#req-a-project-has-a-declared-root-holding-one-asset-store">A project has a declared root holding one asset store</a></em> requires that bootstrapping produce "the project root … with places for" each thing the directory holds — a place that does not exist until something is in it is not a place a contributor can find. A contributor who runs <code>init</code> and lists the project should see where a runbook goes. The cost is one empty directory in a fresh project, which is what <code>specs/</code> and <code>archive/</code> already are.</p>
+            <p><strong><code>migrate.rs</code> has its own <code>SPECS</code>/<code>CHANGES</code>/<code>ARCHIVE</code> constants and gains nothing.</strong> Those describe an <em>OpenSpec</em> project's layout, which has no runbooks. Adding one there would make the survey claim a source kind that does not exist. This is load-bearing rather than tidy — see the finding below.</p>
+          </section>
+          <section id="hs-list-runbooks-prints-one-row-per-runbook-its-name-and-which-documents-it-has">
+            <h3><code>list --runbooks</code> prints one row per runbook: its name and which documents it has</h3>
+            <pre><code>$ htmlspec list --runbooks
+chocolate-chip-cookies  specification, tasks
+release                 tasks</code></pre>
+            <p><strong>Discovery is a directory read, not a document walk.</strong> Each immediate subdirectory of <code>htmlspec/runbooks/</code> is a runbook, named for the directory. This mirrors <code>active_changes</code>, which reads <code>changes/</code> and filters <code>archive</code> by name — a runbook needs no such filter, because nothing else lives under <code>runbooks/</code>.</p>
+            <p>The <code>--specs</code> arm is the other available model and it is wrong here: it calls <code>discover::documents(&amp;project.specs())</code> and prints every <code>.html</code> path beneath. Applied to runbooks that prints <code>release/tasks.html</code> — a file list rather than a list of runbooks, so two documents of one runbook read as two entries. <strong>What is being enumerated is the runbook</strong>, and the documents are what it holds.</p>
+            <p><strong>Each row states which of the two documents are present, and this is the selection information.</strong> <code>list</code>'s doc comment states the principle it was built on: a list of names "can be selected from on no basis but order", so the enumeration carries what a selector needs. For a change that is the completion fraction. For a runbook it is which documents exist — a runbook with no <code>tasks.html</code> has no procedure, and that is the fact worth seeing before picking one.</p>
+            <p><strong>It deliberately prints no task fraction.</strong> The canonical procedure's tasks stay <code>todo</code> forever, because nobody works them — a run copies the document and advances the copy. So the column would read <code>0/9</code> on every runbook at every moment, and a column that never moves teaches a reader to ignore it. <a href="evidence/the-status-gap-2026-09-17.md"><code>evidence/the-status-gap-2026-09-17.md</code></a> measures the fraction being available and correct; it is not printed because it says nothing.</p>
+            <p><strong>A third arm on <code>Enumerated</code>, not a second boolean pair.</strong> <code>Enumerated::Runbooks(Vec&lt;Runbook&gt;)</code> joins <code>Changes</code> and <code>Specifications</code>, and <code>label()</code> and <code>is_empty()</code> gain their arms — so the empty case prints <code>no active runbooks</code> through the path that already exists. The flags stay two independent <code>bool</code>s on the CLI, matching <code>--specs</code>, with <code>--runbooks</code> winning if both are passed and that being the whole of the interaction; a three-way enum in the argument surface would be a different flag shape from the one the proposal specifies.</p>
+            <p>The structured payload gains <code>{"runbooks": [{"name": …, "documents": [...]}]}</code>, keyed by the same word the flag uses.</p>
+          </section>
+          <section class="decision" id="decision-a-runbook-s-documents-are-validated-by-the-existing-path-and-this-was-proven-not-assumed" data-change="added" data-status="accepted">
+            <h3>A runbook's documents are validated by the existing path, and this was proven not assumed <span class="hs-id">decision-a-runbook-s-documents-are-validated-by-the-existing-path-and-this-was-proven-not-assumed</span></h3>
+            <p><strong>No new rule, no schema change, no projection change, and nothing in <code>crates/htmlspec-validate/src/rules/</code>.</strong> A runbook's <code>tasks.html</code> is a <code>tasks</code> document and its <code>specification.html</code> is a <code>specification</code> document. <code>artifact-kinds</code> states what each owes and validation already checks it.</p>
+            <p data-field="rationale">The proof is <a href="evidence/the-cookie-recipe-2026-09-17.md">the cookie recipe</a>, built before any of this was written, on the unmodified binary:</p>
+            <pre><code>$ htmlspec validate   htmlspec/runbooks/chocolate-chip-cookies/tasks.html   → accepted, 0 diagnostics
+$ htmlspec validate --strict  …                                            → accepted, 0 diagnostics
+$ htmlspec format --check     …                                            → is canonical
+9 task units, 5 citation links, all preserved through formatting</code></pre>
+            <p data-field="rationale"><strong>Two properties fall out of the two kinds and neither needed asking for.</strong> A runbook whose <code>tasks.html</code> carries no task unit is reported by <code>kind/no-tasks</code>, because a procedure with no steps is not a procedure. A runbook whose <code>specification.html</code> carries a task unit is reported by <code>kind/task-in-specification</code> as an <em>error</em> — which is the forced split doing work rather than merely being obeyed: the procedure cannot drift into the canonical document, because validation refuses it.</p>
+            <p data-field="note">The citation links survive because of a deliberate line at <code>crates/htmlspec-validate/src/rules/safety.rs:37</code>: <code>href</code> is unchecked on <code>a</code> and checked on <code>link</code>, since a hyperlink is a citation and a stylesheet loads. Somebody drew the line a cited recipe needs before there was a recipe.</p>
+          </section>
+          <section id="hs-the-release-runbook-s-content-is-extracted-and-the-hazards-are-its-reason-for-existing">
+            <h3>The release runbook's content is extracted, and the hazards are its reason for existing</h3>
+            <p><code>specification.html</code> states what the runbook is for and what its history taught. <code>tasks.html</code> carries the four steps <strong>in the order the hazard forces</strong>:</p>
+            <ol>
+              <li>Advance the workspace version and relock offline.</li>
+              <li>Regenerate the installed instruction files.</li>
+              <li>Write the <code>CHANGELOG.md</code> entry.</li>
+              <li>Confirm <code>scripts/check-release</code> passes. <code>VERSION</code> is written at archival.</li>
+            </ol>
+            <figure data-migration="drawn">
+              <figcaption>The release runbook's four steps in the order this decision gives them, with the hazard that puts the version ahead of regeneration on the edge between them, and <code>VERSION</code> written later, at archival. Drawn when this document was migrated, from the text beside it.</figcaption>
+              <details>
+                <summary>Diagram source</summary>
+                <pre class="mermaid">flowchart TD
+  A["1. Advance the workspace version and relock offline"] --&gt;|"advancing the version restales every installed file"| B["2. Regenerate the installed instruction files"]
+  B --&gt; C["3. Write the CHANGELOG.md entry"]
+  C --&gt; D["4. Confirm scripts/check-release passes"]
+  D --&gt; E["VERSION is written at archival"]</pre>
+              </details>
+            </figure>
+            <p><strong>The five archived sections all state regenerate <em>before</em> version, and all five are wrong about it.</strong> <code>2026-08-24-report-in-the-contributors-terms</code> §6, <code>2026-08-24-pass-the-description-through</code> §8, <code>2026-09-06-distinguish-a-requirement-from-an-example</code> §6, <code>2026-09-11-migrate-an-openspec-project</code> §9, and <code>2026-09-15-catch-a-templates-placeholder-prose</code> §7 each put regeneration first, and the last three each discovered at run time that the version bump restaled every installed file and regenerated again afterwards. <strong>So the runbook's order is the correction, not the transcription.</strong> That is the change working: five records of one procedure, and the artifact that replaces them states the thing all five had to learn.</p>
+            <p>The two hazards are <code>specification.html</code>'s requirements rather than notes in the tasks, because a note in a tasks document is what the archive already held and nothing read:</p>
+            <ul>
+              <li><strong>Advancing the version restales every installed file.</strong> <code>generatedBy: htmlspec &lt;version&gt;</code> is written from <code>CARGO_PKG_VERSION</code> at run time, so regeneration after a version bump is never a no-op — it rewrites one line in every installed file. The <code>installed</code> stage of <code>scripts/check</code> is what says so, and it found this on its first release.</li>
+              <li><strong><code>htmlspec init</code> inside a repository that is already a project bootstraps a stray <code>htmlspec/</code> and a <code>spec.nix</code> at <code>0.0.0</code></strong>, which fails <code>self-assets</code> with nine duplicate-asset errors. Reproduced for this change rather than quoted: <a href="evidence/the-location-is-blocked-2026-09-17.md"><code>evidence/the-location-is-blocked-2026-09-17.md</code></a>.</li>
+            </ul>
+          </section>
+          <section class="decision" id="decision-the-runbook-lives-at-the-repository-root-and-that-is-the-agent-s-choice-under-silence" data-change="added" data-status="accepted">
+            <h3>The runbook lives at the repository root, and that is the agent's choice under silence <span class="hs-id">decision-the-runbook-lives-at-the-repository-root-and-that-is-the-agent-s-choice-under-silence</span></h3>
+            <p data-field="rationale"><strong>This repository cannot hold its own runbook where the contract says a runbook goes</strong>, and the reason has nothing to do with runbooks: creating <code>htmlspec/</code> at this repository's root makes <code>ProjectRoot::resolve</code> succeed, which turns the repository into a project, which turns <code>self-assets</code> red by comparing across the four stores its conformance fixtures deliberately carry. One <code>mkdir</code> and no files is enough. Measured in <a href="evidence/the-location-is-blocked-2026-09-17.md"><code>evidence/the-location-is-blocked-2026-09-17.md</code></a>.</p>
+            <p data-field="rationale"><code>openspec/runbooks/</code> fails a different check — <code>every_file_in_this_repository_classifies</code> reports the document as classifying as no known OpenSpec kind — and the honest fix there is not available, because teaching <code>migrate.rs</code> about runbooks would make an OpenSpec survey claim a kind OpenSpec does not have.</p>
+            <p>So this repository's release runbook is at <strong><code>runbooks/release/</code>, at the repository root</strong>, which passes both. The contract is silent on where a repository that is not an html-spec project keeps a runbook, and this is <code>contract-authority</code>'s second route: choose reversibly and own the choice. <strong>The choice is the agent's rather than the project's</strong> — two documents move if a contributor disagrees, and nothing derives the location from anything. The exact precedent already exists: this repository records a predecessor in <code>.openspec.yaml</code> rather than in the <code>FOLLOWS</code> file <code>project.rs</code> defines, for the same reason.</p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>The location this change specifies is not the location this repository dogfoods.</strong> The contract, the CLI, and the scratch-project verification all say <code>htmlspec/runbooks/</code>; the real runbook is at <code>runbooks/</code>. Accepted and stated in the design above rather than discovered by a reader. What closes it is migrating this repository to <code>htmlspec/</code>, which is <code>migrate-an-openspec-project</code>'s unfinished half.</li>
+            <li><strong>A runbook has nowhere to put its inputs</strong> → not solved, deliberately. See the finding below.</li>
+            <li><strong><code>list --runbooks</code> says nothing about whether a runbook's documents are valid.</strong> So does <code>list --specs</code>, and for the same reason: <code>validate</code> is the operation that answers that, and an enumeration that validated every document it named would make listing cost a parse per file.</li>
+            <li><strong>An empty <code>runbooks/</code> in every freshly bootstrapped project.</strong> Accepted, matching <code>specs/</code> and <code>archive/</code>. A place a contributor cannot find is not a place.</li>
+            <li><strong>Nothing yet reports a runbook directory holding neither document.</strong> <code>list --runbooks</code> shows it with an empty document list, which is visible but not reported. A rule whose subject is a runbook's completeness is <code>log-a-runbook-run</code>'s territory — it is the same shape as a run whose records do not satisfy its log contract, and building half of it here would fork that design.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p>Additive throughout. No existing document changes meaning, no fixture changes state, no diagnostic is added or reworded, and no existing command's output changes: <code>list</code> with no flag and <code>list --specs</code> print exactly what they printed. A project that never creates a runbook gets one empty directory at its next <code>init</code>, which <code>init</code> is already required to be safe to re-run.</p>
+          <p><code>document.schema.json</code>, <code>TEMPLATES</code>, <code>assets/vendor.lock.json</code>, and <code>crates/htmlspec-validate/src/rules/</code> are untouched, which the proposal states as a checkable claim and which held.</p>
+        </section>
+        <section id="hs-the-finding-this-change-was-asked-to-test-and-the-answer">
+          <h2>The finding this change was asked to test, and the answer</h2>
+          <p><strong>A change that produces no deliverable had not been tested against this workflow's rhythm.</strong> The proposal names it open and says the result is worth recording either way. This change ran the experiment and the result is in <a href="evidence/the-rhythm-2026-09-17.md"><code>evidence/the-rhythm-2026-09-17.md</code></a>. The short form: the rhythm fit, and the one place it strained was not where the proposal expected.</p>
+          <p><strong>A runbook has nowhere to put its inputs, and building the recipe is what found it — again.</strong> The ingredients became a <code>&lt;table&gt;</code> in a document section titled "What the procedure consumes", with a paragraph in the document saying that is a finding rather than a design. Three options were available and the reasoning for rejecting the other two is recorded in <a href="evidence/the-cookie-recipe-2026-09-17.md"><code>evidence/the-cookie-recipe-2026-09-17.md</code></a>. <strong>No inputs mechanism was invented</strong>, per the proposal: the shape of the answer needs its own argument, and the recipe's equipment list is why — a stand mixer is closer to a machine requirement, which is <code>carry-a-runbook-to-another-machine</code>'s subject, than to an ingredient.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

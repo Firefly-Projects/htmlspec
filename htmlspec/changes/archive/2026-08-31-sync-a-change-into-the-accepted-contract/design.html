@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Sync: the operation archival tells you to run</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Sync: the operation archival tells you to run</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Sync: the operation archival tells you to run</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-31-sync-a-change-into-the-accepted-contract/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-the-division-and-why-it-is-the-same-one-archival-already-made">
+          <h2>The division, and why it is the same one archival already made</h2>
+          <p>Archival's <code>unmerged_requirements</code> (<code>crates/htmlspec-cli/src/commands.rs:1290</code>) carries a comment that is really the design of this change:</p>
+          <blockquote>
+            <p><strong>This compares identifiers and reads nothing for meaning.</strong> Deciding which accepted requirement a scenario belongs under is judgment, and <a href="evidence/artifact-kinds-reserves-the-merge-2026-08-31.md"><code>artifact-kinds</code> reserves it for an agent</a>. Observing that <code>req-x</code> appears in one set of documents and not in another is a set membership test.</p>
+          </blockquote>
+          <p>Sync inherits that division intact. The program answers <em>what is absent</em>. The agent answers <em>what to do about it</em>. The only thing sync adds over archival's version is that it is available on its own, before archival, as many times as the work needs.</p>
+          <p>The consequence worth stating plainly: <strong>sync writes no accepted specification.</strong> A reader expecting <code>sync</code> to mean "make the two sides match" will find that it does not, and the naming inherited from OpenSpec does not help — <a href="evidence/openspec-provides-it-and-we-promised-the-name-2026-08-31.md"><code>openspec sync</code> is also agent-driven, and its skill says so in its second line</a>. The requirement text must therefore state the exclusion rather than leave it to be inferred from what the program happens not to do.</p>
+        </section>
+        <section id="hs-where-the-comparison-comes-from">
+          <h2>Where the comparison comes from</h2>
+          <p>There is one correct answer and it is already written. <code>unmerged_requirements</code> is the function archival uses, and <a href="../../../specs/toolchain-packaging/spec.html#req-the-command-surface-reports-a-change-s-completion"><code>The command surface reports a change's completion</code></a> establishes the precedent for this exact situation: archival's report about incomplete work derives from the same operation a contributor can run, "so that a contributor who checks a change before archiving it and the archival that follows cannot disagree about what the change holds."</p>
+          <p>Sync is the same obligation applied to the other of archival's two findings. Extracting <code>unmerged_requirements</code> so both call it is the whole of the mechanism; a second traversal that recomputed the comparison would be a second answer to one question, and the day the two disagree is the day a contributor syncs clean and archival reports unmerged requirements anyway.</p>
+        </section>
+        <section id="hs-what-sync-reports">
+          <h2>What sync reports</h2>
+          <p>Three sets, not one. Archival reports only the absent identifiers because that is all a finding needs to be actionable. Sync is the operation someone runs <em>while deciding what to merge</em>, so it reports:</p>
+          <ul>
+            <li><strong>stated</strong> — every requirement identifier the change's specification carries</li>
+            <li><strong>accepted</strong> — those the project's accepted specifications already hold</li>
+            <li><strong>absent</strong> — the difference, which is what archival calls unmerged</li>
+          </ul>
+          <p>The absent set is derivable from the other two, and it is emitted anyway. An agent that has to compute a set difference to find its worklist will compute it, and a payload that makes the caller do arithmetic to reach the answer the operation exists to give is a payload that gets used wrong.</p>
+        </section>
+        <section id="hs-the-case-that-decides-the-exit-code">
+          <h2>The case that decides the exit code</h2>
+          <p>A change with absent requirements is not broken. It may be mid-implementation, and a withdrawn requirement is legitimately absent forever — archival's <code>Findings</code> type says exactly this: "The contract refuses and the work asks."</p>
+          <p>So sync exits successfully with a non-empty absent set. It is a report, not a gate. The alternative — non-zero while anything is unmerged — would make sync unusable in the position it is meant for, which is <em>during</em> the merge, and would put a red exit on the normal state of a change that has not finished.</p>
+          <p>What sync does refuse on is the same class archival refuses on: a change that does not exist, a specification that is absent, a specification that does not validate. A comparison against an invalid contract is a comparison whose result means nothing, and reporting it as if it meant something is worse than refusing.</p>
+        </section>
+        <section id="hs-the-workflow-stage">
+          <h2>The workflow stage</h2>
+          <p><a href="evidence/the-instruction-with-no-command-2026-08-31.md">The installed stages are <code>explore</code>, <code>new</code>, <code>continue</code>, <code>ff</code>, <code>apply</code>, <code>verify</code>, <code>archive</code></a> (<code>crates/htmlspec-assets/src/instructions.rs:87</code>). <code>sync</code> becomes an eighth, because <a href="../../../specs/toolchain-packaging/spec.html#req-the-workflow-instructions-are-available-from-the-command-surface"><code>The workflow instructions are available from the command surface</code></a> requires a stage's instructions and its installed copy to come from one source, and because <a href="evidence/openspec-provides-it-and-we-promised-the-name-2026-08-31.md">the OpenSpec skill set this project mirrors already has one</a>.</p>
+          <p>The stage's instructions are where the agent-driven half is written down: read both sides, merge intelligently, never copy a change's specification into an accepted one wholesale, re-run sync to confirm. That text is guidance for an agent and belongs in the instructions, not in the requirement — the requirement states what the <em>program</em> does and what it must not do.</p>
+        </section>
+        <section id="hs-rejected-sync-as-part-of-archival">
+          <h2>Rejected: sync as part of archival</h2>
+          <p>Archival could run sync's report before its own findings and offer to proceed. It already effectively does, via <code>report_findings</code>. Making that the whole answer was considered and rejected: it leaves the operation reachable only at the moment of archiving, which is the constraint this change exists to remove. A contributor who wants the accepted contract updated three commits before archival still has nowhere to go.</p>
+        </section>
+        <section id="hs-rejected-a-check-flag-on-sync-instead-of-a-separate-report">
+          <h2>Rejected: a <code>--check</code> flag on sync instead of a separate report</h2>
+          <p><code>archive --check</code> exists, so the symmetry is tempting. But sync <em>is</em> the check — it never writes. A <code>--check</code> flag on an operation that has no write mode would be a flag that changes nothing, which is the kind of surface that makes a reader assume the flagless form writes.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

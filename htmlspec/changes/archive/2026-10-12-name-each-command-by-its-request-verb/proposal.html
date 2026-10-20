@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Name each command by its request verb</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Name each command by its request verb</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Name each command by its request verb</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-12-name-each-command-by-its-request-verb/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><strong>A command's name says what it is about, and nothing says whether it changes the tree.</strong> <a href="evidence/the-measurement-2026-10-05.md"><code>evidence/the-measurement-2026-10-05.md</code></a> splits the command line into its 18 operations and reads what each one writes. Nine never write. Of the nine that can, five create something that was not there, two create or replace a whole thing, one changes something that exists, and one removes something (section 2). None of that is in a name: <code>status</code> and <code>format</code> read alike, and only the help text says that one of them rewrites every document it is given.</p>
+          <p><strong>Two names already mean a different effect here than where they came from.</strong> toolchain-packaging's "<a href="../../../specs/toolchain-packaging/spec.html#req-a-single-command-exposes-validate-format-and-init">The command surface names its operations as OpenSpec names them</a>" fixes the spellings so that a contributor arriving from OpenSpec meets the names they know. OpenSpec's sync and archive both write the accepted specifications. <code>htmlspec sync</code> only reports, and toolchain-packaging says it "SHALL NOT modify an accepted specification"; <code>htmlspec archive</code> "assesses the merge and never performs it" (<a href="evidence/the-measurement-2026-10-05.md">section 3</a>). The shared spelling carries the contributor's expectation across with it, and the expectation is wrong for both.</p>
+          <p><strong>htmx already gives HTML five words for exactly this.</strong> Its request keywords, <code>hx-get</code>, <code>hx-post</code>, <code>hx-put</code>, <code>hx-patch</code>, and <code>hx-delete</code>, each issue the HTTP request of that verb, and HTTP fixes what each verb does: <code>GET</code> changes nothing, <code>POST</code> creates, <code>PUT</code> replaces a whole thing, <code>PATCH</code> changes part of one, and <code>DELETE</code> removes it (<a href="evidence/the-measurement-2026-10-05.md">section 4</a>). An HTML project's command line can borrow the same words, so that <code>get sync</code> says on its face that it writes nothing.</p>
+          <p><strong>The contributor asked for it.</strong> On 2026-10-05 the contributor asked for the command line to move from its command names to htmx's keywords, chose the verb-and-object form, and chose to keep every current spelling working. On 2026-10-06, after the review of this proposal, they chose <code>put project</code> for <code>init</code> and <code>registration</code> as the object of the three <code>store</code> operations.</p>
+          <p><strong>Why now.</strong> It is a proposal now and is implemented after the ten changes queued for the self-migration. It modifies the same requirement as <code>show-what-a-modification-changed</code>, which adds <code>show</code>, so it lands after that change and gives <code>show</code> its verb.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li>
+              <p><strong>Every operation gains a request-verb spelling</strong>: one of <code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, or <code>delete</code>, chosen by what the operation does to the files it acts on, followed by its object.</p>
+              <ul>
+                <li><code>get</code> (never writes): <code>get validity</code> (<code>validate</code>), <code>get list</code>, <code>get status</code>, <code>get sync</code>, <code>get show</code>, <code>get assets</code>, <code>get preflight</code>, <code>get instructions</code>, <code>get registrations</code> (<code>store list</code>), and <code>get survey</code> (<code>migrate survey</code>).</li>
+                <li><code>post</code> (creates something new): <code>post change</code> (<code>new change</code>), <code>post document</code> (<code>new document</code>), <code>post registration</code> (<code>store add</code>), <code>post run</code> (<code>run</code>), and <code>post promotion</code> (<code>migrate promote</code>).</li>
+                <li><code>put</code> (creates or replaces a whole thing, and is safe to repeat): <code>put project</code> (<code>init</code>) and <code>put format</code>.</li>
+                <li><code>patch</code> (changes what exists): <code>patch archive</code>.</li>
+                <li><code>delete</code> (removes): <code>delete registration</code> (<code>store remove</code>), which removes the registration and never the project it names.</li>
+              </ul>
+            </li>
+            <li><strong>The verb names the most an operation writes, and options carry over unchanged.</strong> <code>get</code> spells only an operation that writes nothing in any invocation. An operation that writes only sometimes takes the verb of its writes: <code>migrate promote</code> writes only with <code>--staged</code>, and is <code>post promotion</code>. <code>put format --check</code> writes nothing, as <code>format --check</code> does. <code>patch archive --check</code> writes nothing either, except that it first settles an archival interrupted earlier, as <code>archive --check</code> does. The verb names the operation, not one invocation of it.</li>
+            <li><strong>Both spellings run one operation</strong>, with the same arguments, options, output, <code>--json</code> payload, and exit status.</li>
+            <li><strong>The OpenSpec spellings stay, and stay primary.</strong> The program's messages and the workflow instructions it installs keep naming them, so nobody has to learn the verbs and none of the 300 instruction lines that invoke a command changes (<a href="evidence/the-measurement-2026-10-05.md">section 5</a>).</li>
+            <li><strong>Help lists both.</strong> <code>htmlspec --help</code> names the five verbs beside the operations, and <code>htmlspec get --help</code> lists each object with the operation it runs.</li>
+            <li><strong>Unchanged:</strong> the document contract, whose version does not move; every operation's behavior, options, payload, and exit codes; the OpenSpec spellings and selectors; the installed instructions.</li>
+          </ul>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <section id="hs-new-capabilities">
+            <h3>New Capabilities</h3>
+            <p>None.</p>
+          </section>
+          <section id="hs-modified-capabilities">
+            <h3>Modified Capabilities</h3>
+            <ul>
+              <li><code>toolchain-packaging</code>: <strong>modified: "<a href="specification.html#req-a-single-command-exposes-validate-format-and-init">The command surface names its operations as OpenSpec names them</a>".</strong> Two paragraphs are added after the paragraph that fixes the OpenSpec spellings: one fixes the request-verb spellings and what each verb means, and one makes them a second spelling of the same operation, never a replacement, with the OpenSpec spellings still the ones the program and its instructions name. Five scenarios are added. Every other paragraph and scenario is the accepted text, unchanged. The heading stays, because the OpenSpec spellings are still the fixed ones. <code>show-what-a-modification-changed</code> modifies this requirement first, adding <code>show</code> and <code>--diff</code>, so task 1.0 refreshes this block from the accepted text once that change archives and gives <code>show</code> a verb.</li>
+            </ul>
+          </section>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li><code>crates/htmlspec-cli/src/main.rs</code>: five verb subcommands, <code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, and <code>delete</code>, each taking an object that carries the same arguments as the operation it runs and dispatching to the same handler.</li>
+            <li><code>crates/htmlspec-cli/src/operation.rs</code>, new: one closed <code>Operation</code> type naming every operation, with its OpenSpec spelling, its verb, and its object, so an operation added later cannot compile without both spellings.</li>
+            <li>Tests: the operation table, CLI parity between the two spellings of every operation, a check that every <code>get</code> operation leaves a project byte for byte unchanged, and the help.</li>
+            <li><code>README.md</code>: the command list gains the request-verb spellings.</li>
+            <li>
+              <p><strong>Not in this change</strong>, and recorded so it is not assumed to follow:</p>
+              <ul>
+                <li>Withdrawing or renaming any OpenSpec spelling. The contributor chose to keep them.</li>
+                <li>Writing the verbs into the installed instructions, <code>htmlspec</code>'s own messages, or the runbooks.</li>
+                <li>htmx as a dependency, a server, or any request. The verbs are words on the command line.</li>
+                <li>Verbs for options. <code>--check</code> and <code>--json</code> stay as they are under both spellings.</li>
+                <li>A verb for clap's <code>help</code>.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

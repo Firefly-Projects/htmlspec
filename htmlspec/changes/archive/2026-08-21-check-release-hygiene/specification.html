@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Check release hygiene</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Check release hygiene</h1>
+        <p>This change made release hygiene part of this repository's own check suite. The one command that runs the suite also runs the release check, and every stage the suite has or gains reads the working tree, reads only files the build sandbox's source snapshot holds, states a rule that work in progress may legitimately break as a property of a settled record, and carries a name no other stage has (<em>Project checks are runnable as one command</em>). It obliged the project to keep a changelog whose entries name each version it ships (<em>The project records what changed in each version it ships</em>), and each archived change to record the version it shipped in, distinct from every other change's except where several changes shared one version before that obligation existed and a single baseline entry names them (<em>An archived change records the version it shipped in</em>).</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Check release hygiene</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-21-check-release-hygiene/specs/toolchain-packaging/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-project-checks-are-runnable-as-one-command" data-change="modified">
+            <h3>Project checks are runnable as one command <span class="hs-id">req-project-checks-are-runnable-as-one-command</span></h3>
+            <p>The project SHALL expose a single command that runs its full check suite — the conformance fixtures, the unit tests, <del>and </del>the formatting check<ins>, and the project's release hygiene</ins> — so that contributors and continuous integration verify the same thing.</p>
+            <ins>
+              <p>Every stage of the suite SHALL read the working tree rather than a repository's history. The build sandbox the suite runs in receives a filtered source snapshot with no repository, so a stage using version control history would pass on a contributor's machine and fail in continuous integration — the divergence a single shared suite exists to prevent. This SHALL constrain every stage the suite gains, not only the ones it has.</p>
+            </ins>
+            <ins>
+              <p>Every file a stage reads SHALL be present in that snapshot, which requires both that the source filter admit it and that version control track it. An untracked file and a file the filter excludes are indistinguishable from an absent one inside the sandbox, and both produce a stage that passes locally and fails in continuous integration. A stage that reads a file whose name the filter does not already admit SHALL be accompanied by the filter change that admits it, in the same change.</p>
+            </ins>
+            <ins>
+              <p>A stage SHALL either pass or fail, because the suite has no advisory level. A rule whose violation is a legitimate state for work in progress SHALL therefore be stated as a property of a settled record rather than of work under way, so that the rule has a correct answer at every moment. A stage that would report on unfinished work has no way to do so without failing, and a stage that fails throughout a change's life is one contributors learn to disregard.</p>
+            </ins>
+            <ins>
+              <p>A stage's name SHALL be distinct from every other stage's, so that a reported failure names one stage unambiguously.</p>
+            </ins>
+            <article class="scenario" id="scenario-full-check-suite" data-change="modified">
+              <h4>Full check suite</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the check command runs on a healthy revision</dd>
+                <dt>Then</dt>
+                <dd>conformance fixtures, tests, <del>and </del>the formatting check<ins>, and the release check</ins> all pass and the command exits zero</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-conformance-regression" data-change="unchanged">
+              <h4>Conformance regression</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a code change causes a valid conformance fixture to be rejected or an invalid one to be accepted</dd>
+                <dt>Then</dt>
+                <dd>the check command fails and identifies the fixture and the expected rule</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-continuous-integration-parity" data-change="unchanged">
+              <h4>Continuous integration parity</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>continuous integration runs</dd>
+                <dt>Then</dt>
+                <dd>it invokes the same check command a contributor would run locally, rather than a separately maintained list of steps</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-stage-that-would-need-history" data-change="added">
+              <h4>A stage that would need history</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a stage would answer its question by reading commits or diffs</dd>
+                <dt>Then</dt>
+                <dd>it is stated against the working tree instead, because the sandbox has no repository to read</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rule-that-cannot-fail-cleanly-on-work-in-progress" data-change="added">
+              <h4>A rule that cannot fail cleanly on work in progress</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a rule's violation is a legitimate state part-way through a change</dd>
+                <dt>Then</dt>
+                <dd>the stage asks it of a settled record rather than of the working change, since the suite offers no way to report without failing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-file-the-source-filter-excludes" data-change="added">
+              <h4>A file the source filter excludes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a stage reads a file whose name the source filter does not admit</dd>
+                <dt>Then</dt>
+                <dd>the stage fails in the sandbox while passing locally, so the filter change that admits the file belongs to the same change as the stage</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-project-records-what-changed-in-each-version-it-ships" data-change="added">
+            <h3>The project records what changed in each version it ships <span class="hs-id">req-the-project-records-what-changed-in-each-version-it-ships</span></h3>
+            <p>The project SHALL keep a changelog with one entry per version it has shipped, and each entry's heading SHALL name its version so that a check can locate it.</p>
+            <p>An entry's prose SHALL remain the author's. A check SHALL establish that an entry for a version exists and SHALL NOT impose a structure on what the entry says, because a changelog exists to be read by a person.</p>
+            <p>An entry reconstructed after the fact SHALL say that it is a reconstruction. A history assembled from records by someone who was not present is more useful labelled than unlabelled, and more honest than a confident account.</p>
+            <p>This obligation is on this repository. It SHALL be distinguishable from any obligation the program places on a project it bootstraps, and satisfying one SHALL NOT be taken to satisfy the other.</p>
+            <p data-field="note">Migration note: the release check as built also requires a changelog heading for the version the workspace manifest, <code>Cargo.toml</code>, declares, not only for each version an archived change records. That is <code>wanted.add(declared)</code> in <code>scripts/check-release</code> at commit <code>41310f8</code>. This change's design states it among its <a href="design.html#hs-goals">Goals</a>, and no requirement states it.</p>
+            <article class="scenario" id="scenario-a-version-with-no-entry" data-change="added">
+              <h4>A version with no entry</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the project has shipped a version the changelog does not name</dd>
+                <dt>Then</dt>
+                <dd>the release check fails and names that version</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-entry-s-contents" data-change="added">
+              <h4>An entry's contents</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release check locates an entry for a version</dd>
+                <dt>Then</dt>
+                <dd>it reads the entry's presence and applies no rule to the entry's prose</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reconstructed-entry" data-change="added">
+              <h4>A reconstructed entry</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an entry is written after the fact from archived records</dd>
+                <dt>Then</dt>
+                <dd>the entry states that it is a reconstruction</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-an-archived-change-records-the-version-it-shipped-in" data-change="added">
+            <h3>An archived change records the version it shipped in <span class="hs-id">req-an-archived-change-records-the-version-it-shipped-in</span></h3>
+            <p>Each archived change SHALL record the version the project declared when it was archived, in a form the project's own suite can read without version control history.</p>
+            <p>Recorded versions SHALL be distinct, so that each release names the change that produced it. Where the project has archived several changes under one version before this obligation existed, the changelog SHALL carry a single baseline entry naming them, and the suite SHALL treat that baseline as one release. The baseline SHALL cease to apply once the version advances past it, so it is a statement about a known past rather than a permanent exception.</p>
+            <p>Versions SHALL NOT be invented to satisfy distinctness. Assigning a separate version to each of several changes that shipped together records releases that never existed, which is worse than recording the shared version honestly.</p>
+            <article class="scenario" id="scenario-an-archive-with-no-recorded-version" data-change="added">
+              <h4>An archive with no recorded version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an archived change records no version</dd>
+                <dt>Then</dt>
+                <dd>the release check fails and names that change</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-archives-claiming-one-version" data-change="added">
+              <h4>Two archives claiming one version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>two archived changes above the baseline record the same version</dd>
+                <dt>Then</dt>
+                <dd>the release check fails, because a version names the change that produced it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-baseline" data-change="added">
+              <h4>The baseline</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>several changes were archived under one version before this obligation existed</dd>
+                <dt>Then</dt>
+                <dd>one changelog entry names them all and the suite treats them as one release</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-baseline-retires" data-change="added">
+              <h4>The baseline retires</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the project's version advances past the baseline</dd>
+                <dt>Then</dt>
+                <dd>every subsequent change is checked for a distinct version of its own</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each unit below, and each verification after them, summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links, and the record is the authority.</p>
+          </aside>
+          <section class="evidence" id="evidence-unbumped-history-2026-08-21" data-change="added" data-refs="req-project-checks-are-runnable-as-one-command req-the-project-records-what-changed-in-each-version-it-ships req-an-archived-change-records-the-version-it-shipped-in">
+            <h3>Seven changes, one version, no changelog <span class="hs-id">evidence-unbumped-history-2026-08-21</span></h3>
+            <p>Observed on 2026-08-21 against <code>main</code> at <code>d7d0621</code>, before the change was built: seven changes archived, <code>Cargo.toml:9</code> reading <code>version = "0.1.0"</code> across all seven, and <code>ls CHANGELOG*</code> finding nothing; four of the seven changed output a contributor consumes. <code>scripts/check</code> had eight stages, none of which read the version or looked for a changelog, and its <code>lint</code> stage is <code>cargo clippy</code>. The record quotes the source filter at <code>flake.nix:39</code>, which admits <code>*.md</code> and <code>scripts/</code>, notes that the derivation receives a snapshot with no <code>.git</code>, and records why the shipped <code>archive_version_gate</code> (<code>commands.rs:1281</code>) does not apply here: there is no <code>spec.nix</code> and no <code>htmlspec/</code> directory, and <code>last_archived_version</code> (<code>commands.rs:1341</code>) reads a version from archive directory names, none of which carries one, so it falls back to <code>0.0.0</code>. <a href="evidence/unbumped-history-2026-08-21.md"><code>evidence/unbumped-history-2026-08-21.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-failing-check-2026-08-21" data-change="added" data-refs="req-project-checks-are-runnable-as-one-command req-the-project-records-what-changed-in-each-version-it-ships req-an-archived-change-records-the-version-it-shipped-in">
+            <h3>The check fails on all three properties before anything satisfies it <span class="hs-id">evidence-failing-check-2026-08-21</span></h3>
+            <p>Tasks 1.5 and 1.6: <code>scripts/check-release</code> run against the repository before a version was recorded and before a changelog existed. It reported 9 faults across 7 archived changes, declared version 0.1.0, and exited 1: 7 for the archives recording no version, each named, and 2 for the changelog, which was absent and had no entry for <code>0.1.0</code>. The distinctness rule reported 0, which the record calls unreachable, because nothing recorded a version to compare. The record notes that the exit status fails the suite, and that the check has no advisory mode to fall back to. <a href="evidence/failing-check-2026-08-21.md"><code>evidence/failing-check-2026-08-21.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-each-rule-observed-failing-2026-08-21" data-change="added" data-refs="req-the-project-records-what-changed-in-each-version-it-ships req-an-archived-change-records-the-version-it-shipped-in">
+            <h3>Each rule observed failing on its own <span class="hs-id">evidence-each-rule-observed-failing-2026-08-21</span></h3>
+            <p>Tasks 6.1 to 6.4. The check passes on this repository, so each rule was made to fail in isolation and then restored, and each run reported 1 fault across 7 archived changes and exited 1. A <code>CHANGELOG.md</code> carrying no version heading drew <code>no CHANGELOG.md heading names version 0.1.0</code>. Two archives set to <code>0.2.0</code>, with a <code>0.2.0</code> changelog entry, drew a distinctness fault naming both archives. <code>VERSION</code> moved out of <code>2026-08-14-separate-artifact-kinds</code> drew a fault naming that archive alone. The record explains that deleting the changelog would exercise a different fault, and that a duplicate at <code>0.1.0</code> cannot exercise distinctness, which applies only above the baseline. <a href="evidence/each-rule-observed-failing-2026-08-21.md"><code>evidence/each-rule-observed-failing-2026-08-21.md</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-changelog-with-no-entry-for-the-declared-version" data-change="added" data-outcome="passed" data-refs="scenario-a-version-with-no-entry">
+            <h3>A changelog with no entry for the declared version <span class="hs-id">verify-a-changelog-with-no-entry-for-the-declared-version</span></h3>
+            <p data-field="method">For task 6.1, with the seven archives recording <code>0.1.0</code>, <code>CHANGELOG.md</code> was replaced with one carrying no version heading and <code>./scripts/check-release</code> was run. It reported one fault, <code>no CHANGELOG.md heading names version 0.1.0</code>, and exited 1, as <a href="evidence/each-rule-observed-failing-2026-08-21.md"><code>evidence/each-rule-observed-failing-2026-08-21.md</code></a> records.</p>
+          </section>
+          <section class="verification" id="verify-two-archives-claiming-one-version" data-change="added" data-outcome="passed" data-refs="scenario-two-archives-claiming-one-version">
+            <h3>Two archives claiming one version <span class="hs-id">verify-two-archives-claiming-one-version</span></h3>
+            <p data-field="method">For task 6.2, two archives were set to <code>0.2.0</code>, above the baseline, and <code>0.2.0</code> was given a changelog entry so that only distinctness could fail. The check reported one fault, that <code>2026-08-21-distinguish-command-names-from-skill-names</code> records version 0.2.0, which <code>2026-08-18-install-the-full-workflow-set</code> already records, ending "A version names the change that produced it", and exited 1, as <a href="evidence/each-rule-observed-failing-2026-08-21.md"><code>evidence/each-rule-observed-failing-2026-08-21.md</code></a> records.</p>
+          </section>
+          <section class="verification" id="verify-an-archive-with-no-recorded-version" data-change="added" data-outcome="passed" data-refs="scenario-an-archive-with-no-recorded-version">
+            <h3>An archive with no recorded version <span class="hs-id">verify-an-archive-with-no-recorded-version</span></h3>
+            <p data-field="method">For task 6.3, <code>VERSION</code> was moved out of <code>2026-08-14-separate-artifact-kinds</code> and the check was run. It reported one fault, that this archive records no version, and exited 1, and the other six passed, as <a href="evidence/each-rule-observed-failing-2026-08-21.md"><code>evidence/each-rule-observed-failing-2026-08-21.md</code></a> records.</p>
+          </section>
+          <section class="verification" id="verify-seven-archives-recording-no-version" data-change="added" data-outcome="passed" data-refs="scenario-an-archive-with-no-recorded-version">
+            <h3>Seven archives recording no version, before anything satisfied the check <span class="hs-id">verify-seven-archives-recording-no-version</span></h3>
+            <p data-field="method">For task 1.5, the check was run before any archived change recorded a version. Among its nine faults it reported each of the seven archived changes by its directory as recording no version, and it exited 1, as <a href="evidence/failing-check-2026-08-21.md"><code>evidence/failing-check-2026-08-21.md</code></a> records.</p>
+          </section>
+          <section class="verification" id="verify-seven-archives-at-the-baseline" data-change="added" data-outcome="partial" data-refs="scenario-the-baseline">
+            <h3>Seven archives at <code>0.1.0</code>, under the baseline <span class="hs-id">verify-seven-archives-at-the-baseline</span></h3>
+            <p data-field="method">The run for task 6.1, with the seven archives recording <code>0.1.0</code>, reported one fault, for the changelog, and none for distinctness. <a href="evidence/each-rule-observed-failing-2026-08-21.md"><code>evidence/each-rule-observed-failing-2026-08-21.md</code></a> records that the seven archives still record <code>0.1.0</code> and that their versions are still distinct under the baseline.</p>
+            <p data-field="unchecked">one changelog entry names them all</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

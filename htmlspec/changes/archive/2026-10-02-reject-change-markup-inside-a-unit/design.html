@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Reject change markup inside a unit</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Reject change markup inside a unit</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Reject change markup inside a unit</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-02-reject-change-markup-inside-a-unit/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>See <a href="proposal.html">proposal.md</a> for why. The shape of the current system that the approach depends on:</p>
+          <ul>
+            <li><strong>The projection is doing what its specification says.</strong> <code>crates/htmlspec-schema/doc/projection.md</code> section 8.2 makes every element without a reserved class presentational, and "their inline text content contributes to whichever field encloses them". In <code>crates/htmlspec-parse/src/project.rs</code>, <code>own_descendants</code> walks through any such element, and <code>collect_text</code> concatenates text with only <code>script</code>, <code>style</code>, <code>template</code>, and <code>noscript</code> left out. So <code>del</code> and <code>ins</code> are read like <code>span</code>. No crate, fixture, template, instruction, or accepted specification names either element (<a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a>, section 4).</li>
+            <li><strong>The model holds text, not markup.</strong> A rule that reads only the model cannot see change markup. A rule receives <code>Subject { projection, store }</code> (<code>crates/htmlspec-validate/src/engine.rs</code>), and <code>Projection.document</code> holds the parsed tree. Five rule modules already read it: <code>a11y</code>, <code>assets</code>, <code>executable</code>, <code>refs</code>, and <code>safety</code>.</li>
+            <li><strong>There is a precedent for judging an element by where it sits.</strong> <code>executable.rs</code> reports a <code>code</code> element by what it contains. Its rule, like every rule in <code>ALL</code>, is one <code>fn</code> over the subject.</li>
+            <li><strong>What a unit is has one definition.</strong> Projection sections 1.1 and 1.2: an element creates a unit when its <code>class</code> holds a reserved token, matched whole and case sensitively. <code>UnitKind::from_class</code> is public in <code>htmlspec_parse</code>, and <code>enclosing_unit</code> in <code>project.rs</code> asks the same question of ancestors.</li>
+            <li><strong>Rule namespaces are a closed set that decides severity</strong> (<code>diagnostic.rs</code>). <code>schema/*</code> is contract conformance and an error. <code>review/*</code> is a warning that strict mode never promotes.</li>
+            <li><strong>Every rule needs a valid and an invalid conformance fixture</strong> (<code>every_rule_has_both_a_valid_and_an_invalid_fixture</code>), and <code>known_rules()</code> lists them. The generator, <code>conformance/src/bin/generate_fixtures.rs</code>, deletes every fixture directory missing from its table. Four hand-authored fixtures are missing from it. <a href="../2026-09-26-log-a-runbook-run/evidence/the-generator-deletes-two-fixtures-2026-09-18.md"><code>2026-09-26-log-a-runbook-run/evidence/the-generator-deletes-two-fixtures-2026-09-18.md</code></a> recorded two of them, and <code>2026-09-26-record-a-renamed-requirement</code> found four and restored them by hand.</li>
+            <li><strong><code>crates/htmlspec-validate/tests/schema_rust_split.rs</code></strong> forbids rule code from spelling any schema-owned literal, including each accepted contract version.</li>
+          </ul>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong></p>
+          <ul>
+            <li>A document with change markup in or around a unit fails validation, with one error per element that names the unit and the element.</li>
+            <li>The rule and the projection cannot disagree about what a unit is.</li>
+            <li>The change narrows what validates and nothing else. Every document that still validates projects the same model as before.</li>
+            <li>The change planned to give the markup meaning can relax this rule without breaking any document this change accepted.</li>
+          </ul>
+          <p><strong>Non-Goals:</strong></p>
+          <ul>
+            <li>Giving <code>ins</code> and <code>del</code> meaning. The projection is untouched.</li>
+            <li><code>s</code> and <code>strike</code>. HTML defines <code>s</code> as content that is no longer accurate or relevant and not as an edit, and <code>strike</code> is its obsolete spelling. Neither is what the later change gives meaning to.</li>
+            <li>The workflow instructions. The diagnostic states the fix. An instruction added here would be replaced by the change that tells an agent how to mark an edit.</li>
+            <li>The formatter. <code>format --check</code> reports a block-level <code>&lt;del&gt;&lt;p&gt;</code> as not canonical, and <code>format</code> only moves the <code>p</code> onto its own line inside the <code>del</code>, leaving the projected statements as they were (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 3</a>).</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-decision-1">
+            <h3>1. One rule, <code>schema/change-markup</code>, and an error</h3>
+            <p>The rule lives in <code>schema/*</code>, whose concern is conformance to the schema and the projection specification. A document whose projection states what its author withdrew does not conform in the sense that matters: its model is wrong.</p>
+            <p><strong>Considered: a <code>review/*</code> warning.</strong> Rejected. A review warning never gates work, and strict mode does not promote it. Measured: <code>validate --strict</code> accepts the document today with its one <code>review/*</code> warning, so a warning here would leave the wrong contract accepted by every check a project can run. A review warning says a dependent unit may be out of date. This statement is wrong now.</p>
+            <p><strong>Considered: <code>safety/*</code>.</strong> Rejected. Nothing executes and nothing reaches the network, and the safety floor exists for documents that are unsafe to open.</p>
+            <p><strong>Considered: a new namespace.</strong> Rejected. A namespace exists to decide severity, and this rule needs the severity <code>schema/*</code> already has.</p>
+            <p><strong>Considered: <code>kind/*</code>.</strong> Rejected. The rule is the same in every kind, and <code>the_kind_namespace_has_exactly_two_rules_and_constrains_no_upstream_kind</code> pins that <code>kind/*</code> has exactly two rules.</p>
+            <p><strong>Considered: a projection fault, reported as <code>schema/projection</code>.</strong> Rejected. Projection section 10.2 says a projection fault means the projection cannot produce a model, and here it can. Section 10.1 is the list of validator rules that judge a model the projection produced, and this rule belongs on it. A new numbered projection rule would also need a mapping fixture whose expected model pins <code>nothing elsestore</code>, which is the behavior the later change replaces.</p>
+            <p><strong>The name is <code>change-markup</code></strong>, a noun phrase for the fault, like <code>weak-modal</code> and <code>duplicate-id</code>. <strong>Considered: <code>change-markup-in-unit</code></strong>, after <code>rename-outside-requirement</code>. Rejected. It would be wrong for a <code>del</code> around a unit (decision 3), and it would stop being right when the later change narrows where the rule fires. Rule identifiers are stable across versions, so the name should describe the fault and leave the place to the message.</p>
+          </section>
+          <section id="hs-decision-2">
+            <h3>2. The rule reads the tree and asks the projection's own question about units</h3>
+            <p>The rule module is <code>crates/htmlspec-validate/src/rules/change_markup.rs</code>. It walks <code>subject.projection.document</code> once, as <code>executable.rs</code> does. For each <code>ins</code> or <code>del</code> element, it looks for a unit among the element's ancestors and then among its descendants. An element is a unit when a whitespace-separated token of its <code>class</code> is one <code>UnitKind::from_class</code> accepts. That is projection section 1.2's test, reached through the parse crate, so the rule cannot recognize a unit the projection does not. It is also the test <code>enclosing_unit</code> applies: an element carrying two reserved tokens (section 1.3) still counts, so markup inside one is still reported alongside the projection's own fault.</p>
+            <p>The element names <code>ins</code> and <code>del</code> are constants in the rule module. They are HTML's vocabulary and not the schema's, so <code>schema_rust_split.rs</code> has nothing to say about them.</p>
+            <p><strong>Considered: recording change markup in the projection, beside the model</strong>, as <code>Projection::misplaced_renames</code> does for renames. Rejected. That field exists because the projection discards a <code>renamed-from</code> paragraph that the validator must still report, so the fact had to leave the projection somewhere. Here the tree already holds everything the rule needs, and a new public field on <code>Projection</code> would be carried by the parse crate for one rule. The later change reshapes this part of the projection anyway.</p>
+          </section>
+          <section id="hs-decision-3">
+            <h3>3. In a unit, or around one</h3>
+            <p>An element is reported when a unit encloses it, or when it encloses a unit. The second case was measured: a requirement wrapped whole in <code>&lt;del&gt;</code> projects as an <code>unchanged</code> requirement, and <code>validate</code> exits 0 (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 5</a>). A rule that looked only at ancestors would pass it. The vocabulary already has the statement a wrapped unit is reaching for. A withdrawn unit is <code>data-change="removed"</code>, and a new one is <code>data-change="added"</code>.</p>
+            <p>A review of the implementation found a third case. A change element whose own <code>class</code> names a unit, such as <code>&lt;del class="decision"&gt;</code>, is that unit, and the projection reads it as one the document states. It is reported at itself, before its ancestors or descendants are asked. Only HTML's own <code>ins</code> and <code>del</code> count: an element of the same name inside SVG or MathML is that language's, and is not change markup.</p>
+            <p>There is one diagnostic per element. It is located at the element itself when it is a unit, else at the nearest enclosing unit, or else at the first unit the element encloses in document order, and it names the element and quotes its normalized text. An element inside one unit and around another is located at the enclosing unit, and its fix is the change state of the unit it wraps. A long text, such as a whole wrapped requirement, is quoted by its opening words. Nested change elements are reported one by one. Each is its own edit to undo, and the quoted text is how an author finds it in a long statement.</p>
+            <p><strong>Considered: one diagnostic per unit.</strong> Rejected. A unit with three marked edits has three places to fix. A single diagnostic would name one and imply the rest.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, the quotation is the element's text content with its whitespace normalized, as projection section 6.1 normalizes a field, and in one case it is not the projection's normalized text: unlike the projection, it does not skip <code>script</code>, <code>style</code>, <code>template</code>, or <code>noscript</code>, so a change element holding one of them quotes text the projection keeps none of. <a href="evidence/what-the-implementation-revealed-2026-10-01.md"><code>evidence/what-the-implementation-revealed-2026-10-01.md</code></a> records it, and that no test pins the difference.</p>
+            </aside>
+          </section>
+          <section class="decision" id="decision-ins-is-rejected-with-del" data-change="added" data-status="accepted">
+            <h3>4. <code>ins</code> is rejected with <code>del</code> <span class="hs-id">decision-ins-is-rejected-with-del</span></h3>
+            <p>Read against the code, an <code>ins</code> does no harm to the model. Its text is current text, and the projection keeps it, as <a href="evidence/the-measurement-2026-09-30.md">section 1 of the evidence</a> shows with <code>store</code>. So <code>ins</code> is not rejected for model damage. It is rejected for two other reasons.</p>
+            <ul>
+              <li>
+                <p data-field="rationale"><strong>Half a diff.</strong> A unit that marks words as inserted and nothing as removed tells a reader that the words are new, and hides what they replaced. The rendered page shows one side of an edit.</p>
+              </li>
+              <li>
+                <p data-field="rationale"><strong>The later change can only relax.</strong> <code>mark-the-words-a-modification-changed</code> is planned to give both elements meaning together, and only in a unit marked modified in a change's specification. If <code>ins</code> were accepted everywhere now, documents could carry it in the places that change will still forbid: an accepted specification, a unit not marked modified, or a task. That change would then have to break documents this one let through. Rejecting both now means the later change only permits.</p>
+              </li>
+            </ul>
+            <p data-field="rationale"><strong>Considered: reject <code>del</code> alone.</strong> Rejected, for the two reasons above. The cost of rejecting <code>ins</code> is an error for an author who marks only additions. The count in <a href="evidence/the-measurement-2026-09-30.md">section 4 of the evidence</a> is zero, so no existing document pays it.</p>
+            <p data-field="note">Migration note: the diagnostic first gave the first reason above for every <code>ins</code>: that a reader cannot see what the inserted words replaced. The review of the pull request found it false beside a <code>del</code>, which shows the words replaced, and the diagnostic's reason for an <code>ins</code> now says that the projection keeps the inserted words as ordinary text, so the edit the page shows is in no field the model holds. <a href="tasks.html#task-7-1">Task 7.1</a> records the finding as taken, and <a href="evidence/mutation-testing-2026-10-01.md"><code>evidence/mutation-testing-2026-10-01.md</code></a> records the test that pins it. This decision was not revised.</p>
+          </section>
+          <section id="hs-decision-5">
+            <h3>5. Outside every unit, the rule is silent</h3>
+            <p><a href="evidence/the-measurement-2026-09-30.md">Section 5 of the evidence</a> found where change markup outside every unit reaches the model:</p>
+            <ul>
+              <li>a paragraph of free prose reaches nothing;</li>
+              <li>the document's summary keeps both texts, run together;</li>
+              <li>a figure's caption keeps both texts, run together;</li>
+              <li>a deleted fragment link stays in <code>links</code>.</li>
+            </ul>
+            <p>None of the three that reach the model carries a contract. The summary is compared with a template's placeholder (<code>rules/review.rs</code>, and <code>commands.rs</code> for archival), a caption is checked for whether it exists (<code>rules/a11y.rs</code>), and a link is checked for whether its target resolves (<code>rules/refs.rs</code>).</p>
+            <p>The rule stops at units for three reasons:</p>
+            <ul>
+              <li>The defect is a wrong contract, and units are where a document states one.</li>
+              <li>Showing a wording change in prose is a legitimate use, and it corrupts nothing. A proposal arguing for a change to a requirement can write the before and the after with <code>del</code> and <code>ins</code>.</li>
+              <li>The later change gives the markup meaning only inside units. A prohibition outside units would be a permanent rule about prose, and nothing measured here asks for one.</li>
+            </ul>
+            <p><strong>Considered: the whole document.</strong> Rejected. It forbids the prose use above, and it turns a stopgap into a permanent rule that the later change would have to carve back out.</p>
+            <p><strong>Considered: every place the model holds text, meaning units, the summary, captions, and link text.</strong> Rejected. It ties the rule to the projection's list of text sources, which would need updating whenever the projection reads text from a new place. The three extra places state no contract.</p>
+            <p><strong>Open for the contributor: the summary.</strong> The summary is the one place outside a unit where an author writes the argument itself, and projection section 9.1.1 calls it "the argument a change rests on". A summary reading "gains no new spellingone spelling" misreports that argument to anything that reads the model. If the contributor wants it covered, the rule gains the document's <code>header</code> as a second place, one scenario and one test are added, and the valid fixture needs no change, because its markup is in free prose. The default here is not to cover it, for the reason the first bullet gives.</p>
+          </section>
+          <section id="hs-decision-6">
+            <h3>6. Every kind, and every declared version</h3>
+            <p>The rule applies in all four kinds. A requirement unit in a proposal is not authoritative, but its model is read, and a decision in a design is read the same way. Tasks are included. Change markup stays confined to where the later change gives it meaning, and a task's own way of withdrawing words is <code>data-state="dropped"</code> with its reason.</p>
+            <p>The rule applies whatever contract version a document declares. The schema's <code>schemaVersion</code> description says "the vocabulary accepted is the newest version's", and document-validation's asset requirement states the principle this follows: "A document SHALL NOT be able to exempt itself". The conformance fixtures declare the generator's frozen <code>0.1.0</code>, so the invalid fixture is a standing check that an earlier declared version is no exemption.</p>
+            <p><strong>Considered: applying the rule only to documents declaring <code>0.3.0</code>.</strong> Rejected. Declaring an older version would switch the rule off, and a document written against an old template would keep projecting withdrawn words as current.</p>
+          </section>
+          <section id="hs-decision-7">
+            <h3>7. The projection specification names the rule, and document-schema's requirement is unchanged</h3>
+            <p>Projection section 10.1 lists the validator rules the projection does not decide, and <code>record-a-renamed-requirement</code> added its rules there. This change adds "change markup in or around a unit" to that sentence. Section 10.1 is already claimed by the <code>unjudged</code> mapping fixture, so <code>every_projection_rule_has_a_mapping_fixture</code> needs nothing new.</p>
+            <p>document-schema's "<a href="../../../specs/document-schema/spec.html#req-the-html-to-model-projection-is-published-as-a-normative-specification">The HTML-to-model projection is published as a normative specification</a>" is not modified. Its list asks the projection specification to state "which elements and attributes create a semantic unit, and which are ignored" and "how presentational markup that carries no semantic unit is discarded". Section 8.2 states both, and <code>del</code> is handled exactly as it says.</p>
+            <p><strong>Considered: a MODIFIED block naming change markup in that requirement.</strong> Rejected. It would change no obligation, because the requirement lists topics and the topic is already covered. The later change is planned to modify that requirement, because it changes what the projection does with the markup. A block here would make it re-base on text that changed nothing.</p>
+            <p><strong>Considered: a new numbered rule in section 8, saying that <code>ins</code> and <code>del</code> are presentational and validation rejects them in a unit.</strong> Rejected, for the mapping-fixture reason in decision 1.</p>
+          </section>
+          <section id="hs-decision-8">
+            <h3>8. Two fixtures, and a generator that keeps what it did not write</h3>
+            <p>The fixtures are twins that differ in where the markup sits:</p>
+            <ul>
+              <li><code>invalid-schema-change-markup</code>: the base requirement's statement with a <code>del</code> and an <code>ins</code> in it. It declares <code>schema/change-markup</code>.</li>
+              <li><code>valid-change-markup-outside-a-unit</code>: the same markup in a paragraph between the "Requirements" heading and the requirement, outside every unit.</li>
+            </ul>
+            <p>Before the generator is run, it gains a table naming the four hand-authored fixtures: <code>valid-runbook-machine-requirements</code>, <code>valid-runbook-machine-requirements-unsatisfiable</code>, <code>valid-summary-quoting-the-placeholder</code>, and <code>warning-review-placeholder-summary</code>. Its stale-fixture sweep keeps every name in that table and writes none of them.</p>
+            <p><strong>Considered: restore them with <code>git checkout</code> after each run</strong>, as <code>record-a-renamed-requirement</code> did. Rejected. The trap has been met twice, and it grew from two fixtures to four between those meetings. <code>AGENTS.md</code> treats a condition that people must remember as a candidate for enforcement by tooling, and this one has already been forgotten once.</p>
+            <p><strong>Considered: make them ordinary generator entries.</strong> Rejected. They are not edits to the base, since two are runbook documents and one is a crafted summary. The generator also writes <code>expected.json</code> in its own layout, and <code>valid-runbook-machine-requirements-unsatisfiable</code> holds its rule list on one line, so regenerating it would rewrite committed bytes.</p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li>
+              <p><strong>[A project outside this repository carries change markup in a unit and stops validating.]</strong> → That is the rule working, because such a document's model states withdrawn words. The error names the unit and quotes the text, and the <code>0.3.0</code> changelog entry names the rule and the fix: state the text as it now reads, and mark the unit <code>modified</code>. <a href="evidence/the-measurement-2026-09-30.md">The measurement</a> found no such document in this repository or in the staged migration.</p>
+              <aside data-migration="note">
+                <p><strong>Migration note.</strong> The changelog's fix wording given here, which ordered <code>modified</code> for every unit, was changed before archival to match the diagnostic's message, which says to write the text as it now reads and states when a unit is marked <code>modified</code> rather than ordering it. <a href="tasks.html#task-7-1">Task 7.1</a> records the change to the changelog, and <a href="evidence/what-the-implementation-revealed-2026-10-01.md"><code>evidence/what-the-implementation-revealed-2026-10-01.md</code></a> records why the message's first wording was wrong for a unit a change adds.</p>
+              </aside>
+            </li>
+            <li><strong>[Until the later change lands, an author has no readable way to show an edit inside a unit.]</strong> → The prose around the unit still takes <code>del</code> and <code>ins</code>, so a proposal or a specification can show the before and the after beside the unit that states the after.</li>
+            <li><strong>[The summary, a caption, or a link's text still runs deleted and inserted words together.]</strong> → Measured and left open under decision 5. None of the three states a contract.</li>
+            <li><strong>[The later change must relax a rule this change adds.]</strong> → The rule's name describes the fault and not the place, so the later change narrows where it fires without renaming it, and it relaxes a rule rather than breaking a document (decision 4).</li>
+            <li><strong>[A mutation that confines the rule to ancestors passes every inline test.]</strong> → The wrapped-unit test exists for exactly that, and task 5.2 names the mutation.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p><strong>The document contract moves from <code>0.2.0</code> to <code>0.3.0</code>.</strong> A document that validates today can stop validating, which the versioning table in <code>crates/htmlspec-schema/CHANGELOG.md</code> puts under a major bump. The same file says: "While the major version is <code>0</code>, the vocabulary is provisional and any release can break a document." A major bump from <code>0.x</code> is <code>1.0.0</code>, which commits the vocabulary, and that is not this change's decision. A patch is for wording that leaves the model unchanged. So the bump is minor under the <code>0.x</code> clause, and the changelog entry says in its first line that a document can stop validating, and which.</p>
+          <p><code>0.1.0</code> and <code>0.2.0</code> stay in <code>schemaVersion</code>'s enumeration. Removing them would invalidate every document that declares one: 110 of the 122 HTML files the repository tracks, and all 116 staged ones. That would reject every document to catch a markup none of them carries (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 4</a>). The rule reaches documents declaring them anyway, per decision 6.</p>
+          <p>Rollback is a revert. No document needs editing in either direction, because none carries the markup.</p>
+          <p><strong>The release is expected to be <code>0.19.0</code>, a minor increment</strong>: a new validation error changes what <code>validate</code> accepts, and the contract moves. The contributor confirms the increment at task 6.2.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

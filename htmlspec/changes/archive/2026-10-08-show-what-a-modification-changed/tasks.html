@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Show what a modification changed</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Show what a modification changed</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Show what a modification changed</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-08-show-what-a-modification-changed/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-re-measure-before-changing-anything">1. Re-measure before changing anything</a></li>
+          <li><a href="#hs-2-types-and-tests-first">2. Types and tests first</a></li>
+          <li><a href="#hs-3-one-pairing-and-one-set-of-refusals">3. One pairing and one set of refusals</a></li>
+          <li><a href="#hs-4-the-author-s-marks">4. The author's marks</a></li>
+          <li><a href="#hs-5-the-view">5. The view</a></li>
+          <li><a href="#hs-6-the-instructions">6. The instructions</a></li>
+          <li><a href="#hs-7-prove-it">7. Prove it</a></li>
+          <li><a href="#hs-8-release">8. Release</a></li>
+          <li><a href="#hs-9-review">9. Review</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-re-measure-before-changing-anything">
+          <h2>1. Re-measure before changing anything</h2>
+          <ul>
+            <li class="task" id="task-1-0" data-change="added" data-state="done" data-refs="req-a-single-command-exposes-validate-format-and-init scenario-an-operation-openspec-also-provides scenario-the-selectors-carry-openspec-s-spellings scenario-validating-one-document">
+              <h3>1.0 Re-base: once <code>resolve-a-reference-across-its-change</code> has archived, replace the MODIFIED block "<a href="specification.html#req-a-single-command-exposes-validate-format-and-init">The command surface names its operations as OpenSpec names them</a>" in <a href="specification.html#hs-toolchain-packaging"><code>specs/toolchain-packaging/spec.md</code></a> with the accepted text from <a href="../../../specs/toolchain-packaging/spec.html"><code>openspec/specs/toolchain-packaging/spec.md</code></a>, and apply only this change's three edits to it again: <code>show</code> in the fixed spellings, <code>--diff</code> among the selectors, and the two scenarios "<a href="specification.html#scenario-an-operation-openspec-also-provides">An operation OpenSpec also provides</a>" and "<a href="specification.html#scenario-the-selectors-carry-openspec-s-spellings">The selectors carry OpenSpec's spellings</a>".</h3>
+              <p>Check whether any other change archived since this one was written modified the same requirement, and if one has, re-base onto it the same way. Done when <code>git diff --no-index --word-diff</code> of the block against its accepted text shows only those edits, and <code>openspec validate show-what-a-modification-changed --strict</code> passes</p>
+              <ul>
+                <li>
+                  <p><code>resolve-a-reference-across-its-change</code> archived on 2026-10-04 and modified this requirement in its scenario "<a href="specification.html#scenario-validating-one-document">Validating one document</a>", whose THEN now ends "and reported on, and the other documents its references can reach are read only for the identifiers they declare". The block took that wording. No other archived change modified the requirement since: <code>git log</code> of <a href="../../../specs/toolchain-packaging/spec.html"><code>openspec/specs/toolchain-packaging/spec.md</code></a> shows #44 as the last edit, and <code>mark-the-words-a-modification-changed</code> touched only artifact-kinds, document-schema, and document-validation. The word diff against the accepted text now shows only <code>show</code>, <code>--diff</code>, and the two scenarios, and <code>openspec validate show-what-a-modification-changed --strict</code> passes. Every accepted heading the ADDED requirement cites exists as quoted</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-1" data-change="added" data-state="done" data-refs="req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract">
+              <h3>1.1 Check what this change builds on, as built, and correct <a href="design.html"><code>design.md</code></a> where it differs.</h3>
+              <p>Record in <code>evidence/</code> what each check found. The checks are:</p>
+              <ul>
+                <li>
+                  <p>that <code>see-a-modification-the-merge-did-not-take</code> and <code>mark-the-words-a-modification-changed</code> are archived, and <a href="../../../specs/toolchain-packaging/spec.html"><code>openspec/specs/toolchain-packaging/spec.md</code></a> holds the former's "<a href="../../../specs/toolchain-packaging/spec.html#req-the-command-surface-reports-whether-a-change-reached-the-accepted-contract">The command surface reports whether a change reached the accepted contract</a>" as that change states it;</p>
+                </li>
+                <li>
+                  <p>in <code>crates/htmlspec-cli/src/commands.rs</code>, the accepted index <code>merge_state</code> builds, the function that returns <code>Option&lt;UntakenContent&gt;</code>, the fields of <code>UntakenContent</code>, and the closed type for a requirement's declared state, which decisions 3, 6, and 7 name;</p>
+                </li>
+                <li>
+                  <p>in <code>crates/htmlspec-parse</code>, that the model holds <code>deletions</code> and no position of an <code>ins</code> or a <code>del</code>, and the name of the walk behind <code>own_descendants</code> that decision 5 reuses;</p>
+                </li>
+                <li>
+                  <p><code>Refusal</code>, <code>resolve_change</code>, and <code>resolve_change_in</code>, and that <code>ProjectRoot</code> has no test for an archived change yet.</p>
+                </li>
+                <li>
+                  <p>Recorded in <a href="evidence/what-it-builds-on-2026-10-07.md"><code>evidence/what-it-builds-on-2026-10-07.md</code></a>. Both changes are archived, and the accepted reporting requirement equals <code>see-a-modification-the-merge-did-not-take</code>'s delta word for word. Four corrections to <a href="design.html"><code>design.md</code></a>, all made before any code: the accepted index holds every holder of an identifier as projected and no path, and the comparison, not the index, chooses between holders (decision 3); the comparison names scenarios as strings, so task 3.2 has it give the view the scenarios too (decision 3); the marks reader reads <code>own_nodes</code>, because <code>own_descendants</code> drops what a <code>del</code> holds (decision 5); and the view's scope (decision 7)</p>
+                </li>
+                <li>
+                  <p data-field="deviation"><strong>Settled with the contributor on 2026-10-07: the view compares what the comparison compares.</strong> <code>ContractEffect::of_requirement</code> reads a requirement marked <code>added</code> or <code>modified</code>, and one marked <code>unchanged</code> that holds a changed scenario, as establishing text, and <code>sync</code> reports each in <code>untakenContent</code> when its text is not taken. The design compared <code>modified</code> alone and listed the others, so the view would have said "not compared" where <code>sync</code> said "differs". The delta specification, the proposal, and tasks 2.3, 2.4, 3.2, 7.1, 7.3, and 9.1 now say so, and decision 7 records the two options not taken</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Repeat sections 1, 2, and 3 of <a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a> against HEAD: rebuild the <code>openspec/</code> trees at <code>8ca4b59</code> and <code>ee4301c</code> with <code>git archive</code>, run <code>openspec show sync-a-change-into-the-accepted-contract --diff</code>, with and without <code>--json</code>, in each, and run <code>./target/debug/htmlspec show</code> and <code>--help</code>.</h3>
+              <p>Done when the hunk, the JSON refusal, the <code>Unknown item</code> refusal, and html-spec's exit 2 are recorded, and any difference from the evidence is recorded before going on</p>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/the-measurement-repeated-2026-10-07.md"><code>evidence/the-measurement-repeated-2026-10-07.md</code></a>. Every result holds: the hunk <code>@@ -3,9 +3,9 @@</code> after the 69 lines of the proposal, the <code>--json</code> refusal "Change must have a What Changes section", the bare form printing the proposal, <code>(no textual changes)</code> after the merge, <code>Unknown item</code> with exit 1 by each of the three names once archived, and html-spec's <code>unrecognized subcommand 'show'</code> with exit 2 and empty standard output</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Repeat sections 4, 5, and 6 of <a href="evidence/the-measurement-2026-09-30.md">the evidence</a>: run <code>sizes.py</code> and <code>prototype.py</code> from its appendices over <code>project-model</code> output for the staged migration, wherever it is staged by then, and check <code>list --json</code> there for active changes.</h3>
+              <p>Re-read the line numbers section 5 cites. Done when the counts, the two prototype runs, and the code facts are recorded, with any difference stated</p>
+              <ul>
+                <li>
+                  <p>Recorded in the same file. <code>project-model</code> was rebuilt against <code>bdbab7f</code> first. <code>sizes.py</code> gives the same counts and rows, both prototype runs give the same output, and <code>list --json</code> in the staged migration still reports no active change. Only line numbers in <code>commands.rs</code> moved, and no decision rests on one</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Re-read <code>crates/htmlspec-assets/instructions/verify.md</code>, <code>archive.md</code>, and <code>sync.md</code> as <code>state-a-modified-requirement-whole</code>, <code>see-a-modification-the-merge-did-not-take</code>, and <code>mark-the-words-a-modification-changed</code> left them.</h3>
+              <p>Confirm where the sentences of design decision 11 go, and that <code>new.md</code>, <code>continue.md</code>, <code>ff.md</code>, <code>apply.md</code>, and <code>explore.md</code> write no specification, with <code>grep -n "specification.html\|modified"</code> and a read of each hit. Done when each file is recorded in <code>evidence/</code> as edited or silent, with the reason</p>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/what-it-builds-on-2026-10-07.md"><code>evidence/what-it-builds-on-2026-10-07.md</code></a>. <code>verify.md</code> and <code>archive.md</code> are edited, <code>sync.md</code> stays silent for decision 11's reason, and the five others have no hit. In <code>archive.md</code> the check goes after the marking bullets and before <strong>Verification.</strong>, because it is about the modified requirements just written</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-types-and-tests-first">
+          <h2>2. Types and tests first</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Add the types of design decisions 4, 5, 6, and 9 as stubs, so that the tests below compile and fail on their assertions rather than on the build.</h3>
+              <p>In a new <code>crates/htmlspec-cli/src/show.rs</code>, add <code>Step</code>, <code>align</code>, <code>Marking</code>, and the view's closed types for a requirement, a comparison, a paragraph, and a scenario, with a builder that returns an empty view. In <code>crates/htmlspec-parse</code>, add <code>Run</code>, <code>MarkedText</code>, <code>MarkedUnit</code>, and <code>marked_units</code>, returning an empty map. Add <code>Command::Show { change: String, diff: bool }</code> to <code>crates/htmlspec-cli/src/main.rs</code>, dispatched to a stub that exits 2. Done when <code>nix develop -c cargo test --workspace --no-run</code> builds</p>
+              <ul>
+                <li>
+                  <p><code>crates/htmlspec-parse/src/project/marks.rs</code> holds <code>Run</code>, <code>MarkedText</code>, <code>MarkedUnit</code>, and <code>marked_units</code>, a child of the projection module so it can share the projection's walk, re-exported from the crate. <code>crates/htmlspec-cli/src/show.rs</code> holds <code>Step</code>, <code>align</code>, <code>Marking</code>, <code>Position</code>, and the view's closed types: <code>View</code>, <code>RequirementShown</code>, <code>Shown</code> (<code>NotCompared</code>, <code>HeldByNone</code>, <code>HeldAsStated</code>, <code>Differs</code>), <code>Counterpart</code>, <code>Comparison</code>, <code>Texts</code>, <code>Paragraph</code> (<code>Both</code>, <code>Pair</code>, <code>Change</code>, <code>Accepted</code>), <code>Piece</code> (<code>Shared</code>, <code>OnlyHere</code>), <code>ScenarioShown</code> (<code>Both</code>, <code>Pair</code>, <code>Change</code>, <code>Withdrawn</code>, <code>Accepted</code>), <code>ScenarioPair</code>, and <code>WholeScenario</code>, with <code>view</code> returning an empty view and <code>command</code> exiting 2. <code>commands.rs</code> gains <code>AcceptedRequirements</code> and <code>Held</code>, and <code>ContractEffect</code> opens to the crate. <code>Command::Show { change, diff }</code> is dispatched to the stub. <code>cargo test --workspace --no-run</code> builds</p>
+                </li>
+                <li>
+                  <p data-field="deviation">A paired text is a list of <code>Piece</code>s whose texts, joined, are that side's text exactly, so no text is formed from both sides and the view can be checked by concatenation. The counterpart's heading is always carried, where the design carried it only where it differed: a requirement whose accepted counterpart has no heading would otherwise be indistinguishable from one whose heading is the same. The human form still shows it only where the two differ</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Add unit tests for <code>align</code> in <code>show.rs</code>: a common prefix and suffix are <code>Both</code> steps; <code>Both</code> steps never cross; their number equals a brute-force longest common subsequence over every pair of sequences of up to six items from a three-letter alphabet; the same inputs give the same steps; and a predicate other than equality pairs by it.</h3>
+              <p>Done when each fails against the stub and is recorded</p>
+              <ul>
+                <li>
+                  <p data-field="deviation">Seven tests in <code>show::tests</code>. Against the stub, six fail: <code>a_common_prefix_and_suffix_are_held_by_both</code>, <code>a_shorter_side_that_agrees_to_its_end_leaves_the_rest_unpaired</code>, <code>a_tie_goes_to_the_left_side</code>, <code>the_steps_pair_as_many_as_a_longest_common_subsequence_and_never_cross</code> (every pair of the 1,093 sequences of up to six items from three letters, against a brute force over every subsequence), <code>a_predicate_other_than_equality_pairs_by_it</code>, and <code>two_empty_sequences_align_to_nothing</code>. <code>the_same_inputs_give_the_same_steps</code> passes against the stub, which gives the same empty list every time, and is kept as the determinism guard</p>
+                </li>
+                <li>
+                  <p><code>a_shorter_side_that_agrees_to_its_end_leaves_the_rest_unpaired</code> was added for what the parity rests on: the prefix is taken before the suffix, so the unpaired paragraph falls where <code>first_differing_statement</code> puts it</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done" data-refs="req-the-command-surface-shows-a-modified-requirement-beside-the-accepted-one">
+              <h3>2.3 Add unit tests for the pure view builder in <code>show.rs</code>, one for each scenario of "<a href="specification.html#req-the-command-surface-shows-a-modified-requirement-beside-the-accepted-one">The command surface shows a modified requirement beside the accepted one</a>" that does not need the command line.</h3>
+              <p>Build each from projections and an accepted index in memory. Done when each is recorded failing against the stub. They are <code>a_one_word_modification_is_one_pair_with_one_marked_word</code>, <code>a_paragraph_rewritten_throughout_is_shown_whole_on_each_side</code>, <code>a_paragraph_added_beside_an_edited_one_is_shown_apart_from_the_pair</code>, <code>the_authors_marks_are_shown_where_they_account_for_the_difference</code>, <code>the_authors_marks_are_set_aside_where_they_leave_part_unmarked</code>, <code>a_scenario_the_change_alters_is_paired_by_identifier</code>, <code>scenarios_added_withdrawn_and_left_out_are_each_shown_as_such</code>, <code>a_modification_already_merged_is_held_as_stated</code>, <code>a_modified_requirement_no_accepted_specification_holds_is_held_by_none</code>, <code>a_renamed_requirement_shows_both_headings</code>, <code>an_added_requirement_held_otherwise_is_compared</code>, <code>a_scenario_changed_inside_an_unchanged_requirement_is_compared</code>, and <code>requirements_the_comparison_does_not_compare_are_listed</code></p>
+              <ul>
+                <li>
+                  <p>Thirteen tests in <code>show::view_tests</code>, built from documents projected in memory and an accepted index of one specification. All thirteen fail against the stub</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Add <code>the_view_and_sync_agree_about_what_differs</code> to <code>commands.rs</code>'s tests, as design decision 3 describes, over a fixture holding a modification taken, one not taken in a statement, one not taken in a scenario, a scenario withdrawn but still held, an added requirement whose identifier is held with other text, and a requirement marked <code>unchanged</code> holding a scenario marked <code>modified</code> that was not taken.</h3>
+              <p>Done when it fails against the stub</p>
+              <ul>
+                <li>
+                  <p>In <code>commands.rs</code>'s tests, over six requirements: one taken, one not taken in a statement, one not taken in a scenario, one withdrawing a scenario still held, one marked <code>added</code> whose identifier is held with other text, and one marked <code>unchanged</code> holding a modified scenario not taken. It first asserts that <code>sync</code> reports the last five in <code>untakenContent</code>, so the fixture covers every case, and that holds on HEAD. It then fails against the stub, whose view shows nothing as differing. <code>accepted_requirements</code> is added as a stub returning an empty index, so the test compiles; task 3.1 fills it</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done">
+              <h3>2.5 Add a property test to <code>crates/htmlspec-parse</code> that, for every mapping fixture under <code>fixtures/projection/</code>, every requirement and scenario carrying <code>ins</code> or <code>del</code> is in the map <code>marked_units</code> returns, its <code>Kept</code> and <code>Inserted</code> text, normalized, equals its projected statements and scenario entries, and a unit carrying neither is absent from the map.</h3>
+              <p>Add a test over <code>mark-the-words-a-modification-changed</code>'s <code>change-markup</code> fixture that a paragraph wholly inside a <code>del</code> is a <code>MarkedText</code> of <code>Deleted</code> runs only. Done when both fail against the stub, on the <code>change-markup</code> fixture alone, because no other fixture carries change markup</p>
+              <ul>
+                <li>
+                  <p><code>crates/htmlspec-parse/tests/marks.rs</code>. Which units carry the markup is decided there from the tree, by a rule written apart from the reader's: a statement paragraph of a requirement or an entry of a scenario that holds an <code>ins</code> or <code>del</code>, or sits inside one below its unit. Both tests fail against the stub, on <code>change-markup</code> alone: it is the only mapping fixture whose input holds <code>&lt;ins</code> or <code>&lt;del</code>, and the property lists <code>req-places</code> and <code>scenario-places-found</code> there and nothing elsewhere. The second test also checks that the paragraph wholly inside an <code>ins</code> is inserted text only</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-6" data-change="added" data-state="done" data-refs="scenario-the-view-writes-nothing">
+              <h3>2.6 Add <code>crates/htmlspec-cli/tests/show.rs</code>, with each test in a project built with <code>init --tools none</code> and <code>new change</code>.</h3>
+              <p>Done when every test is recorded failing on HEAD, where <code>show</code> is an unrecognized subcommand. The tests are:</p>
+              <ul>
+                <li>
+                  <p>the one-word case, human and <code>--json</code>, exiting 0;</p>
+                </li>
+                <li>
+                  <p><code>the_view_writes_nothing</code>, which hashes every file under the project before and after each other test's command;</p>
+                </li>
+                <li>
+                  <p><code>showing_a_change_without_a_view_names_diff</code>, which exits 2 with standard output empty;</p>
+                </li>
+                <li>
+                  <p><code>an_archived_change_is_refused</code>, by its directory and, with <code>--store</code>, by <code>archive/&lt;dated name&gt;</code>, exiting 2 and naming the reason;</p>
+                </li>
+                <li>
+                  <p><code>an_invalid_specification_is_refused</code>, exiting 1;</p>
+                </li>
+                <li>
+                  <p>an unresolvable change and a runbook, each exiting 2;</p>
+                </li>
+                <li>
+                  <p><code>the_payload_is_alone_on_standard_output</code>, which parses standard output as one JSON value;</p>
+                </li>
+                <li>
+                  <p><code>nothing_reads_as_merge_text</code>, which asserts that the human form has no line starting with <code>@@</code>, <code>---</code>, or <code>+++</code>, and none whose first character after its indentation is <code>+</code> or <code>-</code>, and that no payload key is named for a result or a merge;</p>
+                </li>
+                <li>
+                  <p>the same view through a registered store.</p>
+                </li>
+                <li>
+                  <p data-field="deviation">Ten tests in <code>crates/htmlspec-cli/tests/show.rs</code>. Every run of the view goes through one helper that compares every file in the project, byte for byte, before and after, so "<a href="specification.html#scenario-the-view-writes-nothing">The view writes nothing</a>" holds for each of them, and <code>the_view_writes_nothing</code> gathers five outcomes with the exit code each must reach. All ten fail against the stub, and on HEAD each expects exit 0 or a message that clap's <code>unrecognized subcommand 'show'</code> does not carry</p>
+                </li>
+                <li>
+                  <p>The first draft of the fixture did not validate: an added requirement needs a scenario (<code>schema/invalid … has less than 1 item</code>). The fixture asserts that it validates before any test runs the view, so a fixture fault reads as such and not as a refusal</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-7" data-change="added" data-state="done">
+              <h3>2.7 Extend <code>the_archive_check_reads_only_the_specification</code> in <code>crates/htmlspec-cli/tests/archive.rs</code>, or add a sibling test beside it, so that <code>show.rs</code> is held to naming neither <code>proposal.html</code> nor <code>design.html</code> and to calling no <code>fs::write</code>, <code>create_dir</code>, <code>rename</code>, or <code>remove</code>.</h3>
+              <p>Done when it passes against the stub, which writes nothing, and is recorded as a guard</p>
+              <ul>
+                <li>
+                  <p>A sibling, <code>the_view_reads_only_the_specifications</code> in <code>tests/archive.rs</code>, reads <code>src/show.rs</code> without its tests and comments and asserts it names none of <code>fs::write</code>, <code>create_dir</code>, <code>fs::rename</code>, <code>fs::remove</code>, <code>File::create</code>, <code>OpenOptions</code>, <code>proposal.html</code>, and <code>design.html</code>. It passes against the stub, and fails with a <code>std::fs::write</code> planted in <code>command</code>, which was then removed</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-8" data-change="added" data-state="done">
+              <h3>2.8 Confirm that the tests of <code>sync</code> and archival pass unchanged on HEAD before group 3, including <code>every_stated_requirement_is_in_exactly_one_set</code>, the parity tests, and <code>a_change_whose_only_unapplied_work_is_a_rename_has_not_been_synced</code>.</h3>
+              <p>They are the guard that group 3 moves code without changing a result. Done when <code>nix develop -c cargo test -p htmlspec-cli</code> passes except for the tests from 2.2 to 2.6</p>
+              <ul>
+                <li>
+                  <p><code>cargo test -p htmlspec-cli --no-fail-fast</code>: exactly 30 failures, the 6, 13, 1, and 10 above. Every other test passes, <code>every_stated_requirement_is_in_exactly_one_set</code>, the parity tests, and <code>a_change_whose_only_unapplied_work_is_a_rename_has_not_been_synced</code> among them</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-one-pairing-and-one-set-of-refusals">
+          <h2>3. One pairing and one set of refusals</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Take the accepted index out of <code>merge_state</code> into <code>accepted_requirements(project)</code>, keeping each accepted requirement's specification path beside its heading name and content, and make <code>merge_state</code> call it.</h3>
+              <p>Done when the tests named in 2.8 still pass and <code>sync --json</code> and <code>archive --check --json</code> give byte-identical payloads for the scratch project of task 7.1</p>
+              <ul>
+                <li>
+                  <p><code>accepted_requirements(project)</code> reads each accepted specification once and returns <code>AcceptedRequirements</code>, every holder of an identifier in discovery order, each <code>Held</code> with its path relative to the project's root. <code>get</code> returns <code>Holders</code>, which holds at least one by construction, so the comparison never meets an empty list. <code>merge_state</code> calls it. The tests named in 2.8 pass, still with only the 30 new tests failing, and <code>sync --json</code> and <code>archive --check --json</code> on the task 7.1 scratch project give byte-identical payloads before and after</p>
+                </li>
+                <li>
+                  <p data-field="deviation"><strong>Task 7.1's recipe gained a step.</strong> Today's staged <code>toolchain-packaging</code> specification already holds the two requirements <code>sync-a-change-into-the-accepted-contract</code> adds, because later changes merged them, so before the step <code>sync</code> reported one reached and one differing, which is not the state the change was reviewed in. The recipe now also takes them out of the accepted text. The payloads were recorded after that, with the binary built before this task</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Make the content comparison that returns <code>Option&lt;UntakenContent&gt;</code> callable from <code>show.rs</code>, with the result the view needs to pair scenarios, and make <code>ContractEffect::of_requirement</code> callable from <code>show.rs</code>, which design decision 7 reads to decide whether to compare a requirement.</h3>
+              <p>Done when the test from 2.4 compiles against it</p>
+              <ul>
+                <li>
+                  <p><code>compare_content(requirement, holders) -&gt; ContentComparison</code>, which is <code>Held(&amp;Held)</code> or <code>Differs(&amp;Held, ContentDifference)</code>, and <code>ContentDifference</code> gives the first differing statement and the scenarios not held and not kept as positions, so the view reads the scenarios themselves. <code>untaken_content</code> now names those positions as before, through <code>scenarios_named</code>, and the payloads above are unchanged. <code>compare_content</code> is the one place the comparison chooses between two holders. <code>ContractEffect</code> and <code>of_requirement</code> are open to the crate, and decision 7 reads them in place of a refinement. <code>the_archive_check_reads_only_the_specification</code> now also holds <code>accepted_requirements</code> and <code>compare_content</code> to naming neither upstream kind</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Take <code>sync</code>'s refusals, from resolving the store to validating the specification, out into one function that resolves and one that loads, and make <code>sync</code> call both.</h3>
+              <p>Leave the example-content refusal in <code>sync</code>. Add <code>Refusal::View</code> with its reason. Done when <code>sync</code>'s messages and exit codes are unchanged, which the tests named in 2.8 check, and <code>grep -n "CHANGE_SPECIFICATION" crates/htmlspec-cli/src/commands.rs</code> shows the specification resolved in one place for both commands</p>
+              <ul>
+                <li>
+                  <p><code>resolve_for_comparison</code> resolves the store, then the change, and <code>load_specification</code> refuses an absent specification, an unreadable one, one of another kind, and one that does not validate, each reporting itself and returning its outcome. <code>sync</code> calls both, and keeps the example-content refusal. <code>Refusal::View</code> gives the view's reason, and <code>each_operation_refuses_a_runbook_for_its_own_reason</code> now holds it to naming why no accepted specification holds a runbook's requirements and to saying nothing about a merge. <code>sync</code>'s messages and codes are unchanged, which its tests show. <code>grep -n CHANGE_SPECIFICATION commands.rs</code> shows <code>load_specification</code> as the one place <code>sync</code> and the view read the specification; archival's is its own</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 Add <code>ProjectRoot::is_archived_change</code> to <code>crates/htmlspec-cli/src/project.rs</code>, comparing canonical paths as <code>is_change_evidence</code> does.</h3>
+              <p>Unit-test it for an archived change, an active one, <code>changes/archive</code> itself, a directory inside an archived change, and an archived change reached through a symbolic link. Done when those tests pass</p>
+              <ul>
+                <li>
+                  <p><code>ProjectRoot::is_archived_change</code> is true where the directory sits directly in the canonical archive, or leads to one that does, and false for the archive itself. The tests cover an archived change, an active one, <code>changes/archive</code>, a directory inside an archived change, a path spelled through <code>..</code>, and three links: a linked project, a link in the archive pointing elsewhere, and a link elsewhere pointing at an archived change. All pass</p>
+                </li>
+                <li>
+                  <p data-field="deviation">Both readings of a link are taken. Canonicalizing only the parent, as <code>is_change_evidence</code> does, misses a link elsewhere that points at an archived change, and canonicalizing only the target misses a link in the archive that points elsewhere. The view refuses an archived change, so either miss would compare one</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-the-author-s-marks">
+          <h2>4. The author's marks</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Implement <code>marked_units</code> in <code>crates/htmlspec-parse</code>, beside the projection and through the same walk, as design decision 5 states: runs of <code>Kept</code>, <code>Inserted</code>, and <code>Deleted</code> text for each statement paragraph and scenario entry of a unit carrying <code>ins</code> or <code>del</code>, a paragraph wholly inside a <code>del</code> included.</h3>
+              <p>Done when the tests from 2.5 pass, and when they also pass over every <code>.html</code> in the staged migration</p>
+              <ul>
+                <li>
+                  <p><code>marked_units</code> reads each requirement's statement paragraphs from <code>own_nodes</code>, so it keeps those inside a <code>del</code> that <code>own_descendants</code> drops, with the projection's field rule, and each scenario's entries from the description list the projection reads, under the projection's <code>scenario_label</code>. Text is collected as the projection's <code>collect_text</code> collects it, skipping <code>script</code>, <code>style</code>, <code>template</code>, <code>noscript</code>, and comments, and only HTML-namespace <code>ins</code> and <code>del</code> are markup. A <code>del</code> decides wherever it is, an <code>ins</code> inside it included, which is section 8.6.1 and matches the deletion entry 8.6.2 records for a <code>del</code> inside another. The tests from 2.5 pass</p>
+                </li>
+                <li>
+                  <p><strong>Over every <code>.html</code> in the staged migration, and further.</strong> A scratch harness ran the test's own checks over the staged migration (116 documents), every fixture (113), and <code>openspec/</code> (7): every listing agrees, and no failure. The staged migration carries no marks, so a second pass put an empty <code>&lt;ins&gt;&lt;/ins&gt;</code> at the start of every bare <code>&lt;p&gt;</code> and <code>&lt;dd&gt;</code>, which marks every such unit without changing its text: 1,896 units in the staged migration, 192 in the fixtures, and 211 in <code>openspec/</code>, all with the reader's current text equal to the projection's</p>
+                </li>
+                <li>
+                  <p data-field="deviation"><strong>That pass found one case the design did not state.</strong> In <code>nesting-invalid</code>, a requirement nested in another and a scenario no requirement encloses were listed by the reader and not projected. The reader now lists only the units the projection places (section 4.3), through the projection's own <code>enclosing_unit</code> and <code>encloses_requirement</code>, and the test's independent rule counts only units the projection projects. Neither unit can reach the view, which refuses a specification that does not validate, but the reader should not disagree with the projection about which units exist</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-the-view">
+          <h2>5. The view</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Implement <code>align</code> in <code>show.rs</code> as design decision 4 states.</h3>
+              <p>Done when the tests from 2.2 pass</p>
+              <ul>
+                <li>
+                  <p>The common prefix, then the common suffix of what remains, then a longest common subsequence of the middle by a table of suffix lengths, walked so a pair is taken where it is optimal and a tie goes to the left side. Every index is read through <code>get</code>, so no step can panic. The seven tests from 2.2 pass. The exhaustive one takes 13.5 seconds in a debug build, which is now the longest test in the crate</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Implement the pure view builder: the two paragraph alignments and the word alignment of decision 4, the author's marks and the three <code>Marking</code> cases of decision 5, the scenario table of decision 6, the headings, and the listing of decision 7.</h3>
+              <p>It takes the change's projection, its marked units, and the accepted index, and reads nothing. Done when the tests from 2.3 and 2.4 pass</p>
+              <ul>
+                <li>
+                  <p><code>view</code> reads <code>ContractEffect::of_requirement</code>, <code>AcceptedRequirements::get</code>, and <code>compare_content</code>, so which requirements are compared, against which accepted one, and whether each differs are the comparison's answers. Statements and each scenario's entries go through <code>texts</code>, which takes N lists and returns one marking and N aligned lists, a const-generic signature so a scenario's three entry lists are checked as one unit and come back as three. <code>authored</code> places paragraphs by the author's runs, a paragraph whose current and earlier text are equal is held by both, and <code>compared</code> aligns by equality, then by likeness within each run, then by words. <code>pieces</code> normalizes each side so the pieces joined are that side's text exactly. Scenarios follow decision 6's table from the comparison's positions. The 13 tests from 2.3 and the parity test from 2.4 pass</p>
+                </li>
+                <li>
+                  <p data-field="deviation"><strong>Two of the 2.3 fixtures were wrong, not the view.</strong> A word is a run between whitespace, so <code>x.</code> against <code>x quickly.</code> marks <code>x quickly.</code> on the change's side and <code>x.</code> on the accepted one, as <code>git diff --word-diff</code> does, and a one-word edit to a three-word scenario entry shares too few words to pair. Both fixtures now edit one word inside a sentence</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Implement the command in <code>show.rs</code>: resolve and load through the functions from 3.3, refuse an archived change between them with decision 8's report, build the view, and render it.</h3>
+              <p>Wire <code>Command::Show</code> in <code>main.rs</code>, report a missing <code>--diff</code> as decision 2 states, and write the help text for <code>show</code> and <code>--diff</code>. Done when <code>./target/debug/htmlspec --help</code> lists <code>show</code> and <code>./target/debug/htmlspec show --help</code> documents <code>--diff</code></p>
+              <ul>
+                <li>
+                  <p data-field="deviation"><code>show::command</code> resolves through <code>resolve_for_comparison</code> with <code>Refusal::View</code>, refuses an archived change with decision 8's report, loads through <code>load_specification</code>, and builds the view from <code>marked_units</code>, <code>accepted_requirements</code>, and the projection. <code>main.rs</code> refuses a missing <code>--diff</code> with <code>show::ONE_VIEW</code> and exits 2. <code>htmlspec --help</code> lists <code>show</code>, and <code>htmlspec show --help</code> documents <code>--diff</code>. <code>help_documents_every_subcommand_and_option</code> and <code>the_command_surface_uses_openspecs_names</code> now name <code>show</code> and <code>--diff</code>, and the second also <code>sync</code>, which the requirement fixes and the test had never listed</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Implement the human form and the payload of design decision 9, both from the view's types through one function each.</h3>
+              <p>Done when the tests from 2.6 and 2.7 pass</p>
+              <ul>
+                <li>
+                  <p><code>payload</code> and <code>human</code>, one function each over the view's types, every match exhaustive. The tests from 2.6 and 2.7 pass, and all 644 tests in the crate. The one-word case in the task 7.1 scratch project prints decision 9's sketch with the settled scope: the two added requirements held by none, and paragraph 3 paired with <code>{+sync,+}</code> on the change's side, 9 of 10 paragraphs and 18 of 18 scenarios held by both</p>
+                </li>
+                <li>
+                  <p data-field="deviation"><code>the_one_word_case_shows_one_pair_with_the_word_marked</code> first failed on its own assertion: the view's second line explains the notation, so it names <code>[- -]</code> itself. The test now reads the lines after the header</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-the-instructions">
+          <h2>6. The instructions</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done" data-refs="req-the-command-surface-shows-a-modified-requirement-beside-the-accepted-one">
+              <h3>6.1 In <code>crates/htmlspec-assets/instructions/verify.md</code>, section 1, add the sentence of design decision 11 that sends a reviewer to <code>htmlspec show &lt;change&gt; --diff</code> where a change already has a specification that modifies a requirement, and cite toolchain-packaging's "<a href="specification.html#req-the-command-surface-shows-a-modified-requirement-beside-the-accepted-one">The command surface shows a modified requirement beside the accepted one</a>".</h3>
+              <p>Done when <code>./target/debug/htmlspec instructions verify</code> shows it</p>
+              <ul>
+                <li>
+                  <p data-field="deviation">A fourth bullet in section 1's list of what to read, for the specification where the change already has one: <code>htmlspec show &lt;change&gt; --diff</code> for each requirement it adds or modifies, citing the requirement, with a modification the design did not decide, or a decided one the view does not show, classified as a divergence. <code>htmlspec instructions verify</code> shows it</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 In <code>archive.md</code>, at the end of step 2, add the check of design decision 11: read each requirement marked <code>modified</code> with <code>htmlspec show &lt;change-name&gt; --diff</code> before step 5, and restate from the accepted text any difference this change did not make.</h3>
+              <p>Done when <code>./target/debug/htmlspec instructions archive</code> shows it, and <code>no_shipped_body_names_an_absent_command</code> in <code>crates/htmlspec-cli/src/invocations.rs</code> passes, which it cannot before task 5.3</p>
+              <ul>
+                <li>
+                  <p data-field="deviation">After the marking bullets and before <strong>Verification.</strong>, as task 1.4 found: run <code>htmlspec show &lt;change-name&gt; --diff</code> before step 5, restate from the accepted text any difference this change did not make and mark the change's own words again, and read whether the view says the marks are the author's. <code>htmlspec instructions archive</code> shows it, and <code>no_shipped_body_names_an_absent_command</code> passes</p>
+                </li>
+                <li>
+                  <p><code>the_review_instructions_send_a_reader_to_the_view</code> in <code>crates/htmlspec-assets/src/instructions.rs</code> holds <code>verify</code> and <code>archive</code> to naming the view and the requirement, and <code>sync</code> to not naming the view. Without it, task 7.3's mutation 16 would have had nothing to catch it</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Regenerate the installed copies with <code>./target/debug/htmlspec init --tools claude,codex,pi</code>, remove the stray <code>htmlspec/</code> and <code>spec.nix</code> it creates, and run <code>scripts/check-installed</code>.</h3>
+              <p>Done when it passes and <code>git status</code> shows only the <code>verify</code> and <code>archive</code> files changed under <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code></p>
+              <ul>
+                <li>
+                  <p><code>init --tools claude,codex,pi</code> changed exactly ten files: the <code>verify</code> and <code>archive</code> copies under <code>.claude/commands/</code>, <code>.claude/skills/</code>, <code>.codex/skills/</code>, <code>.pi/prompts/</code>, and <code>.pi/skills/</code>. The <code>htmlspec/</code> and <code>spec.nix</code> it created, which did not exist before, were removed. <code>scripts/check-installed</code>: <code>ok 45 installed instruction file(s) match what init writes</code></p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-prove-it">
+          <h2>7. Prove it</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Rebuild the one-word case in html-spec form, in a scratch copy of the staged migration, wherever it is staged or promoted by then: move <code>2026-08-31-sync-a-change-into-the-accepted-contract</code> from <code>changes/archive/</code> to <code>changes/</code> without its <code>VERSION</code>, give the accepted <code>req-a-single-command-exposes-validate-format-and-init</code> the statements and scenarios <code>2026-08-30-finish-the-archival</code> states for it, and take out of the accepted specifications the two requirements the change adds, which later changes merged.</h3>
+              <p>Run <code>htmlspec show sync-a-change-into-the-accepted-contract --diff</code>, human and <code>--json</code>, and compare it with the OpenSpec hunk of <a href="evidence/the-measurement-2026-09-30.md">evidence section 1</a>. Done when the results are recorded in <code>evidence/</code>, and they show paragraph 3 paired with <code>sync,</code> marked on the change's side, 9 paragraphs and 18 scenarios held by both, the two added requirements shown as held by none, exit 0, and every file byte-identical afterwards</p>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/the-view-measured-2026-10-07.md"><code>evidence/the-view-measured-2026-10-07.md</code></a>. Paragraph 3 is paired with <code>sync,</code> marked on the change's side, 9 of 10 paragraphs and 18 of 18 scenarios are held by both, the two added requirements are shown as held by none, the view exits 0 in both forms with nothing on standard error, and all 290 files in the scratch project hash the same before and after. Beside OpenSpec's hunk, both find the one paragraph and the one word, and the view marks the word where OpenSpec prints the paragraph twice</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done">
+              <h3>7.2 In the same scratch copy, mark the word in the change's paragraph as <code>mark-the-words-a-modification-changed</code> shows, <code>&lt;ins&gt;&lt;code&gt;sync&lt;/code&gt;, &lt;/ins&gt;</code>, and check that <code>marks</code> is <code>author</code>.</h3>
+              <p>Then also remove one word elsewhere in the paragraph without marking it, and check that <code>marks</code> is <code>unreconciled</code> and both words are marked. Then run the view on the archived <code>2026-08-30-finish-the-archival</code> by its path, and without <code>--diff</code>. Done when all four results are recorded in <code>evidence/</code></p>
+              <ul>
+                <li>
+                  <p>Recorded in the same file. With <code>&lt;ins&gt;&lt;code&gt;sync&lt;/code&gt;, &lt;/ins&gt;</code> the specification still validates and <code>marks</code> is <code>author</code>. With "therefore" also removed unmarked, <code>marks</code> is <code>unreconciled</code> and both <code>sync,</code> and <code>therefore</code> are marked. The archived <code>2026-08-30-finish-the-archival</code>, by its path, is refused with exit 2 and decision 8's report, with empty standard output under <code>--json</code>. Without <code>--diff</code> the view names it and exits 2, with empty standard output</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-3" data-change="added" data-state="done">
+              <h3>7.3 Mutation-test the change, one mutation at a time, restoring each file after each run, and record which test catches each.</h3>
+              <p>Done when every mutation is caught, or a test is added that catches it:</p>
+              <ol>
+                <li>
+                  <p>pair the change's requirement with an accepted one by heading rather than by the comparison's index;</p>
+                </li>
+                <li>
+                  <p>decide "differs" by the view's own comparison, with scenarios compared in order;</p>
+                </li>
+                <li>
+                  <p>drop the common-prefix step from <code>align</code>;</p>
+                </li>
+                <li>
+                  <p>pair leftover paragraphs by position instead of by likeness;</p>
+                </li>
+                <li>
+                  <p>drop the half-words threshold, so every leftover pair is marked;</p>
+                </li>
+                <li>
+                  <p>show the author's marks without checking them against the accepted text;</p>
+                </li>
+                <li>
+                  <p>ignore the author's marks;</p>
+                </li>
+                <li>
+                  <p>pair scenarios by position instead of by identifier;</p>
+                </li>
+                <li>
+                  <p>show a scenario marked <code>removed</code> as held only by the accepted specification;</p>
+                </li>
+                <li>
+                  <p>decide whether to compare a requirement by its declared state alone, so an <code>added</code> requirement, and an <code>unchanged</code> one holding a changed scenario, are listed;</p>
+                </li>
+                <li>
+                  <p>accept an archived change;</p>
+                </li>
+                <li>
+                  <p>treat <code>show &lt;change&gt;</code> without <code>--diff</code> as <code>--diff</code>;</p>
+                </li>
+                <li>
+                  <p>print a <code>@@</code> hunk header in the human form;</p>
+                </li>
+                <li>
+                  <p>write a progress line to standard output under <code>--json</code>;</p>
+                </li>
+                <li>
+                  <p>drop the refusal of a specification that does not validate;</p>
+                </li>
+                <li>
+                  <p>remove the sentence naming <code>htmlspec show</code> from <code>archive.md</code>;</p>
+                </li>
+                <li>
+                  <p>compare a requirement marked <code>unchanged</code> whose every scenario is marked <code>unchanged</code>.</p>
+                </li>
+              </ol>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/mutation-testing-2026-10-07.md"><code>evidence/mutation-testing-2026-10-07.md</code></a>. 17 of 17 are caught. Mutation 2, which decides "differs" by comparing scenarios in order, survived the first run, because every fixture held as stated kept the accepted order. <code>a_modification_merged_with_its_scenarios_reordered_is_held_as_stated</code> now catches it. Mutation 15 was caught only by the view's test, because no test held <code>sync</code> to refusing an invalid specification. <code>sync_refuses_a_specification_that_does_not_validate</code> now does, and a rerun of the mutation fails both. The four files the mutations touch hashed the same after the run as before</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-4" data-change="added" data-state="done">
+              <h3>7.4 Run <code>cargo test --workspace --all-targets</code>, then <code>scripts/check</code>.</h3>
+              <p>Done when every stage is green</p>
+              <ul>
+                <li>
+                  <p><code>cargo test --workspace --all-targets</code> inside <code>scripts/check</code>: 1,286 passed, 0 failed. <code>scripts/check</code>: the nine stages that run inside <code>nix develop</code> pass, and the four Python stages, <code>prompt</code>, <code>installed</code>, <code>release-fixtures</code>, and <code>release</code>, pass outside it, as for every change in this set</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-5" data-change="added" data-state="done">
+              <h3>7.5 Record what the implementation revealed in <code>evidence/what-the-implementation-revealed-&lt;date&gt;.md</code>, including any case where the view and <code>sync</code> disagreed before the parity test was made to pass, and whether the half-words threshold paired any paragraph a reader would not</h3>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/what-the-implementation-revealed-2026-10-07.md"><code>evidence/what-the-implementation-revealed-2026-10-07.md</code></a>. The view and <code>sync</code> never disagreed: the parity test passed on the view's first build, because the one disagreement the design held was settled at task 1.1 before any code</p>
+                </li>
+                <li>
+                  <p><strong>The half-words threshold, on real edits.</strong> Run over all 34 requirements the staged changes mark <code>modified</code>, each against the latest earlier statement of it, the view made 15 pairs, and each is an edit a reader would want paired. Two cases are the same edit just below the line: a paragraph kept and a sentence appended, where the kept paragraph shares nearly all its words and the longer one fewer than half of its own. They are shown whole on each side. Asking for half of the shorter paragraph's words would pair them, and the measurement found no case the looser rule would pair wrongly, in a small sample. Task 9.1 puts the choice to the contributor</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-8-release">
+          <h2>8. Release</h2>
+          <ul>
+            <li class="task" id="task-8-1" data-change="added" data-state="done">
+              <h3>8.1 Run the release runbook at <code>runbooks/release/tasks.html</code>, and report whether it worked as written</h3>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/the-runbook-ran-2026-10-07.md"><code>evidence/the-runbook-ran-2026-10-07.md</code></a>. It worked as written, in its order: the version and the lock moved the seven workspace members, the 45 installed files took the new stamp and <code>check-installed</code> passed, the changelog entry was written, and <code>check-release</code> passed on the declared version. <code>scripts/check</code> passed every stage at <code>0.24.0</code>, 1,286 tests among them. The runbook still does not say that archival here needs a hand-written <code>runbooks.json</code>, which task 8.3 writes</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-8-2" data-change="added" data-state="done">
+              <h3>8.2 Choose the increment, state the reasoning, and flag it for the contributor's confirmation.</h3>
+              <p><code>0.24.0</code>, the minor increment after <code>mark-the-words-a-modification-changed</code>'s <code>0.23.0</code>, is expected, because the command surface gains an operation and one accepted requirement is added. The contract version does not move</p>
+              <ul>
+                <li>
+                  <p><strong><code>0.24.0</code>, a minor increment, confirmed by the contributor on 2026-10-07 before the version moved.</strong> The command surface gains an operation and toolchain-packaging one requirement, and the contract stays at <code>0.4.0</code>. A patch, <code>0.23.1</code>, was the alternative, and it would understate a new command</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-8-3" data-change="added" data-state="done">
+              <h3>8.3 Check that <code>scripts/check-release</code> passes after archival writes <code>VERSION</code> and the hand-written <code>runbooks.json</code> beside it</h3>
+              <ul>
+                <li>
+                  <p><code>openspec archive show-what-a-modification-changed --yes</code> (OpenSpec 1.13.1) archived the change as <code>2026-10-08-show-what-a-modification-changed</code>, continuing past this one open task, in a follow-up pull request because PR #47 merged first. It added one requirement to <a href="../../../specs/toolchain-packaging/spec.html"><code>openspec/specs/toolchain-packaging/spec.md</code></a> and modified one. Each merged block equals the delta's word for word, checked against <code>main</code>, and no other requirement changed</p>
+                </li>
+                <li>
+                  <p><code>VERSION</code> holds <code>0.24.0</code>. <code>runbooks.json</code> is a copy of the previous archive's, because the release runbook is unchanged: the sha256 of <code>runbooks/release/specification.html</code> and <code>tasks.html</code> still match the inventory's. The document contract did not move, so its changelog is untouched</p>
+                </li>
+                <li>
+                  <p><code>scripts/check-release</code>: <code>ok 30 archived change(s) record a version, and 24 version(s) are in the changelog</code> and <code>ok declared version 0.24.0 has a changelog entry</code></p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-9-review">
+          <h2>9. Review</h2>
+          <ul>
+            <li class="task" id="task-9-1" data-change="added" data-state="done">
+              <h3>9.1 Resolve what a review of the pull request found, and record what was and was not taken.</h3>
+              <p>Settle explicitly, with the contributor, the four choices the design makes that a reader could reasonably make otherwise: <code>show &lt;change&gt;</code> without <code>--diff</code> refuses rather than printing anything (decision 2); a pair needs half of each paragraph's words in common (decision 4); the author's marks are shown only where the accepted text confirms them (decision 5); and an archived change is refused rather than compared (decision 8). Record also that the view gives <code>state-a-modified-requirement-whole</code>'s scenario-identifier sentence a reader, which <code>see-a-modification-the-merge-did-not-take</code>'s review task asks about, and the scope settled at task 1.1: the view compares what the comparison compares (design decision 7)</p>
+              <ul>
+                <li>
+                  <p><strong>Taken, from the code review of PR #47: a withdrawn scenario with no identifier was shown as no longer held while the accepted requirement held it.</strong> The view found a withdrawn scenario's accepted counterpart by identifier only, so one with no identifier was always "no longer held", and its accepted counterpart, left unpaired, was listed again as held only by the accepted specification: two answers about one scenario. Reproduced with a unit test before the fix. A withdrawn scenario now finds its counterpart by identifier and, failing that, by the comparison's own <code>ScenarioText</code>, which opens to the crate for it. <code>a_withdrawn_scenario_with_no_identifier_is_found_by_its_text</code> fails without the fix. A scenario the change states and does not withdraw is still paired by identifier only, as the requirement says</p>
+                </li>
+                <li>
+                  <p><strong>Not taken, from the same review: an accepted scenario carrying a withdrawn scenario's identifier whose text another stated scenario keeps.</strong> The view shows the withdrawal as no longer held. The comparison matched that text to a scenario the change keeps, so <code>sync</code> names nothing left to remove, and the view agrees with it rather than giving a second answer</p>
+                </li>
+                <li>
+                  <p><strong>Settled with the contributor on 2026-10-08, all four kept as built:</strong></p>
+                  <ul>
+                    <li>
+                      <p><code>show &lt;change&gt;</code> without <code>--diff</code> refuses, names <code>--diff</code>, and exits 2 (decision 2);</p>
+                    </li>
+                    <li>
+                      <p><strong>a pair needs half of each paragraph's words in common (decision 4).</strong> The contributor was shown the measurement in <a href="evidence/what-the-implementation-revealed-2026-10-07.md"><code>evidence/what-the-implementation-revealed-2026-10-07.md</code></a>: over 34 staged modifications the view made 15 pairs, and two edits that keep a paragraph and append a sentence show whole on each side, where half of the shorter paragraph's words would pair them. The rule stays as the requirement states it</p>
+                    </li>
+                    <li>
+                      <p>the author's marks are shown only where the accepted text confirms them (decision 5);</p>
+                    </li>
+                    <li>
+                      <p>an archived change is refused rather than compared (decision 8)</p>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <p><strong>The scenario-identifier sentence has a reader.</strong> <code>state-a-modified-requirement-whole</code>'s sentence that a scenario carried forward, altered, or withdrawn keeps its accepted identifier is what the view pairs scenarios by, as <code>see-a-modification-the-merge-did-not-take</code>'s review task asked</p>
+                </li>
+                <li>
+                  <p><strong>The scope settled at task 1.1 stands</strong>: the view compares what the comparison compares (design decision 7)</p>
+                </li>
+                <li>
+                  <p><strong>PR #47 was merged before these decisions and the archival were settled</strong>, so both land in a follow-up pull request, as <code>resolve-a-reference-across-its-change</code>'s did in PR #44</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

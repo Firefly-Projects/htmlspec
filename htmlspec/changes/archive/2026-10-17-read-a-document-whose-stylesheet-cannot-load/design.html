@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Read a document whose stylesheet cannot load: design</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Read a document whose stylesheet cannot load: design</h1>
+        <p>Why a cascade layer makes a fallback inert, which properties it may set, where its one copy of text lives, which documents receive it and how, and why a project's existing documents, archives, and runbook releases are left alone unless a contributor asks.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Read a document whose stylesheet cannot load: design</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-the-mechanism">
+          <h2>The mechanism</h2>
+          <p>CSS has no test for a stylesheet that failed to load, and a document may run no script of its own: <code>safety/unapproved-script</code> refuses an inline script. Cascade layers give the same effect without one. A declaration inside a named layer loses to any declaration outside a layer, whatever their specificity and whatever their order. The store's stylesheet, <code>htmlspec.css</code>, declares no layer. So a fallback in a layer that sets a property only where the store's stylesheet sets the same property on the same selector is overridden, property by property, whenever that stylesheet loads. When it does not load, the fallback is the only author style on the page.</p>
+          <p>A browser that does not understand <code>@layer</code> drops the whole rule, as CSS drops any unknown at-rule. That browser sees the page it sees today. The fallback can only add readability, never subtract it.</p>
+          <p>The store's stylesheet sets four groups of properties that a readable page needs, unconditionally and outside any <code>@media</code> rule. That list is measured, from the current revision <code>sha256-03627137bcbb81c9</code>:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Selector</th>
+                <th>Properties the fallback sets, each also set by the store's stylesheet</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>body</code></td>
+                <td><code>margin</code>, <code>padding</code>, <code>background</code>, <code>color</code>, <code>font-family</code>, <code>font-size</code>, <code>line-height</code></td>
+              </tr>
+              <tr>
+                <td><code>code, kbd, samp</code></td>
+                <td><code>font-family</code>, <code>font-size</code></td>
+              </tr>
+              <tr>
+                <td><code>pre</code></td>
+                <td><code>font-family</code>, <code>font-size</code>, <code>line-height</code>, <code>background</code>, <code>border-left</code>, <code>padding</code>, <code>margin</code>, <code>overflow-x</code></td>
+              </tr>
+              <tr>
+                <td><code>.hs-skip-link</code></td>
+                <td><code>position</code>, <code>left</code>, <code>top</code></td>
+              </tr>
+              <tr>
+                <td><code>.hs-skip-link:focus</code></td>
+                <td><code>left</code>, <code>top</code></td>
+              </tr>
+            </tbody>
+          </table>
+          <p>The values are the store's own, with its custom properties resolved, so a page without its stylesheet still reads in the house serif and ink with monospace code. The one exception is the body's <code>padding</code>, which centres a column of at most 44rem. The store's stylesheet makes its column with <code>max-width</code> and grid instead, and copying that grid would be copying its layout.</p>
+          <p>The skip link comes back on focus, as the store's stylesheet brings it back. The fallback moves the link off-screen, and without the second rule a keyboard user would tab onto a link nobody can see, in exactly the case the fallback exists for. Inertness does not catch that, because a fallback without the focus rule sets nothing the store's stylesheet does not. The code review found it, and a test of its own holds it.</p>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-inertness-is-a-property-the-tests-hold" data-change="added" data-status="accepted">
+            <h3>1. Inertness is stated as a rule a test holds, not as a measured render</h3>
+            <p>A test in <code>htmlspec-assets</code> parses the fallback and the embedded store stylesheet. For every selector in a fallback rule, and every property that rule declares, the store's stylesheet must hold a rule outside any at-rule whose selector list names that selector exactly and which declares that property. The store's stylesheet must declare no <code>@layer</code>. The fallback must be exactly one <code>@layer htmlspec-fallback</code> block, and it must carry no <code>url(</code>, no <code>@import</code>, and no <code>!important</code>.</p>
+            <p data-field="rationale">The guarantee is about two texts the toolchain ships, so it can be checked on every build. A render comparison checks one page in one browser on one day. The test fails the first time someone adds a property to the fallback that the stylesheet does not set, or gives the stylesheet a layer, which are the two edits that would make the fallback visible on a page whose stylesheet loaded.</p>
+            <p data-field="rationale">Each condition answers one way the guarantee could break. Matching a selector exactly is sufficient, because the same selector matches the same elements. The store's rule must sit outside any at-rule, because a rule inside <code>@media</code> overrides only while its media matches. <code>!important</code> would reverse the layer order. A <code>url(</code> or an <code>@import</code> would reach for something, and document-template's "A document is self-contained and offline" allows nothing the project does not hold.</p>
+            <p data-field="rationale">The render comparison still happens, once, as evidence. Rendered by Chrome headless with the store reachable, a document with the fallback and the same document without it must give identical screenshots. With the store unreachable, the fallback must give the readable column. Safari cannot be driven here, so its case is the one the user measured.</p>
+          </section>
+          <section class="decision" id="decision-one-copy-of-the-text" data-change="added" data-status="accepted">
+            <h3>2. The text lives once, in the asset crate, and the templates hold a placeholder</h3>
+            <p><code>crates/htmlspec-assets</code> holds the fallback as one constant, the whole <code>&lt;style&gt;</code> element in its canonical form. The four templates in <code>assets/template-*.html</code> hold <code>{{FALLBACK}}</code> on its own line after the title, and <code>render_kind</code> substitutes it, as it substitutes the subject and the asset paths. The run record's head, composed in <code>crates/htmlspec-cli/src/runs.rs</code>, writes the same constant, and so does <code>format --fallback</code>. The templates' recorded hashes in <code>assets/vendor.lock.json</code> change with the placeholder line.</p>
+            <p data-field="rationale">Three writers and one text. A copy in each template would be four copies that the inertness test would have to find and compare. The constant is not pinned in the lockfile as a file. The lockfile pins bytes that come from somewhere: vendored libraries, stored assets, and the templates. Its test refuses an unstored pinned file that is not a template. The fallback is generated text that the toolchain writes into a document, like the run record's head, and the tests that render it are what pin it.</p>
+            <p data-field="rationale">The canonical form matters. <code>new document</code> writes the rendered template without formatting it and then validates it, and a later <code>format --check</code> must find it canonical. The formatter keeps a <code>&lt;style&gt;</code> element's text byte for byte and indents only the tag. So the constant carries its own indentation, the six spaces of the head's children's content. <code>the_rendered_template_is_already_canonical</code> in <code>crates/htmlspec-validate/tests/template_conformance.rs</code> holds the default kind's template canonical, and this change extends it to every kind.</p>
+          </section>
+          <section class="decision" id="decision-existing-documents-only-on-request" data-change="added" data-status="accepted">
+            <h3>3. A project's existing documents gain the fallback only on request, through <code>format --fallback</code></h3>
+            <p>New documents carry the fallback from the template. A document a project already holds gains it only when a contributor runs <code>htmlspec format --fallback</code>, naming a path or the whole project. The request adds the block where it is absent, replaces a block that differs from the current one, and does nothing else. It leaves archived changes and run records as written, and reports each one it skipped. Plain <code>htmlspec format</code> never adds, changes, or removes a fallback.</p>
+            <p data-field="rationale">The obvious alternative, the formatter adding the block to every document, fails three ways. A runbook's release is fingerprinted as the SHA-256 of its canonical document (<code>fingerprint</code> in <code>crates/htmlspec-cli/src/runbook_release.rs</code>). A formatter that added the block would change every runbook's fingerprint the first time a project formatted after upgrading. Then project-bootstrap's <a href="../../../specs/project-bootstrap/spec.html#req-archival-checks-the-versions-of-runbooks-it-publishes">"Archival checks the versions of runbooks it publishes"</a> would refuse every project's next archival until each runbook raised its version, for a release that changes no step. It would rewrite every archived document, which deterministic-formatting's <a href="../../../specs/deterministic-formatting/spec.html#req-formatting-preserves-meaning">"Formatting preserves meaning"</a> already refuses for asset references: an archived page renders with what it was reviewed against. And every document of every project would change in one diff, which "Formatting introduces no diff churn" exists to prevent.</p>
+            <p data-field="rationale">Excluding the block from the fingerprint was the other way out. It was rejected because it makes a runbook's canonical bytes and its fingerprint mean different things, and it hides a real edit from the release check. With the request, a contributor who adds the fallback to a runbook edits its canonical documents, and archival asks for a new runbook version. That is correct, because the edit is real and the contributor chose it.</p>
+            <p data-field="rationale">The request is a flag on <code>format</code> rather than a new operation. A new operation would need an OpenSpec spelling and a request-verb spelling under toolchain-packaging's "The command surface names its operations as OpenSpec names them", and OpenSpec has no counterpart to spell it after. The flag also inherits what <code>format</code> already guarantees: it never writes a change's evidence, <code>--check</code> reports without writing, and its output is canonical. With <code>--check</code>, the request reports each document that lacks a current fallback, so a project that wants every document to carry one can gate on it.</p>
+            <p data-field="rationale">This needs one modification to the contract. "Formatting preserves meaning" permits one exception today, filling an asset reference that names absent bytes. It gains a second: on request, the fallback, and nothing else. The modified requirement states that plain formatting leaves a fallback present, absent, or stale as written.</p>
+          </section>
+          <section class="decision" id="decision-this-repository-s-documents" data-change="added" data-status="accepted">
+            <h3>4. In this repository, the accepted specifications and this change's documents gain the fallback, and nothing else does</h3>
+            <p>This change runs <code>htmlspec format --fallback</code> on <code>htmlspec/specs</code> and on its own directory. The release runbook and the 40 archived changes keep their bytes.</p>
+            <p data-field="rationale">The accepted specifications are the documents a reader opens most, and they carry no release fingerprint. The release runbook's documents would change, so it would owe a runbook release, 0.3.0, whose changelog could name no change to any step. runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-a-runbook-carries-an-independently-checked-release-version">"A runbook carries an independently checked release version"</a> makes a version identify a released procedure, and spending one on presentation dilutes that. The runbook gains the fallback at its next revision. Archived changes are history, and decision 3 leaves them alone.</p>
+          </section>
+          <section class="decision" id="decision-no-validation-diagnostic" data-change="added" data-status="accepted">
+            <h3>5. Validation says nothing about the fallback</h3>
+            <p>No rule reports a missing fallback, a stale one, or one that differs from the current text.</p>
+            <p data-field="rationale">Every document written before 0.31.0 lacks it, legitimately, and so does every archived change in every project. An advisory warning would fire on all of them and teach a reader to ignore the warnings. The repository already reports 1073 advisory warnings. The fallback is presentation: no unit, no identifier, nothing the projection reads. What can go wrong with it is already covered. <code>safety/*</code> refuses a <code>&lt;style&gt;</code> element that reaches the network, and decision 1's test holds the toolchain's own text inert. <code>format --check --fallback</code> is there for a project that wants a gate.</p>
+          </section>
+          <section class="decision" id="decision-release-0-31-0" data-change="added" data-status="accepted">
+            <h3>6. Release 0.31.0, with the contract at 0.7.0</h3>
+            <p>A minor increment of the program, from 0.30.2 to 0.31.0. The contract version every document declares stays 0.7.0, and the templates keep declaring it.</p>
+            <p data-field="rationale">Every document the program writes now carries something it did not, and <code>format</code> gains a request. That is new behaviour, so a minor rather than a patch. The size is judgment and the choice is mine.</p>
+            <p data-field="rationale">The contract's vocabulary does not change. A <code>&lt;style&gt;</code> element in a document's head is already accepted: a document carrying the block validates with exactly the diagnostics of the same document without it, measured on a scratch specification. The projection does not read it, and the store's stylesheet does not change. The two requirements change what the toolchain writes and what <code>format</code> may do, not what a document may contain.</p>
+          </section>
+        </section>
+        <section id="hs-the-requirements">
+          <h2>The requirements</h2>
+          <p><strong>Added to document-template: "A document stays readable when its stylesheet cannot load."</strong> Every document the toolchain writes SHALL carry one fallback stylesheet in its head, in the cascade layer <code>htmlspec-fallback</code>. It SHALL set only properties that the stylesheet the document references also sets, outside any layer and any at-rule, on the same selector. It SHALL reach nothing, and it SHALL be the same text in every document. It is neither the shared runtime of "Documents share one pinned runtime", because it draws no diagram, chart, or equation and replaces nothing the store holds, nor a copy of a stored asset forbidden by "A project can be initialized with a conforming document", because its bytes are no stored asset's bytes. A document without it SHALL remain valid. Scenarios: the stylesheet loads, and the page is unchanged; the stylesheet cannot load, and the page is a readable column; a new document carries it; a document written earlier is valid without it.</p>
+          <p><strong>Modified in deterministic-formatting: "Formatting preserves meaning."</strong> A paragraph added: on a contributor's request, formatting SHALL add the fallback stylesheet to a document that lacks it, or replace one that differs from the current text, and SHALL change nothing else. It SHALL NOT do so for an archived change or a run's record. Without the request, formatting SHALL leave a document's fallback as written. Scenarios: plain formatting of a document without the fallback leaves it without one; the request adds it; the request skips an archived document.</p>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <section class="risk" id="risk-the-stylesheet-changes-under-the-fallback" data-change="added" data-response="mitigated">
+            <h3>A later stylesheet stops setting a property the fallback sets</h3>
+            <p>A stylesheet revision that drops a property, narrows a selector, moves a rule into <code>@media</code>, or adopts cascade layers would make the fallback visible on a page whose stylesheet loaded.</p>
+            <p data-field="mitigation">Decision 1's test fails on each of those edits, before release. The fallback and the stylesheet ship together, so the fix is made in the same change that revised the stylesheet. A document whose fallback came from an earlier release references that release's stylesheet revision, and the pair stays consistent, because an asset location is never rewritten in place.</p>
+          </section>
+          <section class="risk" id="risk-safari-refuses-scripts-too" data-change="added" data-response="accepted">
+            <h3>Diagrams still do not render in Safari from disk</h3>
+            <p>If Safari refuses scripts from a parent folder as it refuses stylesheets, Mermaid and Vega-Lite do not run, and each figure shows its source. That was not measured.</p>
+            <p data-field="mitigation">Accepted. The change bears it, because the user chose the fallback alone. Every figure already carries its source in a <code>&lt;details&gt;</code> element, as document-template's "Core content is readable without JavaScript" requires, so the content survives. An export command is the change that would make diagrams portable.</p>
+          </section>
+          <section class="risk" id="risk-the-fallback-is-not-the-design" data-change="added" data-response="accepted">
+            <h3>Without its stylesheet, a page is readable but not designed</h3>
+            <p>The fallback gives no contents column, no masthead layout, and no styling of requirements, scenarios, or task states. A reader in Safari gets a plain column of text.</p>
+            <p data-field="mitigation">Accepted. Every property the fallback adds is one the stylesheet must also set, and a fallback that recreated the design would be a second copy of the stylesheet in every document, which document-template forbids. The README tells a Safari reader how to see the design.</p>
+          </section>
+          <section class="risk" id="risk-existing-documents-stay-bare" data-change="added" data-response="accepted">
+            <h3>Existing documents stay bare until someone asks</h3>
+            <p>Every project's documents written before 0.31.0, including the runbooks that started this, render bare in Safari until a contributor runs <code>format --fallback</code>.</p>
+            <p data-field="mitigation">Accepted, and decision 3 explains why the program does not do it unasked. The changelog entry names the request, so a project upgrading reads how to apply it.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,925 @@
+/*
+ * The HTMLSpec shared visual system.
+ *
+ * Flat editorial layout, serif body text, high density, muted color. The premise
+ * is that a specification is a document to be read, not an application to be
+ * operated, so this stylesheet has no shadows, no gradients, no rounded panels,
+ * and no animation. What it has is a measure, a scale, and a rule about color.
+ *
+ * Two constraints are load-bearing and stated once here.
+ *
+ * Nothing loads over the network. Every font is a generic family or a local stack,
+ * because a remote font would make the document fail offline and the safety rules
+ * reject one anyway.
+ *
+ * Color is never the only carrier of meaning. Every change state, decision status,
+ * and task state is distinguishable by its text label and its left border weight,
+ * both of which survive greyscale printing and every color-vision deficiency. The
+ * hue is a redundant third channel.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Scale and color
+ *
+ * Declared once as custom properties so a value cannot drift between the rules
+ * that use it. The palette is desaturated on purpose: an ink-on-paper document
+ * with one accent reads as a specification, and a saturated one reads as a
+ * dashboard.
+ * ------------------------------------------------------------------------- */
+
+:root {
+  /* A serif stack, generic-first so it resolves with no font file at all. */
+  --hs-body-font: Charter, Georgia, "Times New Roman", Times, serif;
+  /* Sans for the interface furniture: metadata, navigation, labels. */
+  --hs-ui-font: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --hs-mono-font: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --hs-ink: #1a1a1a;
+  --hs-ink-muted: #55524d;
+  --hs-ink-faint: #6f6b64;
+  --hs-paper: #fdfcfa;
+  --hs-rule: #d6d2ca;
+  --hs-rule-strong: #a8a29a;
+  --hs-accent: #2f4858;
+  --hs-highlight: #f2efe9;
+
+  /* Change-state hues, all desaturated to sit beside body text without
+   * competing with it. Each is a redundant channel: the label and the border
+   * weight carry the same information. */
+  --hs-state-added: #2f5d3f;
+  --hs-state-modified: #6b5320;
+  --hs-state-removed: #6f3030;
+
+  /* The measure: roughly 65 characters at the body size, which is the range
+   * prose stays scannable in.
+   *
+   * The page width below is derived from this rather than chosen separately —
+   * nav + gap + content column — so the content column is only a little wider
+   * than the measure. Picking the two independently is what leaves a band of
+   * dead space to the right of every paragraph.
+   */
+  --hs-measure: 36rem;
+  --hs-nav-width: 13rem;
+  --hs-column: 42rem;
+  --hs-gutter: 1.5rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Reset, kept to what the document actually needs
+ * ------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* The skip link.
+ *
+ * Off-screen until it takes focus, which is the whole point of one: a keyboard
+ * user tabs to it and it appears, and everyone else never sees it. It is moved
+ * rather than `display: none`, because a hidden element is not focusable and a
+ * skip link nobody can reach is decoration.
+ *
+ * This is the only rule in the stylesheet that positions something off-screen,
+ * and it is not hiding content: the target is the document's own main region,
+ * which is right there. */
+.hs-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  font-family: var(--hs-ui-font);
+  font-size: 0.8rem;
+  background: var(--hs-paper);
+  border: 1px solid var(--hs-ink);
+  padding: 0.5rem 0.9rem;
+  text-decoration: none;
+  z-index: 10;
+}
+
+.hs-skip-link:focus {
+  left: var(--hs-gutter);
+  top: var(--hs-gutter);
+}
+
+html {
+  /* Not a fixed pixel size: a reader who has set a larger default gets it. */
+  font-size: 100%;
+  /* A fragment link's target must not land under the sticky header. */
+  scroll-padding-top: 4rem;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--hs-paper);
+  color: var(--hs-ink);
+  font-family: var(--hs-body-font);
+  /* Generous for reading, tight enough to keep density. */
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------------------------------------------------------------------------
+ * Page frame
+ *
+ * A single column at the measure, with the navigation as a sidebar when there is
+ * room for one and above the content when there is not. Grid rather than float or
+ * absolute positioning, so the narrow-width case is a template change and not a
+ * cascade of overrides.
+ * ------------------------------------------------------------------------- */
+
+/* The page frame is keyed on the ELEMENTS, not on the `hs-*` classes.
+ *
+ * This matters more than it looks. The contract requires no class at all: the
+ * projection specification ignores every `class` token beyond the reserved seven
+ * (section 2.2), and treats `header`, `nav`, and `main` as presentational (section
+ * 8.4). So a conforming document authored by hand, or by an independent
+ * implementation, carries no `hs-page` wrapper — and a stylesheet that keyed its
+ * layout on one would leave that document with no layout at all: full-window text
+ * flush against the viewport edge.
+ *
+ * `body` is therefore the frame, and the `hs-*` classes below are an optional
+ * refinement the template happens to use. A document gets a readable page either
+ * way, which is what makes the visual system a property of the contract rather than
+ * of this project's template. */
+body > .hs-page,
+body {
+  /* Derived from the measure rather than chosen: the content column sits a little
+   * wider than the text it holds, so there is no band of empty page beside every
+   * paragraph. */
+  max-width: calc(var(--hs-nav-width) + var(--hs-column) + var(--hs-gutter) * 4);
+  margin: 0 auto;
+  padding: 0 var(--hs-gutter) 4rem;
+}
+
+/* The wrapper, when a document has one, must not re-apply the padding its parent
+ * already applied, or a template document is inset twice as far as a bare one. */
+body > .hs-page {
+  padding: 0;
+}
+
+.hs-page {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 calc(var(--hs-gutter) * 2);
+}
+
+@media (min-width: 60rem) {
+  .hs-page {
+    grid-template-columns: var(--hs-nav-width) minmax(0, 1fr);
+    grid-template-areas:
+      "masthead masthead"
+      "nav      main";
+  }
+
+  .hs-masthead {
+    grid-area: masthead;
+  }
+
+  .hs-nav {
+    grid-area: nav;
+  }
+
+  .hs-main {
+    grid-area: main;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Masthead: subject, status, and provenance
+ *
+ * The status is visible on the page and not only in a meta tag, so an unapproved
+ * proposal cannot be mistaken for accepted specification by someone who never
+ * reads source.
+ * ------------------------------------------------------------------------- */
+
+body > header,
+body > .hs-page > header,
+.hs-masthead {
+  border-bottom: 2px solid var(--hs-ink);
+  margin: 0 0 2rem;
+  padding: 2.5rem 0 1rem;
+}
+
+body > header > h1,
+body > .hs-page > header > h1,
+.hs-masthead h1 {
+  font-size: 1.9rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.6rem;
+}
+
+/* The provenance row: label above value, in columns.
+ *
+ * A grid of `auto` columns rather than a flex row of inline items. Flex with
+ * `display: inline` children makes every `dt` and every `dd` its own flex item,
+ * so the gap falls between a label and its own value as readily as between one
+ * pair and the next, and the row reads as scattered words. Stacking each pair in
+ * a column keeps the label attached to what it labels. */
+.hs-meta {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  grid-template-rows: auto auto;
+  gap: 0.15rem 1.8rem;
+  justify-content: start;
+  font-family: var(--hs-ui-font);
+  font-size: 0.8rem;
+  color: var(--hs-ink-muted);
+  margin: 0;
+  padding: 0;
+}
+
+.hs-meta dt,
+.hs-meta dd {
+  margin: 0;
+}
+
+.hs-meta dt {
+  grid-row: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.68rem;
+  color: var(--hs-ink-faint);
+}
+
+.hs-meta dd {
+  grid-row: 2;
+  color: var(--hs-ink);
+}
+
+/* Narrow enough that the columns would crush: stack into rows instead. */
+@media (max-width: 34rem) {
+  .hs-meta {
+    grid-auto-flow: row;
+    grid-template-columns: max-content 1fr;
+    grid-template-rows: none;
+    gap: 0.25rem 0.8rem;
+    align-items: baseline;
+  }
+
+  .hs-meta dt,
+  .hs-meta dd {
+    grid-row: auto;
+  }
+}
+
+/* The artifact kind, as a bordered label rather than a colored pill: the
+ * border and the word survive greyscale, and there is no fill to fight the
+ * body text. */
+.hs-kind {
+  display: inline-block;
+  border: 1px solid var(--hs-rule-strong);
+  padding: 0.05rem 0.45rem;
+  font-family: var(--hs-ui-font);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--hs-accent);
+}
+
+/* ---------------------------------------------------------------------------
+ * Navigation
+ *
+ * Plain anchors to fragment identifiers, so it works with scripting disabled.
+ * The enhancement layer marks the current section; it does not build the list.
+ * ------------------------------------------------------------------------- */
+
+.hs-nav {
+  font-family: var(--hs-ui-font);
+  font-size: 0.83rem;
+  line-height: 1.4;
+  margin: 0 0 2.5rem;
+}
+
+@media (min-width: 60rem) {
+  .hs-nav {
+    position: sticky;
+    top: 1.5rem;
+    align-self: start;
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+    margin-bottom: 0;
+  }
+}
+
+body > nav h2,
+.hs-nav h2 {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--hs-ink-faint);
+  border-bottom: 1px solid var(--hs-rule);
+  padding-bottom: 0.35rem;
+  margin: 0 0 0.6rem;
+}
+
+body > nav ol,
+body > nav ul,
+.hs-nav ol,
+.hs-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+body > nav li,
+.hs-nav li {
+  margin: 0 0 0.3rem;
+}
+
+.hs-nav ul ul,
+.hs-nav ol ol {
+  margin-left: 0.8rem;
+}
+
+body > nav a,
+.hs-nav a {
+  color: var(--hs-ink-muted);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.hs-nav a:hover,
+.hs-nav a:focus {
+  color: var(--hs-ink);
+  border-bottom-color: var(--hs-rule-strong);
+}
+
+/* Set by the enhancement layer. Weight and a left rule, not color alone. */
+.hs-nav a[aria-current="true"] {
+  color: var(--hs-ink);
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------------
+ * Prose
+ *
+ * The measure is applied to text-bearing elements rather than to the column, so
+ * a wide table or a diagram can exceed it without the prose becoming unreadable.
+ * ------------------------------------------------------------------------- */
+
+.hs-main {
+  min-width: 0;
+}
+
+body > main > section,
+.hs-main > section {
+  margin: 0 0 2.5rem;
+}
+
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--hs-body-font);
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 2rem 0 0.6rem;
+  max-width: var(--hs-measure);
+}
+
+h2 {
+  font-size: 1.4rem;
+  border-bottom: 1px solid var(--hs-rule);
+  padding-bottom: 0.3rem;
+}
+
+h3 {
+  font-size: 1.12rem;
+}
+
+h4 {
+  font-size: 1rem;
+}
+
+p,
+li,
+dd,
+blockquote {
+  max-width: var(--hs-measure);
+}
+
+p {
+  margin: 0 0 0.9rem;
+}
+
+a {
+  color: var(--hs-accent);
+  /* Underlined rather than colored alone, because color is never the only
+   * signal that something is a link. */
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.13em;
+}
+
+a:hover,
+a:focus {
+  text-decoration-thickness: 2px;
+}
+
+/* A visible focus ring. Removing one saves nothing and costs keyboard users the
+ * ability to tell where they are. */
+:focus-visible {
+  outline: 2px solid var(--hs-accent);
+  outline-offset: 2px;
+}
+
+code,
+kbd,
+samp {
+  font-family: var(--hs-mono-font);
+  font-size: 0.88em;
+}
+
+/* ---------------------------------------------------------------------------
+ * Semantic units
+ *
+ * Every unit gets a left rule and an identifier a reader can cite. Density is
+ * deliberate: units sit close together, because a reviewer's job is to compare
+ * them and whitespace between them is distance.
+ * ------------------------------------------------------------------------- */
+
+.requirement,
+.decision,
+.task,
+.evidence,
+.risk,
+.verification {
+  border-left: 3px solid var(--hs-rule);
+  padding: 0.1rem 0 0.2rem 1rem;
+  margin: 0 0 1.9rem;
+}
+
+.requirement > h2,
+.requirement > h3,
+.decision > h2,
+.decision > h3,
+.risk > h2,
+.risk > h3,
+.evidence > h2,
+.evidence > h3,
+.task > h2,
+.task > h3,
+.verification > h2,
+.verification > h3 {
+  margin-top: 0;
+  margin-bottom: 0.45rem;
+  font-size: 1.06rem;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+/* A scenario is nested inside its requirement and reads as subordinate to it.
+ *
+ * No left rule at all. A scenario sits inside a unit that already has one, and a
+ * second vertical rule alongside the first reads as a blockquote inside a
+ * blockquote — two parallel bars carrying no information, because the nesting is
+ * already obvious from the indent and the label.
+ *
+ * The `!important` is the narrow exception this stylesheet allows itself, and it is
+ * here for a reason worth stating: a scenario legitimately carries
+ * `data-change="added"`, and the change-state rules further down set a 4px colored
+ * border on anything that does. Without this the scenario's bar would match the
+ * requirement's exactly in weight and hue.
+ *
+ * Dropping the border is only safe because the change state is still carried by the
+ * text label on the heading. That was NOT true when this rule was written: the badge
+ * selectors covered `h2` and `h3` only, and a scenario's heading is an `h4`, so a
+ * scenario's state would have been conveyed by hue alone — the exact failure the
+ * non-color-dependence requirement exists to prevent. The badge now covers `h4`.
+ */
+.scenario {
+  border-left: none !important;
+  padding: 0 0 0 0.9rem;
+  margin: 0.9rem 0 1.1rem 0;
+}
+
+.scenario > h3,
+.scenario > h4 {
+  font-family: var(--hs-ui-font);
+  font-size: 0.83rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--hs-ink-muted);
+  margin: 0 0 0.5rem;
+}
+
+/* A scenario's Given/When/Then, laid out as the description list it is. */
+.scenario dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.2rem 0.7rem;
+  margin: 0;
+}
+
+.scenario dt {
+  font-family: var(--hs-ui-font);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--hs-ink-faint);
+  padding-top: 0.22em;
+}
+
+.scenario dd {
+  margin: 0;
+}
+
+/* An identifier, shown so a reviewer can cite a unit without reading source. */
+.hs-id {
+  font-family: var(--hs-mono-font);
+  font-size: 0.7rem;
+  color: var(--hs-ink-faint);
+  font-weight: 400;
+  letter-spacing: 0;
+  /* Nudged off the baseline so a mono identifier sitting inside a serif heading
+   * reads as an annotation rather than as part of the title. */
+  vertical-align: 0.12em;
+  margin-left: 0.15rem;
+  white-space: nowrap;
+  /* Never a display:none — hiding it would put content out of reach of a
+   * reader while leaving it in the markup, which the visual-system
+   * requirement forbids. */
+}
+
+.hs-id::before {
+  content: "#";
+}
+
+/* ---------------------------------------------------------------------------
+ * Change state, decision status, and task state
+ *
+ * THE RULE THIS SECTION EXISTS FOR: three redundant channels, never hue alone.
+ *
+ *   1. A text label, rendered from the attribute value by `content`, so the
+ *      state is a word a reader reads and a screen reader announces.
+ *   2. Border weight and style — solid, doubled, dashed — which survives both
+ *      greyscale printing and every color-vision deficiency.
+ *   3. Hue, as the third and least load-bearing channel.
+ *
+ * Removing channel 3 entirely would leave the document fully legible. That is
+ * the test.
+ * ------------------------------------------------------------------------- */
+
+[data-change="added"] {
+  border-left-color: var(--hs-state-added);
+  border-left-style: solid;
+  border-left-width: 4px;
+}
+
+[data-change="modified"] {
+  border-left-color: var(--hs-state-modified);
+  /* Doubled, so the state differs by shape and not only by hue. */
+  border-left-style: double;
+  border-left-width: 4px;
+}
+
+[data-change="removed"] {
+  border-left-color: var(--hs-state-removed);
+  border-left-style: dashed;
+  border-left-width: 3px;
+}
+
+/* The text channel. Generated content rather than markup, because the state
+ * already lives in the attribute and duplicating it into the document would give
+ * an editor two places to disagree. */
+[data-change="added"] > h2::after,
+[data-change="added"] > h3::after,
+[data-change="added"] > h4::after,
+[data-change="modified"] > h2::after,
+[data-change="modified"] > h3::after,
+[data-change="modified"] > h4::after,
+[data-change="removed"] > h2::after,
+[data-change="removed"] > h3::after,
+[data-change="removed"] > h4::after,
+[data-state] > h2::after,
+[data-state] > h3::after,
+[data-state] > h4::after,
+[data-status] > h2::after,
+[data-status] > h3::after,
+[data-status] > h4::after,
+[data-outcome] > h2::after,
+[data-outcome] > h3::after,
+[data-outcome] > h4::after {
+  display: inline-block;
+  margin-left: 0.6rem;
+  border: 1px solid currentColor;
+  padding: 0 0.35rem;
+  font-family: var(--hs-ui-font);
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  vertical-align: 0.14em;
+  white-space: nowrap;
+}
+
+[data-change="added"] > h2::after,
+[data-change="added"] > h3::after,
+[data-change="added"] > h4::after {
+  content: "added";
+  color: var(--hs-state-added);
+}
+
+[data-change="modified"] > h2::after,
+[data-change="modified"] > h3::after,
+[data-change="modified"] > h4::after {
+  content: "modified";
+  color: var(--hs-state-modified);
+}
+
+[data-change="removed"] > h2::after,
+[data-change="removed"] > h3::after,
+[data-change="removed"] > h4::after {
+  content: "removed";
+  color: var(--hs-state-removed);
+}
+
+/* Task state, decision status, and verification outcome, each as its own word.
+ * `attr()` would be shorter and is not used: it would render an invalid value
+ * as though the vocabulary contained it, and the enumerations here match the
+ * schema's. */
+[data-state="todo"] > h2::after,
+[data-state="todo"] > h3::after,
+[data-state="todo"] > h4::after {
+  content: "todo";
+}
+
+[data-state="in-progress"] > h2::after,
+[data-state="in-progress"] > h3::after,
+[data-state="in-progress"] > h4::after {
+  content: "in progress";
+}
+
+[data-state="done"] > h2::after,
+[data-state="done"] > h3::after,
+[data-state="done"] > h4::after {
+  content: "done";
+  color: var(--hs-state-added);
+}
+
+[data-state="dropped"] > h2::after,
+[data-state="dropped"] > h3::after,
+[data-state="dropped"] > h4::after {
+  content: "dropped";
+  color: var(--hs-state-removed);
+}
+
+[data-status="proposed"] > h2::after,
+[data-status="proposed"] > h3::after,
+[data-status="proposed"] > h4::after {
+  content: "proposed";
+}
+
+[data-status="accepted"] > h2::after,
+[data-status="accepted"] > h3::after,
+[data-status="accepted"] > h4::after {
+  content: "accepted";
+  color: var(--hs-state-added);
+}
+
+[data-status="superseded"] > h2::after,
+[data-status="superseded"] > h3::after,
+[data-status="superseded"] > h4::after {
+  content: "superseded";
+  color: var(--hs-state-removed);
+}
+
+[data-outcome="passed"] > h2::after,
+[data-outcome="passed"] > h3::after,
+[data-outcome="passed"] > h4::after {
+  content: "passed";
+  color: var(--hs-state-added);
+}
+
+[data-outcome="failed"] > h2::after,
+[data-outcome="failed"] > h3::after,
+[data-outcome="failed"] > h4::after {
+  content: "failed";
+  color: var(--hs-state-removed);
+}
+
+[data-outcome="blocked"] > h2::after,
+[data-outcome="blocked"] > h3::after,
+[data-outcome="blocked"] > h4::after {
+  content: "blocked";
+  color: var(--hs-state-modified);
+}
+
+[data-outcome="not-run"] > h2::after,
+[data-outcome="not-run"] > h3::after,
+[data-outcome="not-run"] > h4::after {
+  content: "not run";
+}
+
+/* ---------------------------------------------------------------------------
+ * Figures
+ *
+ * A figure's source is ordinary visible content, and the renderer draws into a
+ * sibling. Both states are styled, because both are real: with scripting the
+ * reader sees the rendering and can expand the source, and without it they see
+ * the caption and the source.
+ * ------------------------------------------------------------------------- */
+
+figure {
+  margin: 1.6rem 0;
+  padding: 0;
+  /* A figure may exceed the prose measure: a wide diagram is not prose. */
+  max-width: 100%;
+}
+
+figcaption {
+  font-family: var(--hs-ui-font);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--hs-ink-muted);
+  max-width: var(--hs-measure);
+  margin: 0 0 0.6rem;
+}
+
+/* The rendered output, which the enhancement layer inserts as a sibling of the
+ * source and never over it. */
+.hs-figure-render {
+  margin: 0 0 0.6rem;
+  overflow-x: auto;
+}
+
+.hs-figure-render svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* A renderer that failed says so, rather than leaving an empty region. */
+.hs-figure-error {
+  border-left: 3px dashed var(--hs-state-removed);
+  padding: 0.4rem 0 0.4rem 0.8rem;
+  margin: 0 0 0.6rem;
+  font-family: var(--hs-ui-font);
+  font-size: 0.8rem;
+  color: var(--hs-state-removed);
+}
+
+details {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+summary {
+  font-family: var(--hs-ui-font);
+  font-size: 0.75rem;
+  color: var(--hs-ink-faint);
+  cursor: pointer;
+  padding: 0.15rem 0;
+}
+
+summary:hover {
+  color: var(--hs-ink);
+}
+
+pre {
+  font-family: var(--hs-mono-font);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  background: var(--hs-highlight);
+  border-left: 2px solid var(--hs-rule);
+  padding: 0.7rem 0.9rem;
+  margin: 0.4rem 0;
+  /* Horizontal scrolling for code is correct: wrapping a code line changes what
+   * it says. Body prose never scrolls, which is the requirement. */
+  overflow-x: auto;
+  white-space: pre;
+}
+
+pre code {
+  font-size: inherit;
+  background: none;
+  padding: 0;
+}
+
+/* Inline code, distinguished by face and a faint ground rather than by color. */
+p code,
+li code,
+dd code {
+  background: var(--hs-highlight);
+  padding: 0.05em 0.25em;
+}
+
+math {
+  font-size: 1.05em;
+}
+
+/* ---------------------------------------------------------------------------
+ * Tables
+ * ------------------------------------------------------------------------- */
+
+table {
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 1.2rem 0;
+  /* A table may exceed the measure; its container scrolls rather than the page. */
+  max-width: 100%;
+}
+
+caption {
+  font-family: var(--hs-ui-font);
+  font-size: 0.8rem;
+  color: var(--hs-ink-muted);
+  text-align: left;
+  margin-bottom: 0.4rem;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--hs-rule);
+  padding: 0.35rem 0.7rem 0.35rem 0;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  font-family: var(--hs-ui-font);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--hs-ink-faint);
+  border-bottom: 1px solid var(--hs-rule-strong);
+}
+
+/* ---------------------------------------------------------------------------
+ * Narrow widths
+ *
+ * Body prose reflows and never scrolls horizontally. Only content that would be
+ * changed by wrapping — code, tables, diagrams — scrolls, and it scrolls inside
+ * its own box rather than moving the page.
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 34rem) {
+  :root {
+    --hs-gutter: 1rem;
+  }
+
+  body {
+    font-size: 1rem;
+  }
+
+  .hs-masthead h1 {
+    font-size: 1.5rem;
+  }
+
+  .hs-masthead {
+    padding-top: 1.5rem;
+  }
+
+  /* The unit indent shrinks but does not vanish: the left rule is how a reader
+   * tells one unit from the next. */
+  .requirement,
+  .decision,
+  .task,
+  .evidence,
+  .risk,
+  .verification {
+    padding-left: 0.7rem;
+  }
+
+  .scenario {
+    padding-left: 0.6rem;
+  }
+
+  /* Given/When/Then stacks rather than forcing a two-column grid into a phone
+   * width, where the label column would squeeze the text to nothing. */
+  .scenario dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0 0;
+  }
+
+  .scenario dt {
+    padding-top: 0.4rem;
+  }
+
+  .scenario dd {
+    margin-bottom: 0.3rem;
+  }
+}
+
+/* A reader who has asked for less motion gets none. There is no animation here
+ * to disable, and this states the intent so a later addition inherits it. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Govern this repository from htmlspec</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Govern this repository from htmlspec</h1>
+        <p>Promotion put this repository's project in <code>htmlspec/</code> and left the OpenSpec project in <code>openspec/</code>, and the repository's own checks still read the old one. This change points them at <code>htmlspec/</code>, moves the release runbook into the project, and removes <code>openspec/</code> and the OpenSpec workflows, so the repository is governed from one place. The program does not change.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Govern this repository from htmlspec</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>Pull request #55 promoted the migrated project into <code>htmlspec/</code> and left <code>openspec/</code> and <code>runbooks/</code> where they were, as project-migration's <a href="../../../specs/project-migration/spec.html#req-the-source-project-survives-migration">"The source project survives migration"</a> requires. Two changes have been archived since, with <code>htmlspec archive</code>, into <code>htmlspec/</code> only. So the repository holds its project twice, and its checks read the copy nothing writes any more. <a href="evidence/the-measurement-2026-10-14.md"><code>evidence/the-measurement-2026-10-14.md</code></a> measured it:</p>
+          <ul>
+            <li><code>scripts/check-release</code> reads <code>openspec/changes/archive/</code> and <code>openspec/runbook-releases.json</code>. It checks 36 archived changes, and the project has 38. The two releases archived with <code>htmlspec archive</code>, 0.29.1 and 0.30.0, are checked by nothing in the suite.</li>
+            <li>The <code>self-runbooks</code> stages check <code>runbooks/</code>, outside the project. <code>htmlspec/runbooks/</code> does not exist, so <code>htmlspec list --runbooks</code> reports none, the project has no place for its procedures as runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-a-project-keeps-its-procedures-in-a-fourth-place">"A project keeps its procedures in a fourth place"</a> requires, and the release runbook's documents reference the repository's root <code>assets/</code> rather than "the project's one asset store". Both archivals since promotion recorded an empty runbook inventory.</li>
+            <li>Three tests read <code>openspec/</code>. With it moved aside, 9 of the 11 migration survey tests fail, and the presentation checks and the asset rules' formatter agreement test still pass while reading 4 and 7 fewer documents. Neither of those two reads <code>htmlspec/</code> at all.</li>
+            <li>52 OpenSpec workflow files under <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code> direct an agent to run the <code>openspec</code> command against <code>openspec/</code>.</li>
+          </ul>
+          <p>The migration plan's decision 4 named this change, and the plan is its evidence: <a href="evidence/the-plan-for-this-repository-2026-10-13.html"><code>evidence/the-plan-for-this-repository-2026-10-13.html</code></a>.</p>
+        </section>
+        <section id="hs-what-working-looks-like">
+          <h2>What working looks like</h2>
+          <ol>
+            <li><code>scripts/check-release</code> reports 38 archived changes, every archive under <code>htmlspec/changes/archive/</code>, and reads the adoption marker at <code>htmlspec/runbook-releases.json</code>.</li>
+            <li><code>htmlspec list --runbooks</code> lists <code>release</code>. Its four files are at <code>htmlspec/runbooks/release/</code>, byte for byte what <code>runbooks/release/</code> holds at <code>4fa4e96</code>, at version 0.1.0, and its two documents open with their stylesheets from <code>htmlspec/assets/</code>.</li>
+            <li>The <code>self-runbooks</code> stages validate and format-check <code>htmlspec/runbooks</code>.</li>
+            <li>The repository root holds no <code>openspec/</code> and no <code>runbooks/</code>, and <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code> hold no OpenSpec workflow.</li>
+            <li>The migration survey tests pass against <code>fixtures/migration-source/</code>, which holds the OpenSpec project this repository was migrated from, the 473 files the plan covers.</li>
+            <li>The presentation checks and the asset rules' agreement test read the project's documents in <code>htmlspec/</code>, and fail rather than pass when a place they read is missing.</li>
+            <li>At archival, <code>htmlspec archive</code> records <code>release</code> at 0.1.0, unchanged from the snapshot 0.29.0 published, and <code>scripts/check-release</code> accepts the history, including the two empty inventories.</li>
+            <li><code>scripts/check</code> passes.</li>
+          </ol>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <p><strong>The repository's checks read the project.</strong> <code>scripts/check-release</code> reads the archive, the adoption marker, and the runbooks under <code>htmlspec/</code>. The <code>self-runbooks</code> stages check <code>htmlspec/runbooks</code>.</p>
+          <p><strong>The release runbook moves into the project unchanged.</strong> <code>runbooks/release/</code> moves to <code>htmlspec/runbooks/release/</code> byte-identical, and the two stylesheet revisions its documents link, <code>sha256-e4f5de7cecc4f691</code> and <code>sha256-0350261bb5666167</code>, are copied into <code>htmlspec/assets/</code> so its references resolve to the project's store. Its canonical documents keep the fingerprints its last snapshot recorded, so its version stays 0.1.0.</p>
+          <p><strong>The OpenSpec project becomes the migration tests' source.</strong> <code>openspec/</code> moves, byte-identical, to <code>fixtures/migration-source/openspec/</code>, and the survey tests run against it. The other tests that read <code>openspec/</code> read <code>htmlspec/</code>.</p>
+          <p><strong>The OpenSpec workflows are removed.</strong> With <code>openspec/</code> gone they direct an agent at a directory that does not exist, or would make it again.</p>
+          <p><strong>The repository's own prose stops saying it governs itself with <code>openspec/</code></strong>, in the scripts, the build's source filter, and the tests this change edits.</p>
+          <p>Nothing in the program changes. This is release 0.30.1.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <p><strong>Point the migration tests at <code>htmlspec/</code>, as the plan's decision 4 words it.</strong> Not possible. The survey refuses a directory that is not an OpenSpec project, and measured, it says so: "is not an OpenSpec project: no openspec/specs or openspec/changes directory". The tests need an OpenSpec source.</p>
+          <p><strong>Rewrite the migration tests against a constructed fixture.</strong> Rejected. Their header explains that this repository's own project is their test case so that each property is checked against a real one: two named changes that rename a requirement, a version shared by seven changes that <code>scripts/check-release</code> names as its baseline, a greatest version that has a changelog heading. A constructed fixture would assert what its author wrote into it. The moved project is a rename in version control and adds no stored bytes.</p>
+          <p><strong>Delete <code>openspec/</code> and leave it to version control history.</strong> Rejected. The suite's sandbox holds no repository, as toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-project-checks-are-runnable-as-one-command">"Project checks are runnable as one command"</a> records, so no test can read history.</p>
+          <p><strong>Revise the release runbook as it moves.</strong> Rejected here, and named below as the next change. The plan's decision 4 moves it byte-identical so that its version stays 0.1.0 and the move reviews as a rename. A revision changes its canonical documents, which project-bootstrap's <a href="../../../specs/project-bootstrap/spec.html#req-archival-checks-the-versions-of-runbooks-it-publishes">"Archival checks the versions of runbooks it publishes"</a> makes a new release, with its own version and changelog entry.</p>
+          <p><strong>Leave the OpenSpec workflows to a later change.</strong> Rejected. Between the two changes they would send an agent asked to start a change to <code>openspec new change</code>, which writes into the directory this change removes.</p>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <p><strong>In scope.</strong> Everything that reads <code>openspec/</code> or the root <code>runbooks/</code>: <code>scripts/check-release</code>, the <code>self-runbooks</code> stages of <code>scripts/check</code>, and three tests. The release runbook's move and its two stylesheet revisions. <code>openspec/</code>, moved to the fixture. The 52 OpenSpec workflow files under <code>.claude/skills/openspec-*</code>, <code>.claude/commands/opsx/</code>, <code>.codex/skills/openspec-*</code>, <code>.pi/prompts/opsx-*</code>, and <code>.pi/skills/openspec-*</code>, removed. Prose that says this repository governs itself with <code>openspec/</code> or is not a project: the comments in the files above, <code>flake.nix</code>'s source-filter comment, and <code>scripts/check-installed</code>'s docstring and comments.</p>
+          <p><strong><code>README.md</code> and <code>AGENTS.md</code> do not change.</strong> Measured, neither names a directory of this repository called <code>openspec/</code>. <code>README.md</code> names OpenSpec, the project HTMLSpec started from, and shows <code>runbooks/release/</code> only in the layout of a portable copy.</p>
+          <p><strong>The release runbook's text is not revised, and it no longer describes this repository.</strong> Its specification says this repository "is not an html-spec project", and its step <code>task-regenerate-the-instructions</code> says to remove the <code>htmlspec/</code> and <code>spec.nix</code> that <code>htmlspec init</code> creates. Since #55 those are the project and its declaration, and <code>init</code> leaves an existing project in place. That step must not be followed. The next change, <code>release-a-repository-that-is-its-own-project</code>, revises the runbook and advances it past 0.1.0.</p>
+          <p><strong>Comments in the program's sources that cite evidence by its pre-archive path are not repointed.</strong> Five name <code>openspec/changes/&lt;name&gt;/evidence/…</code>, a path that has not existed since those changes were archived, and one in <code>crates/htmlspec-cli/src/install.rs</code> cites the <code>.pi/prompts/opsx-*.md</code> files this change removes. They are in shipped crates, and this change edits no code the program runs: its one edit inside a crate's sources is to a test module. A later change, <code>repoint-the-sources-evidence-citations</code>, settles them. Archived records and the changelog's past entries stay as written.</p>
+          <p><strong>The repository's root <code>assets/</code> does not change.</strong> It is the toolchain's source copy, recorded by <code>assets/vendor.lock.json</code>, and the two revisions are copied out of it, not moved.</p>
+          <p><strong>No stage is added to check the whole project.</strong> <code>htmlspec validate htmlspec</code> and <code>htmlspec format --check htmlspec</code> pass, and running them on every check is a separate decision.</p>
+          <p><strong>Requirements.</strong> This change adds, modifies, and removes none. The contract is silent on where this repository keeps its project. Promotion made it an html-spec project, and the obligations that name this repository, toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-the-project-records-what-changed-in-each-version-it-ships">"The project records what changed in each version it ships"</a> and project-bootstrap's <a href="../../../specs/project-bootstrap/spec.html#req-the-release-suite-checks-published-runbook-version-history">"The release suite checks published runbook version history"</a>, are met by its checks reading that project. The specification produced at archival records the silence.</p>
+          <p><strong>The release.</strong> Archival refuses unless the declared version advances (project-bootstrap's <a href="../../../specs/project-bootstrap/spec.html#req-archival-requires-the-project-version-to-advance">"Archival requires the project version to advance"</a>), recorded versions are distinct (toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-an-archived-change-records-the-version-it-shipped-in">"An archived change records the version it shipped in"</a>), and every shipped version has a changelog entry. None of them exempts a change that ships no change to the program, and none says how large an increment is: "Deciding what a version increment signifies, and by how much, is judgment." The choice is mine: a patch, 0.30.1, the smallest increment archival accepts, with a changelog entry that says the program is unchanged. The installed instruction files are regenerated, because each records the version that wrote it.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

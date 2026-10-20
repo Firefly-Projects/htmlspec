@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Commit the contract and the command line</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Commit the contract and the command line</h1>
+        <p>Version 1.0 is a promise, and today nothing states it. The contract is at 0.7.0, and the rule for how its version moves lives in a code comment and the contract's own changelog, which bind nothing. The command line has no stated stability at all. This change makes both promises requirements: contract 1.0.0 freezes the document vocabulary under semantic versioning, and the command surface, in both its spellings, with its flags, exit codes, and structured payloads, stays stable within the major version. It is release 1.0.0. The first publication is the first run of the publish runbook that <code>publish-releases-through-their-own-runbook</code> adds, after this change is archived. Revised on 2026-10-19 after the code review of #63, which moved the publishing steps out of this change.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Commit the contract and the command line</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><strong>The contributor decided on 2026-10-16 what 1.0 commits:</strong> the contract and the command surface. Contract 1.0.0 freezes the document vocabulary under semantic versioning, and command names, flags, exit codes, and <code>--json</code> payloads become stable.</p>
+          <p><strong>No accepted specification states how the contract's version moves.</strong> The rule exists in two places. The doc comment on <code>CONTRACT_VERSION</code> in <code>crates/htmlspec-schema/src/lib.rs</code> says that a major bump withdraws or reshapes, a minor adds without invalidating a document, a patch changes wording only, and that while the major is 0 any release can break a document. <code>crates/htmlspec-schema/CHANGELOG.md</code> states the same policy as a table. contract-authority's <a href="../../../specs/contract-authority/spec.html#req-the-project-s-obligations-are-what-its-accepted-specifications-state">"The project's obligations are what its accepted specifications state"</a> makes both non-normative, so the contract is silent on its own versioning. document-schema's <a href="../../../specs/document-schema/spec.html#req-the-element-contract-is-published-as-a-machine-readable-schema">"The element contract is published as a machine-readable schema"</a> publishes the vocabulary, and document-template's <a href="../../../specs/document-template/spec.html#req-a-document-declares-its-identity-and-provenance">"A document declares its identity and provenance"</a> requires every document to declare the version it conforms to. Neither says what a version promises.</p>
+          <p><strong>The command surface is described and not promised.</strong> toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-exit-codes-distinguish-outcomes">"Exit codes distinguish outcomes"</a>, <a href="../../../specs/toolchain-packaging/spec.html#req-output-is-available-in-human-and-machine-forms">"Output is available in human and machine forms"</a>, and <a href="../../../specs/toolchain-packaging/spec.html#req-a-single-command-exposes-validate-format-and-init">"The command surface names its operations as OpenSpec names them"</a> each state what the surface does now. None states that it stays that way, and nothing fails when a flag is renamed or a payload field disappears.</p>
+          <p><strong>Publishing is not this change's work.</strong> The first plan put the publishing steps in the release runbook here. The review showed that a run after archival would repeat the steps done inside the change, and that the obvious tag command would publish the private history. <code>publish-releases-through-their-own-runbook</code>, which this change follows, gives publishing a runbook of its own, so this change states only the two promises.</p>
+        </section>
+        <section id="hs-what-working-looks-like">
+          <h2>What working looks like</h2>
+          <ol>
+            <li>A new document declares contract <code>1.0.0</code>, and so does a run's record, which declared <code>0.1.0</code> until now. Every document that declares <code>0.1.0</code> to <code>0.7.0</code> still validates, with no error that it did not have before.</li>
+            <li>document-schema states that the contract's version follows semantic versioning: within a major, a later version reports no new error on a document an earlier one accepted, and a minor may add warnings. toolchain-packaging states that the command surface is stable within a major version.</li>
+            <li>Renaming a command, a request-verb object, or a flag, changing an exit code, or removing a field from a <code>--json</code> payload fails the suite, including a field only a rare input produces. Adding one passes, once its schema declares it.</li>
+            <li>A run's record declares the current contract version in its head and in its masthead.</li>
+            <li><code>Firefly-Projects/htmlspec</code> and <code>Firefly-Projects/homebrew-tap</code> exist, with a branch ruleset on the public <code>main</code> and the two release secrets in place, as they have since 2026-10-18.</li>
+            <li>The README states the 1.0 promises. This is release 1.0.0, and <code>scripts/check</code> passes.</li>
+            <li>After archival, <code>htmlspec run publish --as v1.0.0</code> is the first public release, and its record is the record of the publication.</li>
+          </ol>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <p><strong>Contract 1.0.0 is the 0.7.0 vocabulary, unchanged.</strong> The schema accepts <code>1.0.0</code> beside every earlier version, <code>CONTRACT_VERSION</code> and the templates declare it, and a run's record declares it too. The vocabulary does not change at 1.0. Its stability does.</p>
+          <p><strong>Two requirements, and the tests that hold them.</strong> A committed snapshot of the 1.0.0 command surface, from the program's own parser, and a published schema for every operation's <code>--json</code> payload, fail the suite when anything in them disappears or changes. Every field a schema declares must appear in a payload the tests produce, so a field rare inputs produce is held too.</p>
+          <p><strong>The fixtures that use 0.7.0's vocabulary stay at 0.7.0,</strong> and the contract test that kept every accepted version within one major states the kept 0.x versions as the requirement does.</p>
+          <p><strong>The accounts exist.</strong> The contributor's repositories, ruleset, secrets, crates.io access, and co-owner team are recorded as done, with their dates.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <p><strong>Drop the 0.x versions at 1.0.0.</strong> A strict reading of a major release withdraws everything before it. Rejected: every document written so far would stop validating, this repository's 13 accepted specifications and archive among them, for a vocabulary that does not change.</p>
+          <p><strong>Promise stability in the README only.</strong> Rejected. A promise nothing checks is the failure contract-authority exists to prevent, and a README binds nothing.</p>
+          <p><strong>Change the request-verb spellings before freezing them.</strong> Considered and declined by the contributor on 2026-10-16. They are frozen as they are.</p>
+          <p><strong>Publish 1.0.0 as a task of this change.</strong> Rejected. The export reads the archived state, so it runs after archival, and a release is a run of the publish runbook, not work in a change.</p>
+          <p><strong>Promise the same diagnostics at every later minor.</strong> The first version of this plan did. Rejected after the review: this project's minor releases have added warnings on documents they already accepted, so the promise covers errors, which is what decides whether a document is valid.</p>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <p><strong>In scope.</strong> Contract 1.0.0 in the schema, the templates, the fixtures, and the run record. Two requirements, the payload schemas, and the snapshot tests that hold them. The README's status and promises. The record of the accounts. Release 1.0.0.</p>
+          <p><strong>Not in scope.</strong> Any change to the vocabulary or to a command's behavior. A deprecation process for 2.0. The release runbook, which <code>ship-through-four-channels</code> takes to 0.3.0, and the publish runbook, which <code>publish-releases-through-their-own-runbook</code> adds. Running the release itself, which is the first run of the publish runbook.</p>
+          <p><strong>Requirements.</strong> This change adds one requirement to document-schema, on the contract's version, and one to toolchain-packaging, on the command surface's stability.</p>
+          <p><strong>The release.</strong> 1.0.0, a major increment, as the contributor decided. It withdraws nothing. The major says the vocabulary and the surface are now promised.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

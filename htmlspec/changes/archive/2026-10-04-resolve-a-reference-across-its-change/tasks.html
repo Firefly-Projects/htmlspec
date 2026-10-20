@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Resolve a reference across its change</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Resolve a reference across its change</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Resolve a reference across its change</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-04-resolve-a-reference-across-its-change/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-re-measure-before-changing-anything">1. Re-measure before changing anything</a></li>
+          <li><a href="#hs-2-tests-first">2. Tests first</a></li>
+          <li><a href="#hs-3-the-placement-and-the-scope">3. The placement and the scope</a></li>
+          <li><a href="#hs-4-the-instructions">4. The instructions</a></li>
+          <li><a href="#hs-5-prove-it">5. Prove it</a></li>
+          <li><a href="#hs-6-release">6. Release</a></li>
+          <li><a href="#hs-7-review">7. Review</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-re-measure-before-changing-anything">
+          <h2>1. Re-measure before changing anything</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Repeat steps 1 and 2 of <a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a> in a scratch project built with <code>./target/debug/htmlspec init --tools none</code>, and record <code>validate</code>'s exit status and the <code>refs/unresolved</code> diagnostic from each step, checking them against the evidence.</h3>
+              <p>Step 1 is a task naming its change specification's <code>req-example</code> in <code>data-refs</code>. Step 2 is a task naming a requirement that only <code>htmlspec/specs/measure/spec.html</code> declares</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Re-run the count script recorded in the evidence from <code>~/projects/html-spec-migration/staged/htmlspec</code>, record its output, and name any design decision that rests on a number that moved</h3>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Run <code>./target/debug/htmlspec --json validate</code> in <code>~/projects/html-spec-migration/staged</code> under <code>time</code>, and record the document count, the error and warning counts by rule, and the wall time as the baseline for task 5.2</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-tests-first">
+          <h2>2. Tests first</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Add a CLI test to <code>crates/htmlspec-cli/tests/cli.rs</code> for each case below, building each project with <code>init --tools none</code> and <code>new change</code>, and confirm that every one of them fails on HEAD:</h3>
+              <ul>
+                <li>
+                  <p>a task naming a requirement in its change's specification passes;</p>
+                </li>
+                <li>
+                  <p>a task naming a requirement that only an accepted specification declares passes;</p>
+                </li>
+                <li>
+                  <p>a decision in the design naming its change's specification passes;</p>
+                </li>
+                <li>
+                  <p>a unit in one accepted specification naming another's requirement passes;</p>
+                </li>
+                <li>
+                  <p>an archived change's task naming its own specification passes;</p>
+                </li>
+                <li>
+                  <p>a task naming a requirement that its change's specification marks <code>removed</code>, while the accepted specification holds it unchanged, reports <code>refs/removed-target</code> and not <code>refs/unresolved</code>;</p>
+                </li>
+                <li>
+                  <p>validating by name a tasks document whose task names a requirement in its change's specification, while that specification also carries a requirement with no scenario, succeeds and reports that one document only;</p>
+                </li>
+                <li>
+                  <p>a task in a change whose specification needs parser recovery is reported with the specification named as unread;</p>
+                </li>
+                <li>
+                  <p>a task in a change with no specification, naming an accepted requirement, passes with nothing reported about the missing specification.</p>
+                </li>
+              </ul>
+              <p data-field="note">Migration note: no carried record shows these tests failing on HEAD.</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Add a CLI test to the same file for each case below, and confirm that every one of them passes on HEAD:</h3>
+              <ul>
+                <li>
+                  <p>a task naming another change's requirement fails <code>refs/unresolved</code>;</p>
+                </li>
+                <li>
+                  <p>a fragment link <code>#req-x</code> to a unit in the change's specification fails both <code>refs/unresolved</code> and <code>refs/broken-link</code>;</p>
+                </li>
+                <li>
+                  <p>a document outside any project, and a file beneath a change's evidence named on the command line, each naming an identifier that only another document declares, fail <code>refs/unresolved</code>;</p>
+                </li>
+                <li>
+                  <p>a runbook's tasks document naming an accepted requirement fails <code>refs/unresolved</code>.</p>
+                </li>
+              </ul>
+              <p data-field="note">Migration note: no carried record shows these tests passing on HEAD, before the change.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-the-placement-and-the-scope">
+          <h2>3. The placement and the scope</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Add the module of design decision 4 to <code>crates/htmlspec-validate</code>, re-exported from <code>lib.rs</code>, and give <code>Subject</code> the scope and a <code>placement()</code> accessor.</h3>
+              <p>The module holds <code>Placement</code>, <code>Place</code>, <code>Placement::reaches</code>, <code>Declared</code> with its unread list, <code>Unread</code>, and <code>Scope</code> with <code>loose</code>, <code>gather</code>, and <code>placement</code>. Check with unit tests that <code>reaches</code> returns the places in the design's table in order and that <code>gather</code> calls its function once for each of them</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Pass the scope through <code>engine::run</code>.</h3>
+              <p>Every caller except <code>validate_source</code> passes <code>Scope::loose()</code>: <code>conformance/tests/conformance.rs</code>, <code>conformance/tests/runs.rs</code>, <code>crates/htmlspec-validate/tests/template_conformance.rs</code>, the <code>validate_file</code> example, and the tests in <code>engine.rs</code>, <code>output.rs</code>, and <code>rules/*</code>. Check with <code>cargo test --workspace --all-targets</code> that every test that passed on HEAD still passes, and that the tests from 2.1 still fail</p>
+              <p data-field="note">Migration note: <a href="evidence/what-the-implementation-revealed-2026-10-03.md"><code>evidence/what-the-implementation-revealed-2026-10-03.md</code></a> records 47 calls to <code>engine::run</code> passing a scope, every one but <code>validate_source</code>'s passing <code>Scope::loose()</code>. No carried record shows this task's test run, or the tests from 2.1 still failing at this point.</p>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Add <code>conformance/tests/references.rs</code>, a project-level suite built through the public API the way <code>runs.rs</code> and <code>topology.rs</code> build theirs, holding the cases below, and check that they fail before 3.4 and pass after it:</h3>
+              <ul>
+                <li>
+                  <p>one case for each scenario this change adds to document-schema and document-validation, each given as a placement, a document of its own, and what each reached place declares;</p>
+                </li>
+                <li>
+                  <p>one property case: every committed conformance fixture reports the same rules at the same locations under every placement with empty places as it does loose.</p>
+                </li>
+              </ul>
+              <p data-field="note">Migration note: no carried record shows these cases failing before 3.4.</p>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 Make <code>references_resolve</code> in <code>crates/htmlspec-validate/src/rules/refs.rs</code> do what the list below says, keeping a loose document's message word for word, and check it with unit tests in <code>refs.rs</code> (a change's specification shadowing an accepted unit, a withdrawal in the change's specification, an identifier two accepted specifications declare, an unread place, a link reference) and with the suite from 3.3:</h3>
+              <ul>
+                <li>
+                  <p>resolve an attribute-origin reference through the scope's places in order;</p>
+                </li>
+                <li>
+                  <p>keep a link-origin reference in its own document;</p>
+                </li>
+                <li>
+                  <p>apply <code>REMOVED_TARGET</code> in the place that resolves the reference;</p>
+                </li>
+                <li>
+                  <p>name the places searched, and any unread document, in the <code>refs/unresolved</code> message.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-3-5" data-change="added" data-state="done">
+              <h3>3.5 Add <code>ProjectRoot::placement</code> to <code>crates/htmlspec-cli/src/project.rs</code>, positional and on canonical paths and reusing <code>is_within_change_evidence</code> for a change's evidence, and unit-test every row of the design's table and each of these:</h3>
+              <ul>
+                <li>
+                  <p>an archived change's documents;</p>
+                </li>
+                <li>
+                  <p><code>changes/archive/x.html</code>;</p>
+                </li>
+                <li>
+                  <p>a subdirectory of a change;</p>
+                </li>
+                <li>
+                  <p><code>htmlspec/x.html</code>;</p>
+                </li>
+                <li>
+                  <p>a file outside <code>htmlspec/</code>;</p>
+                </li>
+                <li>
+                  <p>a document that is not written yet;</p>
+                </li>
+                <li>
+                  <p>a project reached through a symbolic link.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-3-6" data-change="added" data-state="done">
+              <h3>3.6 In <code>crates/htmlspec-cli/src/commands.rs</code>, make <code>validate_source</code> take the document's path and derive the store and the scope from it, reading each other document at most once per run, and move "the accepted specifications" into one function that <code>merge_state</code> also calls.</h3>
+              <p>Check that the tests from 2.1 pass, that those from 2.2 still pass, and that every caller named in the design's Context goes through it</p>
+            </li>
+            <li class="task" id="task-3-7" data-change="added" data-state="done">
+              <h3>3.7 Restate the one-document rule where it is stated as universal: the <code>run</code> help text in <code>crates/htmlspec-cli/src/main.rs</code>, the module comment of <code>crates/htmlspec-cli/src/runs.rs</code> and the two sentences it writes into every new record, and the assertion message at <code>crates/htmlspec-cli/tests/run.rs:243</code>.</h3>
+              <p>Leave alone what design decision 13 keeps. Check <code>htmlspec run --help</code> and the text of a newly written record, and check that <code>crates/htmlspec-cli/tests/run.rs</code> passes</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-the-instructions">
+          <h2>4. The instructions</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Replace the note at <code>assets/template-tasks.html:40</code> with the sentence in design decision 13, update that file's sha256 in <code>assets/vendor.lock.json</code>, and check that <code>cargo test -p htmlspec-assets</code> and <code>crates/htmlspec-validate/tests/template_conformance.rs</code> pass</h3>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 In <code>crates/htmlspec-assets/instructions/new.md</code>, section "The tasks", add one sentence saying where a task's <code>data-refs</code> can reach.</h3>
+              <p>Regenerate the installed copies with <code>./target/debug/htmlspec init --tools claude,codex,pi</code>, remove the stray <code>htmlspec/</code> and <code>spec.nix</code> it creates, and check that <code>scripts/check-installed</code> passes</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-prove-it">
+          <h2>5. Prove it</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Repeat task 1.1 and the evidence's plain-link measurement against the built change, and record the results.</h3>
+              <p>Steps 1 and 2 must exit 0 with no <code>refs/*</code> diagnostic. The plain link must still be accepted with no reference projected</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Repeat task 1.3 against the built change, record the wall time against the baseline, and check that the result equals the baseline exactly, because no staged document has a <code>data-refs</code> entry that crosses a document</h3>
+              <p data-field="deviation">Migration note: the result equalled the baseline, every document's diagnostics identical, and the timing was recorded as CPU time rather than wall time. Four runs took 134, 97, 553, and 102 seconds of wall time, against 19.47 for the baseline, while the machine paused the session's file-touching processes, so the wall times measured those pauses. The CPU time moved by about 0.7 seconds, 4 percent. <a href="evidence/the-rule-measured-2026-10-03.md"><code>evidence/the-rule-measured-2026-10-03.md</code></a>, section 5.2, records it, and so does the last finding of <a href="evidence/what-the-implementation-revealed-2026-10-03.md"><code>evidence/what-the-implementation-revealed-2026-10-03.md</code></a>.</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 In a scratch copy of the staged tree, add each of the 68 linked identifiers to its unit's <code>data-refs</code>, validate, and record the result against what the evidence's counts give:</h3>
+              <ul>
+                <li>
+                  <p>53 units resolve with no <code>refs/*</code> diagnostic: 30 that link to their change's specification, and 23 that link to an accepted specification;</p>
+                </li>
+                <li>
+                  <p>task 5.1 of <code>2026-08-21-distinguish-command-names-from-skill-names</code> reports <code>refs/removed-target</code>;</p>
+                </li>
+                <li>
+                  <p>the 2 units that link to another change's specification report <code>refs/unresolved</code>.</p>
+                </li>
+              </ul>
+              <p data-field="deviation">Migration note: the 2 units that link to another change's specification resolved with no <code>refs/*</code> diagnostic, instead of reporting <code>refs/unresolved</code>, because each identifier they name is also declared by an accepted specification, where those changes' requirements were merged. The other expectations held: 30 and 23 units resolved, and task 5.1 of <code>2026-08-21-distinguish-command-names-from-skill-names</code> reported <code>refs/removed-target</code> and nothing else. <a href="evidence/the-rule-measured-2026-10-03.md"><code>evidence/the-rule-measured-2026-10-03.md</code></a>, section 5.3, records the result and calls the task's expectation for the last two wrong, and <a href="evidence/what-the-implementation-revealed-2026-10-03.md"><code>evidence/what-the-implementation-revealed-2026-10-03.md</code></a> records the same finding.</p>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Mutation-test the change, record which test catches each of these mutations, and add a test for any that nothing catches:</h3>
+              <ol>
+                <li>
+                  <p>skip the change's specification;</p>
+                </li>
+                <li>
+                  <p>skip the accepted specifications;</p>
+                </li>
+                <li>
+                  <p>try the accepted specifications before the change's specification;</p>
+                </li>
+                <li>
+                  <p>resolve a link-origin reference through the scope;</p>
+                </li>
+                <li>
+                  <p>treat an unread document as an empty set;</p>
+                </li>
+                <li>
+                  <p>apply <code>REMOVED_TARGET</code> only in the document itself;</p>
+                </li>
+                <li>
+                  <p>place an archived change's documents as loose;</p>
+                </li>
+                <li>
+                  <p>place a change's evidence as a change document;</p>
+                </li>
+                <li>
+                  <p>let a runbook's document reach the accepted specifications;</p>
+                </li>
+                <li>
+                  <p>let an accepted specification reach only itself.</p>
+                </li>
+              </ol>
+            </li>
+            <li class="task" id="task-5-5" data-change="added" data-state="done">
+              <h3>5.5 Run <code>cargo test --workspace --all-targets</code>, then <code>scripts/check</code>, with every stage green</h3>
+            </li>
+            <li class="task" id="task-5-6" data-change="added" data-state="done">
+              <h3>5.6 Record what the implementation revealed in <code>evidence/</code>, including the results of 5.1 to 5.4</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-release">
+          <h2>6. Release</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Run the release runbook at <code>runbooks/release/tasks.html</code>, and report whether it worked as written</h3>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Choose the increment, state the reasoning, and flag it for the contributor's confirmation.</h3>
+              <p>The design expects <code>0.22.0</code>: the next minor after changes 1 to 3, because <code>validate</code> now accepts references it rejected and the contract version stays <code>0.3.0</code></p>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Check that <code>scripts/check-release</code> passes after archival writes <code>VERSION</code> and the hand-written <code>runbooks.json</code> beside it</h3>
+              <ul>
+                <li>
+                  <p><code>openspec archive resolve-a-reference-across-its-change --yes</code> (OpenSpec 1.13.1) archived the change as <code>2026-10-04-resolve-a-reference-across-its-change</code>, continuing past this one open task. It modified five requirements: one in <a href="../../../specs/document-schema/spec.html"><code>openspec/specs/document-schema/spec.md</code></a>, two in <code>document-validation</code>, one in <code>runbook-execution</code>, and one in <code>toolchain-packaging</code>. Each merged block equals the delta's word for word, and no other requirement changed</p>
+                </li>
+                <li>
+                  <p><code>VERSION</code> holds <code>0.22.0</code>. <code>runbooks.json</code> is a copy of the previous archive's, because the release runbook is unchanged: the sha256 of <code>runbooks/release/specification.html</code> and <code>tasks.html</code> still match the inventory's</p>
+                </li>
+                <li>
+                  <p><code>scripts/check-release</code>: <code>ok 28 archived change(s) record a version, and 22 version(s) are in the changelog</code> and <code>ok declared version 0.22.0 has a changelog entry</code></p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-review">
+          <h2>7. Review</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Resolve what a review of the pull request found, and record what was taken and what was not</h3>
+              <ul>
+                <li>
+                  <p><strong>Taken, from the code review of PR #43: a document named by its bare file name was placed loose.</strong> <code>ProjectRoot::placement</code> split the path with <code>Path::parent</code>, which gives the empty path for a bare file name, while <code>Reach::scope_for</code> turned that into the current directory. So <code>htmlspec validate tasks.html</code> inside a change found the project and placed the document loose, and reported <code>refs/unresolved</code> for a requirement its change's specification declares, while <code>validate ./tasks.html</code> passed. Reproduced with the built binary. <code>project::directory_of</code> now answers where a document sits for the placement, the scope, and the store walk, which had a third copy of the same logic. <code>a_document_named_by_its_bare_file_name_is_placed_where_it_sits</code> covers a change document and an accepted specification named this way, and fails without the fix</p>
+                </li>
+                <li>
+                  <p><strong>Settled with the contributor on 2026-10-04: the command line's private <code>Declared</code> enum is now <code>ContractEffect</code>.</strong> Two types were named <code>Declared</code>, as <a href="evidence/what-the-implementation-revealed-2026-10-03.md"><code>what-the-implementation-revealed-2026-10-03.md</code></a> records: this change's public <code>htmlspec_validate::references::Declared</code>, which is what one place declares, and the enum <code>see-a-modification-the-merge-did-not-take</code> added to <code>crates/htmlspec-cli/src/commands.rs</code>, which reads a requirement's change state into the three cases the merge comparison judges. <code>commands.rs</code> holds both. Everywhere else in it, "declared" means what a document or the project states about itself: a document's kind, the project's version, a unit's change state. The struct uses the word in that sense and the enum does not, because no document declares "establishes" or "carries forward". So the enum moved. The struct keeps its name: it is public, and design decision 4, task 3.1, and <code>mark-the-words-a-modification-changed</code>'s design name it, while no design names the enum. <strong>Considered: <code>Intent</code>.</strong> Rejected. <code>new.md</code>, <code>continue.md</code>, and the accepted project-migration specification use "intent" for what a proposal carries, and say a specification must not state it, while the enum reads its value from a change's specification. <code>ContractEffect</code> names each case by what the accepted specifications must hold for the requirement to have reached them. The rename changes 21 lines of <code>commands.rs</code>, and the variants keep their names, so no behavior changes. The enum's doc comment now says why it is not named for a declaration. The archived tasks of <code>see-a-modification-the-merge-did-not-take</code> still name <code>Declared::of_requirement</code>, because an archive records what was built</p>
+                </li>
+                <li>
+                  <p><strong>PR #43 was merged before this review question and the archival were settled</strong>, so both land in a follow-up pull request, as <code>reject-change-markup-inside-a-unit</code>'s did in PR #40</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

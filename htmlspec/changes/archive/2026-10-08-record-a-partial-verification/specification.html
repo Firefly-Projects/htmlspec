@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Record a partial verification</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Record a partial verification</h1>
+        <p>Under "A partial verification states what it did not check", a verification may record the outcome <code>partial</code>, for a check that ran against what the verification names, reached part of it, and found that part to hold, and a <code>partial</code> verification states what its check did not cover in one or more paragraphs marked <code>data-field="unchecked"</code>, without which the document is invalid. Under "A specification requirement without verification is reported as incomplete", a requirement that a verification names is not reported, whatever outcome that verification records, <code>partial</code> included.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Record a partial verification</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-08-record-a-partial-verification/specs/document-schema/spec.md</code><br><code>openspec/changes/archive/2026-10-08-record-a-partial-verification/specs/document-validation/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-document-schema">document-schema</a></li>
+          <li><a href="#hs-document-validation">document-validation</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-document-schema">
+          <h2>document-schema</h2>
+          <section class="requirement" id="req-a-partial-verification-states-what-it-did-not-check" data-change="added">
+            <h3>A partial verification states what it did not check <span class="hs-id">req-a-partial-verification-states-what-it-did-not-check</span></h3>
+            <p>A verification SHALL be able to record that its check covered only part of what the verification names. That outcome is <code>partial</code>. It means the check ran against the requirement or scenario the verification names, reached part of it, and found that part to hold. A check whose covered part did not hold is <code>failed</code>, whatever else it did not reach.</p>
+            <p>The set of outcome values belongs to the published schema, and this requirement does not restate it. "The element contract is published as a machine-readable schema" makes the schema the single source of truth for permitted attribute values. This requirement names <code>partial</code> because it attaches an obligation to that one value, and a condition on a value's companion field is a validator rule, as a dropped task's reason is.</p>
+            <p><strong>A <code>partial</code> verification SHALL state what it did not check</strong>, in one or more paragraphs marked <code>data-field="unchecked"</code>. Each paragraph SHALL name a part of the requirement or scenario that the check did not cover. A <code>partial</code> verification with no such paragraph SHALL make the document invalid. An unmarked paragraph SHALL NOT satisfy this, because an unmarked paragraph in a verification is a note.</p>
+            <p>The reason is the one that makes a dropped task state why, in "A task declares completion state": an outcome that says less than the whole is useful only with the rest named. A verification names units, and the smallest unit it can name is a scenario, so a check that reached one clause of a scenario cannot narrow its reference to that clause. Without <code>partial</code>, its author has two choices, and both are wrong. <code>passed</code> claims the part the check never reached. Deleting the verification loses the record of the part it did. A <code>partial</code> that named nothing would be a third way to say nothing about what is left.</p>
+            <p>The <code>unchecked</code> paragraphs SHALL project into the verification's <code>unchecked</code> field, in document order, and SHALL NOT project into its notes. A verification recording any other outcome MAY carry them, so that a check that failed or was blocked can state what it never reached.</p>
+            <p>A check whose condition, subject, or trigger differs from the one a scenario states did not reach that scenario at all, and it is not a partial verification of it. <code>partial</code> records a check of the right thing that stopped short, not a check of something nearby.</p>
+            <article class="scenario" id="scenario-a-check-that-reached-part-of-its-scenario" data-change="added">
+              <h4>A check that reached part of its scenario</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a scenario whose Then states two outcomes, and a check that observed only the first</dd>
+                <dt>When</dt>
+                <dd>a verification naming that scenario carries <code>data-outcome="partial"</code> and a <code>data-field="unchecked"</code> paragraph naming the second</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, and a consumer reads both the outcome and what the check did not cover without parsing prose</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-partial-verification-that-does-not-say-what-it-left" data-change="added">
+              <h4>A partial verification that does not say what it left</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a verification carries <code>data-outcome="partial"</code> and no <code>data-field="unchecked"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, and the report names the verification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unmarked-paragraph-does-not-state-it" data-change="added">
+              <h4>An unmarked paragraph does not state it</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a <code>partial</code> verification carries an unmarked paragraph describing what it did not check, and no <code>data-field="unchecked"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because an unmarked paragraph in a verification is a note</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-parts-left-unchecked" data-change="added">
+              <h4>Two parts left unchecked</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a <code>partial</code> verification carries two <code>data-field="unchecked"</code> paragraphs</dd>
+                <dt>Then</dt>
+                <dd>its <code>unchecked</code> field holds both, in document order, because a part dropped from the record would understate what the check missed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-failed-check-that-says-what-it-did-not-reach" data-change="added">
+              <h4>A failed check that says what it did not reach</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a verification carries <code>data-outcome="failed"</code> and a <code>data-field="unchecked"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-any-other-outcome-without-it" data-change="added">
+              <h4>Any other outcome without it</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a verification carries <code>data-outcome="passed"</code> and no <code>data-field="unchecked"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, and the verification means exactly what it meant before <code>partial</code> existed</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-document-validation">
+          <h2>document-validation</h2>
+          <section class="requirement" id="req-a-specification-requirement-without-verification-is-reported-as-incomplete" data-change="modified">
+            <h3>A specification requirement without verification is reported as incomplete <span class="hs-id">req-a-specification-requirement-without-verification-is-reported-as-incomplete</span></h3>
+            <p>Validation SHALL report a requirement in a <code>specification</code> document that no verification names. A specification is an as-built record, and a requirement with nothing attesting to it records an intention rather than a result.</p>
+            <p>This SHALL be <strong>advisory</strong> — a warning, never an error. Verification arrives as work completes, so a specification in progress legitimately has requirements not yet verified, and a rule that failed the document would gate the work that produces the verification.</p>
+            <p>A requirement that a verification names SHALL NOT be reported<ins>, whatever outcome that verification records, <code>partial</code> included</ins>. <ins>The report asks whether a verification names the requirement, not what the verification found. A requirement whose check failed, was blocked, or covered only part of it is named by a record that says so, and reporting it as unverified would treat an unwelcome result as a missing one. That would teach an author to record a pass, which is the reason runbook-execution's "A run's conformance to its runbook's contract is reported and never gated" gives for a run. </ins>This rule SHALL apply only to the <code>specification</code> kind: a requirement unit appearing in any other kind SHALL NOT be checked for verification, because it is not part of the contract there.</p>
+            <article class="scenario" id="scenario-a-requirement-with-no-verification" data-change="unchanged">
+              <h4>A requirement with no verification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specification states a requirement that no verification names</dd>
+                <dt>Then</dt>
+                <dd>validation reports a warning, and the document is still accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-fully-verified-specification" data-change="unchanged">
+              <h4>A fully verified specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>every requirement in a specification is named by a verification</dd>
+                <dt>Then</dt>
+                <dd>nothing is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-whose-check-failed" data-change="added">
+              <h4>A requirement whose check failed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specification states a requirement whose only verification records the outcome <code>failed</code></dd>
+                <dt>Then</dt>
+                <dd>nothing is reported about that requirement, because a verification names it and its outcome states the result</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-verified-only-in-part" data-change="added">
+              <h4>A requirement verified only in part</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specification states a requirement whose only verification records the outcome <code>partial</code></dd>
+                <dt>Then</dt>
+                <dd>nothing is reported about that requirement, because a verification names it, and that verification states what it did not check</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-verification-is-not-a-gate" data-change="unchanged">
+              <h4>Verification is not a gate</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor validates a specification whose verification is not yet recorded</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds, because recording verification is the work in progress rather than a violation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unverified-requirement-in-a-proposal" data-change="unchanged">
+              <h4>An unverified requirement in a proposal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal carries a requirement unit that no verification names</dd>
+                <dt>Then</dt>
+                <dd>nothing is reported, because a proposal's units are not part of the contract</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Every evidence and verification unit in this section and the next was written when this document was migrated. Each summarizes a record carried unchanged in this change's <code>evidence/</code>, as project-migration's "Evidence crosses unchanged" requires, and links it, and the record is the authority. One record bears on no requirement this specification states and has no unit: <a href="evidence/the-runbook-ran-2026-10-08.md"><code>evidence/the-runbook-ran-2026-10-08.md</code></a> records the release.</p>
+          </aside>
+          <section class="evidence" id="evidence-the-measurement-2026-09-30" data-change="added" data-refs="req-a-partial-verification-states-what-it-did-not-check req-a-specification-requirement-without-verification-is-reported-as-incomplete">
+            <h3>A check that covered part of its scenario, measured against HEAD <span class="hs-id">evidence-the-measurement-2026-09-30</span></h3>
+            <p>Measured on 2026-09-30 with <code>htmlspec 0.18.0</code>, before this change (<a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a>). The staged self-migration's review had removed two verification units for covering part of their scenario, and kept two others as <code>passed</code> while their method paragraphs said what the record lacked. The staged tree held 94 verification units in 21 specifications, 92 <code>passed</code>, 1 <code>not-run</code>, and 1 <code>blocked</code>, and 13 notes in 9 drafts declined a unit because its check only resembled the scenario, read as 5 checks that reached part of it and 8 checks of something else. In a scratch project, <code>data-outcome="partial"</code> was <code>schema/invalid</code>, a <code>data-field="unchecked"</code> paragraph was <code>schema/projection</code> on any outcome, a <code>failed</code> or <code>not-run</code> verification cleared <code>review/unverified-requirement</code>, which removing the verification drew, <code>partial</code> and the typo <code>notrun</code> drew <code>review/stale-verification</code>, and a second <code>method</code> paragraph was dropped with no diagnostic.</p>
+            <p data-field="note">Migration note: the record's header names tasks 1.1, 1.2, and 1.3. In the archived tasks, tasks 1.1 and 1.2 repeat this measurement, as <a href="evidence/the-measurement-repeated-2026-10-08.md"><code>evidence/the-measurement-repeated-2026-10-08.md</code></a> records, and task 1.3 reads the contract version.</p>
+          </section>
+          <section class="evidence" id="evidence-the-measurement-repeated-2026-10-08" data-change="added" data-refs="req-a-partial-verification-states-what-it-did-not-check req-a-specification-requirement-without-verification-is-reported-as-incomplete">
+            <h3>The measurement repeated against HEAD, before any change <span class="hs-id">evidence-the-measurement-repeated-2026-10-08</span></h3>
+            <p>Measured on 2026-10-08 with <code>htmlspec 0.24.0 (b768860d5b82)</code>, before any edit, for tasks 1.1 and 1.2 (<a href="evidence/the-measurement-repeated-2026-10-08.md"><code>evidence/the-measurement-repeated-2026-10-08.md</code></a>). All ten scratch variants gave the results recorded on 2026-09-30, with <code>partial</code> still <code>schema/invalid</code> and an <code>unchecked</code> paragraph still <code>schema/projection</code>. The staged migration recounted at 94 units in 21 specifications, 92 <code>passed</code>, 1 <code>not-run</code>, 1 <code>blocked</code>, and 0 <code>failed</code>, with no document carrying <code>partial</code> or <code>unchecked</code>, and the four units named on 2026-09-30 were still absent or still <code>passed</code>.</p>
+          </section>
+          <section class="evidence" id="evidence-what-it-builds-on-2026-10-08" data-change="added" data-refs="req-a-partial-verification-states-what-it-did-not-check req-a-specification-requirement-without-verification-is-reported-as-incomplete">
+            <h3>What this change builds on, read as built <span class="hs-id">evidence-what-it-builds-on-2026-10-08</span></h3>
+            <p>Tasks 1.0 and 1.3's reading of <code>main</code> at <code>b768860</code> (<a href="evidence/what-it-builds-on-2026-10-08.md"><code>evidence/what-it-builds-on-2026-10-08.md</code></a>). Three facts the design assumed had moved: the stylesheet revision to supersede was <code>sha256-ebf35a36fe4dc1a7</code>, the contract moved from <code>0.5.0</code> to <code>0.6.0</code> because the change below this one in the stack took <code>0.5.0</code>, and the outcome enumeration and the record composition sat at schema lines 613-621 and <code>runs.rs</code> 1597-1615. Every reader of the outcome took its values from the schema, <code>requirements_are_verified</code> never read the outcome, the stem <code>parti</code> matched only <code>partial</code>, and a word diff of the modified requirement against its accepted text showed only the extended third paragraph and the two new scenarios.</p>
+          </section>
+          <section class="evidence" id="evidence-the-change-measured-2026-10-08" data-change="added" data-refs="req-a-partial-verification-states-what-it-did-not-check req-a-specification-requirement-without-verification-is-reported-as-incomplete">
+            <h3>The measurement repeated against the built change <span class="hs-id">evidence-the-change-measured-2026-10-08</span></h3>
+            <p>Task 7.1's run of the same ten variants against the built change, on 2026-10-08 (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>). <code>partial</code> with an <code>unchecked</code> paragraph exited 0 with <code>review/stale-verification</code> alone and projected the paragraph into <code>unchecked</code>; <code>partial</code> without one exited 1 with <code>schema/missing-unchecked</code> at the verification; neither drew <code>review/unverified-requirement</code>, and removing the verification still did. <code>passed</code> with an <code>unchecked</code> paragraph was accepted, and the typo <code>notrun</code> and a second <code>method</code> paragraph behaved as before. The staged migration projected byte-identically and validated with 0 errors and 781 warnings under both binaries.</p>
+          </section>
+          <section class="evidence" id="evidence-mutation-testing-2026-10-08" data-change="added" data-refs="req-a-partial-verification-states-what-it-did-not-check req-a-specification-requirement-without-verification-is-reported-as-incomplete">
+            <h3>Mutation testing <span class="hs-id">evidence-mutation-testing-2026-10-08</span></h3>
+            <p>Task 7.2's run on 2026-10-08, at <code>c3a9716</code> (<a href="evidence/mutation-testing-2026-10-08.md"><code>evidence/mutation-testing-2026-10-08.md</code></a>). From an unmutated baseline of 1,182 passing tests in five crates, each of ten mutations was applied alone, nine the task's and a tenth to the instruction paragraph, and every one was caught by a named test. Mutation 3, a note satisfying the rule, and mutation 7, <code>requirements_are_verified</code> ignoring <code>partial</code>, each had one catcher, a test this change added. A first run was discarded because restored files kept their old modification times, so later mutations tested a stale build.</p>
+          </section>
+          <section class="evidence" id="evidence-the-presentation-2026-10-08" data-change="added" data-refs="req-a-partial-verification-states-what-it-did-not-check">
+            <h3>A partial verification on the page, with styles on and off <span class="hs-id">evidence-the-presentation-2026-10-08</span></h3>
+            <p>Task 5.2's renders on 2026-10-08 (<a href="evidence/the-presentation-2026-10-08.md"><code>evidence/the-presentation-2026-10-08.md</code></a>) of a specification holding a <code>partial</code> verification with a method paragraph and two <code>unchecked</code> paragraphs, which <code>htmlspec validate</code> accepted with exit 0. With styles on, in Firefox 157 and Chrome 154 with scripts off, the heading carried a <code>PARTIAL</code> badge and both <code>unchecked</code> paragraphs read as sentences; with styles off, in Firefox, no badge was drawn and both still read as sentences. On the page an <code>unchecked</code> paragraph looked exactly like the method.</p>
+          </section>
+          <section class="evidence" id="evidence-what-the-implementation-revealed-2026-10-08" data-change="added" data-refs="req-a-partial-verification-states-what-it-did-not-check req-a-specification-requirement-without-verification-is-reported-as-incomplete">
+            <h3>What the implementation revealed <span class="hs-id">evidence-what-the-implementation-revealed-2026-10-08</span></h3>
+            <p>Task 7.4's account, on 2026-10-08 (<a href="evidence/what-the-implementation-revealed-2026-10-08.md"><code>evidence/what-the-implementation-revealed-2026-10-08.md</code></a>). The change was built as designed and no decision changed. Every reader of the outcome took <code>partial</code> with no code change, and one stale-verification test had passed on HEAD for the wrong reason. It records the instruction guard no task asked for, the two mutations with one catcher each, the retired fixture-restore step, the discarded mutation run, and four points for the contributor at review, among them that <code>passed</code> with an <code>unchecked</code> paragraph is valid.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-partial-verification-that-does-not-say-what-it-left" data-change="added" data-outcome="passed" data-refs="scenario-a-partial-verification-that-does-not-say-what-it-left">
+            <h3>A partial verification with no unchecked paragraph, validated by the built change <span class="hs-id">verify-a-partial-verification-that-does-not-say-what-it-left</span></h3>
+            <p data-field="method">Variant b of the script in appendix A of <code>evidence/the-measurement-2026-09-30.md</code>, a specification whose verification <code>verify-the-check-reached-part</code> records <code>data-outcome="partial"</code> and carries no <code>data-field="unchecked"</code> paragraph, was validated with <code>htmlspec --json validate</code> by the built change's binary, in a scratch project that binary set up.</p>
+            <p>It exited 1 with <code>schema/missing-unchecked</code> at <code>verify-the-check-reached-part</code>, and nothing else was an error (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "The ten variants").</p>
+          </section>
+          <section class="verification" id="verify-an-unmarked-paragraph-does-not-state-it" data-change="added" data-outcome="passed" data-refs="scenario-an-unmarked-paragraph-does-not-state-it">
+            <h3>A note in place of an unchecked paragraph, caught by mutation testing <span class="hs-id">verify-an-unmarked-paragraph-does-not-state-it</span></h3>
+            <p data-field="method">The mutation-testing record names <code>rules::relations::tests::an_unmarked_paragraph_does_not_state_what_a_partial_check_missed</code> as the unit test of this scenario and the one catcher of mutation 3, which lets a note satisfy the rule. Read at <code>c3a9716</code> when this document was migrated, the test validates a <code>partial</code> verification carrying an unmarked paragraph, and then one carrying a <code>data-field="note"</code> paragraph, each saying what the check did not reach and neither marked <code>unchecked</code>, and asserts that <code>schema/missing-unchecked</code> is reported once for each.</p>
+            <p>The test passed in the unmutated baseline and failed under mutation 3 (<a href="evidence/mutation-testing-2026-10-08.md"><code>evidence/mutation-testing-2026-10-08.md</code></a>, row 3 and "What the table shows"). <code>schema/missing-unchecked</code> is an error: variant b of <a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a> exits 1 with it, so a document it reports is invalid.</p>
+          </section>
+          <section class="verification" id="verify-two-parts-left-unchecked" data-change="added" data-outcome="passed" data-refs="scenario-two-parts-left-unchecked">
+            <h3>Two unchecked paragraphs, pinned by the mapping fixture <span class="hs-id">verify-two-parts-left-unchecked</span></h3>
+            <p data-field="method">The mutation-testing record names <code>every_fixture_projects_to_its_expected_model</code>, on the <code>named-fields</code> mapping fixture, as the one catcher of mutation 4, which makes <code>unchecked</code> single-valued, and says the fixture "pins both paragraphs in order". Read at <code>c3a9716</code> when this document was migrated, the fixture's <code>verify-partly</code> records <code>partial</code> with two <code>data-field="unchecked"</code> paragraphs, its method paragraph between them, and its expected model holds both paragraphs in <code>unchecked</code>, in document order.</p>
+            <p>The test passed in the unmutated baseline and failed under mutation 4 (<a href="evidence/mutation-testing-2026-10-08.md"><code>evidence/mutation-testing-2026-10-08.md</code></a>, row 4). Task 7.1's projection tool, rebuilt against the built change, was also checked to project <code>verify-partly</code> with both <code>unchecked</code> entries before use (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-any-other-outcome-without-it" data-change="added" data-outcome="passed" data-refs="scenario-any-other-outcome-without-it">
+            <h3>The staged migration's passed verifications, read by both binaries <span class="hs-id">verify-any-other-outcome-without-it</span></h3>
+            <p data-field="method">The scratchpad copy of the staged migration, whose 92 <code>passed</code> verifications carry no <code>data-field="unchecked"</code> paragraph (<code>evidence/the-measurement-repeated-2026-10-08.md</code>, task 1.2), was projected with <code>project-model</code> rebuilt against the built change and compared with task 1.2's projection, and validated with <code>htmlspec --json validate</code> by the HEAD binary and by the built change's.</p>
+            <p>The projection was byte-identical, and both binaries reported 109 documents, 0 errors, and 781 warnings, with the same diagnostics and the same messages, document by document (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "The staged migration, as a regression check").</p>
+          </section>
+          <section class="verification" id="verify-a-requirement-with-no-verification" data-change="added" data-outcome="passed" data-refs="scenario-a-requirement-with-no-verification">
+            <h3>A specification with its verification removed, validated by the built change <span class="hs-id">verify-a-requirement-with-no-verification</span></h3>
+            <p data-field="method">Variant f of the same script, the specification with its one verification removed, so that no verification names <code>req-a-check-covers-its-scenario</code>, was validated by the built change's binary.</p>
+            <p>It exited 0 with <code>review/unverified-requirement</code> (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "The ten variants").</p>
+          </section>
+          <section class="verification" id="verify-verification-is-not-a-gate" data-change="added" data-outcome="passed" data-refs="scenario-verification-is-not-a-gate">
+            <h3>A specification with no verification recorded, accepted by the built change <span class="hs-id">verify-verification-is-not-a-gate</span></h3>
+            <p data-field="method">The same variant f, a specification whose verification is not recorded, was validated by the built change's binary.</p>
+            <p>It exited 0, the document accepted, with <code>review/unverified-requirement</code> as its warning (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "The ten variants").</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

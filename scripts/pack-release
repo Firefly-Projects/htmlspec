@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+"""Pack a built `htmlspec` binary as a release tarball, and write the release's SHA256SUMS.
+
+What a tarball holds
+--------------------
+`htmlspec-X.Y.Z-<target>.tar.gz` holds one directory of the same name, and in it the binary,
+the root `LICENSE`, and `THIRD-PARTY-LICENSES` from `crates/htmlspec-assets`. The binary embeds
+the vendored Mermaid and Vega libraries, and their licenses ask that their notices travel with
+the software, so the texts go beside the binary rather than only into the repository.
+
+The version is the one `Cargo.toml` declares, the same one the release workflow's verify job has
+already compared with the tag, so the tarball's name, the binary's `--version`, and the tag agree.
+
+Why the bytes are fixed
+-----------------------
+Every entry has the same owner, mode, and time, and the gzip header carries no time or name. So
+packing the same binary twice gives the same tarball and the same digest, and SHA256SUMS describes
+the binary rather than the moment it was packed.
+
+Usage:
+  scripts/pack-release TARGET BINARY OUT    pack BINARY, built for TARGET, into OUT
+  scripts/pack-release --sums OUT           write OUT/SHA256SUMS over every tarball in OUT
+"""
+
+from __future__ import annotations
+
+import argparse
+import gzip
+import hashlib
+import io
+import re
+import sys
+import tarfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# A tarball for any target but the four a release builds is refused, because the formula and the
+# README name those and no others.
+from release_facts import TARGETS, section_fields  # noqa: E402
+
+# The license texts that travel beside the binary, and where each is read from.
+NOTICES = (
+    ("LICENSE", ROOT / "LICENSE"),
+    ("THIRD-PARTY-LICENSES", ROOT / "crates" / "htmlspec-assets" / "THIRD-PARTY-LICENSES"),
+)
+
+SUMS = "SHA256SUMS"
+TARBALL = re.compile(r"htmlspec-(\d+\.\d+\.\d+)-([a-z0-9_]+(?:-[a-z0-9_]+)+)\.tar\.gz")
+
+
+def declared_version() -> str:
+    """The version under `[workspace.package]`, read as `scripts/check-release` reads it."""
+    manifest = (ROOT / "Cargo.toml").read_text(encoding="utf-8")
+    version = section_fields(manifest, "workspace.package").get("version")
+    if not version:
+        raise SystemExit("pack-release: Cargo.toml declares no version under [workspace.package]")
+    return version
+
+
+def entry(name: str, size: int, mode: int) -> tarfile.TarInfo:
+    info = tarfile.TarInfo(name)
+    info.size = size
+    info.mode = mode
+    info.mtime = 0
+    info.uid = info.gid = 0
+    info.uname = info.gname = ""
+    return info
+
+
+def pack(target: str, binary: Path, out: Path) -> Path:
+    version = declared_version()
+    stem = f"htmlspec-{version}-{target}"
+    members = [("htmlspec", binary.read_bytes(), 0o755)]
+    members += [(name, path.read_bytes(), 0o644) for name, path in NOTICES]
+
+    archive = io.BytesIO()
+    with tarfile.open(fileobj=archive, mode="w", format=tarfile.PAX_FORMAT) as tar:
+        directory = entry(stem, 0, 0o755)
+        directory.type = tarfile.DIRTYPE
+        tar.addfile(directory)
+        for name, data, mode in members:
+            tar.addfile(entry(f"{stem}/{name}", len(data), mode), io.BytesIO(data))
+
+    out.mkdir(parents=True, exist_ok=True)
+    destination = out / f"{stem}.tar.gz"
+    with open(destination, "wb") as raw:
+        with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed:
+            compressed.write(archive.getvalue())
+    return destination
+
+
+def write_sums(out: Path) -> Path:
+    """SHA256SUMS over every release tarball in `out`, one per target, in `sha256sum`'s format."""
+    found = {}
+    version = None
+    for path in sorted(out.glob("htmlspec-*.tar.gz")):
+        match = TARBALL.fullmatch(path.name)
+        if not match or match.group(2) not in TARGETS:
+            raise SystemExit(f"pack-release: {path.name} is not a release tarball for a known target")
+        if version not in (None, match.group(1)):
+            raise SystemExit(f"pack-release: {out} holds tarballs of {version} and {match.group(1)}")
+        version = match.group(1)
+        found[match.group(2)] = path
+    if not found:
+        raise SystemExit(f"pack-release: {out} holds no release tarball")
+    lines = [
+        f"{hashlib.sha256(found[target].read_bytes()).hexdigest()}  {found[target].name}\n"
+        for target in TARGETS
+        if target in found
+    ]
+    destination = out / SUMS
+    destination.write_text("".join(lines), encoding="utf-8")
+    missing = [target for target in TARGETS if target not in found]
+    if missing:
+        print(f"pack-release: no tarball for {', '.join(missing)}", file=sys.stderr)
+    return destination
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="pack a release tarball, or write SHA256SUMS")
+    parser.add_argument("--sums", metavar="OUT", type=Path, help="write OUT/SHA256SUMS")
+    parser.add_argument("target", nargs="?", choices=TARGETS)
+    parser.add_argument("binary", nargs="?", type=Path)
+    parser.add_argument("out", nargs="?", type=Path)
+    arguments = parser.parse_args()
+
+    if arguments.sums is not None:
+        if arguments.target or arguments.binary or arguments.out:
+            parser.error("--sums takes only the directory")
+        print(write_sums(arguments.sums))
+        return 0
+    if not (arguments.target and arguments.binary and arguments.out):
+        parser.error("give TARGET BINARY OUT, or --sums OUT")
+    if not arguments.binary.is_file():
+        parser.error(f"{arguments.binary} is not a file")
+    print(pack(arguments.target, arguments.binary, arguments.out))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

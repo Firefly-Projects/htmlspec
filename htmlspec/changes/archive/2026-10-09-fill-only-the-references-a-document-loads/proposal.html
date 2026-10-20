@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Fill only the references a document loads</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Fill only the references a document loads</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Fill only the references a document loads</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-09-fill-only-the-references-a-document-loads/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><strong><code>htmlspec format</code> rewrites an author's prose.</strong> When the store does not hold the bytes an asset reference names, the formatter fills that reference. It finds references by searching the raw source for <code>href="</code> and <code>src="</code>, so it also finds them in text. In a project with a store, prose that quotes <code>href="assets/htmlspec.css"</code> inside a <code>&lt;code&gt;</code> element has its words changed to a hashed path. The same happens to an escaped example in a <code>&lt;pre&gt;</code>. Then <code>format --check</code> fails until the author's words are wrong.</p>
+          <p><a href="evidence/the-measurement-2026-10-09.md"><code>evidence/the-measurement-2026-10-09.md</code></a> measured this against HEAD. One <code>format</code> run on a scratch change made four fills:</p>
+          <ul>
+            <li>three changed the author's words: two <code>&lt;code&gt;</code> quotations and one escaped <code>&lt;pre&gt;&lt;code&gt;</code> example;</li>
+            <li>one changed an <code>&lt;a href&gt;</code>, a hyperlink the document cites and does not load.</li>
+          </ul>
+          <p><code>validate</code> accepted the document before and after, because the words were valid either way.</p>
+          <p>deterministic-formatting's "<a href="specification.html#req-formatting-preserves-meaning">Formatting preserves meaning</a>" forbids this: formatting "SHALL NOT change a document's semantic content". The fill itself was decided in <code>content-address-runtime-assets</code> (<a href="../2026-08-13-content-address-runtime-assets/design.html#hs-rewrite-references-in-the-formatter-not-by-hand">design, "Rewrite references in the formatter, not by hand"</a>), but no requirement states it. Nothing says which values are references and which are words.</p>
+          <p><strong>The formatter and the asset rules disagree on what an asset reference is.</strong></p>
+          <ul>
+            <li>The asset rules (<code>asset/unresolved</code>, <code>asset/mismatch</code>) judge thirteen element and attribute pairs, the attributes through which an element loads a file. <code>&lt;a href&gt;</code> is deliberately not among them: "a hyperlink is a citation, not a dependency".</li>
+            <li>The formatter judges every substring <code>href="</code> or <code>src="</code>. So it fills text and hyperlinks, and it misses <code>&lt;object data&gt;</code>, which the asset rules judge.</li>
+          </ul>
+          <p><strong>Why now.</strong> The self-migration's drafters have met the fault twice:</p>
+          <ul>
+            <li>in drafting, on 2026-09-29;</li>
+            <li>in the proof run of <code>migrate-into-the-extended-vocabulary</code>, on 2026-10-08.</li>
+          </ul>
+          <p>Each time, they changed the author's markup to get past it. One split a <code>&lt;code&gt;</code>, and another put an HTML comment between <code>href</code> and <code>="</code>. The comment workaround is still in two staged documents. The re-stage that comes next re-drafts every document in the new vocabulary, and each document that quotes an attribute meets the fault again.</p>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> This change's own evidence later found that only one of the two staged workarounds was needed. The quotation in <code>establish-a-runbook</code>'s <code>tasks.html</code> names no file, and the rewrite keeps a reference whose file the runtime does not ship, so the old search never filled it. <a href="evidence/the-change-measured-2026-10-09.md"><code>evidence/the-change-measured-2026-10-09.md</code></a> records this in section 2.</p>
+          </aside>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong>The formatter fills only an attribute through which an element loads an asset.</strong> It reads the same pairs the asset rules judge, from one list that both read. Text is never a reference: a quotation in a <code>&lt;code&gt;</code> element, an escaped example, a comment, and the contents of a <code>&lt;script&gt;</code> or <code>&lt;style&gt;</code> are all left as written. An <code>&lt;a href&gt;</code> is left as written.</li>
+            <li><strong>References are found in the HTML tokenizer's terms.</strong> A tag's attributes are read as the parser reads them: by name rather than substring, in single, double or no quotes, and in any letter case. So <code>&lt;object data&gt;</code>, <code>SRC='…'</code> and an unquoted value are filled, and <code>data-src="…"</code> is not.</li>
+            <li><strong>The rewrite stays textual.</strong> Only the bytes of a filled value change, so formatting still does not widen a diff.</li>
+            <li><strong>A test holds the formatter to the parsed tree.</strong> For every HTML document in the repository, and for generated documents, the references the formatter finds are exactly the ones the asset rules find in the tree, in the same order.</li>
+            <li><strong>"<a href="specification.html#req-formatting-preserves-meaning">Formatting preserves meaning</a>" states the fill and its bounds.</strong> A reference naming absent bytes is filled. A reference naming stored bytes is kept. Text that quotes a reference is content.</li>
+            <li>
+              <p><strong>Unchanged:</strong></p>
+              <ul>
+                <li>what a fill writes, and when (only when the bytes are absent);</li>
+                <li>the refusal to re-point a reference that names stored bytes;</li>
+                <li>the asset rules' verdicts;</li>
+                <li>the contract version;</li>
+                <li>every committed document. None of this repository's tracked HTML quotes an asset attribute or links to an asset from an <code>&lt;a&gt;</code>, so none is reformatted.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <section id="hs-new-capabilities">
+            <h3>New Capabilities</h3>
+            <p>None.</p>
+          </section>
+          <section id="hs-modified-capabilities">
+            <h3>Modified Capabilities</h3>
+            <ul>
+              <li>
+                <p><code>deterministic-formatting</code>: "<a href="specification.html#req-formatting-preserves-meaning">Formatting preserves meaning</a>" gains the fill as its one bounded exception, and gains three scenarios:</p>
+                <ul>
+                  <li><a href="specification.html#scenario-prose-that-quotes-an-asset-reference">prose quoting an asset reference</a>;</li>
+                  <li><a href="specification.html#scenario-a-hyperlink-to-an-asset">a hyperlink to an asset</a>;</li>
+                  <li><a href="specification.html#scenario-a-reference-that-names-stored-bytes">a reference that names stored bytes</a>.</li>
+                </ul>
+                <p>The requirement is modified rather than added to, because the exception qualifies its "every attribute value". Stated alone, the two would contradict each other.</p>
+              </li>
+            </ul>
+          </section>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li>
+              <p><code>crates/htmlspec-assets</code>:</p>
+              <ul>
+                <li>The list of attributes that load an asset moves here from the validator's <code>rules/assets.rs</code>.</li>
+                <li>It becomes a named type, so that the asset rules and the formatter read one list.</li>
+              </ul>
+            </li>
+            <li><code>crates/htmlspec-format/src/references.rs</code>: <code>next_reference</code> and <code>ATTRIBUTES</code> are replaced. A new <code>asset_references</code> returns each reference with its element, attribute, and value.</li>
+            <li><code>crates/htmlspec-format</code>: a new private module that reads tags in the tokenizer's terms. It covers comments, CDATA sections, end tags, attribute quoting, duplicate attributes, the raw-text elements, and <code>&lt;template&gt;</code> contents.</li>
+            <li><code>crates/htmlspec-validate/src/rules/assets.rs</code>: the asset rules read the moved list. A cross-check test compares the formatter's references with <code>referenced_assets</code>, over the repository's HTML and over generated documents. <code>proptest</code> becomes a dev-dependency.</li>
+            <li><code>crates/htmlspec-format</code>: regression tests for each case in the measurement, and for the cases the scanner must get right.</li>
+            <li><code>crates/htmlspec-cli</code>: no code change. <code>format</code> and the migration's staged-document check both call <code>rewrite</code>, and both gain the fix.</li>
+            <li>
+              <p><strong>Not in this change</strong>, and recorded so it is not assumed to follow:</p>
+              <ul>
+                <li>Removing the workarounds from the staged migration. That is the re-stage's work, and the staged tree is outside this repository.</li>
+                <li>The <code>safety/*</code> rules' own list of loading attributes. It adds <code>srcset</code>, which names several URLs in one value and is no asset reference this program fills, so the safety rules keep their own list.</li>
+                <li>The wording of <code>format --check</code>'s progress lines, which say a reference "now names" bytes when nothing was written.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

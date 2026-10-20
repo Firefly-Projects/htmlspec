@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>artifact-kinds</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>artifact-kinds</h1>
+        <p>Defines the four artifact kinds a change's documents take — proposal, design, tasks, and specification — the intended content of each, and the separation between authoring guidance and the small set of enforced rules. It also defines a change as a directory of kinded documents, specifies the archival sequence, and requires every synthesis and contract update to be performed by an agent rather than by a parser.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>artifact-kinds</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/specs/artifact-kinds/spec.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-requirements">Requirements</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-requirements">
+          <h2>Requirements</h2>
+          <section class="requirement" id="req-a-change-is-a-directory-of-kinded-documents" data-change="unchanged">
+            <h3>A change is a directory of kinded documents <span class="hs-id">req-a-change-is-a-directory-of-kinded-documents</span></h3>
+            <p>A change SHALL be represented as a directory of separate documents rather than as one document carrying every stage. Each document SHALL declare which artifact it is, and the set of kinds SHALL be closed: <code>proposal</code>, <code>design</code>, <code>tasks</code>, and <code>specification</code>.</p>
+            <p>The separation is the point rather than a filing convention. Each kind has a different job and a different degree of formality, and a single document carrying all of them cannot hold a proposal to a looser standard than a specification.</p>
+            <p>A change SHALL NOT be required to have every kind present. A change may be proposed before it is designed, and designed before its tasks exist.</p>
+            <article class="scenario" id="scenario-a-change-with-four-documents" data-change="unchanged">
+              <h4>A change with four documents</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor reads a change directory</dd>
+                <dt>Then</dt>
+                <dd>the proposal, the design, the tasks, and the specification are separate documents, each declaring its kind</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-that-has-only-been-proposed" data-change="unchanged">
+              <h4>A change that has only been proposed</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose design does not exist yet</dd>
+                <dt>When</dt>
+                <dd>the change is validated</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds, because a missing later stage is a change in progress rather than a defect</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-kind-outside-the-vocabulary" data-change="unchanged">
+              <h4>A kind outside the vocabulary</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document declares a kind that is not one of the four</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because the set of kinds is closed</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-change-s-evidence-is-kept-in-the-change-and-is-not-one-of-its-documents" data-change="unchanged">
+            <h3>A change's evidence is kept in the change and is not one of its documents <span class="hs-id">req-a-change-s-evidence-is-kept-in-the-change-and-is-not-one-of-its-documents</span></h3>
+            <p>A change directory MAY hold an <code>evidence/</code> directory directly within it. Every file beneath that directory, at any depth, SHALL be the change's evidence: a transcript, a measurement, a recorded complaint, or a document preserved as it was written. It is a record of why the change has the shape it does.</p>
+            <p><strong>Evidence SHALL NOT be a document of the project.</strong> An evidence file declares no artifact kind, owes conformance to no contract version, and does not reference the project's asset store. The obligations this contract places on "every document in the project", including "A project has a declared root holding one asset store", do not reach it. Its format is its author's choice: Markdown, plain text, a script, or HTML.</p>
+            <p>The reason is the one project-migration's "Evidence crosses unchanged" already gives: a record's worth is that nobody edited it. A contract that held evidence to the rules for documents would require each record to be rewritten whenever the contract moved. A record written in this format at an earlier contract version, or naming an asset store that has since been removed, would have to be edited or deleted. Either act destroys what the record was kept for.</p>
+            <p>The location is positional. A directory named <code>evidence</code> is a change's evidence only where it sits directly within a change directory, active or archived. The same name anywhere else, such as a capability whose path is <code>evidence</code>, carries no special meaning.</p>
+            <p>No operation of the program SHALL rewrite a file beneath a change's evidence, including one a contributor names. Checking one is permitted, because a check writes nothing.</p>
+            <article class="scenario" id="scenario-a-record-in-this-format-at-a-superseded-version" data-change="unchanged">
+              <h4>A record in this format at a superseded version</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file declaring an earlier contract version and naming an asset store the project does not hold</dd>
+                <dt>When</dt>
+                <dd>the project's documents are checked</dd>
+                <dt>Then</dt>
+                <dd>the file is not among them, and no diagnostic names it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-evidence-nested-below-the-evidence-directory" data-change="unchanged">
+              <h4>Evidence nested below the evidence directory</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds <code>evidence/transcripts/a-session.html</code></dd>
+                <dt>When</dt>
+                <dd>the project's documents are checked</dd>
+                <dt>Then</dt>
+                <dd>the file is evidence, because every file beneath a change's evidence directory is, at any depth</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-capability-that-happens-to-be-named-evidence" data-change="unchanged">
+              <h4>A capability that happens to be named evidence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project holding an accepted specification at <code>htmlspec/specs/evidence/spec.html</code></dd>
+                <dt>When</dt>
+                <dd>the project's documents are checked</dd>
+                <dt>Then</dt>
+                <dd>that specification is among them, because only a change's evidence directory is excluded</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-archived-change-keeps-its-evidence" data-change="unchanged">
+              <h4>An archived change keeps its evidence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an archived change whose evidence holds an HTML file</dd>
+                <dt>When</dt>
+                <dd>the project's documents are checked</dd>
+                <dt>Then</dt>
+                <dd>the file is not among them, because an archived change is still a change</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-change-states-the-change-it-follows" data-change="unchanged">
+            <h3>A change states the change it follows <span class="hs-id">req-a-change-states-the-change-it-follows</span></h3>
+            <p>A change SHALL be able to state that it follows another change, and the statement SHALL be a declaration the author writes rather than a relation the program infers. The declaration SHALL live with the change's other whole-directory facts rather than inside one of its documents.</p>
+            <p>The ordering between changes is frequently the argument of the work. A contract written before the changes it grades constrains them, and the same contract written afterwards describes them; the difference is the order the changes were completed in, and until now no project could record that in a form anything reads. A convention enforced only by a contributor remembering to re-read a proposal is the same fault <code>project-bootstrap</code> names when it forbids a gate derived from a directory name: a rule nothing checks is not a rule.</p>
+            <p><strong>The program SHALL NOT infer an ordering from a change's name, its creation date, or the requirement identifiers it states.</strong> A change is renamed by moving its directory, and this contract states elsewhere that nothing depends on the first name — an ordering read out of names would make that false. A creation date records when a change was written and not what it depends on. Two changes stating one requirement identifier may be ordered or may conflict, and deciding which is judgment this contract reserves for an agent.</p>
+            <p>A change SHALL state at most one predecessor. One relation is what the observed need requires, and a model carrying many would be designed against no evidence.</p>
+            <p>A change that states no predecessor SHALL be complete as it stands. Most changes follow nothing, and an absent declaration SHALL NOT be reported.</p>
+            <article class="scenario" id="scenario-a-change-that-follows-another" data-change="unchanged">
+              <h4>A change that follows another</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change's whole-directory facts are read</dd>
+                <dt>Then</dt>
+                <dd>the change it follows is among them, exactly as its author wrote it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-that-follows-nothing" data-change="unchanged">
+              <h4>A change that follows nothing</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change stating no predecessor</dd>
+                <dt>When</dt>
+                <dd>the change is validated</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds and nothing about ordering is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-ordering-is-never-derived" data-change="unchanged">
+              <h4>An ordering is never derived</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>two changes carry names, creation dates, or requirement identifiers from which an ordering could be guessed</dd>
+                <dt>Then</dt>
+                <dd>no ordering holds between them unless one of them states that it follows the other</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-stated-predecessor-is-resolved-across-the-archive" data-change="unchanged">
+            <h3>A stated predecessor is resolved across the archive <span class="hs-id">req-a-stated-predecessor-is-resolved-across-the-archive</span></h3>
+            <p>The program SHALL resolve a stated predecessor to one of three outcomes: a change that is archived, a change that is active, or a name matching no change in the project. The three SHALL be reported distinctly, because they call for different work — none, waiting, and a correction respectively.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Outcome</th>
+                  <th>Work it calls for</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>a change that is archived</td>
+                  <td>none</td>
+                </tr>
+                <tr>
+                  <td>a change that is active</td>
+                  <td>waiting</td>
+                </tr>
+                <tr>
+                  <td>a name matching no change in the project</td>
+                  <td>a correction</td>
+                </tr>
+              </tbody>
+            </table>
+            <p><strong>A predecessor SHALL be matched against an archived change with its leading date removed.</strong> Archival names an archived directory for the date of archival followed by the change's name, so a successor recording its predecessor's name cannot match that directory by equality once the predecessor is archived. That is the state the successor is waiting for, so an equality test would fail in exactly the case this resolution exists to detect, and would fail silently. The date SHALL be recognised by the same test archival uses when it decides whether a name already carries one.</p>
+            <p>A name matching no change SHALL be reported as such rather than treated as an unfinished predecessor. A predecessor that was renamed and a predecessor that is merely unfinished are different situations, and a report that conflated them would send a contributor looking for work that is already done under another name.</p>
+            <p>Two or more changes that each follow the other SHALL be reported as a contradiction, and the program SHALL NOT choose an ordering between them. The recorded facts are inconsistent, and the author who wrote both declarations is the one who can say which is wrong.</p>
+            <article class="scenario" id="scenario-a-predecessor-that-has-been-archived" data-change="unchanged">
+              <h4>A predecessor that has been archived</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change that follows a change now in the archive under a dated directory name</dd>
+                <dt>When</dt>
+                <dd>the predecessor is resolved</dd>
+                <dt>Then</dt>
+                <dd>it resolves as archived, matched with the leading date removed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-predecessor-still-being-worked-on" data-change="unchanged">
+              <h4>A predecessor still being worked on</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change that follows an active change</dd>
+                <dt>When</dt>
+                <dd>the predecessor is resolved</dd>
+                <dt>Then</dt>
+                <dd>it resolves as active</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-predecessor-that-no-longer-exists-under-that-name" data-change="unchanged">
+              <h4>A predecessor that no longer exists under that name</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change that follows a name matching no active and no archived change</dd>
+                <dt>When</dt>
+                <dd>the predecessor is resolved</dd>
+                <dt>Then</dt>
+                <dd>it resolves as unmatched, reported distinctly from a predecessor that is merely unfinished</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-changes-that-each-follow-the-other" data-change="unchanged">
+              <h4>Two changes that each follow the other</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the predecessors of a set of changes are resolved</dd>
+                <dt>Then</dt>
+                <dd>a cycle among them is reported as a contradiction and no ordering is chosen</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-intended-content-is-guidance-and-enforced-structure-is-validity" data-change="unchanged">
+            <h3>Intended content is guidance and enforced structure is validity <span class="hs-id">req-intended-content-is-guidance-and-enforced-structure-is-validity</span></h3>
+            <p>Each artifact kind SHALL have an <em>intended content</em> and an <em>enforced structure</em>, and the two SHALL be distinguishable by a reader. Intended content directs an author or an agent writing the document. Enforced structure is what validation checks, and it is the only thing that decides validity.</p>
+            <p>The canonical mapping SHALL be:</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Kind</th>
+                  <th>Intended content</th>
+                  <th>Enforced structure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <p><code>proposal</code></p>
+                  </td>
+                  <td>
+                    <p>Value, need, scope, alternatives</p>
+                  </td>
+                  <td>
+                    <p>None</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p><code>design</code></p>
+                  </td>
+                  <td>
+                    <p>Architecture and technical reasoning</p>
+                  </td>
+                  <td>
+                    <p>None</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p><code>tasks</code></p>
+                  </td>
+                  <td>
+                    <p>Workable implementation items</p>
+                  </td>
+                  <td>
+                    <p>At least one task unit</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p><code>specification</code></p>
+                  </td>
+                  <td>
+                    <p>Requirements, scenarios, evidence, verification</p>
+                  </td>
+                  <td>
+                    <p>No task units; a requirement with no verification is warned</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p>Where a kind's enforced structure is <code>None</code>, a document of that kind SHALL NOT be invalid for carrying any unit, nor for carrying none. For those kinds, "belongs" in the intended-content column is authoring guidance and never a validity boundary.</p>
+            <p>A unit's appearance in a kind SHALL NOT be prohibited unless this specification names that combination. The only named prohibition is a task unit in a <code>specification</code>.</p>
+            <article class="scenario" id="scenario-guidance-departed-from" data-change="unchanged">
+              <h4>Guidance departed from</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal or a design carries a unit outside its intended content</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, because intended content is guidance rather than a validity boundary</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-enforced-rules" data-change="unchanged">
+              <h4>The enforced rules</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a tasks document or a specification is validated</dd>
+                <dt>Then</dt>
+                <dd>its enforced structure is checked, because later stages and tools consume those two kinds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unnamed-combination" data-change="unchanged">
+              <h4>An unnamed combination</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document carries a unit whose combination with its kind this specification does not name</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about it</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-proposal-argues-value-and-the-tool-does-not-shape-it" data-change="unchanged">
+            <h3>A proposal argues value and the tool does not shape it <span class="hs-id">req-a-proposal-argues-value-and-the-tool-does-not-shape-it</span></h3>
+            <p>A <code>proposal</code> document SHALL be free to use any structure its author finds effective. Its job is to argue value and need, and validation SHALL NOT require any semantic unit in it.</p>
+            <p>Validation SHALL NOT report a proposal for carrying any unit either. An author who finds it clearest to state a prospective requirement while arguing for it SHALL be able to, in prose or as a unit, with no diagnostic.</p>
+            <p>The distinction is between permitted and authoritative. A requirement unit in a proposal SHALL be valid, and it SHALL NOT be treated as part of the contract: the contract is what a <code>specification</code> states. A consumer determining the project's obligations SHALL read specifications and SHALL NOT read a proposal's units as binding. This is what "requirements do not belong in a proposal" means, and it is a statement about authority rather than about validity.</p>
+            <p>Prose SHALL be sufficient. A document of headings, paragraphs, figures, and tables SHALL be a conforming proposal with no unit markup at all.</p>
+            <p>A proposal's need SHALL be either a problem with something that exists or a capability the project does not have, and neither form SHALL be privileged over the other. A project's first change has nothing to measure and no error message to quote, so guidance that admits only a malfunction describes a need the earliest proposals cannot state. Authoring guidance SHALL NOT narrow a need to a defect.</p>
+            <p>An absence of capability SHALL be stated as concretely as a malfunction, and the concrete form SHALL be who or what wants the capability, what they cannot do without it, and what working looks like when it is first observed. A need SHALL NOT be stated as a category of concern, because a category cannot be argued with while a proposal is read or checked against once the work is built. The obligation to be concrete is what this requires; a particular kind of evidence is not.</p>
+            <p>The contract rules that apply to every document — parseable markup, resolvable references, no remote or executable content — SHALL still apply. Freedom of structure is not freedom to ship a document that will not open or render offline.</p>
+            <article class="scenario" id="scenario-a-proposal-of-pure-prose" data-change="unchanged">
+              <h4>A proposal of pure prose</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal contains only headings, paragraphs, and a diagram</dd>
+                <dt>Then</dt>
+                <dd>it is valid, because arguing a case does not require semantic units</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-proposal-that-states-a-draft-requirement" data-change="unchanged">
+              <h4>A proposal that states a draft requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal carries a requirement unit while arguing for it</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about the unit, because the tool does not shape a proposal</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-proposal-carrying-figures" data-change="unchanged">
+              <h4>A proposal carrying figures</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal presents a comparison as a chart and a data flow as a diagram</dd>
+                <dt>Then</dt>
+                <dd>it is valid, because a proposal's freedom of form includes its visualizations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-need-that-is-an-absence" data-change="unchanged">
+              <h4>A need that is an absence</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal argues for a capability the project does not have yet</dd>
+                <dt>Then</dt>
+                <dd>it states who wants the capability, what they cannot do without it, and what working looks like, and this is a complete need with no problem to report</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-guidance-that-demands-a-defect" data-change="unchanged">
+              <h4>Guidance that demands a defect</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>authoring guidance directs an agent to state a need as a measurement, an error message, or a behavior somebody hit, and offers no other form</dd>
+                <dt>Then</dt>
+                <dd>the guidance is wrong, because a change that adds a capability has none of those to state</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-need-stated-as-a-category" data-change="unchanged">
+              <h4>A need stated as a category</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal states its need as a category of concern rather than as a named want or malfunction</dd>
+                <dt>Then</dt>
+                <dd>the need is insufficient, whichever of the two forms it was reaching for</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-proposal-that-will-not-open" data-change="unchanged">
+              <h4>A proposal that will not open</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal loads a remote script</dd>
+                <dt>Then</dt>
+                <dd>it is invalid, because the rules that keep every document readable offline are not relaxed by kind</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-design-reasons-in-whatever-form-the-reasoning-takes" data-change="unchanged">
+            <h3>A design reasons in whatever form the reasoning takes <span class="hs-id">req-a-design-reasons-in-whatever-form-the-reasoning-takes</span></h3>
+            <p>A <code>design</code> document SHALL move a proposal's argument into architecture and technical consideration, and SHALL be free to structure that however the reasoning requires.</p>
+            <p>Validation SHALL NOT require any semantic unit in a design, and SHALL NOT report a design for carrying any unit. Architectural reasoning is continuous — the connections between considerations carry as much as the considerations do — and a tool that pushed an author to fragment it into addressable units would destroy the thing being written.</p>
+            <p>A design that records its decisions and risks as units SHALL be valid, and so SHALL a design that reasons the same ground in prose and marks nothing. Which of those an author chooses SHALL be their judgment rather than the tool's.</p>
+            <article class="scenario" id="scenario-a-design-of-prose-alone" data-change="unchanged">
+              <h4>A design of prose alone</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design argues an approach in continuous prose and marks no units</dd>
+                <dt>Then</dt>
+                <dd>it is valid, because a design is not required to fragment its reasoning</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-design-that-marks-its-decisions" data-change="unchanged">
+              <h4>A design that marks its decisions</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design records the decisions it reached and the risks it accepted as units</dd>
+                <dt>Then</dt>
+                <dd>it is valid, and each is individually addressable</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-design-that-reaches-into-a-later-stage" data-change="unchanged">
+              <h4>A design that reaches into a later stage</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design carries a task unit or a requirement unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about it, because designing is where the shape of the work becomes clear</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-tasks-document-carries-the-workable-items" data-change="unchanged">
+            <h3>A tasks document carries the workable items <span class="hs-id">req-a-tasks-document-carries-the-workable-items</span></h3>
+            <p>A <code>tasks</code> document SHALL carry at least one task unit. This is a <strong>completeness</strong> rule rather than a placement rule — it constrains what the document must contain rather than which units are permitted in it — and a tasks document carrying other units alongside its tasks SHALL NOT be reported for them.</p>
+            <p>A task SHALL be individually addressable, so that a state change is a change to one unit rather than to a list.</p>
+            <article class="scenario" id="scenario-tasks-with-states" data-change="unchanged">
+              <h4>Tasks with states</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a tasks document lists items with their states</dd>
+                <dt>Then</dt>
+                <dd>it is valid, and each task is individually addressable</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tasks-document-with-no-tasks" data-change="unchanged">
+              <h4>A tasks document with no tasks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a tasks document carries no task unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports it, because the document enumerates no work</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tasks-document-carries-the-workable-items-a-tasks-document-carrying-other-units" data-change="unchanged">
+              <h4>A tasks document carrying other units</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a tasks document carries its tasks and also a decision unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about the decision, because the rule is completeness rather than placement</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-specification-states-the-settled-contract-as-built" data-change="unchanged">
+            <h3>A specification states the settled contract as built <span class="hs-id">req-a-specification-states-the-settled-contract-as-built</span></h3>
+            <p>A <code>specification</code> document SHALL carry requirement, scenario, evidence, and verification units. These four are retrospective: evidence and verification can only be recorded after building, and a requirement reaches its final wording once the built shape is known.</p>
+            <p>A specification SHALL be the artifact that survives its change. It SHALL describe what the change established rather than what it intended, so a reader of the accepted contract reads what was built.</p>
+            <p>A specification SHALL NOT carry task units, and validation SHALL report one that does as an error. A task that is done is history, and the specification records the obligation the task satisfied rather than the work that satisfied it. This SHALL be the <strong>only</strong> placement rule in the vocabulary, and it is an error because a specification is read by tools and by later changes as the statement of the contract.</p>
+            <article class="scenario" id="scenario-a-specification-with-traced-verification" data-change="unchanged">
+              <h4>A specification with traced verification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specification states a requirement, its scenarios, and the verification that checked them</dd>
+                <dt>Then</dt>
+                <dd>it is valid, and a consumer can trace the requirement to the evidence for it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-specification-carrying-tasks" data-change="unchanged">
+              <h4>A specification carrying tasks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specification carries task units</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the specification records obligations rather than the work that satisfied them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-contract-read-without-the-change" data-change="unchanged">
+              <h4>The contract read without the change</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an archived change</dd>
+                <dt>When</dt>
+                <dd>a reader consults only its specification</dd>
+                <dt>Then</dt>
+                <dd>they can determine the obligations the change established without reading its proposal, design, or tasks</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-every-synthesis-and-every-contract-update-is-agent-driven" data-change="unchanged">
+            <h3>Every synthesis and every contract update is agent-driven <span class="hs-id">req-every-synthesis-and-every-contract-update-is-agent-driven</span></h3>
+            <p>Four operations move content between artifacts, and each SHALL be performed by an agent following stated rules and guides rather than by a program that parses one artifact and emits another:</p>
+            <ol>
+              <li>
+                <p>Creating a <strong>design</strong>, using the proposal.</p>
+              </li>
+              <li>
+                <p>Creating <strong>tasks</strong>, using the proposal and the design.</p>
+              </li>
+              <li>
+                <p>Producing the change's <strong>specification</strong>, from the completed change.</p>
+              </li>
+              <li>
+                <p><strong>Updating the project's accepted specifications</strong>, from that specification.</p>
+              </li>
+            </ol>
+            <p>The first three are <strong>synthesis</strong>: they produce a new artifact from artifacts that remain intact and separate. A design does not absorb its proposal — it is informed by it, and both survive as their own documents. Calling these merges would misdescribe the four-document model, in which no stage is folded into another.</p>
+            <p>The fourth is a <strong>merge</strong>, and it is the only one. It applies a change's contract into the project's accepted specifications, which already exist and hold content this change did not touch.</p>
+            <p>The reason all four need an agent follows from the freedom the upstream kinds are given. A proposal and a design may be structured any way their authors chose, so there is no grammar to parse. Each operation is an act of reading: deciding what a paragraph obliges, which existing requirement a new scenario belongs under, and what to leave alone. A parser cannot do that, and one written to try produces artifacts that satisfy every check while misrepresenting their source.</p>
+            <p><strong>The merge SHALL preserve every accepted requirement the change's specification does not state.</strong> The accepted specifications hold requirements from every change before this one, and a requirement no change states is one no change decided to alter. A requirement the change modifies reaches the merge stated whole, as "A change's specification states a modified requirement whole" requires. The merge SHALL apply it as stated: the accepted requirement takes the statements and the scenarios the change states, less the scenarios it marks <code>removed</code>. The merge SHALL NOT reconstruct a modified requirement from what the change left out.</p>
+            <p>The project SHALL supply the rules and guides that direct these merges, as instructions rather than as code. What the project SHALL implement in code is the <strong>checking</strong>: validation reads the merged artifact and reports what is wrong with it. That division is the whole arrangement — judgment where judgment is needed, mechanical checking where a rule is exact.</p>
+            <article class="scenario" id="scenario-synthesis-leaves-its-sources-intact" data-change="unchanged">
+              <h4>Synthesis leaves its sources intact</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent creates a design using a change's proposal</dd>
+                <dt>Then</dt>
+                <dd>the proposal survives unchanged as its own document, because a design is informed by a proposal rather than absorbing it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-merging-a-scenario-into-an-existing-requirement" data-change="unchanged">
+              <h4>Merging a scenario into an existing requirement</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted requirement with three scenarios, and a change whose specification states it whole, with those three marked <code>unchanged</code> and a fourth marked <code>added</code></dd>
+                <dt>When</dt>
+                <dd>the merge applies the change's contract</dd>
+                <dt>Then</dt>
+                <dd>the accepted requirement holds all four scenarios, the three with the text they already had, and its wording is the wording the change states</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-content-the-merge-does-not-mention" data-change="unchanged">
+              <h4>Content the merge does not mention</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a merge names two of a capability's requirements</dd>
+                <dt>Then</dt>
+                <dd>every other requirement in that capability survives untouched</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-merge-that-cannot-be-derived-by-rule" data-change="unchanged">
+              <h4>A merge that cannot be derived by rule</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design paragraph implies an obligation that it does not state outright</dd>
+                <dt>Then</dt>
+                <dd>an agent decides how to state it, because no rule locates an obligation in prose whose structure was the author's choice</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-tool-checks-rather-than-merges" data-change="unchanged">
+              <h4>The tool checks rather than merges</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a merged artifact is produced</dd>
+                <dt>Then</dt>
+                <dd>validation reports what is wrong with it, and the merge itself was not performed by a parser</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-archival-produces-the-specification-and-then-updates-the-accepted-contract" data-change="unchanged">
+            <h3>Archival produces the specification and then updates the accepted contract <span class="hs-id">req-archival-produces-the-specification-and-then-updates-the-accepted-contract</span></h3>
+            <p>Two documents are in play at archival and there SHALL be exactly two: the <strong>change's specification artifact</strong>, which lives in the change directory, and the <strong>project's accepted specifications</strong>, which live outside it and hold the contract for the whole project. The change's specification and its "as-built specification" SHALL be the same file. A change directory SHALL hold at most one specification artifact.</p>
+            <p>Archival SHALL proceed in this order:</p>
+            <ol>
+              <li>
+                <p>The agent creates the change's specification artifact, or updates it if the change already has one, from that change's proposal, design, and tasks.</p>
+              </li>
+              <li>
+                <p>Validation checks it. Archival SHALL NOT proceed past this point while it reports an error.</p>
+              </li>
+              <li>
+                <p>The agent applies that specification's contract changes to the project's accepted specifications.</p>
+              </li>
+              <li>
+                <p>The change directory is archived intact, with all four of its documents preserved.</p>
+              </li>
+            </ol>
+            <figure data-migration="drawn">
+              <figcaption>The order archival proceeds in, as "Archival produces the specification and then updates the accepted contract" states it: validation of the change's specification gates the step that applies its contract, and while validation reports an error the agent reconciles the diagnostics. The report of a predecessor that is not archived is not drawn, because the requirement does not place it at a step. Drawn when this document was migrated, from the text beside it.</figcaption>
+              <details>
+                <summary>Diagram source</summary>
+                <pre class="mermaid">flowchart TD
+  S1["Step 1: the agent creates or updates the change's specification artifact"]
+  S2{"Step 2: validation checks it"}
+  R["The agent reconciles the diagnostics it reports"]
+  S3["Step 3: the agent applies its contract changes to the accepted specifications"]
+  S4["Step 4: the change directory is archived intact"]
+  S1 --&gt; S2
+  S2 --&gt;|reports an error| R
+  R --&gt; S2
+  S2 --&gt;|no error| S3
+  S3 --&gt; S4</pre>
+              </details>
+            </figure>
+            <p>The change's documents SHALL survive archival. A reader SHALL be able to open an archived change and find the argument that motivated it, the reasoning that shaped it, the work that delivered it, and the contract it established — which is the whole reason for keeping the stages separate.</p>
+            <p>The specification SHALL be produced by an agent following stated instructions rather than by a deterministic extractor.</p>
+            <p>The reason is that the mapping is judgment rather than transformation, and the freedom the upstream kinds are given is what makes it so. A proposal and a design may be structured any way their authors chose, so no rule can locate the obligation inside them. Deciding which paragraph states one, what its identifier is, and which scenarios express it is reading rather than parsing. An extractor that guessed would emit documents that satisfy every check and misrepresent their source, which is worse than producing nothing.</p>
+            <p>The produced specification SHALL be validated, and the agent SHALL reconcile the diagnostics it reports. This is the division the process depends on: the agent supplies the judgment, and validation checks the artifact.</p>
+            <p>Production SHALL be idempotent in effect. Running it twice against an unchanged change SHALL NOT alter the specification's meaning.</p>
+            <p><strong>Where a change states a predecessor that is not archived, archival SHALL report it and SHALL name the predecessor.</strong> Archival is the operation that ends a change, so it is the last moment the ordering can be observed, and a sequence completed out of order is a sequence whose argument was lost while every artifact validated.</p>
+            <p>That report SHALL be a finding of the kind archival already reports and asks about, and SHALL NOT refuse the archival. An abandoned sequence whose later change is completed on its own merits is a legitimate outcome, and a contributor who knows the sequence changed is the authority on it. A gate here would leave them editing a declaration to state a history that did not happen.</p>
+            <p>The structured payload SHALL state the unresolved predecessor as a value. An agent driving archival cannot answer the question a contributor is asked, so the condition SHALL be readable without inference.</p>
+            <article class="scenario" id="scenario-archival-produces-the-specification" data-change="unchanged">
+              <h4>Archival produces the specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change with completed tasks is archived</dd>
+                <dt>Then</dt>
+                <dd>its specification artifact is created or updated from its other documents, and validated before archival proceeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-accepted-contract-is-updated-after-validation" data-change="unchanged">
+              <h4>The accepted contract is updated after validation</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification validates</dd>
+                <dt>When</dt>
+                <dd>archival continues</dd>
+                <dt>Then</dt>
+                <dd>the agent applies that specification's contract changes to the project's accepted specifications</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-change-survives-archival" data-change="unchanged">
+              <h4>The change survives archival</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reader opens an archived change</dd>
+                <dt>Then</dt>
+                <dd>its proposal, design, tasks, and specification are all present, so the argument and the reasoning are recoverable alongside the contract</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-one-specification-per-change" data-change="unchanged">
+              <h4>One specification per change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change directory is read</dd>
+                <dt>Then</dt>
+                <dd>it holds at most one specification artifact, which is also its as-built record</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-produced-specification-does-not-validate" data-change="unchanged">
+              <h4>The produced specification does not validate</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the produced specification reports an error</dd>
+                <dt>Then</dt>
+                <dd>the agent reconciles it, so an invalid specification is never the archival's output</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-production-is-not-a-parser" data-change="unchanged">
+              <h4>Production is not a parser</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design paragraph implies an obligation that it does not state outright</dd>
+                <dt>Then</dt>
+                <dd>the agent decides how to state it as a requirement, rather than a rule extracting text mechanically</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-producing-twice" data-change="unchanged">
+              <h4>Producing twice</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose artifacts have not changed</dd>
+                <dt>When</dt>
+                <dd>the specification is produced a second time</dd>
+                <dt>Then</dt>
+                <dd>its meaning is unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-archived-after-its-predecessor" data-change="unchanged">
+              <h4>A change archived after its predecessor</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose stated predecessor is already archived</dd>
+                <dt>When</dt>
+                <dd>it is archived</dd>
+                <dt>Then</dt>
+                <dd>nothing about ordering is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-archived-before-its-predecessor" data-change="unchanged">
+              <h4>A change archived before its predecessor</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose stated predecessor is still active</dd>
+                <dt>When</dt>
+                <dd>it is archived</dd>
+                <dt>Then</dt>
+                <dd>archival names the predecessor, asks, and archives on an affirmative answer</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-agent-archiving-out-of-order" data-change="unchanged">
+              <h4>An agent archiving out of order</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose stated predecessor is not archived</dd>
+                <dt>When</dt>
+                <dd>archival emits its structured payload</dd>
+                <dt>Then</dt>
+                <dd>the unresolved predecessor is stated as a value in the payload</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-rename-reaches-the-accepted-contract-as-a-new-heading-on-the-same-identifier" data-change="unchanged">
+            <h3>A rename reaches the accepted contract as a new heading on the same identifier <span class="hs-id">req-a-rename-reaches-the-accepted-contract-as-a-new-heading-on-the-same-identifier</span></h3>
+            <p>Where a change's specification states that a requirement replaced a previous heading, applying that specification's contract to the project's accepted specifications SHALL give the accepted requirement carrying that identifier the new heading, and SHALL NOT change its identifier.</p>
+            <p>The accepted specification SHALL NOT carry the <code>renamed-from</code> paragraph. The accepted contract states what the project requires now, under the name it uses now, and the history of a heading belongs to the archived change that renamed it. This is the arrangement OpenSpec keeps: a main specification holds no RENAMED section, and the rename survives in the change that made it.</p>
+            <p>Where the change also modified the requirement, the merge SHALL apply the modification to the same accepted requirement. The rename and the modification SHALL be applied as two facts about one requirement, and neither SHALL be applied as a removal of the old requirement followed by the addition of a new one, because that would regenerate an identifier the schema requires to be stable.</p>
+            <p>Where the accepted requirement carrying that identifier already has the new heading, applying the rename SHALL change nothing. A rename applied before archival, by the operation that applies a change's contract, is the ordinary case, and archival SHALL NOT treat it as a conflict.</p>
+            <p>The merge remains the agent's work under "Every synthesis and every contract update is agent-driven". This requirement states what a correctly applied rename leaves behind, not a program that applies it.</p>
+            <article class="scenario" id="scenario-a-rename-applied-to-the-accepted-contract" data-change="unchanged">
+              <h4>A rename applied to the accepted contract</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states requirement <code>req-x</code> under a new heading, with a <code>renamed-from</code> paragraph naming the heading the accepted specification holds</dd>
+                <dt>When</dt>
+                <dd>its contract is applied to the accepted specifications</dd>
+                <dt>Then</dt>
+                <dd>the accepted requirement <code>req-x</code> carries the new heading, keeps its identifier, and carries no <code>renamed-from</code> paragraph</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-and-a-modification-in-one-change" data-change="unchanged">
+              <h4>A rename and a modification in one change</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change that renames and rewrites one requirement</dd>
+                <dt>When</dt>
+                <dd>its contract is applied</dd>
+                <dt>Then</dt>
+                <dd>the one accepted requirement takes both the new heading and the new content, and no requirement is removed or added</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-already-applied" data-change="unchanged">
+              <h4>A rename already applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted requirement that already carries the heading a change renames it to</dd>
+                <dt>When</dt>
+                <dd>the change's contract is applied again</dd>
+                <dt>Then</dt>
+                <dd>nothing changes, and nothing is reported as a conflict</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-rename-reaches-the-accepted-contract-as-a-new-heading-on-the-same-identifier-the-history-is-read-from-the-archive" data-change="unchanged">
+              <h4>The history is read from the archive</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reader wants to know what an accepted requirement was previously called</dd>
+                <dt>Then</dt>
+                <dd>the archived change that renamed it states the previous heading, and the accepted specification does not</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-described-change-starts-without-a-supplied-name" data-change="unchanged">
+            <h3>A described change starts without a supplied name <span class="hs-id">req-a-described-change-starts-without-a-supplied-name</span></h3>
+            <p>A workflow that creates a change SHALL start from a description of the work, and SHALL require a contributor to supply only what the description does not already carry.</p>
+            <p>Where a description carries the work but no name, the agent SHALL derive a name from the description under the naming rule that governs any name, and SHALL proceed. A name is recoverable — a change directory is renamed by moving it — so requiring one before anything is created spends an exchange on the cheapest thing to correct.</p>
+            <p>The derived name SHALL be reported, so that a contributor who disagrees can say so. A derived name a contributor never sees is a decision taken on their behalf rather than a proposal they can refuse.</p>
+            <p>A workflow SHALL NOT ask for what its input already states. Asking again for a stated scope or a stated exclusion presents a description as incomplete when it is not, and the contributor cannot tell which part was found wanting.</p>
+            <p>Where a request carries no description of the work at all, asking SHALL remain correct. The obligation is to ask for what is missing rather than to infer a need that was never stated.</p>
+            <article class="scenario" id="scenario-a-description-with-no-name" data-change="unchanged">
+              <h4>A description with no name</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor describes the work and names no change</dd>
+                <dt>Then</dt>
+                <dd>the agent derives a name, reports it, and creates the change without a further exchange</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-description-already-carrying-its-scope" data-change="unchanged">
+              <h4>A description already carrying its scope</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor's description states what the change excludes</dd>
+                <dt>Then</dt>
+                <dd>the workflow does not ask for the exclusion again</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-request-with-no-work-in-it" data-change="unchanged">
+              <h4>A request with no work in it</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a workflow is invoked with no description of the work</dd>
+                <dt>Then</dt>
+                <dd>it asks what the work is, because a need that was never stated must not be invented</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-derived-name-a-contributor-rejects" data-change="unchanged">
+              <h4>A derived name a contributor rejects</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent reports a name it derived and the contributor wants another</dd>
+                <dt>Then</dt>
+                <dd>the change is renamed by moving its directory, because nothing depends on the first name</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-change-s-specification-states-a-modified-requirement-whole" data-change="unchanged">
+            <h3>A change's specification states a modified requirement whole <span class="hs-id">req-a-change-s-specification-states-a-modified-requirement-whole</span></h3>
+            <p>A requirement that a change's specification marks <code>modified</code> SHALL state the requirement whole: every statement the requirement will hold once the change's contract is merged, and every scenario it will hold then. <strong>Each scenario SHALL carry its own change state</strong>: <code>unchanged</code> for a scenario carried forward as the accepted specification states it, <code>modified</code> for one whose text the change alters, and <code>added</code> for one the change introduces.</p>
+            <p><strong>A scenario the change withdraws SHALL be stated as well, as a unit marked <code>removed</code>.</strong> document-schema's "Semantic units declare a change state" gives every unit, a scenario included, the state <code>removed</code>, and keeps a withdrawn unit present so that reviewers can see what is being withdrawn. The merge deletes that scenario from the accepted requirement.</p>
+            <p>The requirement SHALL carry the identifier the accepted requirement carries, and each scenario it carries forward, alters, or withdraws SHALL carry the identifier its accepted counterpart carries. An identifier is what makes a stated scenario the same scenario as an accepted one. A heading cannot do that job, because a change may alter a scenario's heading.</p>
+            <p>The reason for the rule is that only a whole statement says what it means. Where a change may state part of a requirement, a scenario it leaves out is either withdrawn or merely not restated, and the text is the same in both cases. This project's own archive holds both readings in one change: <code>2026-08-14-separate-artifact-kinds</code> left one scenario out of one requirement to withdraw it, and left two out of another that its merge kept. A whole statement also lets an archived change's specification be read without the accepted specification of its day, which "A specification states the settled contract as built" asks of it. And it lets a later comparison tell a modification the merge took from one it did not.</p>
+            <p>The statements a modified requirement states SHALL be its statements once merged. A statement paragraph carries no change state of its own. So a paragraph the change deletes is one it does not state, and a paragraph it rewrites is stated as rewritten.</p>
+            <p><strong>An accepted scenario that a modified requirement neither states nor marks <code>removed</code> SHALL be a defect in the change's specification.</strong> It SHALL NOT be read as carried forward, and it SHALL NOT be read as withdrawn. Three requirements in this project's archive left a scenario out. Reading the omission as a withdrawal is wrong for one of them, and reading it as carried forward is wrong for the other two, so either default would repeat a recorded error. The agent performing the merge SHALL report the omission to the contributor, naming the scenario, and SHALL NOT resolve it by either reading.</p>
+            <p>The partial form, which states only the part of a requirement a change alters and leaves the merge to keep the rest, SHALL NOT be used. OpenSpec's spec-driven schema requires the whole block, and the <code>openspec-sync-specs</code> workflow this project copied the partial form from permitted it. This requirement takes the schema's side on purpose. It adds what a Markdown delta cannot express: a withdrawn scenario stated rather than omitted.</p>
+            <article class="scenario" id="scenario-a-scenario-added-to-an-existing-requirement" data-change="unchanged">
+              <h4>A scenario added to an existing requirement</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted requirement with three scenarios</dd>
+                <dt>When</dt>
+                <dd>a change adds a fourth scenario to it</dd>
+                <dt>Then</dt>
+                <dd>the change's specification states the requirement marked <code>modified</code>, with every statement it holds, the three scenarios marked <code>unchanged</code>, and the fourth marked <code>added</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-scenario-withdrawn" data-change="unchanged">
+              <h4>A scenario withdrawn</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted requirement with three scenarios</dd>
+                <dt>When</dt>
+                <dd>a change withdraws one of them</dd>
+                <dt>Then</dt>
+                <dd>the change's specification states that scenario as a unit marked <code>removed</code>, and the merge leaves the accepted requirement holding the other two</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-statement-rewritten" data-change="unchanged">
+              <h4>A statement rewritten</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change rewrites one paragraph of an accepted requirement's statement</dd>
+                <dt>Then</dt>
+                <dd>the change's specification states every statement the requirement will hold, the rewritten paragraph included, and the merge gives the accepted requirement exactly those statements</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-scenario-keeps-its-identifier" data-change="unchanged">
+              <h4>A scenario keeps its identifier</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change carries forward, alters, or withdraws an accepted scenario</dd>
+                <dt>Then</dt>
+                <dd>the scenario it states carries the identifier the accepted scenario carries, whatever its heading</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-accepted-scenario-left-out" data-change="unchanged">
+              <h4>An accepted scenario left out</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted requirement holding a scenario that a change's modified requirement neither states nor marks <code>removed</code></dd>
+                <dt>When</dt>
+                <dd>the change's contract is merged</dd>
+                <dt>Then</dt>
+                <dd>the agent performing the merge reports the scenario to the contributor, and neither keeps it nor deletes it on its own reading</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-modified-requirement-read-from-the-archive" data-change="unchanged">
+              <h4>A modified requirement read from the archive</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an archived change that modified a requirement</dd>
+                <dt>When</dt>
+                <dd>a reader consults only that change's specification</dd>
+                <dt>Then</dt>
+                <dd>they read the whole requirement as the change left it, and which of its scenarios the change added, altered, withdrew, and carried forward</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-marked-modification-reaches-the-accepted-contract-as-its-current-text" data-change="unchanged">
+            <h3>A marked modification reaches the accepted contract as its current text <span class="hs-id">req-a-marked-modification-reaches-the-accepted-contract-as-its-current-text</span></h3>
+            <p>Where a change's specification marks words in a requirement or a scenario it modifies, applying that specification's contract to the project's accepted specifications SHALL give the accepted unit its current text: the content of each <code>ins</code> element without the element, and nothing of each <code>del</code> element.</p>
+            <p><strong>The accepted specification SHALL NOT carry change markup.</strong> The accepted contract states what the project requires now. Which words a change added and which it deleted is history, and it belongs to the archived change that made the edit, whose specification keeps its marks. This is the arrangement "A rename reaches the accepted contract as a new heading on the same identifier" makes for a heading, where the accepted specification does not carry the <code>renamed-from</code> paragraph.</p>
+            <p>A mark carried into the accepted contract would go on claiming that a word is new for as long as the text stands. This project's history holds the case. <code>2026-09-18-establish-a-runbook</code> bolded the words it added to two project-bootstrap requirements, the merge copied the bold into the accepted specification, and it is still there, where it now reads as emphasis. The word the same edit deleted was never marked at all. A <code>del</code> carried across would show the next change's author a deleted phrase on the page of the contract, ready to be copied back as current.</p>
+            <p>Validation holds the second half of this: an accepted specification that carries change markup in a unit is rejected, under document-validation's "Change markup in or around a semantic unit is rejected". The first half is the merge, which remains the agent's work under "Every synthesis and every contract update is agent-driven". This requirement states what a correctly applied modification leaves behind, not a program that applies it.</p>
+            <p><strong>The current text the merge writes is the text the change's specification projects.</strong> document-schema's "A deleted word is recorded apart from what a unit states" keeps deleted words out of every statement and entry, and keeps inserted words in. So a comparison of a change's modified requirement with the accepted one, made on projected text, finds a merge that wrote the current text equal to the change. It finds a merge that kept a deleted word, or left out an inserted one, unequal. The marks need no reading of their own to be compared.</p>
+            <article class="scenario" id="scenario-an-inserted-word-applied" data-change="unchanged">
+              <h4>An inserted word applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states requirement <code>req-x</code> marked <code>modified</code>, with <code>&lt;ins&gt;&lt;code&gt;sync&lt;/code&gt;, &lt;/ins&gt;</code> in one statement</dd>
+                <dt>When</dt>
+                <dd>its contract is applied to the accepted specifications</dd>
+                <dt>Then</dt>
+                <dd>the accepted requirement <code>req-x</code> states <code>sync</code> in that statement, as ordinary text, and carries no <code>ins</code> element</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deleted-word-applied" data-change="unchanged">
+              <h4>A deleted word applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states a requirement marked <code>modified</code>, with <code>&lt;del&gt;and &lt;/del&gt;</code> in one statement</dd>
+                <dt>When</dt>
+                <dd>its contract is applied</dd>
+                <dt>Then</dt>
+                <dd>the accepted requirement's statement no longer holds that word, and the accepted specification carries no <code>del</code> element</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deleted-paragraph-applied" data-change="unchanged">
+              <h4>A deleted paragraph applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification states a requirement marked <code>modified</code>, with one paragraph wrapped in <code>del</code></dd>
+                <dt>When</dt>
+                <dd>its contract is applied</dd>
+                <dt>Then</dt>
+                <dd>the accepted requirement no longer holds that paragraph</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-markup-left-in-the-accepted-contract" data-change="unchanged">
+              <h4>Markup left in the accepted contract</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a merge leaves an <code>ins</code> or a <code>del</code> element in a unit of an accepted specification</dd>
+                <dt>Then</dt>
+                <dd>validation of that accepted specification fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-marked-modification-reaches-the-accepted-contract-as-its-current-text-the-history-is-read-from-the-archive" data-change="unchanged">
+              <h4>The history is read from the archive</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reader wants to know which words a change added to a requirement, or deleted from it</dd>
+                <dt>Then</dt>
+                <dd>the archived change's specification marks them, and the accepted specification does not</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-marked-modification-compared-with-the-accepted-text" data-change="unchanged">
+              <h4>A marked modification compared with the accepted text</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification marks an inserted word and a deleted word in a modified requirement, and an accepted requirement to which the merge gave the current text</dd>
+                <dt>When</dt>
+                <dd>the two are compared as projected text</dd>
+                <dt>Then</dt>
+                <dd>they are equal</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-merge-that-kept-a-deleted-word" data-change="unchanged">
+              <h4>A merge that kept a deleted word</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>the same change, and an accepted requirement that still holds the deleted word</dd>
+                <dt>When</dt>
+                <dd>the two are compared as projected text</dd>
+                <dt>Then</dt>
+                <dd>they differ</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

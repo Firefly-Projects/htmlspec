@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Establish a runbook</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Establish a runbook</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Establish a runbook</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-18-establish-a-runbook/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-build-the-recipe-first-before-anything-else">1. Build the recipe first, before anything else</a></li>
+          <li><a href="#hs-2-verify-the-status-change-gap-the-proposal-corrects-itself-about">2. Verify the <code>status --change</code> gap the proposal corrects itself about</a></li>
+          <li><a href="#hs-3-settle-the-location-and-prove-this-repository-can-hold-what-it-ships">3. Settle the location, and prove this repository can hold what it ships</a></li>
+          <li><a href="#hs-4-the-contract">4. The contract</a></li>
+          <li><a href="#hs-5-the-layout-in-one-place">5. The layout, in one place</a></li>
+          <li><a href="#hs-6-list-runbooks">6. <code>list --runbooks</code></a></li>
+          <li><a href="#hs-7-the-release-runbook">7. The release runbook</a></li>
+          <li><a href="#hs-8-prove-it">8. Prove it</a></li>
+          <li><a href="#hs-9-release">9. Release</a></li>
+          <li><a href="#hs-10-the-resolver-reaches-a-runbook-and-one-caller-moves-files">10. The resolver reaches a runbook, and one caller moves files</a></li>
+          <li><a href="#hs-11-the-shipped-runbook-contradicted-the-contract">11. The shipped runbook contradicted the contract</a></li>
+          <li><a href="#hs-12-the-guard-failed-open-three-ways">12. The guard failed open, three ways</a></li>
+          <li><a href="#hs-13-the-wedge-and-where-the-invariant-belongs">13. The wedge, and where the invariant belongs</a></li>
+          <li><a href="#hs-14-runbooks-reaches-the-check-suite">14. <code>runbooks/</code> reaches the check suite</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-build-the-recipe-first-before-anything-else">
+          <h2>1. Build the recipe first, before anything else</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Build the chocolate-chip cookie recipe as a real runbook, nine steps from creaming the butter to the wire rack, with the citation links it came with.</h3>
+              <p><strong>Before the release runbook and before any code</strong>, because the release procedure is made of commands and a proposal arguing only from it invites the reading that a runbook is a script with prose around it. Nothing in a bowl of creamed butter automates</p>
+              <ul>
+                <li>
+                  <p>Nine task units, five citation links, in <a href="evidence/the-cookie-recipe-2026-09-17.md"><code>evidence/the-cookie-recipe-2026-09-17.md</code></a>.</p>
+                </li>
+                <li>
+                  <p><strong>Built in a scratch project rather than in this repository, and that detail turned out to be the change's largest finding.</strong> This repository is not an html-spec project, so it has no <code>htmlspec/</code> to put a runbook in — and creating one breaks the suite. Section 3 is where that lands.</p>
+                </li>
+                <li>
+                  <p>Every one of the nine steps is a reading rather than a command: creaming time is read from colour and volume, the bake gives a range and says the range is the baker's judgment, and one step is named as the only irreversible one. There is no <code>scripts/bake</code> that could replace it, which is what the recipe exists to establish.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Record that <code>htmlspec validate</code>, <code>htmlspec validate --strict</code>, and <code>htmlspec format --check</code> all accept it.</h3>
+              <p><strong>The proposal claims this needs no code change — verify that claim and report the truth either way</strong>, since the whole approach rests on a runbook's documents being ordinary documents of existing kinds</p>
+              <ul>
+                <li>
+                  <p><strong>The claim holds.</strong> All three accept it on the binary at <code>056df05</code> with no modification. <code>validate --json</code> reports <code>accepted: true</code> with an empty diagnostics array — zero, not zero errors alongside warnings.</p>
+                </li>
+                <li>
+                  <p data-field="deviation">Two properties fall out that the task did not ask for and neither needed adding: a runbook's <code>tasks.html</code> with no task unit is reported by <code>kind/no-tasks</code>, and a runbook's <code>specification.html</code> carrying a task unit is an <strong>error</strong> under <code>kind/task-in-specification</code>. So the forced split does work rather than merely being obeyed — the procedure cannot drift into the canonical document. Asserted as <code>the_two_document_split_is_forced_by_validation</code>.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Confirm the citation links survive, and name the line that is why.</h3>
+              <p><code>href</code> is deliberately unchecked on <code>a</code> at <code>crates/htmlspec-validate/src/rules/safety.rs:37</code> — a hyperlink is a citation and the document renders offline without it — and checked on <code>link</code>, which loads</p>
+              <ul>
+                <li>
+                  <p>Confirmed, five links, none reported. The line is exactly where the proposal says it is and it predates any recipe.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Record where the ingredients went and why.</h3>
+              <p><strong>The proposal predicts this gap and forbids inventing a mechanism for it</strong>, so this task records what was hit rather than closing it. An ingredient is not a step somebody performs, so a task unit is the wrong home, and the reason each rejected option is wrong belongs in the evidence</p>
+              <ul>
+                <li>
+                  <p>A <code>&lt;table&gt;</code> in a document section titled "What the procedure consumes", with a paragraph <strong>in the document</strong> saying this is a finding rather than a design. Stated as the agent's choice, which is <code>contract-authority</code>'s second route under silence — it is the cheapest thing to convert once inputs get a notion.</p>
+                </li>
+                <li>
+                  <p>The rejected options and why: a task unit would make <code>status</code> count a list of quantities as work (measured — the document reports <code>0 of 9</code>, and an ingredients task would make it <code>0 of 10</code>); a requirement unit would draw <code>schema/weak-modal</code>, since "1 cup of butter" carries no modal.</p>
+                </li>
+                <li>
+                  <p><strong>The equipment is the harder half and it is why the proposal says the shape of the answer is not obvious.</strong> A stand mixer and two baking sheets are closer to a machine requirement — <code>carry-a-runbook-to-another-machine</code>'s subject — than to an ingredient. So the input gap and the machine-requirement gap touch inside one paragraph of one document.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-verify-the-status-change-gap-the-proposal-corrects-itself-about">
+          <h2>2. Verify the <code>status --change</code> gap the proposal corrects itself about</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Point <code>htmlspec status --change</code> at a runbook, by name and by path, and record the actual behavior.</h3>
+              <p>The proposal first claimed completion counting comes free and then withdrew it; confirm which parts of the withdrawal are right</p>
+              <ul>
+                <li>
+                  <p><strong>The proposal is wrong about the path form, and its conclusion survives the correction.</strong> By name: refused, exit 2, <code>no change named chocolate-chip-cookies in …/htmlspec/changes</code>. By path: <strong>it works</strong> — <code>0 of 9 task(s) done or dropped</code>, exit 0. <code>resolve_change</code> accepts a directory that exists, and a runbook directory exists.</p>
+                </li>
+                <li>
+                  <p>So "reads only the changes directory" is false, and "the logic is reusable and it does not reach a runbook today" is true in a stronger form: it is reusable and correct, and what does not reach a runbook is the <em>name</em> form — the one a contributor or a workflow would use. Recorded in <a href="evidence/the-status-gap-2026-09-17.md"><code>evidence/the-status-gap-2026-09-17.md</code></a>.</p>
+                </li>
+                <li>
+                  <p>Two artifacts of the report are wrong for a runbook and neither is a bug in <code>status</code>: it reports <code>absent proposal.html</code> and <code>absent specification.html</code> against <code>CHANGE_DOCUMENTS</code>, which is a change's four-document shape. Narrowing that means deciding what <code>status</code> should say about a runbook, which <code>log-a-runbook-run</code> already claims and names open.</p>
+                </li>
+                <li>
+                  <p><strong>This task was marked done and the finding it found was not followed through, and a review of PR #29 caught it. Reopened as section 10.</strong> The measurement above is correct: a runbook path resolves as a change through <code>resolve_change</code>. What it did not ask is which <em>other</em> operations share that resolver — and <code>archive</code> does, and <code>archive</code> moves directories. <strong><code>htmlspec archive htmlspec/runbooks/release --yes</code> destroyed the runbook.</strong> The conclusion here stopped at "the report's shape is wrong for a runbook" when the finding available from the same measurement was "any operation taking a change reaches a runbook, and one of them is destructive".</p>
+                </li>
+                <li>
+                  <p>The general form worth keeping: <strong>a measurement that finds a resolver accepting the wrong subject is not finished until every caller of that resolver is named.</strong> One command reads, one compares, one moves. I checked the one I was pointed at.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-settle-the-location-and-prove-this-repository-can-hold-what-it-ships">
+          <h2>3. Settle the location, and prove this repository can hold what it ships</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Establish that <code>htmlspec/runbooks/&lt;name&gt;/</code> works in a real project: create a runbook there, confirm its asset references resolve to the project's one store, and confirm <code>htmlspec assets</code> reports no duplication</h3>
+              <ul>
+                <li>
+                  <p>Works. <code>htmlspec new document tasks htmlspec/runbooks/&lt;name&gt;/tasks.html</code> writes <code>href="../../assets/sha256-…"</code>, which is correct: <code>runbooks/&lt;name&gt;/</code> is two levels below <code>htmlspec/</code>, exactly as <code>changes/&lt;change&gt;/</code> is. No new mechanism was needed — the store is derived from the project by <code>ProjectRoot::assets</code>.</p>
+                </li>
+                <li>
+                  <p data-field="deviation">Asserted rather than only measured: <code>a_runbooks_documents_validate_as_documents_of_their_kinds</code> calls <code>store_for</code> on a runbook's document and asserts the upward walk reaches the project's store. That is the property that makes a runbook need no store of its own.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 <strong>Confirm this repository can hold its own release runbook at that path, before writing it there.</strong></h3>
+              <p>A change that ships a location it cannot use in the repository that ships it has not been dogfooded. If it cannot, that is a finding to record rather than a thing to work around silently</p>
+              <ul>
+                <li>
+                  <p><strong>It cannot, and this is the change's largest finding.</strong> <code>mkdir -p htmlspec/runbooks</code> — one command, no files, no <code>init</code> — turns <code>self-assets</code> red. <code>ProjectRoot::resolve</code> succeeds on the directory's existence alone, which sets <code>one_project = true</code> at <code>commands.rs:323</code>, which runs <code>duplicates_across</code> over the four stores this repository's conformance fixtures deliberately carry. Exit 1, one duplicate reported.</p>
+                </li>
+                <li>
+                  <p>The check is right and the fixtures are right. What is wrong is the repository claiming to be a project, and the comment at <code>commands.rs:317</code> already states why those five stores must not be compared.</p>
+                </li>
+                <li>
+                  <p><strong>Hazard (b) reproduced exactly while measuring this</strong>: <code>htmlspec init</code> here yields nine duplicate-asset errors, counted rather than quoted. Eight are the assets copied into the stray store; the ninth is the one an empty directory alone produces. The archived record gave the number and not that split.</p>
+                </li>
+                <li>
+                  <p>Full measurement in <a href="evidence/the-location-is-blocked-2026-09-17.md"><code>evidence/the-location-is-blocked-2026-09-17.md</code></a>.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done" data-refs="req-silence-is-recorded-and-not-filled">
+              <h3>3.3 Where the specified location is unavailable here, choose the cheapest reversible alternative and state that the choice is the agent's rather than the project's, per <code>contract-authority</code>'s <em><a href="../../../specs/contract-authority/spec.html#req-silence-is-recorded-and-not-filled">Silence is recorded and not filled</a></em>.</h3>
+              <p>Record what each rejected candidate broke, measured</p>
+              <ul>
+                <li>
+                  <p><strong><code>runbooks/release/</code> at the repository root.</strong> Passes <code>self-assets</code> (exit 0) and the whole migrate suite (8 passed). The choice is the agent's, not the project's: two documents move if a contributor disagrees, and nothing derives the location from anything.</p>
+                </li>
+                <li>
+                  <p><code>openspec/runbooks/</code> was measured and rejected: it fails <code>every_file_in_this_repository_classifies</code> with <em>"some files classify as no known kind"</em>. An empty directory passes and one holding a document fails, because the survey enumerates files. <strong>A fix was available and is wrong</strong>: adding a <code>Kind::Runbook</code> to <code>migrate.rs</code> would make an OpenSpec survey claim a source kind OpenSpec does not have. <code>openspec/changes/&lt;change&gt;/runbooks/</code> fails the same test.</p>
+                </li>
+                <li>
+                  <p><strong>The exact precedent already exists and <code>log-a-runbook-run</code>'s proposal records it</strong>: this repository records a predecessor in <code>.openspec.yaml</code> rather than in the <code>FOLLOWS</code> file <code>project.rs</code> defines, for this same reason. Two mechanisms for one fact, and the repository dogfooding OpenSpec cannot use the html-spec form. So this is the second instance of a known pattern rather than a new problem.</p>
+                </li>
+                <li>
+                  <p><strong>The cost, stated rather than left for a reader to discover</strong>: this repository's runbook is not where the contract says a runbook goes, so the location is dogfooded in a scratch project and that is weaker. What closes it is migrating this repository to <code>htmlspec/</code>, which is <code>migrate-an-openspec-project</code>'s unfinished half. Named in the design, in the changelog entry, and in the evidence.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-the-contract">
+          <h2>4. The contract</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 State the new capability <code>runbook-authority</code>: what a runbook is, where it lives, that it is a directory of two documents of existing kinds, and which of them carries authority</h3>
+              <ul>
+                <li>
+                  <p>Six requirements. The last of them — that a runbook is not cited as an obligation of the project — is the one <code>contract-authority</code> already implies and that writing two specifications side by side showed was needed explicitly. See task 8.3.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done" data-refs="req-the-canonical-procedure-carries-no-completion-state">
+              <h3>4.2 State that <a href="specification.html#req-the-canonical-procedure-carries-no-completion-state">a runbook's canonical procedure carries no completion state</a>, because a run is a copy.</h3>
+              <p>The tasks stay <code>todo</code> forever because nobody works them</p>
+              <ul>
+                <li>
+                  <p data-field="deviation"><strong>Gained a clause the task did not anticipate</strong>, from a finding the implementation produced: a unit in a runbook's canonical documents declares itself <code>unchanged</code>. That is the same fact about the same thing arriving at a different attribute, so it is stated in this requirement rather than as a second one. Two scenarios cover it. Measured in <a href="evidence/the-canonical-documents-change-state-2026-09-17.md"><code>evidence/the-canonical-documents-change-state-2026-09-17.md</code></a>.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done" data-refs="req-a-runbook-carries-no-version-and-no-changelog-of-its-own">
+              <h3>4.3 State that <a href="specification.html#req-a-runbook-carries-no-version-and-no-changelog-of-its-own">a runbook carries no version and no changelog of its own</a>, with the accepted-specification analogy as the reason and the one exception named as <code>carry-a-runbook-to-another-machine</code>'s</h3>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done" data-refs="scenario-an-enumeration-nobody-maintains">
+              <h3>4.4 State that the project enumerates its runbooks, and that discovery is from the filesystem rather than from a maintained list — the shape <code>project-bootstrap</code> refuses when it forbids reading the last archived version out of a directory name</h3>
+              <ul>
+                <li>
+                  <p>Four scenarios, one of which — <a href="specification.html#scenario-an-enumeration-nobody-maintains"><code>An enumeration nobody maintains</code></a> — is pinned by a test that creates a runbook directory by hand and asserts it appears.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-4-5" data-change="added" data-state="done" data-refs="req-a-project-has-a-declared-root-holding-one-asset-store req-bootstrapping-is-repeatable-without-loss">
+              <h3>4.5 Modify <code>project-bootstrap</code>'s <em><a href="specification.html#req-a-project-has-a-declared-root-holding-one-asset-store">A project has a declared root holding one asset store</a></em> so the layout sentence names the fourth place.</h3>
+              <p><strong>Modified rather than quietly extended</strong>, and the reason that this is not a closed set being reopened belongs in the delta: the kind enum declares itself <code>CLOSED</code> and has a guard test, and this sentence has neither</p>
+              <ul>
+                <li>
+                  <p>Done, with that argument in the delta and generalized: a later change adding a fifth place owes the same stated reason rather than a new argument about whether it may.</p>
+                </li>
+                <li>
+                  <p data-field="deviation"><strong>A second requirement in the same capability needed modifying and the proposal did not name it.</strong> <em><a href="specification.html#req-bootstrapping-is-repeatable-without-loss">Bootstrapping is repeatable without loss</a></em> protects "the project's accepted specifications, active changes, and archive" by name. A list naming three of four places would leave the fourth's protection resting on a reading, so <code>runbooks</code> is named in it with a scenario. Not scope creep — the same sentence, the same capability, and the omission would have been a real gap.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-4-6" data-change="added" data-state="done">
+              <h3>4.6 <strong>Confirm <code>artifact-kinds</code>, <code>document-schema</code>, and <code>document-validation</code> are untouched.</strong></h3>
+              <p>The proposal states this as a checkable claim. If any of them needs modifying, stop and report it rather than widening scope</p>
+              <ul>
+                <li>
+                  <p><strong>Untouched, and this held without strain.</strong> <code>specs/</code> in the change holds exactly two capabilities. The claim was checkable and it checks.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-4-7" data-change="added" data-state="done">
+              <h3>4.7 Run <code>openspec validate --all</code></h3>
+              <ul>
+                <li>
+                  <p><code>change/establish-a-runbook</code> passes. Totals read 11 passed, 2 failed, and <strong>both failures are the successor changes</strong> — <code>log-a-runbook-run</code> and <code>carry-a-runbook-to-another-machine</code> each hold only a proposal, so each reports "no deltas found". Deliberately out of scope and untouched.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-the-layout-in-one-place">
+          <h2>5. The layout, in one place</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Add the <code>RUNBOOKS</code> constant and the <code>runbooks()</code> and <code>runbook(name)</code> accessors to <code>crates/htmlspec-cli/src/project.rs</code>, matching the shape <code>specs()</code>, <code>changes()</code>, and <code>change(name)</code> already have.</h3>
+              <p>Private constant, public accessor, so the layout stays a fact one module states</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Create the directory in <code>ProjectRoot::establish</code>, so a bootstrapped project has the place rather than acquiring it on first use.</h3>
+              <p>A place that does not exist until something is in it is not a place a contributor can find</p>
+              <ul>
+                <li>
+                  <p>Named explicitly in the loop, unlike <code>changes()</code>, which is absent because <code>archive()</code> is beneath it and <code>create_dir_all</code> makes both. <code>runbooks()</code> has nothing beneath it, so it needs its own entry — noted in a comment, because the loop's omission of <code>changes()</code> otherwise looks like the same kind of choice.</p>
+                </li>
+                <li>
+                  <p><strong>Verified live at the release</strong>: <code>htmlspec init</code> in this repository now creates <code>htmlspec/runbooks/</code> alongside <code>specs/</code>, <code>changes/</code>, and <code>changes/archive/</code>.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Assert the accessors and the bootstrap, extending the existing <code>project.rs</code> tests rather than adding a module</h3>
+              <ul>
+                <li>
+                  <p><code>establishing_a_project_creates_the_directories_it_is_made_of</code> gained the fourth place. <code>a_runbook_lives_beneath_the_projects_runbooks</code> asserts the composition <strong>against the shape rather than against a spelled-out string</strong> — a test hard-coding <code>htmlspec/runbooks</code> would state the layout a second time, which is the shape the module exists to prevent. It also asserts the negative: a runbook is <em>not</em> beneath <code>changes()</code>, which is the whole point of a fourth place.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 <strong>Leave <code>migrate.rs</code>'s own <code>SPECS</code>/<code>CHANGES</code>/<code>ARCHIVE</code> constants alone.</strong></h3>
+              <p>They describe an OpenSpec project's layout, which has no runbooks, and teaching that classifier about one would make the survey claim a source kind that does not exist</p>
+              <ul>
+                <li>
+                  <p>Untouched, and task 3.3 is where this stopped being a matter of taste: modifying it was the available fix for the <code>openspec/runbooks/</code> candidate, and rejecting that fix is why this repository's runbook is at the repository root.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-list-runbooks">
+          <h2>6. <code>list --runbooks</code></h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Add the <code>runbooks: bool</code> flag to the <code>List</code> variant in <code>crates/htmlspec-cli/src/main.rs</code>, beside <code>specs: bool</code>, and pass it through the dispatch</h3>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Add a third arm to <code>Enumerated</code> in <code>crates/htmlspec-cli/src/commands.rs</code>, so the empty case and the label come through the paths that already exist rather than through a second set</h3>
+              <ul>
+                <li>
+                  <p><code>label()</code> and <code>is_empty()</code> each gained one arm, so <code>no active runbooks</code> prints through the existing empty-case path.</p>
+                </li>
+                <li>
+                  <p data-field="deviation"><strong>A type the task did not ask for and the doctrine did.</strong> Two <code>bool</code>s reach the command surface and are resolved once into a <code>Subject</code> enum before anything reads them, because a <code>bool</code> pair is representable in a state that means nothing — both set. <code>Subject::of</code> decides that in one place with the tie stated (<code>--runbooks</code> wins) rather than leaving it to the order of an <code>if</code> chain. Pinned by <code>both_flags_resolve_to_the_runbooks</code>, which asserts all four combinations.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Discover runbooks by reading the immediate subdirectories of <code>runbooks()</code>, not by walking for documents.</h3>
+              <p><strong>The <code>--specs</code> arm is the wrong model here</strong>: it prints every <code>.html</code> beneath, which would list one runbook's two documents as two entries</p>
+              <ul>
+                <li>
+                  <p>Mirrors <code>active_changes</code>, and needs no <code>archive</code> filter because nothing but runbooks lives under <code>runbooks/</code>.</p>
+                </li>
+                <li>
+                  <p><strong>The directory comes from <code>ProjectRoot::runbook</code> rather than from the <code>DirEntry</code>'s own path, and clippy is what forced the improvement.</strong> Composing from the entry left <code>runbook()</code> with no production caller, so <code>-D warnings</code> failed the <code>lint</code> stage. The fix is not a suppression: reading the location from a directory entry would be a <em>second</em> statement of where a runbook lives, and the two would agree until the day the layout moved. <code>active_changes</code> and its callers already do it this way.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-4" data-change="added" data-state="done">
+              <h3>6.4 Print each runbook's name and which of its two documents are present.</h3>
+              <p>That is the selection information, which is what <code>list</code> exists to carry — a list of names can be selected from on no basis but order</p>
+              <ul>
+                <li>
+                  <p>A directory holding neither prints <code>no documents</code> rather than a blank column, matching what <code>no tasks</code> does for a change: a gap reads as a rendering fault, and this is the fact a selector most needs.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-5" data-change="added" data-state="done">
+              <h3>6.5 Emit the structured payload, keyed by the same word the flag uses</h3>
+              <ul>
+                <li>
+                  <p><code>documents</code> is an empty array rather than an omitted field where a runbook holds neither — <strong>the opposite of the change payload's treatment of an absent completion, deliberately</strong>. There, omission distinguishes an unwritten document from finished work. Here, "holds no documents" is the fact itself.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-6" data-change="added" data-state="done">
+              <h3>6.6 Assert the enumeration: a project with no runbooks, a runbook with both documents, a runbook with one, and that <code>list</code> with no flag and <code>list --specs</code> print exactly what they printed before</h3>
+              <ul>
+                <li>
+                  <p data-field="deviation">Ten tests. Two beyond what the task asks: <code>an_absent_runbooks_directory_enumerates_none</code>, for a project bootstrapped by an older binary, and <code>a_loose_file_beside_the_runbooks_is_not_one</code> — <strong>which exists because mutation testing found a gap rather than because the case looked likely.</strong> See task 8.2.</p>
+                </li>
+                <li>
+                  <p>The helper writes documents through <code>render_kind</code>, the code <code>htmlspec new document</code> uses, so a template change reaches these tests rather than being shadowed by a hand-written sample.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-the-release-runbook">
+          <h2>7. The release runbook</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Write its <code>tasks.html</code>: the four steps, extracted from the five archived <code>## N. Release</code> sections and from <code>archive.md</code>.</h3>
+              <p><strong>All five state regenerate before version and all five are wrong about it</strong>, so the runbook's order is the correction rather than the transcription</p>
+              <ul>
+                <li>
+                  <p>Four task units, version first. The document says in its own prose that the order is the correction and not the transcription, so a reader who compares it against the archive is not left thinking the runbook is careless.</p>
+                </li>
+                <li>
+                  <p data-field="deviation">It also carries a "What this procedure consumes" section, for the same reason the recipe does and with the same admission: <code>cargo</code>, <code>python3</code>, <code>git</code>, a clean tree, and a repository that is not already a project — none of which is a step.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done">
+              <h3>7.2 Write its <code>specification.html</code>: what the runbook is for, and the two hazards as requirements.</h3>
+              <p>The hazards are the whole reason it exists, and a note in a tasks document is what the archive already held and nothing read</p>
+              <ul>
+                <li>
+                  <p>Five requirements, two decisions, two risks, two evidence units, five verifications. The two hazards are requirements with three and two scenarios respectively.</p>
+                </li>
+                <li>
+                  <p data-field="deviation">Three requirements beyond the two hazards, each extracted from <code>archive.md</code> or <code>check-release</code>'s docstring rather than invented: the increment is judgment, the changelog heading must name the version, and the recorded version waits for archival.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-3" data-change="added" data-state="done">
+              <h3>7.3 Validate and format both documents through the real binary</h3>
+              <ul>
+                <li>
+                  <p><strong>0 errors and 0 warnings on both, under default and strict, both canonical.</strong> Reaching zero is where the <code>data-change</code> finding came from: written as a change's units would be, the specification reported seven warnings, five of them correctly saying a verification recorded <code>passed</code> against a requirement marked <code>added</code>. The rule was right and the document was wrong — nothing is adding hazards measured two releases ago. <code>unchanged</code> took it to 2, and the last 2 were genuine gaps closed by writing the two missing verifications rather than by deleting the requirements.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-4" data-change="added" data-state="done">
+              <h3>7.4 <strong>Confirm the runbook's own procedure is what this change then follows for its release.</strong></h3>
+              <p>A runbook nobody ran is a document that looks right</p>
+              <ul>
+                <li>
+                  <p>Ran it. Section 9 below is the run, and <strong>both hazards arrived exactly as the runbook states them.</strong> <code>check-installed</code> was checked <em>before</em> the bump (passing) and after (failing) with nothing else changed, so the trigger is certain rather than inferred; regeneration then rewrote one line in each of 45 files and, verified by reading the whole diff, nothing else. <code>init</code> bootstrapped the stray <code>htmlspec/</code> and <code>spec.nix</code> at <code>0.0.0</code>, both removed.</p>
+                </li>
+                <li>
+                  <p><strong>A runbook nobody ran is a document that looks right, and running this one is what makes the seven-warning finding this change's rather than the next author's.</strong></p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-8-prove-it">
+          <h2>8. Prove it</h2>
+          <ul>
+            <li class="task" id="task-8-1" data-change="added" data-state="done">
+              <h3>8.1 Confirm the diff touches none of <code>crates/htmlspec-schema/schema/document.schema.json</code>, <code>TEMPLATES</code>, <code>assets/vendor.lock.json</code>, or <code>crates/htmlspec-validate/src/rules/</code>.</h3>
+              <p>The proposal states this as checkable, so check it against the diff rather than against intent</p>
+              <ul>
+                <li>
+                  <p><strong>Checked against the diff and clean.</strong> <code>git diff --stat</code> over <code>crates/htmlspec-schema/</code>, <code>crates/htmlspec-validate/src/rules/</code>, and <code>assets/</code> is empty. The code diff is exactly the three files the proposal's Impact section named: <code>project.rs</code>, <code>commands.rs</code>, <code>main.rs</code>.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-8-2" data-change="added" data-state="done">
+              <h3>8.2 Confirm <code>the_schema_enumerates_exactly_the_four_artifact_kinds</code> still passes and was not edited</h3>
+              <ul>
+                <li>
+                  <p>Passes, and <code>git diff</code> over <code>crates/htmlspec-schema/</code> is empty, so it was not edited. No fifth kind.</p>
+                </li>
+                <li>
+                  <p data-field="deviation"><strong>Mutation testing, six mutations, in <a href="evidence/mutation-testing-2026-09-17.md"><code>evidence/mutation-testing-2026-09-17.md</code></a>.</strong> Five failed between 2 and 8 tests each. <strong>The sixth failed nothing</strong>: removing the <code>is_dir</code> filter, so a loose file counts as a runbook, left all nine tests green — every one of them created only directories, so the filter was unguarded and a later change could have deleted it with the suite green. Fixed by adding <code>a_loose_file_beside_the_runbooks_is_not_one</code>, which then fails under that mutation and under nothing else. Same shape the previous change found by the same method one release ago.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-8-3" data-change="added" data-state="done">
+              <h3>8.3 Record what the proposal→design→tasks→specification rhythm did and did not fit for a change whose output is a procedure.</h3>
+              <p><strong>The proposal names this open and says the result is worth recording either way</strong>, and this change is the experiment</p>
+              <ul>
+                <li>
+                  <p><strong>The proposal's premise is wrong: this change does have a deliverable</strong> — 601 lines of Rust and eleven tests. The change that establishes a place for runbooks is an ordinary code change; the runbook is what it is <em>about</em>. A genuinely deliverable-free change is one that <em>edits</em> an existing runbook, which is what the sixth release will be.</p>
+                </li>
+                <li>
+                  <p><strong>The rhythm fit, and strained somewhere the proposal did not name.</strong> A change's specification and a runbook's specification are two documents of one kind with unrelated subjects — one merges into the accepted specifications and becomes contract, the other merges into nothing — and the rhythm has one word for both. <code>runbook-authority</code> now says explicitly that a runbook's requirement is not an obligation of the project, and <strong>that paragraph exists because writing the two side by side showed it was needed.</strong></p>
+                </li>
+                <li>
+                  <p>The second strain is the <code>data-change</code> finding at task 7.3, which is the same assumption showing: every stage of the rhythm assumes its document belongs to a change in progress, and a document belonging to a destination inherits an attribute that means nothing for it. Full account in <a href="evidence/the-rhythm-2026-09-17.md"><code>evidence/the-rhythm-2026-09-17.md</code></a>.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-8-4" data-change="added" data-state="done">
+              <h3>8.4 Run <code>cargo test --workspace</code>, <code>scripts/check</code>, <code>scripts/check-installed</code>, <code>scripts/check-release</code>, and <code>openspec validate --all</code>, and record the results including any that fail</h3>
+              <ul>
+                <li>
+                  <p><code>cargo test --workspace --locked --no-fail-fast</code>: <strong>zero failures</strong> across every target.</p>
+                </li>
+                <li>
+                  <p><code>scripts/check</code>: <strong>all 10 stages.</strong> Two failed on the first attempt and both were real. <code>format</code> failed on line-length overflow from a mechanical edit to seven existing call sites — <code>cargo fmt</code> fixed it. <code>lint</code> failed under <code>-D warnings</code> because <code>runbook()</code> had no production caller, which produced the improvement at task 6.3 rather than a suppression.</p>
+                </li>
+                <li>
+                  <p><code>scripts/check-installed</code>: 45 files match. <code>scripts/check-release</code>: 18 archived changes record a version, 13 versions in the changelog, declared <code>0.13.0</code> has its entry.</p>
+                </li>
+                <li>
+                  <p><strong><code>nix build .#checks.aarch64-darwin.suite</code> passes</strong>, run because the previous change recorded that a test naming a path fails in the sandbox until that path is staged and that the local run cannot show it. Staged everything first, and it built clean at <code>0.13.0</code>.</p>
+                </li>
+                <li>
+                  <p><code>openspec validate --all</code>: <code>change/establish-a-runbook</code> passes; the 2 failures are the two successor changes, which hold only proposals.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-9-release">
+          <h2>9. Release</h2>
+          <ul>
+            <li class="task" id="task-9-1" data-change="added" data-state="done">
+              <h3>9.1 Advance the workspace version and update <code>Cargo.lock</code> offline.</h3>
+              <p><strong>First, not second</strong> — the order is the hazard: <code>generatedBy</code> is written from <code>CARGO_PKG_VERSION</code> at run time, so a version bump restales every installed file and regenerating before it means regenerating twice</p>
+              <ul>
+                <li>
+                  <p><code>0.12.0</code> → <strong><code>0.13.0</code></strong>, a minor increment. A new capability, a new project location, a new CLI flag, and a new payload key — additive throughout, with no schema change, no new diagnostic, and no existing document changing meaning or validity. The same shape as <code>0.10.0</code> and <code>0.11.0</code>, both of which added a capability. <code>0.6.1</code> remains the only patch release the project has made, and it changed no crate. <strong><code>archive.md</code> reserves this decision for a human, so it is flagged for confirmation rather than presented as settled.</strong></p>
+                </li>
+                <li>
+                  <p><code>cargo update --workspace --offline</code> moved all 7 workspace crates and nothing else.</p>
+                </li>
+              </ul>
+              <p data-field="note">Migration note: nothing this change carries records a person confirming the minor increment. It stands as recorded: this change's <code>VERSION</code> holds <code>0.13.0</code>, and the record of the archival, <a href="evidence/the-sync-and-the-archival-2026-09-18.md"><code>evidence/the-sync-and-the-archival-2026-09-18.md</code></a>, reports that version shipped with the implementation.</p>
+            </li>
+            <li class="task" id="task-9-2" data-change="added" data-state="done">
+              <h3>9.2 Regenerate the installed instruction files with <code>htmlspec init --tools claude,codex,pi</code> — this repository's set, not <code>all</code>.</h3>
+              <p><strong>This is never a no-op after 9.1</strong>, and <code>init</code> here bootstraps a stray <code>htmlspec/</code> and a <code>spec.nix</code> at <code>0.0.0</code> that fail <code>self-assets</code> with nine duplicate-asset errors, so remove both and re-run <code>scripts/check</code></p>
+              <ul>
+                <li>
+                  <p><strong>Both hazards confirmed live, in order.</strong> <code>check-installed</code> was run before the bump — passing — and after, with nothing else changed: failing. So the version alone is the trigger, established by measurement rather than by inference. Regenerated through <code>init</code>; the diff is 45 files, one line each, and reading every line of it finds nothing but <code>generatedBy: htmlspec 0.12.0</code> → <code>0.13.0</code>.</p>
+                </li>
+                <li>
+                  <p>The stray <code>htmlspec/</code> and <code>spec.nix</code> at <code>0.0.0</code> appeared as the runbook says. Removed; <code>check-installed</code> then reports 45 files matching and <code>self-assets</code> exits 0.</p>
+                </li>
+                <li>
+                  <p><strong>A detail worth keeping</strong>: the stray project now includes <code>htmlspec/runbooks/</code>, which is task 5.2 visible in the real command's output.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-9-3" data-change="added" data-state="done">
+              <h3>9.3 Write the <code>CHANGELOG.md</code> entry, newest first, with the version in the heading so <code>scripts/check-release</code> finds it.</h3>
+              <p>Name what a contributor gets, and state the location finding rather than leaving the reader to discover that the runbook this release ships is not where the release says a runbook goes</p>
+              <ul>
+                <li>
+                  <p><code>## 0.13.0 — a place to keep a procedure</code>. Opens on the five retyped release sections and the fact that all five state the order wrong, rather than on the capability.</p>
+                </li>
+                <li>
+                  <p><strong>Names both things this release got wrong</strong>, in a paragraph headed as such: the location this repository cannot use, and the <code>data-change</code> finding. Also states that the recipe was built first and why, that no fifth kind was added, and that inputs remain unsolved with no mechanism invented for them.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-9-4" data-change="added" data-state="done">
+              <h3>9.4 Confirm <code>scripts/check-release</code> passes.</h3>
+              <p>The <code>VERSION</code> file beside this change's documents is written at archival rather than now, so this task is half-done until then</p>
+              <ul>
+                <li>
+                  <p>Passes: 18 archived changes record a version, 13 versions are in the changelog, and the declared <code>0.13.0</code> has its entry.</p>
+                </li>
+                <li>
+                  <p><strong>The half that cannot be done now is left open deliberately</strong>, as the last two changes each recorded: the <code>VERSION</code> file goes in the archived change's directory, which archival creates. This change's own release runbook states that as a requirement — <code>req-the-recorded-version-waits-for-archival</code> — with the five archived runs as its verification method, so the next release meets it as a rule rather than rediscovering it.</p>
+                </li>
+                <li>
+                  <p><strong>Closed at archival, and the runbook's requirement is what was followed rather than the archive's precedent.</strong> <code>VERSION</code> records <code>0.13.0</code> in the change directory, which is where <code>last_archived_version</code> reads it through <code>recorded_version</code> — the file, never a directory name. <code>scripts/check-release</code> now reports 19 archived changes recording a version, 13 versions in the changelog, and the declared <code>0.13.0</code> with its entry. The count moved from 18 to 19 because this change is the nineteenth, which is the check confirming the file landed rather than merely that it parses.</p>
+                </li>
+                <li>
+                  <p>The two delta specs were synced into <code>openspec/specs/</code> <strong>before</strong> archival, so archival had nothing to report about requirements no accepted specification held. That ordering is what <code>archive.md</code> asks for, and running it the other way means answering a question you caused.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-10-the-resolver-reaches-a-runbook-and-one-caller-moves-files">
+          <h2>10. The resolver reaches a runbook, and one caller moves files</h2>
+          <ul>
+            <li class="task" id="task-10-1" data-change="added" data-state="done">
+              <h3>10.1 Reproduce the data loss end to end before fixing it, with a <strong>complete</strong> runbook — two documents, real content, version advanced — because a half-built one bounces off unrelated gates and looks safe</h3>
+              <ul>
+                <li>
+                  <p>Reproduced on <code>88759b6</code>: <code>archived to …/htmlspec/changes/archive/2026-09-17-release at version 0.1.0</code>, <code>list --runbooks</code> then reporting <code>no active runbooks</code>, and <code>htmlspec/runbooks/</code> left empty. Recorded in <a href="evidence/archival-destroyed-a-runbook-2026-09-17.md"><code>evidence/archival-destroyed-a-runbook-2026-09-17.md</code></a>.</p>
+                </li>
+                <li>
+                  <p><strong>Four gates refuse first, not three</strong>, and the count was wrong until the regression test was run against the pre-fix code and failed for the placeholder-summary gate rather than for the runbook. Gates 3 and 4 both report <code>review/example-content</code> and fire on different content — a unit identifier and a masthead summary — which is why the rule list makes it look like three.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-10-2" data-change="added" data-state="done">
+              <h3>10.2 Refuse in <code>resolve_change</code> and in the <code>Some(store)</code> arm of <code>resolve_change_in</code>, on the resolved directory rather than on the argument's spelling</h3>
+              <ul>
+                <li>
+                  <p>One shared <code>refuse_a_runbook</code>, called on all three routes. <strong>The <code>Some(store)</code> arm is a genuinely different path</strong> and needed its own call, as the review said: <code>project.change("../runbooks/release")</code> composes a path that walks straight back out of <code>changes/</code>, and it was measured reporting on the runbook through <code>--store</code>.</p>
+                </li>
+                <li>
+                  <p><strong>A defect I shipped in the first fixed build and the traversal test now pins.</strong> <code>Path::components</code> drops <code>.</code> and <strong>keeps</strong> <code>..</code>, so comparing <code>…/changes/../runbooks/release</code> against <code>…/runbooks</code> found no prefix, and route 3 of four destroyed the runbook <em>with the guard in place</em>. <code>canonicalize</code> is what resolves <code>..</code>, and it is available because every caller has already tested <code>is_dir</code>.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-10-3" data-change="added" data-state="done">
+              <h3>10.3 Determine whether <code>sync</code> and <code>status</code> need the same guard, with evidence either way</h3>
+              <ul>
+                <li>
+                  <p><strong>Both guarded, and <code>sync</code> is the one that matters.</strong> Measured before the fix: <code>sync --change htmlspec/runbooks/release</code> listed all five of the release runbook's requirements as <code>absent</code> and printed "Merge each into the specification that should hold it." <code>runbook-authority</code> states that a runbook's requirement is not an obligation of the project, so <strong>the report directs an agent to merge requirements the contract says do not belong there</strong> — the same failure <code>contract-authority</code> records about the comparison operation and example content. It writes nothing; the harm is in what it tells an agent to write.</p>
+                </li>
+                <li>
+                  <p><code>status</code> is merely wrong: it reports a runbook against a change's four-document shape.</p>
+                </li>
+                <li>
+                  <p><strong>The refusal message differs per operation, via a <code>Refusal</code> enum, because my first fix got this wrong.</strong> One shared sentence said "so it is not archived", which is the reason for <code>archive</code> and false for the other two. A refusal whose stated reason a contributor can check and find wrong makes the refusal look unreliable — the finding the previous change recorded at its task 5.1.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-10-4" data-change="added" data-state="done">
+              <h3>10.4 Add a regression test that fails before the fix and passes after, using the full clearing shape</h3>
+              <ul>
+                <li>
+                  <p>Five tests, four new, <strong>each verified to fail against the pre-fix code</strong> rather than assumed to. <code>archival_refuses_a_runbook_and_leaves_it_on_disk</code> in <code>tests/archive.rs</code> drives the <strong>real binary</strong> in a child process and asserts both documents are still on disk, because the thing prevented is a filesystem move and exit status alone does not distinguish a refusal from a near miss. Fails pre-fix with <code>archival accepted a runbook</code>.</p>
+                </li>
+                <li>
+                  <p><code>a_runbook_reached_by_traversal_is_refused</code> fails against the <code>components</code> guard as well as against no guard, so it pins 10.2's defect and not only the original one.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-10-5" data-change="added" data-state="done">
+              <h3>10.5 Consider whether the type system should carry this rather than a runtime check</h3>
+              <ul>
+                <li>
+                  <p><strong>A runtime check, and the reason is proportionality.</strong> A <code>ChangeDirectory</code> newtype whose construction proved change-ness would thread through every site composing a change path, and the invariant it would carry — "not inside <code>runbooks/</code>" — is a fact about the filesystem at a moment rather than a property of a value. <code>AGENTS.md</code> §8 governs: the strongest <em>practical</em> model that eliminates the real failure mode, which here is one guard at the single boundary all three operations already pass through.</p>
+                </li>
+                <li>
+                  <p><strong>The number I gave for that was wrong, and section 12 records the correction.</strong> I said <code>project.change</code> is composed "in 23 places", which counted test call sites. <strong>There are 7 production ones</strong>, and the figure came from a grep I read as the answer to a question it did not answer — the same carelessness the 0.10.0 release recorded three times. The conclusion survives at the guard, and it does <em>not</em> survive for the name check: 7 sites is small enough that the invariant belongs on the constructor, which is where section 12 puts it.</p>
+                </li>
+                <li>
+                  <p>What §2 asks is satisfied: this is not a rule a caller must remember. There is no route from an argument to an archival that does not pass through <code>resolve_change</code> or <code>resolve_change_in</code>, and both call the guard.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-11-the-shipped-runbook-contradicted-the-contract">
+          <h2>11. The shipped runbook contradicted the contract</h2>
+          <ul>
+            <li class="task" id="task-11-1" data-change="added" data-state="done">
+              <h3>11.1 Fix the four task units in <code>runbooks/release/tasks.html</code>, which carried <code>data-change="added"</code> while <code>runbook-authority</code> requires <code>unchanged</code> in a runbook's canonical documents — plural, which covers the tasks document</h3>
+              <ul>
+                <li>
+                  <p>Fixed. Both documents now <code>0 errors, 0 warnings</code> under default and strict, both canonical.</p>
+                </li>
+                <li>
+                  <p><strong>The reason the mistake was available is the finding itself, one level up.</strong> Every diagnostic that taught me the rule came from <code>specification.html</code>, because that is the only one of the two whose units <em>reference each other</em> — a verification naming a requirement marked <code>added</code> is what <code>review/stale-verification</code> fires on. A runbook's task units reference nothing, so nothing fired, so the contract's plural had no measurement behind it in the document where it was violated.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-11-2" data-change="added" data-state="done">
+              <h3>11.2 Correct <a href="evidence/the-canonical-documents-change-state-2026-09-17.md"><code>evidence/the-canonical-documents-change-state-2026-09-17.md</code></a>, which claimed <code>unchanged</code> "on every unit" while the shipped tasks document carried <code>added</code> on four</h3>
+              <ul>
+                <li>
+                  <p>Corrected with a section stating what the claim was, what was actually done, and why the general claim was written from the specific fix.</p>
+                </li>
+                <li>
+                  <p><strong>Validation catches this in neither mode</strong>, verified in place rather than on a copy — a copy outside the project fails on asset resolution and confounds the test. So this is a contract clause with no mechanical check, which is the shape <code>project-bootstrap</code> names and this change's own subject.</p>
+                </li>
+                <li>
+                  <p><strong>A rule is warranted and is deliberately not written here.</strong> The proposal forbids touching <code>crates/htmlspec-validate/src/rules/</code> and that holds; and the rule needed is the one <code>runbook-authority</code> already forbids — "no rule SHALL exist whose subject is that a document belongs to a runbook." A per-document rule cannot see a document's location, so the honest form is a project-level check like the one <code>log-a-runbook-run</code> plans beside <code>topology.rs</code>. That is a successor change.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Decide from that measurement what <code>list --runbooks</code> prints about completion, and state the reason in the design rather than leaving it to the reader</h3>
+              <ul>
+                <li>
+                  <p><strong>No fraction.</strong> The canonical procedure's tasks stay <code>todo</code> forever, so the column would read <code>0/9</code> on every runbook at every moment, and a column that never moves teaches a reader to ignore it. Stated in the design and as a requirement in <code>runbook-authority</code>, so it is a decision with a reason rather than an omission.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-12-the-guard-failed-open-three-ways">
+          <h2>12. The guard failed open, three ways</h2>
+          <ul>
+            <li class="task" id="task-12-1" data-change="added" data-state="done">
+              <h3>12.1 Reproduce all three bypasses on <code>d8523bb</code> before fixing, and confirm each destroys the runbook</h3>
+              <ul>
+                <li>
+                  <p>All three reproduced. <strong>A</strong>: a <code>htmlspec/</code> inside the runbook makes the runbook resolve as its own project, so <code>runbooks()</code> points somewhere that does not exist and the guard reads that as "not a runbook". <strong>B</strong>: a <code>.git</code> inside it hits <code>ProjectRoot::resolve</code>'s repository-boundary stop, so no project is found and the <code>else</code> arm proceeds. Both printed <code>archived to …</code> and left <code>runbooks/</code> empty. Recorded in <a href="evidence/the-guard-failed-open-2026-09-18.md"><code>evidence/the-guard-failed-open-2026-09-18.md</code></a>.</p>
+                </li>
+                <li>
+                  <p>Neither is contrived, which is what makes them worth guarding rather than noting: a runbook documenting how to bootstrap a project has a nested <code>htmlspec/</code>, and one shipping an example repository has a <code>.git</code>.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-12-2" data-change="added" data-state="done">
+              <h3>12.2 Resolve the project the caller is standing in rather than deriving one from the argument, and pass the store's project explicitly on the <code>--store</code> route</h3>
+              <ul>
+                <li>
+                  <p><code>refuse_a_runbook</code> takes <code>&amp;ProjectRoot</code>. <strong>This forced a reordering in <code>resolve_change</code> and the reordering is the fix</strong>: the project is now resolved before either route, where the path route previously reached a decision without one. That ordering was the bug — the argument got to choose which project it was judged against.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-12-3" data-change="added" data-state="done">
+              <h3>12.3 Make the unknowable cases refuse rather than proceed, and say in the doc comment why the default flipped</h3>
+              <ul>
+                <li>
+                  <p>Three former <code>Ok(())</code> returns are now errors whose messages say they are failing closed and why. The one honest "proceed" is a project with no <code>runbooks/</code> at all, distinguished by <code>ErrorKind::NotFound</code> rather than by a failed canonicalize.</p>
+                </li>
+                <li>
+                  <p><strong>A third bypass, live in the first build of this fix and found by probing rather than by review.</strong> I replaced the failing <code>canonicalize</code> with <code>exists()</code>, and <strong><code>Path::exists</code> follows symlinks</strong> — so a broken symlink at <code>htmlspec/runbooks</code> reported <code>false</code>, read as "no runbooks directory", and archived a change past a check that could not be made. Fixed with <code>symlink_metadata</code>, which does not follow.</p>
+                </li>
+                <li>
+                  <p><strong>The <code>..</code> defect of the previous round and these three are one root cause seen twice</strong>, as the review said: the guard trusted a path it derived instead of the project it was given. That sentence is now the doc comment's heading rather than a remark.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-12-4" data-change="added" data-state="done">
+              <h3>12.4 Add a regression test per bypass, through the full archive path, each verified failing on <code>d8523bb</code></h3>
+              <ul>
+                <li>
+                  <p>Four tests in <code>tests/archive.rs</code>, driving the real binary. <strong>Each verified failing on <code>d8523bb</code> for its own assertion</strong> rather than merely failing: "archival accepted a runbook with a nested htmlspec/ directory", "…with a nested .git directory", "a path was accepted as a change name", "the refusal does not say it is failing closed".</p>
+                </li>
+                <li>
+                  <p>The clearing shape is factored into <code>a_project_with_a_complete_runbook</code>, since three tests need all four gates cleared and a bypass test that bounced off one would pass against the defect.</p>
+                </li>
+                <li>
+                  <p><strong>Two existing unit tests had to be retargeted, and that is the fix working rather than a cost.</strong> They called <code>resolve_change</code>, which now resolves the project from the process's current directory — the whole point of 12.2 — so a unit test would have to change directories to reach it. Retargeted at <code>refuse_a_runbook</code> with the scratch project, and confirmed they still fail against a neutered guard, so retargeting did not make them vacuous.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-12-5" data-change="added" data-state="done">
+              <h3>12.5 Go looking for a fourth bypass, and record what was checked even where nothing was found</h3>
+              <ul>
+                <li>
+                  <p>Twelve probes, in the evidence, starting from "what performs an irreversible filesystem operation?" rather than from more runbook cases. <code>migrate promote</code> is safe and already pinned: <code>Staged::resolve</code> refuses over an existing <code>htmlspec/</code> or <code>spec.nix</code>, and a runbook only exists inside a project. Symlink-into-runbook, nested subdirectories, a runbook named <code>archive</code>, three path spellings, the <code>--store</code> arm under bypass A, a cross-project path, <code>select_change</code>, <code>new document</code> overwrite, and three degenerate names: all safe.</p>
+                </li>
+                <li>
+                  <p><strong>The general form worth keeping: a guard against an irreversible operation should be tested by asking what makes it answer "no" wrongly, not whether it answers "yes" correctly.</strong> All three bypasses are the guard saying "not a runbook" about a runbook, and none would have been found by adding cases that <em>are</em> runbooks.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-13-the-wedge-and-where-the-invariant-belongs">
+          <h2>13. The wedge, and where the invariant belongs</h2>
+          <ul>
+            <li class="task" id="task-13-1" data-change="added" data-state="done">
+              <h3>13.1 Fix <code>new change</code> composing a path out of a name, which created a directory inside <code>runbooks/</code> that nothing could act on</h3>
+              <ul>
+                <li>
+                  <p><code>ProjectRoot::named_change</code> and <code>ProjectRoot::is_a_name</code>, refusing <code>/</code>, <code>\</code>, <code>.</code>, and <code>..</code>. <strong>On the constructor rather than at the call site</strong>, per <code>AGENTS.md</code> §2: this was the third site at which the same invariant was re-litigated, which is the signal.</p>
+                </li>
+                <li>
+                  <p><code>change()</code> stays infallible and <code>named_change()</code> is the checked counterpart, because five of the seven production call sites compose from a name the <em>program</em> produced — a directory entry it just read — where a <code>Result</code> would be an error case that cannot happen.</p>
+                </li>
+                <li>
+                  <p><strong>Rejected: sanitizing.</strong> Rewriting <code>../runbooks/sneaky</code> to <code>sneaky</code> would create a change under a name the contributor did not type, and <code>artifact-kinds</code> requires a derived name to be reported so a contributor who disagrees can say so.</p>
+                </li>
+                <li>
+                  <p>Both separators refused on every platform. A backslash is a separator on Windows and a legal filename character elsewhere, so accepting it would make one name mean two things depending on where the command ran.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-13-2" data-change="added" data-state="done">
+              <h3>13.2 Verify the claim that the previous guard turned a recoverable typo into an unrecoverable one</h3>
+              <ul>
+                <li>
+                  <p><strong>Verified rather than accepted.</strong> Built <code>88759b6^</code> in a worktree, ran the same typo, wrote a specification, and archived it: <code>archived to …/archive/2026-09-18-sneaky at version 0.1.0</code>. So pre-PR the directory was odd and still archivable, and the runbook guard is what wedged it. Stated plainly in the evidence, because a fix for a data loss that creates an unrecoverable state is worth naming as a cost of that fix rather than as a separate bug.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-14-runbooks-reaches-the-check-suite">
+          <h2>14. <code>runbooks/</code> reaches the check suite</h2>
+          <ul>
+            <li class="task" id="task-14-1" data-change="added" data-state="done">
+              <h3>14.1 Add <code>runbooks/</code> to the stages that check this project's own documents</h3>
+              <ul>
+                <li>
+                  <p data-field="deviation"><strong>Not two edited lines, and this is the one place the review's estimate was off.</strong> <code>validate</code> and <code>format</code> each take a single path — <code>validate fixtures/dogfood runbooks</code> is a usage error — so extending the existing stage arguments was not available. Two <em>new</em> stages instead, <code>self-runbooks</code> and <code>self-runbooks-format</code>. The suite is now 12 stages and all 12 pass.</p>
+                </li>
+                <li>
+                  <p>What this does not close, stated in the stage's own comment so a reader does not over-read it: validation still cannot report the <code>data-change</code> violation from the previous round, because no rule reads a document's location and <code>runbook-authority</code> forbids one that does. These stages close everything validation <em>does</em> report.</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Migrate an OpenSpec project</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Migrate an OpenSpec project</h1>
+        <p>This change added the project-migration capability to the contract, with all fifteen of its requirements. They state how an existing OpenSpec project becomes an HTMLSpec project: a survey that writes nothing (<em>Migration surveys the source before anything is read or written</em>), a reading and a plan that accounts for every surveyed entity before any document exists (<em>The stages that capture the work run before the stages that produce documents</em>, <em>The plan accounts for every surveyed entity</em>), and a staged project, checked whole, that reaches the destination in one promotion (<em>The migrated project is assembled in a staging location and promoted in one step</em>, <em>The conformance checks run last, over the complete staged project</em>).</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Migrate an OpenSpec project</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-11-migrate-an-openspec-project/specs/project-migration/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-project-migration">project-migration</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-project-migration">
+          <h2>project-migration</h2>
+          <p>Defines how an existing OpenSpec project becomes an HTMLSpec project: what is enumerated mechanically, what an agent must read and decide, the plan that records every decision before anything is written, the staging location the migrated project is assembled in, the order the stages run in, and the checks that gate promotion. It exists because HTMLSpec is a spinoff of OpenSpec and every plausible adopter already has an OpenSpec project, and because the conversion that looks obvious — markdown to HTML, file by file — produces a valid project that has lost the reasoning it was migrating.</p>
+          <section class="requirement" id="req-migration-surveys-the-source-before-anything-is-read-or-written" data-change="added">
+            <h3>Migration surveys the source before anything is read or written <span class="hs-id">req-migration-surveys-the-source-before-anything-is-read-or-written</span></h3>
+            <p>Migration SHALL begin by enumerating every entity in the source project, and the enumeration SHALL be mechanical. The entities SHALL include the project's accepted specifications, its active and archived changes, each change's documents, each change's delta specifications, each change's evidence files, each change's recorded version, and the project's configuration.</p>
+            <p>The enumeration SHALL be derived from what the source holds rather than from a list of the entity kinds migration expects. A source project holds files a mapping was not written for — content in the destination format from an earlier hand conversion, per-change configuration, evidence arranged in nested directories — and an enumeration built from the expected kinds omits them. Every later stage is checked against this enumeration, so an entity absent from it is an entity the coverage check cannot report, and the check passes while the content is lost. That is the failure this requirement exists to prevent, and it is worse than a missing mapping because it is silent.</p>
+            <p>Accordingly, the enumeration SHALL descend through the directories it enumerates rather than matching their immediate contents, and where it reports a document's fields it SHALL read the fields the document carries rather than the fields migration knows the name of.</p>
+            <p>The survey SHALL write nothing to the source project and nothing to the destination. It SHALL be repeatable, and running it SHALL NOT depend on any earlier stage having run.</p>
+            <p>The survey SHALL be available as a structured payload, so that a later stage can be checked against it rather than against a re-reading of the source. A coverage check that re-enumerated the source would be checking the plan against a second opinion rather than against the list the plan was written from.</p>
+            <p>The survey SHALL NOT interpret what it finds. Enumeration is exact because the source layout is fixed; deciding what a document argues is not, and a survey that reported both would present a judgment as a fact.</p>
+            <p data-field="note">Migration note: at archival the survey did not enumerate everything the source holds. It enumerated <code>openspec/config.yaml</code> by name, everything under <code>specs/</code>, and everything under each change directory, so a file loose in <code>openspec/</code>, <code>openspec/changes/</code>, or <code>openspec/changes/archive/</code> was not enumerated and the coverage check could not report it. No record chose this. A review of the change's pull request found it after archival, and it was fixed before the change merged: the survey walks the whole project directory and enumerates such a file as unrecognized. <a href="evidence/five-more-defects-a-review-found-2026-09-13.md"><code>evidence/five-more-defects-a-review-found-2026-09-13.md</code></a> records the defect and the fix, as its first finding.</p>
+            <article class="scenario" id="scenario-surveying-a-project-with-archived-changes" data-change="added">
+              <h4>Surveying a project with archived changes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>migration surveys a project holding accepted specifications and archived changes</dd>
+                <dt>Then</dt>
+                <dd>every specification, every change, every document within a change, every delta specification, every evidence file, and every recorded version is enumerated</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-file-no-mapping-was-written-for" data-change="added">
+              <h4>A file no mapping was written for</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a source project holds a file that corresponds to no entity kind migration has a mapping for</dd>
+                <dt>Then</dt>
+                <dd>the survey enumerates it anyway, so that the coverage check can report it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-content-nested-below-the-directory-that-holds-it" data-change="added">
+              <h4>Content nested below the directory that holds it</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a source project arranges a change's evidence in directories beneath the one the format names</dd>
+                <dt>Then</dt>
+                <dd>every file is enumerated, rather than only those directly within it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-survey-writes-nothing" data-change="added">
+              <h4>The survey writes nothing</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the survey runs</dd>
+                <dt>Then</dt>
+                <dd>neither the source project nor the destination is modified</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-survey-is-repeatable" data-change="added">
+              <h4>The survey is repeatable</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the survey runs twice against an unchanged source</dd>
+                <dt>Then</dt>
+                <dd>it reports the same entities both times</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-structured-survey" data-change="added">
+              <h4>A structured survey</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested</dd>
+                <dt>Then</dt>
+                <dd>the enumeration is emitted as a payload a later stage can be checked against</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-stages-that-capture-the-work-run-before-the-stages-that-produce-documents" data-change="added">
+            <h3>The stages that capture the work run before the stages that produce documents <span class="hs-id">req-the-stages-that-capture-the-work-run-before-the-stages-that-produce-documents</span></h3>
+            <p>Migration SHALL proceed in this order:</p>
+            <ol>
+              <li>
+                <p><strong>Survey.</strong> Enumerate the source. Nothing is read for meaning and nothing is written.</p>
+              </li>
+              <li>
+                <p><strong>Read.</strong> Open every source document and record what each one does in the project.</p>
+              </li>
+              <li>
+                <p><strong>Gather evidence.</strong> Collect the change evidence, the recorded versions, the archive dates, and the project's release record.</p>
+              </li>
+              <li>
+                <p><strong>Plan.</strong> Write the migration plan and report it.</p>
+              </li>
+              <li>
+                <p><strong>Stage.</strong> Assemble the migrated project in the staging location.</p>
+              </li>
+              <li>
+                <p><strong>Check.</strong> Run the project's conformance checks over the complete staged project.</p>
+              </li>
+              <li>
+                <p><strong>Promote.</strong> Move the staged project into place.</p>
+              </li>
+            </ol>
+            <p>The first four stages SHALL produce no document in the destination format. Their output is a plan a contributor reads, and migration SHALL stop after the plan and report it before staging begins.</p>
+            <p>The reading stage SHALL record, for each source document, what that document is doing in the project rather than a restatement of its content. A migration that proceeds from an enumeration alone has the information a converter has, and a converter is what this ordering exists to prevent.</p>
+            <p>The evidence stage SHALL run before any document is produced. A change's evidence is the record of why the project has the shape it does, and it is the first thing a bulk conversion loses because nothing in a source document points at it.</p>
+            <article class="scenario" id="scenario-nothing-is-written-before-the-plan" data-change="added">
+              <h4>Nothing is written before the plan</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>migration reaches the point of reporting its plan</dd>
+                <dt>Then</dt>
+                <dd>no document in the destination format exists, in the destination or in the staging location</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-plan-is-reported-before-staging" data-change="added">
+              <h4>The plan is reported before staging</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the plan is complete</dd>
+                <dt>Then</dt>
+                <dd>migration reports it and does not begin staging in the same step</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reading-pass-that-records-purpose" data-change="added">
+              <h4>A reading pass that records purpose</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the reading stage completes</dd>
+                <dt>Then</dt>
+                <dd>each source document has a recorded statement of what it does in the project, distinct from a summary of what it says</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-evidence-gathered-before-documents-are-produced" data-change="added">
+              <h4>Evidence gathered before documents are produced</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>migration produces its first document in the destination format</dd>
+                <dt>Then</dt>
+                <dd>the source project's evidence files, recorded versions, and archive dates have already been collected</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-plan-accounts-for-every-surveyed-entity" data-change="added">
+            <h3>The plan accounts for every surveyed entity <span class="hs-id">req-the-plan-accounts-for-every-surveyed-entity</span></h3>
+            <p>Migration SHALL produce a plan naming every entity the survey found, and for each one SHALL record its destination and its disposition. A disposition SHALL be one of: converted into a document of a named kind, folded into another artifact, carried across unchanged, or dropped.</p>
+            <p>A folded or dropped entity SHALL carry the reason it was folded or dropped. An entity that is dropped because the destination format has nowhere to put it SHALL say so, and SHALL be distinguishable from an entity that was empty in the source. Those are different facts about the project a contributor is receiving.</p>
+            <p>The plan SHALL be expressed as a document of the <code>tasks</code> kind. A plan is a set of work items with states, which is what that kind carries, and each item SHALL be individually addressable so a contributor can reject one entity's disposition without rejecting the plan.</p>
+            <p>Migration SHALL NOT introduce an artifact kind for the plan. The set of kinds is closed, and a working record used once per project is not grounds to reopen it.</p>
+            <p>The plan SHALL survive the migration, landing in the migrated project as the migration's own change. A migration whose record was discarded would be the one act in the project's history with no artifact behind it.</p>
+            <article class="scenario" id="scenario-every-entity-has-a-disposition" data-change="added">
+              <h4>Every entity has a disposition</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the plan is complete</dd>
+                <dt>Then</dt>
+                <dd>every entity the survey found appears in it with a destination and a disposition</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-entity-with-nowhere-to-go" data-change="added">
+              <h4>An entity with nowhere to go</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a source entity carries content the destination format's contract forbids storing</dd>
+                <dt>Then</dt>
+                <dd>the plan names it as dropped and states that the destination has no place for it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-empty-source-field" data-change="added">
+              <h4>An empty source field</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a source entity that could have carried content carried none</dd>
+                <dt>Then</dt>
+                <dd>the plan records that it was empty, distinctly from recording that its content was dropped</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-plan-is-a-tasks-document" data-change="added">
+              <h4>The plan is a tasks document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the plan is validated</dd>
+                <dt>Then</dt>
+                <dd>it is a valid document of the <code>tasks</code> kind, and each entity's disposition is an individually addressable unit</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-plan-survives" data-change="added">
+              <h4>The plan survives</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>migration completes</dd>
+                <dt>Then</dt>
+                <dd>the plan is present in the migrated project as part of the migration's own change</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-promotion-refuses-while-any-surveyed-entity-is-unaccounted-for" data-change="added">
+            <h3>Promotion refuses while any surveyed entity is unaccounted for <span class="hs-id">req-promotion-refuses-while-any-surveyed-entity-is-unaccounted-for</span></h3>
+            <p>Promotion SHALL compare the plan against the survey and SHALL refuse while any surveyed entity has no disposition in the plan. The refusal SHALL name the unaccounted entities.</p>
+            <p>This SHALL be the division the project already uses for archival: the agent decides what each entity becomes, and the program checks that a decision was recorded for all of them. The program SHALL NOT judge whether a disposition is correct, because that judgment is the thing the plan exists to put in front of a contributor.</p>
+            <p>An entity dropped with a stated reason SHALL satisfy the check. Being accounted for is what the check tests, not being converted.</p>
+            <article class="scenario" id="scenario-an-entity-missing-from-the-plan" data-change="added">
+              <h4>An entity missing from the plan</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>promotion runs against a plan that omits a surveyed entity</dd>
+                <dt>Then</dt>
+                <dd>promotion does not complete, and the report names the entity that has no disposition</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deliberate-drop-passes" data-change="added">
+              <h4>A deliberate drop passes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>promotion runs against a plan in which an entity is dropped with a stated reason</dd>
+                <dt>Then</dt>
+                <dd>the coverage check is satisfied</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-program-does-not-judge-a-disposition" data-change="added">
+              <h4>The program does not judge a disposition</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a plan gives an entity a disposition a reader would disagree with</dd>
+                <dt>Then</dt>
+                <dd>the coverage check reports nothing, because whether a disposition is right is what the plan is reviewed for</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-migrated-project-is-assembled-in-a-staging-location-and-promoted-in-one-step" data-change="added">
+            <h3>The migrated project is assembled in a staging location and promoted in one step <span class="hs-id">req-the-migrated-project-is-assembled-in-a-staging-location-and-promoted-in-one-step</span></h3>
+            <p>Migration SHALL assemble the migrated project in a staging location outside the destination project, and the destination SHALL receive it in a single promotion.</p>
+            <p>The staging location SHALL hold a complete project — a declaration, the places the project keeps its specifications, its changes, and its archive, and one asset store — so that the project's own conformance checks run against it exactly as they will run after promotion. A staging area that is not a resolvable project would push every check past promotion and make promotion the step that discovers faults.</p>
+            <p>The staged project's internal paths SHALL be those the destination will hold, so that promotion is a move. Each document references the project's asset store by a path relative to its own location, so a staged tree at a different depth would require every reference to be rewritten after the checks that would have caught a mistake in the rewriting.</p>
+            <p>The staging location SHALL NOT be inside the destination project. A project holds exactly one asset store, and a second store within it is the condition the asset-topology check exists to report.</p>
+            <p>Where migration is abandoned or fails at any stage before promotion, the destination SHALL be unchanged.</p>
+            <p data-field="note">Migration note: at archival one path of the promotion did not hold to this. Where staging and destination lie on different filesystems, promotion copies and then removes, and a copy that failed part-way left a partial project in the destination while the report said the destination was as it was. No record chose this. A review of the change's pull request found it after archival, and it was fixed before the change merged: the copy removes what it wrote when it fails. <a href="evidence/five-more-defects-a-review-found-2026-09-13.md"><code>evidence/five-more-defects-a-review-found-2026-09-13.md</code></a> records it, as its second finding.</p>
+            <article class="scenario" id="scenario-checks-run-in-the-staging-location" data-change="added">
+              <h4>Checks run in the staging location</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the project's conformance checks run against the staged project</dd>
+                <dt>Then</dt>
+                <dd>they resolve it as a project and check it as they would after promotion</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-promotion-is-a-move" data-change="added">
+              <h4>Promotion is a move</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the staged project is promoted</dd>
+                <dt>Then</dt>
+                <dd>each document occupies the path it held in staging, relative to the project root, and its asset references resolve without rewriting</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-staging-outside-the-destination" data-change="added">
+              <h4>Staging outside the destination</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the staging location is chosen</dd>
+                <dt>Then</dt>
+                <dd>it lies outside the destination project, so the destination never holds a second asset store</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-abandoned-migration" data-change="added">
+              <h4>An abandoned migration</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>migration stops at any stage before promotion</dd>
+                <dt>Then</dt>
+                <dd>the destination project is as it was before migration began</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-half-migrated-destination-is-not-reachable" data-change="added">
+              <h4>A half-migrated destination is not reachable</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>migration fails while staging documents</dd>
+                <dt>Then</dt>
+                <dd>the destination holds either the whole migrated project or none of it</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-conformance-checks-run-last-over-the-complete-staged-project" data-change="added">
+            <h3>The conformance checks run last, over the complete staged project <span class="hs-id">req-the-conformance-checks-run-last-over-the-complete-staged-project</span></h3>
+            <p>Migration SHALL run the project's validation, formatting, and asset-topology checks after the staged project is complete, and SHALL NOT complete promotion while validation reports an error.</p>
+            <p>Migration SHALL NOT halt at the first document that fails a check. It SHALL complete the staged project and then report every failure together.</p>
+            <p>The reason is that a mapping fault is systematic. A rule that is wrong for one scenario is wrong for every scenario, and halting on the first occurrence presents a class of failure as one document's defect — which is repaired one document at a time, in a tree that is now partly migrated. Reporting the whole set makes the shape of the fault visible, and the shape is what points at the repair.</p>
+            <p>Checking a document while drafting it SHALL remain permitted. What is prohibited is a migration that ends at the first failure rather than at the last.</p>
+            <article class="scenario" id="scenario-checks-gate-promotion" data-change="added">
+              <h4>Checks gate promotion</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>validation reports an error against the staged project</dd>
+                <dt>Then</dt>
+                <dd>promotion does not complete</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-systematic-fault-reported-as-a-set" data-change="added">
+              <h4>A systematic fault reported as a set</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the same mapping fault produces a diagnostic in many staged documents</dd>
+                <dt>Then</dt>
+                <dd>the staged project is completed and every occurrence is reported together, rather than migration ending at the first</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-drafting-checks-are-permitted" data-change="added">
+              <h4>Drafting checks are permitted</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent validates a document as it stages it</dd>
+                <dt>Then</dt>
+                <dd>nothing prohibits that, because the obligation is on where migration ends</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-clean-staged-project" data-change="added">
+              <h4>A clean staged project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the checks report no error against the complete staged project</dd>
+                <dt>Then</dt>
+                <dd>promotion proceeds</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-conversion-of-a-document-s-meaning-is-agent-driven" data-change="added">
+            <h3>Conversion of a document's meaning is agent-driven <span class="hs-id">req-conversion-of-a-document-s-meaning-is-agent-driven</span></h3>
+            <p>Migration SHALL NOT provide, and SHALL NOT be performed by, a program that reads a source proposal, design, or tasks document and emits a document in the destination format.</p>
+            <p>The reason is the one the project already holds for synthesis: those kinds carry no imposed structure in either format, so there is no grammar to read. Deciding which paragraph of a design states an obligation, which comparison is a table and which is a diagram, and what a proposal's argument was actually for is reading rather than parsing. A converter would emit documents that satisfy every check and lose the reasoning that made the migration worth doing.</p>
+            <p>An agent performing a migration SHALL preserve the argument, the reasoning, and the evidence of each source document, and SHALL use the destination format's expressive capacity where the source used prose because it had nothing better. A migration whose output is the source's paragraphs wrapped in markup has moved the bytes and delivered none of the reason for moving.</p>
+            <article class="scenario" id="scenario-no-converter-exists" data-change="added">
+              <h4>No converter exists</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the migration operation's command surface is examined</dd>
+                <dt>Then</dt>
+                <dd>no command reads a proposal, a design, or a tasks document and emits a document in the destination format</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reasoning-that-outgrew-its-source-format" data-change="added">
+              <h4>Reasoning that outgrew its source format</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a source document expresses a comparison, a flow, or a state machine in prose because its format offered nothing better</dd>
+                <dt>Then</dt>
+                <dd>the migrated document expresses it in the destination format's own terms rather than as the same paragraphs in markup</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-migration-that-only-re-wrapped" data-change="added">
+              <h4>A migration that only re-wrapped</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a migrated document is the source document's paragraphs with markup around them and nothing else</dd>
+                <dt>Then</dt>
+                <dd>the migration has not been performed, whatever the checks report</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-evidence-crosses-unchanged" data-change="added">
+            <h3>Evidence crosses unchanged <span class="hs-id">req-evidence-crosses-unchanged</span></h3>
+            <p>A source change's evidence files SHALL be carried into the migrated change unchanged, and SHALL NOT be converted into the destination format.</p>
+            <p>Evidence is a transcript, a measurement, or a recorded complaint, and its worth is that nobody edited it. Converting one is rewriting a record, and a rewritten record cannot serve the purpose evidence serves.</p>
+            <p>The migrated change's documents SHALL reference the carried evidence, so that a reader reaches it from the document that cites it rather than by finding it in a directory.</p>
+            <p data-field="note">Migration note: what was built at archival did not keep carried evidence out of the project's own checks and formatting. Document discovery collected every <code>.html</code> file beneath a project, a change's evidence included, so <code>validate</code> and <code>assets</code> reported the unresolved references of carried HTML evidence, and in this change's own run against a copy of this repository <code>htmlspec format</code> rewrote one carried file's asset references, which the byte-identity check then caught. The change named this as a gap it did not close: task 8.5 records it as open and out of this change's scope, and <a href="evidence/migrating-this-repository-2026-09-09.md"><code>evidence/migrating-this-repository-2026-09-09.md</code></a> records the run. <a href="../2026-09-29-keep-evidence-out-of-document-discovery/specification.html#req-evidence-crosses-unchanged">2026-09-29-keep-evidence-out-of-document-discovery</a> later closed it, in its modification of "Evidence crosses unchanged".</p>
+            <article class="scenario" id="scenario-evidence-carried-verbatim" data-change="added">
+              <h4>Evidence carried verbatim</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change carrying evidence files is migrated</dd>
+                <dt>Then</dt>
+                <dd>each evidence file is present in the migrated change with its contents unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-evidence-is-referenced" data-change="added">
+              <h4>Evidence is referenced</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a migrated document makes a claim its change recorded evidence for</dd>
+                <dt>Then</dt>
+                <dd>the document references the carried evidence file</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-change-s-delta-specifications-collapse-into-that-change-s-one-specification" data-change="added">
+            <h3>A change's delta specifications collapse into that change's one specification <span class="hs-id">req-a-change-s-delta-specifications-collapse-into-that-change-s-one-specification</span></h3>
+            <p>Where a source change carries specification deltas for several capabilities, migration SHALL produce one specification artifact for that change, carrying every requirement the deltas stated, with each requirement's change state recorded on the requirement itself.</p>
+            <p>A change directory in the destination format holds at most one specification artifact, so the collapse is required rather than optional. How the collapsed document arranges several capabilities' requirements SHALL be the agent's decision, taken with the change read, and migration SHALL NOT impose an arrangement.</p>
+            <p><strong>A delta's content that is not a requirement SHALL be accounted for as well.</strong> A source delta can carry a statement of what its capability is for, and such a statement is neither a requirement nor a scenario, so a collapse performed by mapping requirement and scenario units alone drops it without reporting anything. Where several deltas each carry one, the destination document has a single place such a statement would naturally sit and cannot hold several, which is what makes this the part of the collapse that needs stating rather than the arrangement.</p>
+            <p>Where the collapsed specification carries text that appears nowhere in the source, migration SHALL be able to state why it was needed. A specification is required to let a reader determine what its change established without reading the change's other documents, and a source that states only what each capability is for does not state what the change did — so a document collapsing several deltas may need a statement of the change's own subject that no delta contains.</p>
+            <p>Where a unit kind the destination's specification artifact carries has no counterpart in the source, migration SHALL omit it and record the omission rather than manufacture it. Deriving such units from a source document that was not a record of them invents a record, and an invented record is worse than an absent one because a reader cannot tell it apart from a real one.</p>
+            <p>Where the source change's implemented result disagrees with what its deltas stated, the implemented result SHALL be what the migrated specification records. This is the rule archival already applies, and a migration that restated intent while the code did otherwise would carry that disagreement into the accepted contract.</p>
+            <article class="scenario" id="scenario-a-change-touching-several-capabilities" data-change="added">
+              <h4>A change touching several capabilities</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a source change carrying delta specifications for five capabilities is migrated</dd>
+                <dt>Then</dt>
+                <dd>the migrated change holds one specification artifact carrying all of their requirements</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-change-state-per-requirement" data-change="added">
+              <h4>Change state per requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a delta stated that a requirement was added, modified, or removed</dd>
+                <dt>Then</dt>
+                <dd>the migrated specification records that state on the requirement rather than in a section heading</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-arrangement-is-the-agent-s" data-change="added">
+              <h4>The arrangement is the agent's</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>several capabilities' requirements are collapsed into one specification</dd>
+                <dt>Then</dt>
+                <dd>migration imposes no arrangement, and the agent decides it having read the change</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-delta-s-non-requirement-content" data-change="added">
+              <h4>A delta's non-requirement content</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>several source deltas each stating what its capability is for</dd>
+                <dt>When</dt>
+                <dd>they are collapsed into one specification</dd>
+                <dt>Then</dt>
+                <dd>each statement is accounted for in the migrated document, rather than dropped because it is not a requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-unit-kind-the-source-format-has-none-of" data-change="added">
+              <h4>A unit kind the source format has none of</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the destination's specification artifact carries a unit kind the source format does not express</dd>
+                <dt>Then</dt>
+                <dd>the migrated specification omits it and the plan records why, rather than deriving units from a document that was not a record of them</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-migration-conforms-to-the-destination-s-stated-layout-and-preserves-the-source-s-where-none-is-stated" data-change="added">
+            <h3>Migration conforms to the destination's stated layout and preserves the source's where none is stated <span class="hs-id">req-migration-conforms-to-the-destination-s-stated-layout-and-preserves-the-source-s-where-none-is-stated</span></h3>
+            <p>Where the destination format's contract states where an artifact lives or what it is named, migration SHALL conform to it. Where the contract states no layout, migration SHALL preserve the structure the source used, and SHALL NOT introduce a layout of its own.</p>
+            <p>A source capability addressed by a nested path SHALL retain that path in the destination, so that a hierarchy the source expressed survives the move.</p>
+            <p>The reason is that a migration is the worst available moment to settle an open question about the destination format. It settles it in bulk, for every artifact at once, inside a change whose subject is something else. The convention then acquires a hundred instances and no requirement behind it, and a later reader cannot distinguish a decision from an accident.</p>
+            <p>An example in a README, a template, or any other non-normative material SHALL NOT be treated as a stated layout. Where migration finds only such an example, the contract is silent and the source's shape is preserved.</p>
+            <p>Where preserving the source's shape is impossible because the destination's contract forbids it, that conflict SHALL be recorded in the plan with the requirement that forbids it.</p>
+            <article class="scenario" id="scenario-a-layout-the-contract-states" data-change="added">
+              <h4>A layout the contract states</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the destination's contract states where an artifact of some kind lives</dd>
+                <dt>Then</dt>
+                <dd>migration places it there, whatever the source's arrangement was</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-layout-the-contract-does-not-state" data-change="added">
+              <h4>A layout the contract does not state</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the destination's contract states no layout for a kind of artifact</dd>
+                <dt>Then</dt>
+                <dd>migration preserves the arrangement the source used</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-nested-capability-path" data-change="added">
+              <h4>A nested capability path</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a source capability addressed by a nested path</dd>
+                <dt>When</dt>
+                <dd>it is migrated</dd>
+                <dt>Then</dt>
+                <dd>the nesting survives, rather than being flattened into a composed name</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-example-mistaken-for-a-contract" data-change="added">
+              <h4>An example mistaken for a contract</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a layout appears only in a README, a template, or other non-normative material</dd>
+                <dt>Then</dt>
+                <dd>migration treats the contract as silent and preserves the source's shape</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-source-shape-the-contract-forbids" data-change="added">
+              <h4>A source shape the contract forbids</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the source's arrangement conflicts with a requirement of the destination's contract</dd>
+                <dt>Then</dt>
+                <dd>the plan records the conflict and names the requirement that forbids the source's shape</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-source-distinction-the-destination-cannot-express-is-recorded-as-open-not-mapped-to-the-nearest-state" data-change="added">
+            <h3>A source distinction the destination cannot express is recorded as open, not mapped to the nearest state <span class="hs-id">req-a-source-distinction-the-destination-cannot-express-is-recorded-as-open-not-mapped-to-the-nearest-state</span></h3>
+            <p>Where a source entity carries a distinction the destination's contract has no value for, migration SHALL record it as an open question and SHALL name the change that would settle it. Migration SHALL NOT map the distinction onto the nearest available value.</p>
+            <p>The nearest available value is the tempting choice because it validates. A distinction mapped onto it is indistinguishable, afterwards, from a source that never made the distinction — so the information is not merely lost but unrecoverable, and no check can report it because the result conforms.</p>
+            <p>Settling the question instead SHALL be out of scope for a migration. Adding a value to the destination's vocabulary reaches validation, formatting, and presentation, and a migration decides it in bulk inside a change whose subject is something else. This is the same reason migration does not invent a layout where the contract is silent.</p>
+            <p>The plan SHALL record, for each such entity, what the source stated, that the destination has no value for it, and what migration did instead.</p>
+            <article class="scenario" id="scenario-a-change-state-the-destination-s-vocabulary-lacks" data-change="added">
+              <h4>A change state the destination's vocabulary lacks</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a source change recording that a requirement was renamed, and a destination whose change-state vocabulary has no value for a rename</dd>
+                <dt>When</dt>
+                <dd>the change is migrated</dd>
+                <dt>Then</dt>
+                <dd>the plan records the rename, records that the destination has no state for it, and names the change that would add one</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-nearest-state-is-not-substituted-silently" data-change="added">
+              <h4>The nearest state is not substituted silently</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a source distinction has no destination value</dd>
+                <dt>Then</dt>
+                <dd>migration does not record it as the nearest available value and leave the plan silent, because the result would be indistinguishable from a source that never made the distinction</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-vocabulary-is-not-extended-by-the-migration" data-change="added">
+              <h4>The vocabulary is not extended by the migration</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>migration finds a distinction the destination's vocabulary cannot express</dd>
+                <dt>Then</dt>
+                <dd>migration does not add a value to that vocabulary, and names the change that would</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-source-entity-already-in-the-destination-format-is-not-assumed-usable" data-change="added">
+            <h3>A source entity already in the destination format is not assumed usable <span class="hs-id">req-a-source-entity-already-in-the-destination-format-is-not-assumed-usable</span></h3>
+            <p>Where a source project holds an entity already expressed in the destination format, migration SHALL check it against the destination's current contract rather than carrying it on the strength of its format.</p>
+            <p>Such an entity SHALL be treated as a source entity like any other: it appears in the survey, it receives a destination and a disposition in the plan, and where it does not conform its disposition SHALL state why. Being in the right format is not the same as conforming to the contract, because a document can declare a superseded contract version or reference a project resource that no longer exists.</p>
+            <p>Where such an entity cannot be carried as a document, migration SHALL preserve it rather than discard it, and SHALL state that the disposition is its own choice rather than the destination's requirement.</p>
+            <p data-field="note">Migration note: in the build at archival, a document of this kind preserved in a change's evidence was still read by the destination's own checks, which reported its references that no longer resolve. The note on <em>Evidence crosses unchanged</em> says where the change records this and which later change closed it.</p>
+            <article class="scenario" id="scenario-a-document-in-the-destination-format-at-a-superseded-contract-version" data-change="added">
+              <h4>A document in the destination format at a superseded contract version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a source project holds a document in the destination format declaring an earlier contract version</dd>
+                <dt>Then</dt>
+                <dd>it is surveyed and given a disposition, and the plan states that its format did not make it conforming</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-whose-references-no-longer-resolve" data-change="added">
+              <h4>A document whose references no longer resolve</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a source document in the destination format references a project resource that no longer exists</dd>
+                <dt>Then</dt>
+                <dd>migration does not carry it into the destination as a document, because the destination's own checks exist to report exactly that condition</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-preserved-rather-than-discarded" data-change="added">
+              <h4>Preserved rather than discarded</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an entity already in the destination format cannot be carried as a document</dd>
+                <dt>Then</dt>
+                <dd>migration preserves it and states that the disposition is the agent's choice</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation" data-change="added">
+            <h3>Identifiers are derived once and every reference resolves through that derivation <span class="hs-id">req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation</span></h3>
+            <p>Migration SHALL derive each requirement's identifier once, and every reference to that requirement anywhere in the migrated project SHALL use the derived identifier. The derivation SHALL be recorded in the plan.</p>
+            <p>Deriving independently at each site produces different identifiers for one obligation, each locally valid, so nothing reports the divergence and cross-references silently fail to resolve.</p>
+            <p>The derivation SHALL be recorded against the source document that stated the heading, rather than against the heading alone. A source project can state one continuing obligation under different headings in different changes, because a change may rename a requirement, and each change's specification states what that change established rather than what the project later called it. A derivation keyed on the heading alone would either merge those statements — misrepresenting every change but the last — or report collisions where the source is consistent.</p>
+            <p>The derivation SHALL read the heading in full. A derivation that shortens or normalizes a heading maps distinct obligations onto one identifier, which manufactures a collision the source did not contain and refers the contributor to a conflict that is an artifact of the rule.</p>
+            <p>Where two source requirements in one destination document derive the same identifier, migration SHALL report the collision rather than resolving it by suffixing. Two distinct obligations distinguished only by a trailing digit read as versions of one, which is a worse outcome than a migration that stops and asks. Collapsing several of a source change's specifications into one document SHALL be understood as the operation most likely to produce such a collision, because it is the one that brings requirements from different parts of the source into a single identifier namespace.</p>
+            <p data-field="note">Migration note: at archival the collision check did not reach every recorded derivation. A <code>derives:</code> note whose separator was not spelled exactly <code>-&gt;</code> between spaces was dropped without a report, and a plan item with no <code>destination:</code> note had every one of its derivations left out of the check, so two headings deriving one identifier in one destination document could pass unreported. No record chose this. A review of the change's pull request found both after archival, and both were fixed before the change merged. <a href="evidence/five-more-defects-a-review-found-2026-09-13.md"><code>evidence/five-more-defects-a-review-found-2026-09-13.md</code></a> records them, as its fourth and fifth findings.</p>
+            <article class="scenario" id="scenario-one-requirement-referenced-from-several-documents" data-change="added">
+              <h4>One requirement referenced from several documents</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement appears in an accepted specification and is referenced by an archived change</dd>
+                <dt>Then</dt>
+                <dd>both use the same derived identifier</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-derivation-recorded" data-change="added">
+              <h4>A derivation recorded</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the plan is read</dd>
+                <dt>Then</dt>
+                <dd>each requirement's source heading, the document that stated it, and the identifier derived from it are all recorded</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-one-obligation-renamed-across-changes" data-change="added">
+              <h4>One obligation renamed across changes</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a source project in which a later change renamed a requirement an earlier change established</dd>
+                <dt>When</dt>
+                <dd>both changes are migrated</dd>
+                <dt>Then</dt>
+                <dd>each change's specification carries the identifier derived from the heading that change stated, and this is not reported as a collision</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-requirements-deriving-one-identifier" data-change="added">
+              <h4>Two requirements deriving one identifier</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>two source requirements' headings derive the same identifier within one destination document</dd>
+                <dt>Then</dt>
+                <dd>migration reports the collision and does not resolve it by adding a suffix</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-collision-the-derivation-rule-created" data-change="added">
+              <h4>A collision the derivation rule created</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>two source requirements state distinct obligations whose full headings differ</dd>
+                <dt>Then</dt>
+                <dd>they derive distinct identifiers, because a rule that shortened them would report a collision the source did not contain</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-migrated-archives-carry-their-versions-where-the-archival-gate-reads-them" data-change="added">
+            <h3>Migrated archives carry their versions where the archival gate reads them <span class="hs-id">req-migrated-archives-carry-their-versions-where-the-archival-gate-reads-them</span></h3>
+            <p>Migration SHALL record each archived change's version in the form the destination project's archival gate reads, so that a migrated project's version history is the history the gate compares against.</p>
+            <p>That form SHALL be the version each archived change records, and migration SHALL NOT encode a version in an archive directory's name. A directory name is a display string, and the destination's contract states both halves of this: the archival gate reads a recorded version rather than deriving one from a name, and an archived directory is named for its date followed by the change's name. A migration that composed a version into the name would produce an archive violating the naming rule and a version the gate does not read.</p>
+            <p>The migrated project's declared version SHALL be the greatest version found among the migrated archives, so that the next archival is required to advance past the project's real history rather than past an initial value.</p>
+            <p>Where a source change records no version, migration SHALL NOT invent one. The migrated archive SHALL carry none, and the plan SHALL record that it carried none in the source.</p>
+            <p>Where several source changes record one version, migration SHALL carry that version onto each of them and SHALL NOT invent distinct versions to separate them. The destination requires recorded versions to be distinct and provides for this case with a release-record entry naming the changes that shipped together, so migration SHALL carry the source's release record with it. A migrated project whose release record lost that entry fails its own release check on arrival, reporting a version collision it cannot explain.</p>
+            <p data-field="note">Migration note: the delta stated: "The destination requires recorded versions to be distinct and provides for this case with a release-record entry naming the changes that shipped together, so migration SHALL carry the source's release record with it." As built after a review of the change's pull request, promotion places the source's release record only where the destination holds none and leaves a destination's own record in place, and the shared-version check reads the record that survives: the destination's where it has one, the staged copy otherwise. The review's record kept the delta's words: it reads a destination that already holds a release record as satisfying them, because overwriting it would replace a repository's own history with the source's. <a href="evidence/three-defects-a-review-found-2026-09-11.md"><code>evidence/three-defects-a-review-found-2026-09-11.md</code></a>, its first defect, and <a href="evidence/five-more-defects-a-review-found-2026-09-13.md"><code>evidence/five-more-defects-a-review-found-2026-09-13.md</code></a>, its third finding, record what was built. The first review also found the shared-version check accepting a version that appeared anywhere in the record's text, so <code>0.1.1</code> counted as explained by an entry for <code>0.1.10</code>; no record chose that, and it was fixed before the change merged.</p>
+            <article class="scenario" id="scenario-a-migrated-archive-s-version-is-readable-by-the-gate" data-change="added">
+              <h4>A migrated archive's version is readable by the gate</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a migrated project whose archived changes recorded versions in the source</dd>
+                <dt>When</dt>
+                <dd>the archival gate determines the last archived version</dd>
+                <dt>Then</dt>
+                <dd>it reads the greatest version among the migrated archives</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-version-is-not-encoded-in-a-directory-name" data-change="added">
+              <h4>A version is not encoded in a directory name</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an archived change carrying a version is migrated</dd>
+                <dt>Then</dt>
+                <dd>the migrated archive's directory name carries no version component, and the version is recorded where the gate reads it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-declaration-matches-the-migrated-history" data-change="added">
+              <h4>The declaration matches the migrated history</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>migration completes</dd>
+                <dt>Then</dt>
+                <dd>the declared version equals the greatest version among the migrated archives, so the next archival must advance</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-source-change-with-no-version" data-change="added">
+              <h4>A source change with no version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a source change records no version</dd>
+                <dt>Then</dt>
+                <dd>the migrated archive carries none, and the plan records that the source had none</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-several-source-changes-sharing-one-version" data-change="added">
+              <h4>Several source changes sharing one version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>several source changes record the same version</dd>
+                <dt>Then</dt>
+                <dd>each migrated archive carries that version, no distinct versions are invented, and the source's release record explaining the shared version is carried with them</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-source-project-survives-migration" data-change="added">
+            <h3>The source project survives migration <span class="hs-id">req-the-source-project-survives-migration</span></h3>
+            <p>Migration SHALL NOT modify or delete the source project. Removing it SHALL be a separate act a contributor takes after reading the result.</p>
+            <p>A migration that consumed its input would make its own faults unrecoverable, and every fault this operation can have is a judgment fault discovered by reading the output.</p>
+            <p>Migration SHALL NOT convert a source project's generated agent instructions. Those are produced by the destination project's own bootstrap operation from its compiled workflow set, and converted instructions would name commands the destination program does not provide.</p>
+            <article class="scenario" id="scenario-the-source-is-untouched" data-change="added">
+              <h4>The source is untouched</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>migration completes</dd>
+                <dt>Then</dt>
+                <dd>the source project's files are byte-for-byte as they were</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-generated-instructions-are-not-migrated" data-change="added">
+              <h4>Generated instructions are not migrated</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the source project holds generated agent instructions or command files</dd>
+                <dt>Then</dt>
+                <dd>migration does not convert them, and the destination's own bootstrap operation writes its replacements</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-recovering-from-a-bad-migration" data-change="added">
+              <h4>Recovering from a bad migration</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a completed migration a contributor judges wrong</dd>
+                <dt>When</dt>
+                <dd>they correct the plan and migrate again</dd>
+                <dt>Then</dt>
+                <dd>the source is still available to migrate from</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each unit below summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links, and the record is the authority. Each verification in the next section rests on one of these records. The change's creation record, <code>evidence/.openspec.yaml</code>, has no unit.</p>
+          </aside>
+          <section class="evidence" id="evidence-a-migrated-design-2026-09-09" data-change="added" data-refs="req-conversion-of-a-document-s-meaning-is-agent-driven">
+            <h3>A migrated design <span class="hs-id">evidence-a-migrated-design-2026-09-09</span></h3>
+            <p>The design of <code>2026-08-13-content-address-runtime-assets</code>, migrated by hand on 2026-09-09 and judged by task 8.7: a design document holding 6 decision units, 6 risk units, a five-row table of the facts the approach had to fit, and a Mermaid diagram of the six migration steps that marks where rollback stops being free. It declares contract version 0.1.0 and names asset paths that resolve to nothing where it is carried. <a href="evidence/a-migrated-design-2026-09-09.html"><code>evidence/a-migrated-design-2026-09-09.html</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-absent-is-not-dropped-2026-09-07" data-change="added" data-refs="req-the-plan-accounts-for-every-surveyed-entity">
+            <h3><code>config.yaml</code> holds one live key, so its context is absent rather than dropped <span class="hs-id">evidence-absent-is-not-dropped-2026-09-07</span></h3>
+            <p>Task 1.6, recorded on 2026-09-07 by reading <code>openspec/config.yaml</code> with comment and blank lines filtered out: one live key, <code>schema: spec-driven</code>, and three commented-out example blocks illustrating <code>context</code>, <code>rules</code>, and <code>operations</code>, so those three are absent rather than dropped, while <code>schema</code> is present and dropped. It pairs the absent case with the eight <code>.openspec.yaml</code> files' <code>created:</code> dates as the present-and-dropped one. <a href="evidence/absent-is-not-dropped-2026-09-07.md"><code>evidence/absent-is-not-dropped-2026-09-07.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-did-the-reasoning-survive-2026-09-09" data-change="added" data-refs="req-conversion-of-a-document-s-meaning-is-agent-driven">
+            <h3>Did the reasoning survive? A reading, not a test <span class="hs-id">evidence-did-the-reasoning-survive-2026-09-09</span></h3>
+            <p>Task 8.7, recorded on 2026-09-09: one reader's judgment of one design migrated by hand, <code>2026-08-13-content-address-runtime-assets</code>'s, against its 1,609-word source, made in place of the three the task asked for. It counts 6 decisions carried as 6 decision units, 5 rejected alternatives as 10 rationale paragraphs, 6 risks as 6 risk units, 5 context facts as a five-row table, and 6 numbered steps as a diagram, with nothing dropped; it names three places the format made the reasoning more legible and two where the source was left alone; and it finds the work took about as long as reading the source. <a href="evidence/did-the-reasoning-survive-2026-09-09.md"><code>evidence/did-the-reasoning-survive-2026-09-09.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-five-more-defects-a-review-found-2026-09-13" data-change="added" data-refs="req-migration-surveys-the-source-before-anything-is-read-or-written req-the-plan-accounts-for-every-surveyed-entity req-the-migrated-project-is-assembled-in-a-staging-location-and-promoted-in-one-step req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation req-migrated-archives-carry-their-versions-where-the-archival-gate-reads-them">
+            <h3>Five more defects a review found <span class="hs-id">evidence-five-more-defects-a-review-found-2026-09-13</span></h3>
+            <p>A second review of the change's pull request, recorded on 2026-09-13: five defects, three reproduced end to end, bringing the change's total to nine, none found by its 793-test suite. The survey did not enumerate files loose in <code>openspec/</code>, <code>openspec/changes/</code>, or <code>openspec/changes/archive/</code>, enumerating 3 of 7 files on a seven-file project; the cross-filesystem copy could leave a partial destination while reporting it unchanged; the shared-version check read a staged changelog that promotion discards; a <code>derives:</code> note with a misspelled separator was dropped without a report; and a plan item with no destination escaped collision checking. Each fix was checked by reverting it. <a href="evidence/five-more-defects-a-review-found-2026-09-13.md"><code>evidence/five-more-defects-a-review-found-2026-09-13.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-migrating-this-repository-2026-09-09" data-change="added" data-refs="req-the-plan-accounts-for-every-surveyed-entity req-promotion-refuses-while-any-surveyed-entity-is-unaccounted-for req-the-conformance-checks-run-last-over-the-complete-staged-project req-conversion-of-a-document-s-meaning-is-agent-driven req-evidence-crosses-unchanged req-a-change-s-delta-specifications-collapse-into-that-change-s-one-specification req-a-source-entity-already-in-the-destination-format-is-not-assumed-usable req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation">
+            <h3>Migrating this repository, and what the attempt found <span class="hs-id">evidence-migrating-this-repository-2026-09-09</span></h3>
+            <p>Tasks 8.1 to 8.5, recorded on 2026-09-09: a scratch copy of this repository surveyed, planned, and partly staged. The survey found 201 entities; the plan held 201 task units and 236 derivations, with 99 identifiers derived more than once and 0 real collisions, and the coverage check passed; 103 carried entities were byte-identical; 16 specifications were collapsed, holding 120 requirements and 545 scenarios, the first collapse reporting 281 errors in 2 classes, each cleared by one fix; and 60 prose documents were deliberately not written, so promotion did not run. It also records that <code>validate</code> and <code>format</code> reached carried HTML evidence, and that <code>format</code> rewrote one carried file. <a href="evidence/migrating-this-repository-2026-09-09.md"><code>evidence/migrating-this-repository-2026-09-09.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-no-capability-reaches-a-source-project-2026-09-07" data-change="added" data-refs="req-migrated-archives-carry-their-versions-where-the-archival-gate-reads-them">
+            <h3>No accepted capability reaches a source project in another format <span class="hs-id">evidence-no-capability-reaches-a-source-project-2026-09-07</span></h3>
+            <p>Task 1.7, recorded on 2026-09-07: all 97 requirement headings across the 9 accepted capabilities read, and a search of their text for migration returned one unrelated hit, so no capability reaches a project in another format; <code>workflow-reporting</code> and <code>contract-authority</code> bear on migration without governing it. It records that <code>toolchain-packaging</code>'s "An archived change is named for its date and refuses to collide" names an archived directory with no version component, and that "An archived change records the version it shipped in" requires distinct recorded versions, with a baseline for the seven changes recording <code>0.1.0</code>. <a href="evidence/no-capability-reaches-a-source-project-2026-09-07.md"><code>evidence/no-capability-reaches-a-source-project-2026-09-07.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-staging-promotion-and-the-checks-2026-09-09" data-change="added" data-refs="req-the-migrated-project-is-assembled-in-a-staging-location-and-promoted-in-one-step req-the-conformance-checks-run-last-over-the-complete-staged-project req-migrated-archives-carry-their-versions-where-the-archival-gate-reads-them">
+            <h3>Staging, promotion, and the checks that gate it <span class="hs-id">evidence-staging-promotion-and-the-checks-2026-09-09</span></h3>
+            <p>Tasks 5.1 to 5.9 and 6.1 to 6.4, recorded on 2026-09-09: promotion's four stages, coverage, structure, conformance, and the move, and the eight staging faults with the failure each prevents. Asset references in four documents at four depths were resolved before and after the move; a mid-flight failure was rolled back; the destination's bytes were unchanged at four stage boundaries; and one wrong rule across 12 staged documents was reported as one set, and a mutation returning at the first document made that test fail. It explains why <code>scripts/check-release</code> cannot run against a migrated project, and shows a promotion run by hand. <a href="evidence/staging-promotion-and-the-checks-2026-09-09.md"><code>evidence/staging-promotion-and-the-checks-2026-09-09.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-collapse-produced-2026-09-09" data-change="added" data-refs="req-a-change-s-delta-specifications-collapse-into-that-change-s-one-specification req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation">
+            <h3>The collapse produced <span class="hs-id">evidence-the-collapse-produced-2026-09-09</span></h3>
+            <p>The collapsed specification produced for <code>2026-08-10-html-spec</code> during this change's run against a scratch copy of this repository, which tasks 8.3 and 8.6 cite: one document of 47 requirements and 138 scenarios, grouped under the five capabilities with each delta's Purpose introducing its group, a written masthead summary, and no evidence or verification unit. It declares contract version 0.1.0 and names asset paths that resolve to nothing where it is carried. <a href="evidence/the-collapse-produced-2026-09-09.html"><code>evidence/the-collapse-produced-2026-09-09.html</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-collapse-written-by-hand-2026-09-07" data-change="added" data-refs="req-a-change-s-delta-specifications-collapse-into-that-change-s-one-specification req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation">
+            <h3>The delta collapse for <code>2026-08-10-html-spec</code>, written by hand <span class="hs-id">evidence-the-collapse-written-by-hand-2026-09-07</span></h3>
+            <p>Task 1.5, recorded on 2026-09-07: the five deltas of <code>2026-08-10-html-spec</code>, 47 requirements and 138 scenarios, all added, collapsed by hand into an outline of their one specification before anything was designed. Six findings: grouping by capability is forced; the five Purpose paragraphs have a place only as the introductions of their groups; full-heading identifiers keep "Formatting can be checked without writing" and "Formatting can check without writing" apart; the derivation is keyed per (change, heading); verification units are omitted with the reason recorded; and the masthead summary is written rather than carried. <a href="evidence/the-collapse-written-by-hand-2026-09-07.md"><code>evidence/the-collapse-written-by-hand-2026-09-07.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-mapping-table-and-its-audit-2026-09-07" data-change="added" data-refs="req-migration-conforms-to-the-destination-s-stated-layout-and-preserves-the-source-s-where-none-is-stated req-a-source-distinction-the-destination-cannot-express-is-recorded-as-open-not-mapped-to-the-nearest-state req-a-source-entity-already-in-the-destination-format-is-not-assumed-usable req-migrated-archives-carry-their-versions-where-the-archival-gate-reads-them">
+            <h3>The entity-to-destination mapping, and the audit that found three faults in it <span class="hs-id">evidence-the-mapping-table-and-its-audit-2026-09-07</span></h3>
+            <p>Tasks 1.2 to 1.4, recorded on 2026-09-07: sixteen rows, one per OpenSpec entity kind, eleven cited to the accepted requirement that fixes the destination and five marked silent, and an audit that found three faults in the design's six-row table. Its version row inverted <code>project-bootstrap</code>'s "Archival requires the project version to advance", citing a line true only before <code>cf11132</code>; four entity kinds, 15 files, had no row; and the flat-specification spelling was attributed to the README, where it is not. It records the routes taken for <code>documents/*.html</code>, <code>.openspec.yaml</code>, and <code>## RENAMED Requirements</code>, and confirms two code sites at lines other than those cited. <a href="evidence/the-mapping-table-and-its-audit-2026-09-07.md"><code>evidence/the-mapping-table-and-its-audit-2026-09-07.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-plan-and-the-gate-2026-09-09" data-change="added" data-refs="req-the-plan-accounts-for-every-surveyed-entity req-promotion-refuses-while-any-surveyed-entity-is-unaccounted-for req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation">
+            <h3>The plan's shape, and the gate that checks it <span class="hs-id">evidence-the-plan-and-the-gate-2026-09-09</span></h3>
+            <p>Tasks 4.1 to 4.8, recorded on 2026-09-09: why a plan's per-entity facts are note paragraphs rather than attributes or fields; one plan document put through <code>validate</code>, <code>format</code>, <code>format --check</code>, and <code>migrate promote</code>; the gate's eight report classes; and two mutations. Reporting only the first unaccounted entity failed two tests, and keying the derivation table on the identifier alone left all 205 tests passing until a test using one heading stated by five archived changes was added, which failed under it. <a href="evidence/the-plan-and-the-gate-2026-09-09.md"><code>evidence/the-plan-and-the-gate-2026-09-09.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-plan-for-this-repository-2026-09-09" data-change="added" data-refs="req-the-plan-accounts-for-every-surveyed-entity req-identifiers-are-derived-once-and-every-reference-resolves-through-that-derivation">
+            <h3>The plan for this repository <span class="hs-id">evidence-the-plan-for-this-repository-2026-09-09</span></h3>
+            <p>The migration plan produced for a scratch copy of this repository on 2026-09-09, which task 8.1 cites: a tasks document of 201 task units, 192 to do and 9 dropped, with 236 <code>derives:</code> lines and dispositions of 60 converted, 29 folded, 103 carried, and 9 dropped. It declares contract version 0.1.0 and names asset paths that resolve to nothing where it is carried. <a href="evidence/the-plan-for-this-repository-2026-09-09.html"><code>evidence/the-plan-for-this-repository-2026-09-09.html</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-sandbox-holds-a-different-project-2026-09-12" data-change="added" data-refs="req-migration-surveys-the-source-before-anything-is-read-or-written">
+            <h3>The sandbox holds a different project <span class="hs-id">evidence-the-sandbox-holds-a-different-project-2026-09-12</span></h3>
+            <p>Recorded on 2026-09-12, after continuous integration failed on the change's pull request: the build sandbox's source filter kept no <code>.yaml</code>, <code>.txt</code>, or <code>.py</code> file, so the survey there found six kinds where it finds eight, and three evidence files went missing with no test failing. The record adds a test that the survey finds a file of every extension the project holds, and reproduces the failure by reverting the filter in the sandbox. <a href="evidence/the-sandbox-holds-a-different-project-2026-09-12.md"><code>evidence/the-sandbox-holds-a-different-project-2026-09-12.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-source-inventory-2026-09-07" data-change="added" data-refs="req-migration-surveys-the-source-before-anything-is-read-or-written req-migrated-archives-carry-their-versions-where-the-archival-gate-reads-them req-a-source-distinction-the-destination-cannot-express-is-recorded-as-open-not-mapped-to-the-nearest-state">
+            <h3>The source inventory, measured <span class="hs-id">evidence-the-source-inventory-2026-09-07</span></h3>
+            <p>Task 1.1, recorded on 2026-09-07 by <code>find</code> and <code>grep</code> over <code>openspec/</code> at <code>f57f640</code>: 193 files, 161 of them Markdown; 9 capabilities, 97 requirements, and 401 scenarios; 16 archived changes, every one recording a version, <code>0.1.0</code> seven times and <code>0.10.0</code> the greatest; 28 delta files holding 120 requirements and 545 scenarios; and 75 evidence files. All seven figures task 1.1 was written with had changed, and it found four entity kinds the design's table had no row for, among them a nested evidence directory that a flat glob under-counts by 4. <a href="evidence/the-source-inventory-2026-09-07.md"><code>evidence/the-source-inventory-2026-09-07.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-survey-against-this-repository-2026-09-07" data-change="added" data-refs="req-migration-surveys-the-source-before-anything-is-read-or-written req-migrated-archives-carry-their-versions-where-the-archival-gate-reads-them">
+            <h3>The survey, run against this repository <span class="hs-id">evidence-the-survey-against-this-repository-2026-09-07</span></h3>
+            <p>Tasks 3.1 to 3.7, recorded on 2026-09-07: <code>htmlspec migrate survey</code> run against this repository found 198 entities in eight kinds, none unrecognized, each kind matching <code>find</code>. It explains why the tests assert properties rather than the count, gives the payload's keys and exit 2 for a path that is not a project, records a defect found while implementing it, versions compared as text, and records a mutation restricting the descent to depth 1, which two tests caught. <a href="evidence/the-survey-against-this-repository-2026-09-07.md"><code>evidence/the-survey-against-this-repository-2026-09-07.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-three-defects-a-review-found-2026-09-11" data-change="added" data-refs="req-the-migrated-project-is-assembled-in-a-staging-location-and-promoted-in-one-step req-the-conformance-checks-run-last-over-the-complete-staged-project req-migrated-archives-carry-their-versions-where-the-archival-gate-reads-them">
+            <h3>Three defects a review of the pull request found <span class="hs-id">evidence-three-defects-a-review-found-2026-09-11</span></h3>
+            <p>A review of the change's pull request after archival, recorded on 2026-09-11: three defects that none of its 32 test result lines caught. Promotion refused a destination already holding a <code>CHANGELOG.md</code>, and now leaves that copy in place; the shared-version exemption was a substring match, so <code>0.1.1</code> counted as explained by <code>0.1.10</code>; and a stale asset reference was reported as a formatting fault. Each fix was checked by reverting it. <a href="evidence/three-defects-a-review-found-2026-09-11.md"><code>evidence/three-defects-a-review-found-2026-09-11.md</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-surveying-this-repository" data-change="added" data-outcome="passed" data-refs="scenario-surveying-a-project-with-archived-changes">
+            <h3>The survey of this repository enumerates every file it holds <span class="hs-id">verify-surveying-this-repository</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/the-survey-against-this-repository-2026-09-07.md"><code>evidence/the-survey-against-this-repository-2026-09-07.md</code></a>: <code>htmlspec migrate survey</code> run against this repository's <code>openspec/</code>, which holds accepted specifications and 16 archived changes, enumerated 198 entities, among them 9 accepted specifications, 51 change documents, 29 delta specifications, 80 evidence files, and 16 recorded versions. Every kind matched an independent <code>find</code>, the eight kinds summed to the count of files under <code>openspec/</code>, and <code>the_survey_enumerates_every_file_the_project_holds</code> compared the entity list with an independently implemented walk, file for file.</p>
+          </section>
+          <section class="verification" id="verify-a-file-loose-at-any-level" data-change="added" data-outcome="passed" data-refs="scenario-a-file-no-mapping-was-written-for">
+            <h3>Files no mapping was written for are enumerated <span class="hs-id">verify-a-file-loose-at-any-level</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/five-more-defects-a-review-found-2026-09-13.md"><code>evidence/five-more-defects-a-review-found-2026-09-13.md</code></a>: on a seven-file project the survey at archival enumerated 3 of the 7 files, missing four loose in <code>openspec/</code>, <code>openspec/changes/</code>, and <code>openspec/changes/archive/</code>. After the fix all seven were enumerated, the four arriving as <code>unrecognized</code>, and reverting the fix failed five tests, among them <code>a_file_loose_at_any_level_of_the_project_is_enumerated</code>.</p>
+          </section>
+          <section class="verification" id="verify-nested-evidence" data-change="added" data-outcome="passed" data-refs="scenario-content-nested-below-the-directory-that-holds-it">
+            <h3>Evidence nested below <code>evidence/</code> is enumerated <span class="hs-id">verify-nested-evidence</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/the-survey-against-this-repository-2026-09-07.md"><code>evidence/the-survey-against-this-repository-2026-09-07.md</code></a>, which names <code>evidence_nested_deeper_than_the_format_describes_is_enumerated</code> and reports that it failed when the survey's descent was restricted to depth 1 and passed when the descent was restored. Read at <code>4a89958</code>, the commit that merged this change: the test writes one evidence file directly in a change's <code>evidence/</code>, one in <code>evidence/transcripts/</code>, and one a level below that, and asserts that the survey counts all three as evidence.</p>
+          </section>
+          <section class="verification" id="verify-the-survey-writes-nothing" data-change="added" data-outcome="partial" data-refs="scenario-the-survey-writes-nothing">
+            <h3>The survey leaves the source's file list unchanged <span class="hs-id">verify-the-survey-writes-nothing</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/the-survey-against-this-repository-2026-09-07.md"><code>evidence/the-survey-against-this-repository-2026-09-07.md</code></a>: <code>the_survey_writes_nothing</code>, against a constructed source, and <code>surveying_this_repository_writes_nothing</code>, against this repository, each compare the source's file list before and after the survey runs, and both passed.</p>
+            <p data-field="unchecked">That the destination is not modified: neither check involves a destination.</p>
+            <p data-field="unchecked">That the source project is not modified in the contents of its files: both checks compare the list of files, not what the files hold.</p>
+          </section>
+          <section class="verification" id="verify-the-survey-is-repeatable" data-change="added" data-outcome="passed" data-refs="scenario-the-survey-is-repeatable">
+            <h3>Two surveys of one source agree <span class="hs-id">verify-the-survey-is-repeatable</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/the-survey-against-this-repository-2026-09-07.md"><code>evidence/the-survey-against-this-repository-2026-09-07.md</code></a>: <code>the_survey_is_repeatable_in_the_same_order</code> surveys one unchanged source twice, compares the two surveys and their payloads, and asserts that the entities are in sorted order; it passed.</p>
+          </section>
+          <section class="verification" id="verify-the-payload-the-gate-read" data-change="added" data-outcome="passed" data-refs="scenario-a-structured-survey">
+            <h3>The survey's payload is what the coverage check reads <span class="hs-id">verify-the-payload-the-gate-read</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/migrating-this-repository-2026-09-09.md"><code>evidence/migrating-this-repository-2026-09-09.md</code></a>: the survey of a scratch copy of this repository was kept as <code>survey.json</code>, and <code>htmlspec migrate promote plan.html --survey survey.json</code> checked the plan against it, reporting 201 surveyed entities and 201 plan items.</p>
+          </section>
+          <section class="verification" id="verify-every-entity-has-a-disposition" data-change="added" data-outcome="partial" data-refs="scenario-every-entity-has-a-disposition">
+            <h3>Every surveyed entity of this repository has a disposition <span class="hs-id">verify-every-entity-has-a-disposition</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/migrating-this-repository-2026-09-09.md"><code>evidence/migrating-this-repository-2026-09-09.md</code></a>: the coverage check run against the plan for a scratch copy of this repository reported 201 surveyed entities, 201 plan items, and that every surveyed entity has a disposition.</p>
+            <p data-field="unchecked">That every entity appears with a destination: at archival the coverage check read each plan item's source, disposition, and reason and not its destination, as <a href="evidence/five-more-defects-a-review-found-2026-09-13.md"><code>evidence/five-more-defects-a-review-found-2026-09-13.md</code></a> records in its fifth finding.</p>
+          </section>
+          <section class="verification" id="verify-the-plan-is-a-tasks-document" data-change="added" data-outcome="passed" data-refs="scenario-the-plan-is-a-tasks-document">
+            <h3>A plan built from the tasks template validates <span class="hs-id">verify-the-plan-is-a-tasks-document</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/the-plan-and-the-gate-2026-09-09.md"><code>evidence/the-plan-and-the-gate-2026-09-09.md</code></a>: <code>tests/plan.rs</code> builds a plan with <code>htmlspec init</code> and <code>htmlspec new document tasks</code>, replaces the template's example units with the plan's own task units, and puts that one document through <code>htmlspec validate</code>, which accepted it with exit 0, then <code>format</code>, <code>format --check</code>, and <code>migrate promote</code>, which found every surveyed entity with a disposition.</p>
+          </section>
+          <section class="verification" id="verify-an-entity-missing-from-the-plan" data-change="added" data-outcome="passed" data-refs="scenario-an-entity-missing-from-the-plan">
+            <h3>Promotion refuses a plan that omits entities, naming each <span class="hs-id">verify-an-entity-missing-from-the-plan</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/the-plan-and-the-gate-2026-09-09.md"><code>evidence/the-plan-and-the-gate-2026-09-09.md</code></a>, which names <code>promotion_refuses_and_names_every_unaccounted_entity</code> and reports that it failed when the report was restricted to the first unaccounted entity and passed when restored. Read at <code>4a89958</code>, the commit that merged this change: the test runs promotion against a plan that omits three surveyed entities, and asserts that it exits with the code for a document that fails a check, that the report names each of the three, and that it says promotion does not proceed.</p>
+          </section>
+          <section class="verification" id="verify-the-program-does-not-judge" data-change="added" data-outcome="passed" data-refs="scenario-the-program-does-not-judge-a-disposition">
+            <h3>A disposition a reader would reject passes coverage <span class="hs-id">verify-the-program-does-not-judge</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/the-plan-and-the-gate-2026-09-09.md"><code>evidence/the-plan-and-the-gate-2026-09-09.md</code></a>: <code>a_disposition_a_reader_would_disagree_with_passes</code> sends an accepted capability specification into a change's evidence directory and asserts that the coverage is complete, and the passing report quoted there says that the check says nothing about whether each disposition is right.</p>
+          </section>
+          <section class="verification" id="verify-checks-run-in-the-staging-location" data-change="added" data-outcome="passed" data-refs="scenario-checks-run-in-the-staging-location">
+            <h3>The checks run over the staged project, and again after the move <span class="hs-id">verify-checks-run-in-the-staging-location</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/staging-promotion-and-the-checks-2026-09-09.md"><code>evidence/staging-promotion-and-the-checks-2026-09-09.md</code></a>: the promotion run by hand with <code>--check</code> checked 1 document and 8 stored assets across the complete staged project, and <code>a_complete_migration_promotes_and_the_result_is_a_project</code> found the promoted project passing <code>validate</code>, <code>assets</code>, and <code>format --check</code> from its new location.</p>
+          </section>
+          <section class="verification" id="verify-promotion-is-a-move" data-change="added" data-outcome="passed" data-refs="scenario-promotion-is-a-move">
+            <h3>Asset references resolve unchanged across the move <span class="hs-id">verify-promotion-is-a-move</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/staging-promotion-and-the-checks-2026-09-09.md"><code>evidence/staging-promotion-and-the-checks-2026-09-09.md</code></a>: four documents staged at four depths, from <code>htmlspec/specs/one.html</code> to an archived change's <code>specification.html</code>, each had its asset reference resolved from its own directory and compared against the store in staging and again after the move, with identical reference text; and <code>a_complete_migration_promotes_and_the_result_is_a_project</code> found the promoted project passing <code>validate</code>, <code>assets</code>, and <code>format --check</code> from its new location.</p>
+          </section>
+          <section class="verification" id="verify-an-abandoned-migration" data-change="added" data-outcome="partial" data-refs="scenario-an-abandoned-migration">
+            <h3>The destination is unchanged at every stage boundary <span class="hs-id">verify-an-abandoned-migration</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/staging-promotion-and-the-checks-2026-09-09.md"><code>evidence/staging-promotion-and-the-checks-2026-09-09.md</code></a>: <code>an_abandoned_migration_leaves_the_destination_unchanged_at_every_stage</code> stops a migration at four boundaries, a coverage failure, a staging fault, a conformance failure, and a clean <code>--check</code> run, and compares a snapshot of the destination's bytes after each; the suite passed.</p>
+            <p data-field="unchecked">migration stops at any stage before promotion: the test stops it within promotion, at the boundaries that follow the plan, stage, and check stages, and no check stops migration after the survey, read, or gather-evidence stage and compares the destination.</p>
+          </section>
+          <section class="verification" id="verify-checks-gate-promotion" data-change="added" data-outcome="passed" data-refs="scenario-checks-gate-promotion">
+            <h3>A conformance failure stops promotion <span class="hs-id">verify-checks-gate-promotion</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/staging-promotion-and-the-checks-2026-09-09.md"><code>evidence/staging-promotion-and-the-checks-2026-09-09.md</code></a>: in <code>an_abandoned_migration_leaves_the_destination_unchanged_at_every_stage</code>, a staged identifier given a capital, a conformance failure, stopped promotion with the destination's bytes unchanged; the suite passed.</p>
+          </section>
+          <section class="verification" id="verify-a-systematic-fault-reported-as-a-set" data-change="added" data-outcome="passed" data-refs="scenario-a-systematic-fault-reported-as-a-set">
+            <h3>One wrong rule across twelve documents is reported as one set <span class="hs-id">verify-a-systematic-fault-reported-as-a-set</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/staging-promotion-and-the-checks-2026-09-09.md"><code>evidence/staging-promotion-and-the-checks-2026-09-09.md</code></a>: <code>a_systematic_mapping_fault_is_reported_as_a_whole_set</code> applies one wrong rule, an identifier that keeps its heading's capitals, to 12 staged documents and asserts that all 12 appear in one report, with the document count stated before the list; with <code>conformance</code> changed to return at the first document with a diagnostic, it failed.</p>
+          </section>
+          <section class="verification" id="verify-a-clean-staged-project" data-change="added" data-outcome="passed" data-refs="scenario-a-clean-staged-project">
+            <h3>A clean staged project is promoted <span class="hs-id">verify-a-clean-staged-project</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/staging-promotion-and-the-checks-2026-09-09.md"><code>evidence/staging-promotion-and-the-checks-2026-09-09.md</code></a>, a promotion run by hand: with every check passing, <code>migrate promote</code> with <code>--check</code> reported that nothing was moved, and the same command without <code>--check</code> promoted <code>htmlspec</code>, <code>spec.nix</code>, and <code>CHANGELOG.md</code> and exited 0.</p>
+          </section>
+          <section class="verification" id="verify-the-gate-reads-the-carried-version" data-change="added" data-outcome="partial" data-refs="scenario-a-migrated-archive-s-version-is-readable-by-the-gate">
+            <h3>The archival gate reads the version the migration carried <span class="hs-id">verify-the-gate-reads-the-carried-version</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/staging-promotion-and-the-checks-2026-09-09.md"><code>evidence/staging-promotion-and-the-checks-2026-09-09.md</code></a>: after the promotion run by hand, a new change in the promoted project was refused by <code>htmlspec archive try --check</code>, which reported that the declared version is still 0.1.0, which is the last archived version, so the gate read the version the migration carried.</p>
+            <p data-field="unchecked">That the gate reads the greatest version among the migrated archives: the record shows it reading one carried version, 0.1.0, and not choosing among several.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

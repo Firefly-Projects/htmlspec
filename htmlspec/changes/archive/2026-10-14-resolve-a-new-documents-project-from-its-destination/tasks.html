@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Resolve a new document's project from its destination: tasks</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Resolve a new document's project from its destination: tasks</h1>
+        <p>Tests that pin the four arrangements, the repair in <code>new_document</code>, the requirement that states the rule, and the 0.29.1 release.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Resolve a new document's project from its destination: tasks</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-tests-first">1. Tests first</a></li>
+          <li><a href="#hs-the-fix">2. The fix</a></li>
+          <li><a href="#hs-the-contract">3. The contract</a></li>
+          <li><a href="#hs-release">4. The release</a></li>
+          <li><a href="#hs-review-and-archive">5. Review and archival</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-tests-first">
+          <h2>1. Tests first</h2>
+          <p>The tests come first, because they are what proves the defect and then its repair. Each runs the built binary, as <code>new_document_creates_a_document_that_validates_immediately</code> does.</p>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Add a CLI test for each of the four arrangements in <a href="evidence/the-four-cases-measured-2026-10-13.md"><code>evidence/the-four-cases-measured-2026-10-13.md</code></a>, each run in a scratch repository with a scratch project. <span class="hs-id">task-1-1</span></h3>
+              <p>For each arrangement, assert that <code>new document</code> exits 0, that <code>htmlspec validate</code> accepts the document it wrote, and that <code>htmlspec assets</code> run in the project finds each stored asset once. Run them against the unrepaired build and record in this change's evidence which fail: the measurement predicts that A, B, and C fail and D passes.</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Add a CLI test for a destination beneath <code>htmlspec/</code> in a project whose store is not established yet. <span class="hs-id">task-1-2</span></h3>
+              <p>Assert that the store is established at <code>htmlspec/assets/</code> and that no store is written beside the document. This pins the arrangement design decision 2 keeps from the rejected alternative.</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Confirm that a test pins <code>new change</code> resolving its project from the working directory, and add one if none does. <span class="hs-id">task-1-3</span></h3>
+              <p>Its subject is a project, so this change must not alter it.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-the-fix">
+          <h2>2. The fix</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 In <code>new_document</code>, resolve the project from the destination's directory and choose the store as design decision 2 states. <span class="hs-id">task-2-1</span></h3>
+              <p>Normalize the destination to an absolute path first, joining a relative one to the working directory and dropping <code>.</code> and <code>..</code> segments lexically. A destination beneath the project's <code>htmlspec/</code> references <code>htmlspec/assets/</code>. Any other gets a store beside it.</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Run the tests from 1.1 to 1.3 and <code>new_document_creates_a_document_that_validates_immediately</code>, from inside this repository, and see every one pass. <span class="hs-id">task-2-2</span></h3>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Correct <code>new_document_and_post_document_agree</code> in <code>crates/htmlspec-cli/tests/verbs.rs</code>, which asserted the outcome the repair removes. <span class="hs-id">task-2-3</span></h3>
+              <p>Found while running 2.2. The test wrote <code>notes.html</code> into a project's root and asserted that the document was the one file written, so that it referenced the project's store. That document's references descend into <code>htmlspec/</code>, and validation checks none of them when no store is above the document: a reference naming bytes no store holds was accepted. The test now asserts the document and a store beside it, and keeps the one-file assertion for a destination beneath <code>htmlspec/</code>. Design decision 2 and its risks record the decision.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-the-contract">
+          <h2>3. The contract</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done" data-refs="req-a-project-can-be-initialized-with-a-conforming-document">
+              <h3>3.1 At archival, state the rule in a modification of <a href="../../../specs/document-template/spec.html#req-a-project-can-be-initialized-with-a-conforming-document">"A project can be initialized with a conforming document"</a>. <span class="hs-id">task-3-1</span></h3>
+              <p>Initialization decides which project a document belongs to from the document's own location, never from the directory it runs in, with a scenario for each arrangement 1.1 tests and for the project without a store that 1.2 tests.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-release">
+          <h2>4. The release</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Advance the release to 0.29.1. <span class="hs-id">task-4-1</span></h3>
+              <p>Set the version in <code>Cargo.toml</code> and in <code>spec.nix</code>, and add a <code>CHANGELOG.md</code> entry naming the repair in a contributor's terms.</p>
+              <p data-field="note"><code>Cargo.toml</code>, <code>Cargo.lock</code>, and <code>CHANGELOG.md</code> were advanced to 0.29.1 during implementation. <code>spec.nix</code> waits for archival, which advances the project's version.</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Run <code>scripts/check</code> in full, with the promoted project in place. <span class="hs-id">task-4-2</span></h3>
+              <p>On this machine, the <code>prompt</code>, <code>installed</code>, <code>release-fixtures</code>, and <code>release</code> stages fail inside <code>nix develop</code>, because macOS's <code>python3</code> shim cannot find its tool there. Run those four outside the shell, with <code>cargo</code> from the shell on the path, and record both runs.</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Regenerate the installed instruction files for 0.29.1, with <code>htmlspec init --tools claude,codex,pi</code>. <span class="hs-id">task-4-3</span></h3>
+              <p>Found while running 4.2: <code>scripts/check-installed</code> reported all 45 files under <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code> as differing from what <code>init</code> writes, because each records the version that generated it. The regeneration changed one line in each, <code>generatedBy: htmlspec 0.29.0</code> to <code>0.29.1</code>, and nothing else, and <code>check-installed</code> then passed.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-review-and-archive">
+          <h2>5. Review and archival</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Prove the tests can fail: put the working directory back as the place the project is found, and record that the tests from 1.1 fail for A, B, and C. <span class="hs-id">task-5-1</span></h3>
+              <p>Record the run in this change's evidence, then restore the repair.</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Take the code review, and settle each finding. <span class="hs-id">task-5-2</span></h3>
+              <p data-field="note">The review of pull request #56 (medium) found one issue, and it was taken: on a filesystem that ignores case, <code>new document</code> into <code>HTMLSPEC/changes/</code> found the project but compared the destination with <code>htmlspec/</code> by spelling, so the document got a second store inside the project. The comparison now asks the filesystem whether the two are one directory, which also covers a link at that level (design decision 2). Two unit tests pin it, and both fail under the reviewed comparison (<a href="evidence/mutation-testing-2026-10-13.md"><code>evidence/mutation-testing-2026-10-13.md</code></a>). It also noted that <code>CHANGELOG.md</code> says the requirement "now states the rule" while task 3.1 writes it at archival. Kept, because the change is archived on this branch before it merges, so the line is true when it lands.</p>
+              <p data-field="note">The review of pull request #55, the promotion this change is stacked on, found that its branch alone fails <code>new_document_creates_a_document_that_validates_immediately</code>, which this change repairs. That is settled by the order in which the two merge, not by this change.</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Archive the change with <code>htmlspec archive</code>, and record the runbook inventory the archive writes. <span class="hs-id">task-5-3</span></h3>
+              <p>Design risk "The first archive's runbook inventory" expects it to list no runbook, because the release runbook still sits outside the project. The migration plan's follow-on change starts from what this records.</p>
+              <p data-field="note">Archived on 2026-10-14 as <code>2026-10-14-resolve-a-new-documents-project-from-its-destination</code>, at version 0.29.1, the first change this repository archives with <code>htmlspec archive</code>. The archive's <code>runbooks.json</code> is <code>{"format": "htmlspec-runbook-inventory/v1", "runbooks": []}</code>: it lists no runbook, as the design's risk "The first archive's runbook inventory" expected, because the release runbook still sits at <code>runbooks/release/</code>, outside the project. <code>htmlspec/runbook-releases.json</code> was not changed, and still names 0.15.0. The migration plan's follow-on change, which moves the runbook into <code>htmlspec/runbooks/release/</code>, starts from this record. Archival asked about this task, the only one still open while it ran, and was answered with <code>--yes</code>.</p>
+              <p data-field="note">The code review of pull request #57 found that archival moved the change one level deeper, from <code>htmlspec/changes/</code> to <code>htmlspec/changes/archive/</code>, without rewriting its documents' relative references. All four documents pointed at <code>../../assets/</code>, a store that does not exist from the archive, so none rendered its stylesheet or loaded its scripts, and task 3.1's link to the accepted requirement led nowhere. <code>htmlspec validate</code> accepted all four. The 29 references were rewritten by hand, to <code>../../../assets/</code> and <code>../../../specs/</code>, and every relative reference in the project's 161 documents was then checked against the files on disk. None names nothing. The two defects behind this, archival not rewriting the references it moves, and validation resolving an asset reference by the address it names rather than by its path, are left to a change of their own.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

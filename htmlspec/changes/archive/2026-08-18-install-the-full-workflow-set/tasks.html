@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Install the full workflow set</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Install the full workflow set</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Install the full workflow set</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-18-install-the-full-workflow-set/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-replace-the-hand-held-rule-with-a-checked-one">1. Replace the hand-held rule with a checked one</a></li>
+          <li><a href="#hs-2-the-workflow-table-grows">2. The workflow table grows</a></li>
+          <li><a href="#hs-3-explore">3. explore</a></li>
+          <li><a href="#hs-4-new">4. new</a></li>
+          <li><a href="#hs-5-continue">5. continue</a></li>
+          <li><a href="#hs-6-ff">6. ff</a></li>
+          <li><a href="#hs-7-apply">7. apply</a></li>
+          <li><a href="#hs-8-verify">8. verify</a></li>
+          <li><a href="#hs-9-the-closing-message">9. The closing message</a></li>
+          <li><a href="#hs-10-verify-against-a-real-project">10. Verify against a real project</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-replace-the-hand-held-rule-with-a-checked-one">
+          <h2>1. Replace the hand-held rule with a checked one</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Expose the CLI's command tree as data: a function in <code>htmlspec-cli</code> returning the subcommand names reachable from the root, derived from the clap definition rather than a hand-written list.</h3>
+              <p>A hand-written list is a second place the command surface is stated, and it would drift in the direction that makes the test pass while the body is wrong</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Add the extraction: given an instruction body, find every <code>htmlspec</code> followed by words and walk the words down the command tree, returning the invocations that do not resolve.</h3>
+              <p>Deliberately over-eager — prose that reads like an invocation is flagged, because the other failure direction ships a skill that sends an agent to a clap error</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Add the test in <code>htmlspec-cli</code> asserting no <code>WORKFLOWS</code> body names an unresolvable invocation.</h3>
+              <p>This is the test that makes tasks 3 through 8 safe to write, so it lands before any body does</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Test the extractor against a body known to be bad — <code>htmlspec propose</code>, <code>htmlspec new spec</code>, and <code>htmlspec init &lt;path&gt;</code> — and assert each is reported.</h3>
+              <p>A guard with no failing case is a guard nothing has exercised</p>
+              <p data-field="deviation">Migration note: the extractor was tested against <code>htmlspec propose</code>, <code>htmlspec new spec</code>, and <code>htmlspec verify</code>, and <code>an_absent_subcommand_is_reported</code> asserts that each is reported. <code>htmlspec init &lt;path&gt;</code> is not among them: a separate test, <code>the_withdrawn_init_path_is_not_itself_an_invocation_fault</code>, asserts that <code>htmlspec init doc.html</code> is <em>not</em> reported, because <code>init</code> resolves and the word after it is an argument the check does not examine, and its comment says the program reports that withdrawn spelling at runtime. Shown in <code>crates/htmlspec-cli/src/invocations.rs</code> at commit <code>5f7e5cf</code>.</p>
+            </li>
+            <li class="task" id="task-1-5" data-change="added" data-state="done">
+              <h3>1.5 Remove <code>no_body_names_a_withdrawn_command</code> from <code>htmlspec-assets</code>, which task 1.3 subsumes, and update the module comment in <code>instructions.rs</code> to describe the checked property instead of the one-workflow rule it currently states as a non-goal</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-the-workflow-table-grows">
+          <h2>2. The workflow table grows</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Add the six entries to <code>WORKFLOWS</code> in lifecycle order — <code>explore</code>, <code>new</code>, <code>continue</code>, <code>ff</code>, <code>apply</code>, <code>verify</code>, <code>archive</code> — each with its directory, summary, and allowed tools.</h3>
+              <p>Bodies come in tasks 3 through 8; use a placeholder that the length assertion rejects, so an entry cannot ship without its body</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Add the entry-point flag to <code>Workflow</code> and set it on <code>new</code>.</h3>
+              <p>A flag rather than "the first entry", because order is for reading and the entry point is what a contributor types first; a later change adding a row above <code>new</code> must not silently repoint the closing message</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Test that exactly one workflow is flagged as the entry point.</h3>
+              <p>Two would make the closing message pick arbitrarily, and none would make it print nothing on the run where it matters most</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Test that the table's order is lifecycle order by pinning the first and last entries, which is the property the shared-file region depends on</h3>
+              <p data-field="deviation">Migration note: <code>the_table_is_in_lifecycle_order</code> pins all seven names in lifecycle order rather than the first and last alone. Beyond the task's words, a second test, <code>the_region_carries_every_workflow_in_lifecycle_order</code>, holds the region written into a shared file to the table's order, because a <code>write_region</code> that sorted or reversed its iteration would keep the table's test passing. Shown in <code>crates/htmlspec-assets/src/instructions.rs</code> and <code>crates/htmlspec-cli/src/install.rs</code> at commit <code>5f7e5cf</code>, whose message records that reversing the iteration in <code>write_region</code> fails the second test.</p>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done">
+              <h3>2.5 Extend <code>workflow_names_and_directories_are_distinct</code> coverage to the summaries: seven descriptions appear in one list in a contributor's tool, and two workflows with the same summary are indistinguishable at the point of choosing</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-explore">
+          <h2>3. explore</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Write <code>crates/htmlspec-assets/instructions/explore.md</code>.</h3>
+              <p>A stance, not a sequence: think, read, search, investigate, and do not implement. State plainly that an agent asked to explore must not write code, and that producing an artifact is capturing thinking rather than implementing</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 State why the stance is worth an instruction file: work done before anyone decided what it was for produces a change with no proposal.</h3>
+              <p>This body names no <code>htmlspec</code> invocation at all, which is the strongest available demonstration that the hazard is naming an absent command rather than shipping a workflow without one</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-new">
+          <h2>4. new</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Write <code>new.md</code> covering the three artifacts <code>htmlspec new change</code> writes, in order: the proposal, then the design, then the tasks.</h3>
+              <p>Name the command with its real spelling and its real arguments</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 State what a proposal carries, in the terms the accepted <code>artifact-kinds</code> contract uses.</h3>
+              <p>Do <strong>not</strong> name a diagnostic for a proposal's content: <code>kind/*</code> has exactly two rules and neither constrains a proposal or a design, deliberately — a proposal arguing for a prospective requirement is doing a proposal's job whether it states it in prose or as a unit. The body says what a good proposal does and is explicit that validation does not enforce it, because an agent told a rule exists will write to satisfy a check that never runs</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 State the same for the design — decisions, alternatives rejected, risks accepted — and that a design's reasoning is where an obligation is often stated most precisely, which is why archival reads it</h3>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 State the same for the tasks document, including that a dropped task states why it was dropped, and that the reason marks a boundary the specification will later state as out of scope.</h3>
+              <p>Name <code>kind/no-tasks</code> here, which does exist: a tasks document carrying no task unit is reported</p>
+            </li>
+            <li class="task" id="task-4-5" data-change="added" data-state="done">
+              <h3>4.5 State that the specification is not written here.</h3>
+              <p>It is produced at archival from what was built, and a specification written at proposal time is a restatement of intent — which is the failure the archival body exists to avoid</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-continue">
+          <h2>5. continue</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Write <code>continue.md</code>: determine which artifacts the change has, and produce the next one it is missing.</h3>
+              <p>Name how the change's state is established, using commands that exist</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 State the stopping condition.</h3>
+              <p>When a change has its proposal, design, and tasks, the next step is implementation rather than another artifact, and the body says so rather than inventing a fourth document</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Defer to <code>new</code> for what each artifact carries rather than restating it.</h3>
+              <p>Three descriptions of a proposal is the drift the artifact-kinds change exists to prevent, and the workflow is named rather than pathed because a shared-file tool has every body in one region</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-ff">
+          <h2>6. ff</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Write <code>ff.md</code> as a driver: the sequence, the checkpoint after each artifact, and what makes stopping early the right outcome.</h3>
+              <p>Defer to <code>new</code> and <code>continue</code> by name for artifact content</p>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 State the checkpoint explicitly — validate after each artifact, and do not carry an invalid artifact into the next one.</h3>
+              <p>Fast-forward means fewer pauses for a contributor, not fewer checks</p>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 State when <code>ff</code> is the wrong choice: a change whose shape is not yet settled wants <code>explore</code> first, because carrying an unsettled idea through three artifacts produces three artifacts to rewrite</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-apply">
+          <h2>7. apply</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Write <code>apply.md</code>: work the tasks in the tasks document, settling each task's state as the work completes.</h3>
+              <p>Name the states the tasks template actually uses, including <code>dropped</code></p>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done">
+              <h3>7.2 State that a dropped task must record its reason before it is left dropped, and why: without the reason it records that something was abandoned and not what the decision was</h3>
+            </li>
+            <li class="task" id="task-7-3" data-change="added" data-state="done">
+              <h3>7.3 State that implementation may reveal the design was wrong, and what to do about it — say so and settle it, rather than implementing something the design does not describe.</h3>
+              <p>Archival reads the implementation as authoritative, so an unrecorded divergence becomes a contract nobody chose</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-8-verify">
+          <h2>8. verify</h2>
+          <ul>
+            <li class="task" id="task-8-1" data-change="added" data-state="done">
+              <h3>8.1 Write <code>verify.md</code>: check the implementation against the change's own artifacts before archival.</h3>
+              <p>Name what is compared — tasks against what was built, design decisions against what the code does</p>
+            </li>
+            <li class="task" id="task-8-2" data-change="added" data-state="done">
+              <h3>8.2 State what a verification failure means and what it does not.</h3>
+              <p>A divergence is not automatically a defect: the implementation may be right and the design stale. The body says to name which, because that judgment is the whole value of the stage</p>
+            </li>
+            <li class="task" id="task-8-3" data-change="added" data-state="done">
+              <h3>8.3 State the boundary against archival.</h3>
+              <p><code>verify</code> reports; it does not produce the specification, advance the version, or merge. Archival does those, and a workflow that half-performed the next one would leave a change in a state neither workflow describes</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-9-the-closing-message">
+          <h2>9. The closing message</h2>
+          <ul>
+            <li class="task" id="task-9-1" data-change="added" data-state="done">
+              <h3>9.1 Change <code>report_next_command</code> to name the entry-point workflow from the table instead of the literal <code>"archive"</code>, keeping the grouping by distinct spelling</h3>
+            </li>
+            <li class="task" id="task-9-2" data-change="added" data-state="done">
+              <h3>9.2 Move archival into a following sentence rather than the headline, since a contributor who has just bootstrapped has nothing to archive</h3>
+            </li>
+            <li class="task" id="task-9-3" data-change="added" data-state="done">
+              <h3>9.3 Update the test that pins the closing message's content, and assert it names the entry point rather than asserting a literal string — a test pinning <code>/htmlspec:archive</code> would have to be rewritten by every change that touches the table</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-10-verify-against-a-real-project">
+          <h2>10. Verify against a real project</h2>
+          <ul>
+            <li class="task" id="task-10-1" data-change="added" data-state="done">
+              <h3>10.1 <a href="evidence/seven-workflow-install-2026-08-18.md">Run <code>htmlspec init --tools all</code> in a scratch directory and confirm seven skills and seven commands land for each tool that takes them, and that the <code>AGENTS.md</code> region carries seven sections in lifecycle order</a></h3>
+            </li>
+            <li class="task" id="task-10-2" data-change="added" data-state="done">
+              <h3>10.2 Measure the <code>AGENTS.md</code> region's size with seven bodies inlined and <a href="evidence/seven-workflow-install-2026-08-18.md">record it as evidence</a>.</h3>
+              <p>The design names an unreasonable result as a risk with a stated fallback, and the number is what decides whether the fallback is needed</p>
+            </li>
+            <li class="task" id="task-10-3" data-change="added" data-state="done">
+              <h3>10.3 <a href="evidence/seven-workflow-install-2026-08-18.md">Confirm every generated file records the generating version, and that a second <code>init</code> run rewrites rather than duplicates</a> — the existing properties, re-checked at seven rows because the loop is what changed</h3>
+            </li>
+            <li class="task" id="task-10-4" data-change="added" data-state="done">
+              <h3>10.4 Drive one small change through the installed workflows end to end in the scratch project, and <a href="evidence/lifecycle-walkthrough-2026-08-18.md">record where an instruction was ambiguous or wrong</a>.</h3>
+              <p>A body is prose and prose has no compiler; using it is the only check that exists</p>
+            </li>
+            <li class="task" id="task-10-5" data-change="added" data-state="done">
+              <h3>10.5 Regenerate this repository's own <code>.claude/</code>, <code>.codex/</code>, <code>.cursor/</code>, and <code>.pi/</code> instructions through <code>htmlspec init</code>, so the repository carries what the tool installs rather than a hand-copied subset</h3>
+              <p data-field="deviation">Migration note: commit <code>5f7e5cf</code> regenerated this repository's <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code> instructions, adding 33 files beneath them. No <code>.cursor/</code> instructions were regenerated: the repository holds no <code>.cursor/</code> directory before or after that commit.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

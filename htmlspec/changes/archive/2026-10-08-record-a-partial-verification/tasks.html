@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Record a partial verification</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Record a partial verification</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Record a partial verification</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-08-record-a-partial-verification/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-re-measure-before-changing-anything">1. Re-measure before changing anything</a></li>
+          <li><a href="#hs-2-tests-first">2. Tests first</a></li>
+          <li><a href="#hs-3-the-contract">3. The contract</a></li>
+          <li><a href="#hs-4-projection-and-validation">4. Projection and validation</a></li>
+          <li><a href="#hs-5-presentation">5. Presentation</a></li>
+          <li><a href="#hs-6-the-instructions">6. The instructions</a></li>
+          <li><a href="#hs-7-prove-it">7. Prove it</a></li>
+          <li><a href="#hs-8-release">8. Release</a></li>
+          <li><a href="#hs-9-review">9. Review</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-re-measure-before-changing-anything">
+          <h2>1. Re-measure before changing anything</h2>
+          <ul>
+            <li class="task" id="task-1-0" data-change="added" data-state="done">
+              <h3>1.0 Re-base.</h3>
+              <p>Once the earlier changes in this set have archived, read <code>own</code> in <code>assets/vendor.lock.json</code> and record it here as the stylesheet revision task 5.1 supersedes, because <code>mark-the-words-a-modification-changed</code> adds a revision of <code>htmlspec.css</code> before this change lands. Carry its rules into this change's revision rather than branching from the older one</p>
+              <ul>
+                <li>
+                  <p><code>own</code> in <code>assets/vendor.lock.json</code> records <code>htmlspec.css</code> at <code>ebf35a36fe4dc1a7…</code>, the revision <code>mark-the-words-a-modification-changed</code> added in #46, and <code>aac8967609f80d9f…</code> is already in <code>retained</code>. So task 5.1 supersedes <code>ebf35a36fe4dc1a7</code>, starts from its bytes, and keeps its <code>ins</code> and <code>del</code> rules. <code>record-a-task-done-differently</code>, below this change in the stack, touches no stylesheet. Recorded in <a href="evidence/what-it-builds-on-2026-10-08.md"><code>evidence/what-it-builds-on-2026-10-08.md</code></a></p>
+                </li>
+                <li>
+                  <p data-field="deviation"><strong>Three facts in <a href="design.html"><code>design.md</code></a> had moved, and each is corrected before any code</strong>: the stylesheet digest in the Context and in decision 7, the line numbers of the outcome enumeration (now 613-621) and of the record composition (now <code>runs.rs</code> 1597-1615), and the Migration Plan's version, which now says this change moves the contract from <code>0.5.0</code> to <code>0.6.0</code>. None changes a decision</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 In a scratch project built with <code>./target/debug/htmlspec init --tools none</code>, rebuild the ten variants of <a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a> section 5 and run <code>validate --json</code> on each.</h3>
+              <p>Record every exit status and rule id. The expected results are: <code>schema/invalid</code> for <code>partial</code>; <code>schema/projection</code> for an <code>unchecked</code> paragraph on any outcome; no <code>review/unverified-requirement</code> for <code>failed</code>; <code>review/stale-verification</code> for <code>partial</code> and for the typo <code>notrun</code>; and a second <code>method</code> paragraph dropped with no diagnostic</p>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/the-measurement-repeated-2026-10-08.md"><code>evidence/the-measurement-repeated-2026-10-08.md</code></a>, with the HEAD binary <code>htmlspec 0.24.0 (b768860d5b82)</code> copied aside for task 7.1. All ten rows equal the 2026-09-30 table: <code>partial</code> is <code>schema/invalid</code> with exit 1; <code>unchecked</code> is <code>schema/projection</code> on <code>partial</code> and on <code>passed</code>; <code>failed</code> exits 0 with no <code>review/unverified-requirement</code>, and removing the verification draws it; <code>partial</code> and <code>notrun</code> each draw <code>review/stale-verification</code>; and a second <code>method</code> paragraph exits 0 with no diagnostic, its model holding the first paragraph alone</p>
+                </li>
+                <li>
+                  <p>Appendix A's script writes eight variants and its table lists ten. Rows i (<code>notrun</code>) and j (a second <code>method</code> paragraph) were added to the script, so task 7.1 repeats all ten</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 If <code>~/projects/html-spec-migration/staged/</code> still exists, recount its verification units by outcome with the project-model tool, and confirm that the four units named in <a href="evidence/the-measurement-2026-09-30.md">evidence sections 1 and 2</a> are still absent or still <code>passed</code>.</h3>
+              <p>Record the counts, or that the tree is gone</p>
+              <ul>
+                <li>
+                  <p>The staged tree still exists, dated 2026-09-29. A copy in the scratchpad, projected with <code>project-model</code> built against this worktree: 109 documents, 21 holding verifications, 94 units, 92 <code>passed</code>, 1 <code>not-run</code>, 1 <code>blocked</code>, as section 3 counted. No staged document carries <code>partial</code> or <code>unchecked</code></p>
+                </li>
+                <li>
+                  <p><code>verify-a-second-store-planted-inside-the-project</code> and <code>record-a-renamed-requirement</code>'s <code>verify-mutation-19</code> are absent, and <code>verify-reference-names-a-fabricated-address</code> and <code>verify-a-second-copy-of-one-library</code> are still <code>passed</code>. A unit also named <code>verify-mutation-19</code> is staged as <code>passed</code> in <code>2026-09-26-log-a-runbook-run</code>, and it is that change's own mutation 19, about the record copying only task units, not the one review removed</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Read <code>CONTRACT_VERSION</code> in <code>crates/htmlspec-schema/src/lib.rs</code> and the newest entry in <code>crates/htmlspec-schema/CHANGELOG.md</code>, and record the version this change moves from, because an earlier change in this set may have moved it already</h3>
+              <ul>
+                <li>
+                  <p><code>CONTRACT_VERSION</code> is <code>0.4.0</code>, and the newest changelog entry is <code>## 0.4.0 — 2026-10-07</code>. <code>record-a-task-done-differently</code>, the change below this one in the stack, moves it to <code>0.5.0</code>, so this change moves it from <code>0.5.0</code> to <code>0.6.0</code>. This branch starts from <code>main</code>, where <code>0.5.0</code> does not exist, so its enumeration goes from <code>0.4.0</code> to <code>0.6.0</code>, and the <code>0.5.0</code> entry joins when the stack is assembled</p>
+                </li>
+                <li>
+                  <p><code>git grep</code> finds the version in one place task 3.3 does not list: the contract sentence in <code>README.md</code>, which <code>mark-the-words-a-modification-changed</code> moved in the same step. Task 3.3 moves it too</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-tests-first">
+          <h2>2. Tests first</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 In <code>crates/htmlspec-validate/src/rules/relations.rs</code>, add unit tests for the document-schema scenarios: a <code>partial</code> verification with no <code>unchecked</code> paragraph is reported as <code>MISSING_UNCHECKED</code>, naming the verification; one with an <code>unchecked</code> paragraph is not; an unmarked paragraph does not satisfy the rule; <code>failed</code> with an <code>unchecked</code> paragraph and <code>passed</code> without one are both accepted.</h3>
+              <p>Extend <code>every_conditional_rule_finds_its_state</code> with the <code>parti</code> stem. Check that all of these fail on HEAD, where neither the constant nor the value exists</p>
+              <ul>
+                <li>
+                  <p>Five tests in <code>relations::tests</code>, over a <code>verification(outcome, paragraphs)</code> helper: <code>a_partial_verification_stating_nothing_it_did_not_check_is_reported</code> (one report, at <code>verify-x</code>, whose message names <code>data-field="unchecked"</code>, and the document rejected), <code>a_partial_verification_stating_what_it_did_not_check_is_accepted</code> (with one paragraph and with two), <code>an_unmarked_paragraph_does_not_state_what_a_partial_check_missed</code> (an unmarked paragraph and a <code>note</code> each leave it reported), <code>a_failed_verification_may_state_what_it_did_not_reach</code>, and <code>a_verification_that_is_not_partial_needs_no_unchecked_paragraph</code>, which iterates every outcome the schema enumerates but <code>partial</code>. <code>every_conditional_rule_finds_its_state</code> asserts that <code>parti</code> finds <code>partial</code></p>
+                </li>
+                <li>
+                  <p>On HEAD the crate's tests do not compile: three <code>E0425: cannot find value MISSING_UNCHECKED</code>. With the constant added alone, types first and no rule, three fail on their assertions: the reported case, the unmarked case, and <code>every_conditional_rule_finds_its_state</code>, at <code>parti</code>. The other three pass, and are kept as the guards that the rule does not over-report</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 In <code>crates/htmlspec-validate/src/rules/review.rs</code>, add a test on a <code>specification</code> document, <code>a_verification_of_any_outcome_clears_the_unverified_warning</code>, that iterates every outcome the schema enumerates.</h3>
+              <p>Also add <code>a_partial_verification_of_a_moved_requirement_is_a_stale_verification</code>. Both pass on HEAD, the second for the wrong reason recorded in <a href="evidence/the-measurement-2026-09-30.md">evidence section 6</a>, so record that. Confirm that <code>the_not_run_outcome_is_found_in_the_schema</code> needs no edit, because it iterates the schema</p>
+              <ul>
+                <li>
+                  <p><code>a_verification_of_any_outcome_clears_the_unverified_warning</code> runs on a <code>specification</code> document through a new <code>check_specification</code> helper, the rest of the module checking a <code>tasks</code> document so staleness is measured alone. It first asserts the control, that the requirement with nothing naming it is reported, then that a verification of each outcome the schema enumerates clears it. <code>a_partial_verification_of_a_moved_requirement_is_a_stale_verification</code> asserts one <code>review/stale-verification</code> naming <code>partial</code> and no <code>review/stale-reference</code></p>
+                </li>
+                <li>
+                  <p><strong>Both pass on HEAD.</strong> The first because the schema lists four outcomes and each clears the warning; it reaches <code>partial</code> once 3.1 lists it. The second passes for the wrong reason <a href="evidence/the-measurement-2026-09-30.md">evidence section 6</a> found: <code>has_run</code> counts any value but the not-run one as having run, <code>partial</code> included while it is outside the enumeration, as it counts the typo <code>notrun</code></p>
+                </li>
+                <li>
+                  <p><code>the_not_run_outcome_is_found_in_the_schema</code> needs no edit: it asserts <code>has_run</code> for every enumerated value but <code>not-run</code>, so it covers <code>partial</code> from 3.1 on</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 In <code>crates/htmlspec-cli/src/runs.rs</code>, add <code>has_run(Some("partial"))</code> to <code>only_an_outcome_the_schema_enumerates_counts_as_recorded</code>.</h3>
+              <p>In <code>crates/htmlspec-cli/tests/run.rs</code>, add <code>a_run_that_recorded_a_partial_check_reports_nothing</code>, the twin of <code>a_run_that_recorded_a_failure_reports_nothing</code>, with an <code>unchecked</code> paragraph, asserting that <code>run release --check</code> reports no <code>review/unrecorded-requirement</code> and that the record validates. Check that both fail on HEAD</p>
+              <ul>
+                <li>
+                  <p><code>only_an_outcome_the_schema_enumerates_counts_as_recorded</code> asserts <code>has_run(Some("partial"))</code>, and fails on HEAD at that line (<code>runs.rs</code> 1906), because <code>partial</code> is outside the enumeration</p>
+                </li>
+                <li>
+                  <p><code>a_run_that_recorded_a_partial_check_reports_nothing</code> rewrites both verifications of a fresh record to <code>partial</code>, adds an <code>unchecked</code> paragraph after each method paragraph (and asserts there are two, so a change to the record's shape fails here and not later), then asserts that <code>run release --check</code> exits 0 with no <code>review/unrecorded-requirement</code> and that <code>validate</code> accepts the record. On HEAD it fails at the second assertion, reporting <code>review/unrecorded-requirement</code> at <code>req-real</code> and at <code>req-second</code></p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Add <code>invalid-schema-missing-unchecked</code> and <code>valid-partial-verification-states-what-it-did-not-check</code> to the table in <code>conformance/src/bin/generate_fixtures.rs</code>.</h3>
+              <p>Each declares the current version through <code>declaring_the_current_version</code>, and they differ only in the <code>unchecked</code> paragraph. Add <code>rules::relations::MISSING_UNCHECKED</code> to <code>known_rules()</code> in <code>conformance/tests/conformance.rs</code>. Check that the four hand-authored fixtures the generator deletes survive regeneration, or restore them and say so, and check that both new fixtures fail on HEAD</p>
+              <ul>
+                <li>
+                  <p>Both fixtures are generated through <code>partially_verified(base, unchecked)</code>, which declares the current version, turns the base's verification <code>partial</code>, and writes <code>unchecked</code> after its method paragraph, so the two <code>input.html</code> differ in that one line. The base's own verification is edited and no unit is added. <code>rules::relations::MISSING_UNCHECKED</code> is in <code>known_rules()</code></p>
+                </li>
+                <li>
+                  <p><strong>The four hand-authored fixtures survive regeneration.</strong> The generator now keeps them through its <code>HAND_AUTHORED</code> table: it wrote 70 fixtures, the directory holds 74, and <code>git status --porcelain fixtures/</code> lists only the two new directories</p>
+                </li>
+                <li>
+                  <p>On HEAD, with the constant stubbed, three conformance tests fail on the new fixtures alone: <code>every_fixture_reports_exactly_the_rules_it_declares</code> (<code>schema/missing-unchecked</code> not reported), <code>every_fixture_is_accepted_exactly_when_it_declares_it_is</code>, and <code>every_valid_fixture_is_accepted_by_the_whole_rule_set</code> (the valid twin rejected with <code>schema/projection</code>: <code>data-field="unchecked" names no field of this unit</code>)</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done">
+              <h3>2.5 Extend the <code>fixtures/projection/named-fields</code> mapping fixture with a <code>partial</code> verification carrying two <code>unchecked</code> paragraphs, pinning section 4.8.</h3>
+              <p>Extend <code>fixtures/projection/unjudged</code> with a <code>partial</code> verification carrying none, pinning section 10.1. Check that the first fails on HEAD with projection fault 4.0</p>
+              <ul>
+                <li>
+                  <p><code>named-fields</code> gains <code>verify-partly</code>, <code>partial</code>, with two <code>unchecked</code> paragraphs and its <code>method</code> between them, so the fixture pins document order and that position decides neither field. Its expected model holds both, in order. On HEAD <code>every_fixture_projects_to_its_expected_model</code> fails on <code>named-fields</code>, whose model lacks <code>unchecked</code>, and <code>mapping_models</code> reports its faults as <code>["4.0", "4.0"]</code>, one per paragraph</p>
+                </li>
+                <li>
+                  <p><code>unjudged</code> gains <code>verify-partly-unstated</code>, <code>partial</code> with no <code>unchecked</code> paragraph, whose model holds the outcome and no fault. It passes on HEAD, as a fixture about what the projection does not judge should</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-6" data-change="added" data-state="done">
+              <h3>2.6 Add <code>partial</code> to <code>SCHEMA_OWNED_LITERALS</code> in <code>crates/htmlspec-validate/tests/schema_rust_split.rs</code>, with its schema location, and check that it passes on HEAD</h3>
+              <ul>
+                <li>
+                  <p><code>("partial", "definitions.verification.properties.outcome.enum")</code> is in <code>SCHEMA_OWNED_LITERALS</code>, and <code>schema_rust_split</code> passes on HEAD, 4 tests</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-the-contract">
+          <h2>3. The contract</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 In <code>crates/htmlspec-schema/schema/document.schema.json</code>, append <code>partial</code> to the verification's <code>outcome</code> enumeration and give <code>outcome</code> a description of what <code>partial</code> means.</h3>
+              <p>Add <code>unchecked</code>, an array of <code>nonEmptyText</code> defaulting to empty, whose description says it is required when the outcome is <code>partial</code> and that an unmarked paragraph is a note. Check with <code>cargo test -p htmlspec-schema</code></p>
+              <ul>
+                <li>
+                  <p><code>partial</code> is the fifth value of <code>outcome</code>, appended so the four earlier values keep their order. <code>outcome</code> gains a description: what <code>partial</code> means, that a check whose covered part did not hold is <code>failed</code>, and that a check of another condition, subject, or trigger is not a partial check of the scenario. <code>unchecked</code> is an array of <code>nonEmptyText</code> defaulting to empty, after <code>method</code>, whose description says it is required when the outcome is <code>partial</code>, accepted on every outcome, and that an unmarked paragraph is a note. The verification's own description gains the sentence the task's carries about the validator. <code>cargo test -p htmlspec-schema</code> passes, 40 tests</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 In <code>crates/htmlspec-schema/doc/projection.md</code>, add <code>unchecked</code> (repeatable) to the verification row of the section 4.0 table, state its projection in 4.8, add it to the normalized-text list in 6.1, and add "a <code>partial</code> verification states what it did not check" to the validator rules in 10.1</h3>
+              <ul>
+                <li>
+                  <p>Section 4.0's table lists <code>unchecked</code> (repeatable) for the verification. 4.8 states the projection: every <code>data-field="unchecked"</code> paragraph, one entry each, in document order, absent when there is none, never fed by an unmarked paragraph, and a <code>partial</code> verification without one recorded as written because the condition is a validator rule. 6.1 lists the entries of <code>unchecked</code> as normalized text, and 10.1 lists "a <code>partial</code> verification states what it did not check" beside the dropped task's reason and the superseded decision's successor</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Move the contract one minor version from the version task 1.3 recorded.</h3>
+              <p>Update <code>CONTRACT_VERSION</code>, the <code>schemaVersion</code> enumeration (keeping every earlier version), the schema's <code>$id</code>, the version line of <code>projection.md</code>, and a dated <code>CHANGELOG.md</code> entry naming the value, the field, and the rule. Change the declared version in the four <code>assets/template-*.html</code> (the <code>htmlspec-version</code> meta and the masthead) and their pins in <code>assets/vendor.lock.json</code>, and add the new version to <code>SCHEMA_OWNED_LITERALS</code>. Check with <code>cargo test -p htmlspec-schema -p htmlspec-assets</code></p>
+              <ul>
+                <li>
+                  <p data-field="deviation"><strong><code>0.4.0</code> to <code>0.6.0</code> on this branch, which is <code>0.5.0</code> to <code>0.6.0</code> once the stack is assembled.</strong> <code>CONTRACT_VERSION</code>, the schema's <code>$id</code>, <code>0.6.0</code> appended to <code>schemaVersion</code> after <code>0.4.0</code> with every earlier version kept, <code>projection.md</code>'s header, the four templates' meta element and masthead, <code>0.6.0</code> in <code>SCHEMA_OWNED_LITERALS</code>, and the README's contract sentence, which task 1.3 found. The template pins moved: proposal <code>e900f53e…</code> to <code>d82730d7…</code>, design <code>3f35e511…</code> to <code>d2036168…</code>, specification <code>834b5d07…</code> to <code>dd593dc5…</code>, and tasks <code>2866afde…</code> to <code>dd79353a…</code></p>
+                </li>
+                <li>
+                  <p>The changelog's <code>## 0.6.0 — 2026-10-08</code> names <code>partial</code>, <code>unchecked</code>, and <code>schema/missing-unchecked</code>, says what <code>partial</code> counts as elsewhere, and records that no tracked HTML file and none of the 116 staged documents carried either before. <strong>The prose is written for the assembled stack</strong>: the changelog entry, the projection header, and the README say <code>0.1.0</code> to <code>0.5.0</code> stay accepted, as the coordinator asked, because <code>0.5.0</code> and its entry arrive with <code>record-a-task-done-differently</code> when the stack is assembled. The schema enumeration and <code>SCHEMA_OWNED_LITERALS</code> state only what this branch holds</p>
+                </li>
+                <li>
+                  <p><code>cargo test -p htmlspec-schema -p htmlspec-assets</code> passes, 121 tests. The generator, run again, rewrote the twelve <code>rename</code> fixtures' version lines, which <code>declaring_the_current_version</code> builds, two lines each, as every bump does, and the two new fixtures now declare <code>0.6.0</code></p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-projection-and-validation">
+          <h2>4. Projection and validation</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Add <code>unchecked: Vec&lt;String&gt;</code> to <code>Verification</code> in <code>crates/htmlspec-parse/src/model.rs</code>, skipped when empty.</h3>
+              <p>Make <code>project_verification</code> in <code>crates/htmlspec-parse/src/project.rs</code> accept <code>unchecked</code> and project every such paragraph in document order. Regenerate the mapping models with <code>cargo run -p htmlspec-parse --example mapping_models -- --write</code>, and check that the 2.5 fixtures pass</p>
+              <ul>
+                <li>
+                  <p><code>Verification</code> gains <code>unchecked: Vec&lt;String&gt;</code>, skipped when empty, between <code>method</code> and <code>references</code>, with a doc comment citing section 4.8. <code>project_verification</code> accepts <code>unchecked</code> beside <code>method</code> and projects <code>paragraphs.field("unchecked")</code>, every such paragraph in document order. No other code constructs a <code>Verification</code></p>
+                </li>
+                <li>
+                  <p><code>mapping_models -- --write</code> changed nothing and then reported "every fixture model is current": the models written by hand in task 2.5 are what the projection now produces. <code>cargo test -p htmlspec-parse</code> passes, 94 tests, both 2.5 fixtures among them</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Add <code>MISSING_UNCHECKED</code> and <code>partial_verifications_state_what_they_did_not_check</code> to <code>crates/htmlspec-validate/src/rules/relations.rs</code>, called from <code>validate</code> after <code>dropped_tasks_state_a_reason</code> and keyed on <code>status_named("parti", "definitions/verification/properties/outcome")</code>.</h3>
+              <p>Its message names the paragraph to add. Check that the tests from 2.1 through 2.4 pass</p>
+              <ul>
+                <li>
+                  <p><code>MISSING_UNCHECKED</code> (<code>schema/missing-unchecked</code>) sits beside <code>MISSING_REASON</code>, and <code>partial_verifications_state_what_they_did_not_check</code> runs after <code>dropped_tasks_state_a_reason</code>. It finds the value through <code>status_named("parti", "definitions/verification/properties/outcome")</code> and reads the <code>unchecked</code> field, so an unmarked paragraph or a <code>note</code> does not satisfy it. It reports at the verification: "a verification with outcome partial states nothing it did not check. Add a paragraph marked data-field="unchecked" for each part of what it names that the check did not reach, or the record claims the part it reached and leaves the rest unnamed". The module header now names the rule beside the dropped task's</p>
+                </li>
+                <li>
+                  <p>The tests from 2.1 to 2.4 pass: <code>cargo test -p htmlspec-validate</code>, 306 tests; the two <code>htmlspec-cli</code> tests; and <code>cargo test -p htmlspec-conformance</code> in every suite but <code>presentation.rs</code>, where <code>every_enumerated_state_value_has_a_label</code> waits for task 5.1, as that task says. <code>schema_rust_split</code> passes, so the rule spells no schema-owned value</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-presentation">
+          <h2>5. Presentation</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Add the <code>[data-outcome="partial"]</code> label for <code>h2</code>, <code>h3</code>, and <code>h4</code> to the screen stylesheet as a new content-addressed revision, colored <code>--hs-state-modified</code>, through the <code>assets/vendor.lock.json</code> procedure.</h3>
+              <p>Move <code>own</code> to the new digest, and add the revision <code>own</code> named before this task to <code>retained</code>: <code>aac8967609f80d9f…</code> at HEAD today, but <code>mark-the-words-a-modification-changed</code> lands first and adds a revision of its own, so read <code>own</code> at the time rather than trusting this digest. Leave the print stylesheet as it is. Check with <code>cargo test -p htmlspec-assets</code>, including <code>every_retained_revision_is_committed_and_superseded</code>, and with <code>conformance/tests/presentation.rs</code>, whose <code>every_enumerated_state_value_has_a_label</code> fails from 3.1 until this lands</p>
+              <ul>
+                <li>
+                  <p>The new revision is <code>sha256-03627137bcbb81c9</code>, <code>ebf35a36fe4dc1a7</code>'s bytes with one block added after the <code>not-run</code> label: <code>[data-outcome="partial"]</code> for <code>h2</code>, <code>h3</code>, and <code>h4</code>, <code>content: "partial"</code>, colored <code>--hs-state-modified</code>, with a comment saying why the color and why the <code>unchecked</code> paragraphs carry no label. So it keeps <code>mark-the-words-a-modification-changed</code>'s <code>ins</code> and <code>del</code> rules. <code>own</code> moved to it, and <code>ebf35a36fe4dc1a7</code> moved to <code>retained</code>, the revision task 1.0 recorded rather than the <code>aac8967609f80d9f</code> this task named</p>
+                </li>
+                <li>
+                  <p><strong>The retained note says why without the reason the others give.</strong> No document this repository tracks, and none the staged migration holds, names <code>ebf35a36fe4dc1a7</code>. It is kept as the procedure keeps every superseded revision, and because <code>init</code> in releases 0.23.0 to 0.25.0 stored it in every project it set up, whose documents name it. The note says that. The print stylesheet is unchanged</p>
+                </li>
+                <li>
+                  <p><code>cargo test -p htmlspec-assets</code> passes, 81 tests, <code>every_retained_revision_is_committed_and_superseded</code> and <code>every_own_asset_matches_its_recorded_hash</code> among them, and <code>conformance/tests/presentation.rs</code> passes, 7 of 7, <code>every_enumerated_state_value_has_a_label</code> included. <code>init</code> from the built binary stores <code>sha256-03627137bcbb81c9</code>, and still 8 assets</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Render a specification carrying a <code>partial</code> verification with two <code>unchecked</code> paragraphs, with styles on and with styles off.</h3>
+              <p>Check that the outcome word shows in the first, and that both paragraphs read as sentences in both</p>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/the-presentation-2026-10-08.md"><code>evidence/the-presentation-2026-10-08.md</code></a>. Rendered headless with scripts off: with styles on, in Firefox and in Chrome, the heading carries a <code>PARTIAL</code> badge in the amber <code>blocked</code> uses, and both paragraphs read as sentences after the method; with styles off, in Firefox, no badge is drawn, as for every outcome, and both paragraphs read as sentences. The specification validated, exit 0, two review warnings</p>
+                </li>
+                <li>
+                  <p><strong>The renders show that an <code>unchecked</code> paragraph looks exactly like the method.</strong> Only the author's wording tells them apart. That is design decision 7, and task 9.1 puts it to the contributor</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-the-instructions">
+          <h2>6. The instructions</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done" data-refs="req-a-partial-verification-states-what-it-did-not-check">
+              <h3>6.1 In <code>crates/htmlspec-assets/instructions/archive.md</code>, extend the <strong>Verification</strong> paragraph.</h3>
+              <p>A check that reached part of what it names records <code>partial</code>, with one <code>data-field="unchecked"</code> paragraph per part it did not check. A check whose condition, subject, or trigger differs from the scenario's is not a partial check of it and gets no verification. Like any outcome, <code>partial</code> clears the unverified warning, so record it only for a check that ran</p>
+              <ul>
+                <li>
+                  <p>A second paragraph under <strong>Verification.</strong>: a check that reached part of what its verification names records <code>data-outcome="partial"</code> with one <code>&lt;p data-field="unchecked"&gt;</code> per part it did not check, each a sentence saying what went unchecked; a <code>partial</code> verification without one is invalid and an unmarked paragraph does not count, citing document-schema's "<a href="specification.html#req-a-partial-verification-states-what-it-did-not-check">A partial verification states what it did not check</a>"; a check whose condition, subject, or trigger differs from the scenario's is not a partial check of it and gets no verification; and, like any outcome, <code>partial</code> clears the unverified warning, so it is recorded only for a check that ran</p>
+                </li>
+                <li>
+                  <p data-field="deviation"><code>the_archive_instructions_say_when_a_check_is_partial</code> in <code>crates/htmlspec-assets/src/instructions.rs</code> holds <code>archive</code> to naming the outcome, the field, the requirement, and the boundary "is not a partial check of it". It fails against HEAD's <code>archive.md</code> and passes now. The task asked for no test, and mutation testing would otherwise have nothing to catch the paragraph's removal, as the previous change found for its own instruction</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Regenerate the installed copies with <code>./target/debug/htmlspec init --tools claude,codex,pi</code>, remove the stray <code>htmlspec/</code> and <code>spec.nix</code> it creates, and check that <code>scripts/check-installed</code> passes</h3>
+              <ul>
+                <li>
+                  <p><code>init --tools claude,codex,pi</code> changed exactly five files, the <code>archive</code> copies under <code>.claude/commands/</code>, <code>.claude/skills/</code>, <code>.codex/skills/</code>, <code>.pi/prompts/</code>, and <code>.pi/skills/</code>. The <code>htmlspec/</code> and <code>spec.nix</code> it created, which did not exist before, were removed. <code>scripts/check-installed</code>: <code>ok 45 installed instruction file(s) match what init writes</code></p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-prove-it">
+          <h2>7. Prove it</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Repeat task 1.1 against the built change and record the results.</h3>
+              <p>The expected results are: <code>partial</code> with an <code>unchecked</code> paragraph accepted, with <code>review/stale-verification</code> only; <code>partial</code> without one rejected as <code>schema/missing-unchecked</code>; no <code>review/unverified-requirement</code> for either</p>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, with the same script and variants as task 1.1. <code>partial</code> with an <code>unchecked</code> paragraph exits 0 with <code>review/stale-verification</code> alone; <code>partial</code> without one exits 1 with <code>schema/missing-unchecked</code> at the verification; neither draws <code>review/unverified-requirement</code>. The projected verification holds the paragraph in <code>unchecked</code></p>
+                </li>
+                <li>
+                  <p><code>passed</code> with an <code>unchecked</code> paragraph is now accepted, as design decision 4 chose. The typo <code>notrun</code> is still <code>schema/invalid</code> and still draws <code>review/stale-verification</code>, and a second <code>method</code> paragraph is still dropped silently: the two faults the proposal leaves out, unchanged. The staged migration projects byte-identically and validates with the same 781 warnings and 0 errors under both binaries</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done">
+              <h3>7.2 Mutation-test the change, and record which test catches each mutation.</h3>
+              <p>A mutation nothing catches needs a test before this task is done. The mutations are:</p>
+              <ul>
+                <li>
+                  <p>the rule never reports;</p>
+                </li>
+                <li>
+                  <p>the rule keys on the wrong stem;</p>
+                </li>
+                <li>
+                  <p>the rule accepts an unmarked paragraph as <code>unchecked</code>;</p>
+                </li>
+                <li>
+                  <p><code>unchecked</code> is single-valued;</p>
+                </li>
+                <li>
+                  <p><code>project_verification</code> does not accept <code>unchecked</code>;</p>
+                </li>
+                <li>
+                  <p><code>review.rs</code> <code>has_run</code> treats <code>partial</code> as not run;</p>
+                </li>
+                <li>
+                  <p><code>requirements_are_verified</code> ignores a <code>partial</code> verification;</p>
+                </li>
+                <li>
+                  <p><code>runs.rs</code> <code>has_run</code> treats <code>partial</code> as not recorded;</p>
+                </li>
+                <li>
+                  <p>the stylesheet rule for <code>partial</code> is removed</p>
+                </li>
+                <li>
+                  <p>Recorded in <a href="evidence/mutation-testing-2026-10-08.md"><code>evidence/mutation-testing-2026-10-08.md</code></a>. All nine planned mutations are caught, and a tenth, the instruction paragraph removed, is caught by task 6.1's guard. Over 1,182 tests in five crates from a clean baseline: the rule never reporting, 4 failures; keyed on <code>pass</code>, 48; satisfied by a note, 1; <code>unchecked</code> single-valued, 1, the <code>named-fields</code> fixture; <code>unchecked</code> not accepted, 5; <code>review.rs</code> <code>has_run</code> excluding <code>partial</code>, 2; <code>requirements_are_verified</code> ignoring <code>partial</code>, 1, <code>a_verification_of_any_outcome_clears_the_unverified_warning</code>; <code>runs.rs</code> <code>has_run</code> excluding <code>partial</code>, 2; the stylesheet rule removed, 176, <code>every_enumerated_state_value_has_a_label</code> among them. No test had to be added. All six files hashed as before, and <code>git status</code> was empty</p>
+                </li>
+                <li>
+                  <p><strong>A first run was discarded.</strong> It restored files with <code>shutil.copy2</code>, which keeps the old modification time, so cargo kept mutated builds: after a transient <code>failed to create dependency graph</code> on mutation 5, mutations 6 to 10 ran against a parser still carrying mutation 5. The hashes matched, because the bytes were restored. The runner now gives each restored file a new modification time and retries a failed build, and the recorded table is the second run alone</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-3" data-change="added" data-state="done">
+              <h3>7.3 Run <code>cargo test --workspace --all-targets</code>, then <code>scripts/check</code>, with every stage green</h3>
+              <ul>
+                <li>
+                  <p><code>cargo test --workspace --all-targets</code>: 1,296 passed, 0 failed, and the same 1,296 inside <code>scripts/check</code>. <code>scripts/check</code>: the nine stages that run inside <code>nix develop</code> pass (format, lint, test, doctest, self-conformance, self-format, self-runbooks, self-runbooks-format, self-assets), and the four Python stages, which fail there on <code>tool 'python3' not found</code>, pass outside it: <code>prompt</code> (all 4 cases), <code>installed</code> (45 files match), <code>release-fixtures</code> (23 shared cases), and <code>release</code> (30 archived changes, 24 versions, declared <code>0.24.0</code> has an entry)</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-7-4" data-change="added" data-state="done">
+              <h3>7.4 Record what the implementation revealed in <code>evidence/</code></h3>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/what-the-implementation-revealed-2026-10-08.md"><code>evidence/what-the-implementation-revealed-2026-10-08.md</code></a>: the three design facts corrected at task 1.0; that every reader of the outcome took <code>partial</code> with no code change, and that the stale-verification test passed on HEAD for the wrong reason; the instruction guard no task asked for, and the two mutations with one catcher each; that the generator's <code>HAND_AUTHORED</code> table has retired the restore step; the discarded first mutation run; and four things for the contributor at task 9.1: <code>passed</code> with <code>unchecked</code> is valid, an <code>unchecked</code> paragraph looks like the method on the page, the prose is written for the assembled stack, and the retired stylesheet revision's note gives a reason the others do not</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-8-release">
+          <h2>8. Release</h2>
+          <ul>
+            <li class="task" id="task-8-1" data-change="added" data-state="done">
+              <h3>8.1 Run the release runbook at <code>runbooks/release/tasks.html</code>, and report whether it worked as written</h3>
+              <ul>
+                <li>
+                  <p>Recorded in <a href="evidence/the-runbook-ran-2026-10-08.md"><code>evidence/the-runbook-ran-2026-10-08.md</code></a>. It worked as written, in its order: the version and the lock moved the seven workspace members, the 45 installed files took the new stamp and <code>check-installed</code> passed, the changelog entry was written, and <code>check-release</code> passed on the declared version. <code>scripts/check</code> passed every stage at <code>0.26.0</code>, 1314 tests among them. The release was made after the four stacked changes were assembled, bottom first</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-8-2" data-change="added" data-state="done">
+              <h3>8.2 Choose the increment and state the reasoning, and flag it for the contributor's confirmation.</h3>
+              <p>The expected increment is minor, to <code>0.26.0</code>, because a verification outcome and a validation rule are added and the contract moves one minor version</p>
+              <ul>
+                <li>
+                  <p><strong><code>0.26.0</code>, a minor increment, confirmed by the contributor on 2026-10-08 before the version moved</strong>, with the stack's other three releases. A verification outcome, a field, and a validation rule are additions, and every document that validated still validates.</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-8-3" data-change="added" data-state="done">
+              <h3>8.3 Check that <code>scripts/check-release</code> passes after archival writes <code>VERSION</code> and the hand-written <code>runbooks.json</code> beside it</h3>
+              <ul>
+                <li>
+                  <p><code>openspec archive record-a-partial-verification --yes</code> (OpenSpec 1.13.1) archived the change as <code>2026-10-08-record-a-partial-verification</code>, on its branch in the stack before merge. It added 1 requirement(s) to the accepted specifications and modified 1, in <code>document-schema</code>, <code>document-validation</code>. Each merged block equals the delta's word for word, and no other requirement changed</p>
+                </li>
+                <li>
+                  <p><code>VERSION</code> holds <code>0.26.0</code>. <code>runbooks.json</code> is a copy of the previous archive's, because the release runbook is unchanged in the stack: the sha256 of <code>runbooks/release/specification.html</code> and <code>tasks.html</code> still match the inventory's</p>
+                </li>
+                <li>
+                  <p><code>scripts/check-release</code>: <code>ok  32 archived change(s) record a version, and 26 version(s) are in the changelog</code> and <code>ok  declared version 0.26.0 has a changelog entry</code></p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-9-review">
+          <h2>9. Review</h2>
+          <ul>
+            <li class="task" id="task-9-1" data-change="added" data-state="done">
+              <h3>9.1 Resolve what a review of the pull request found, and record what was and was not taken</h3>
+              <ul>
+                <li>
+                  <p><strong>Taken, from the code review of PR #50: the retained stylesheet's note named too few releases.</strong> It said <code>init</code> in 0.23.0 and 0.24.0 stored <code>ebf35a36…</code> in each project it set up. Stacked on <code>record-a-task-done-differently</code>, which released <code>0.25.0</code> with that stylesheet still current, 0.25.0 stored it too, so a reader deciding whether the copy can go, or which projects name it, would have missed projects set up with 0.25.0. The note, the implementation evidence, and the record of task 5.1 now say 0.23.0 to 0.25.0. The range came from the restack, not the change: on its own branch, 0.24.0 was the release below it</p>
+                </li>
+                <li>
+                  <p><strong>Settled with the contributor on 2026-10-08, all kept as built:</strong> a <code>passed</code> verification may carry an <code>unchecked</code> paragraph (design decision 4), because a check that passed for what it covered can still name what it did not, and <code>unchecked</code> is accepted on every outcome; an <code>unchecked</code> paragraph has no label of its own on the page (decision 7), because a label is another stylesheet revision; and <code>the_archive_instructions_say_when_a_check_is_partial</code>, which no task asked for, stays</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

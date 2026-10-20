@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>document-validation</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>document-validation</h1>
+        <p>Defines the structural and safety rules a specification document must satisfy to be accepted, along with the diagnostics a validator reports, so that a document is both reliably machine-editable and safe to open.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>document-validation</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/specs/document-validation/spec.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-requirements">Requirements</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-requirements">
+          <h2>Requirements</h2>
+          <section class="requirement" id="req-structural-conformance-is-enforced" data-change="unchanged">
+            <h3>Structural conformance is enforced <span class="hs-id">req-structural-conformance-is-enforced</span></h3>
+            <p>Validation SHALL reject any document that violates the element contract. This includes missing or duplicate identifiers, identifier prefixes that do not match the unit type, requirements without scenarios, scenarios outside requirements, missing normative statements, malformed scenario bodies, and attribute values outside their permitted sets.</p>
+            <article class="scenario" id="scenario-duplicate-identifier-rejected" data-change="unchanged">
+              <h4>Duplicate identifier rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains two units sharing one identifier</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports both locations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-requirement-without-a-scenario-rejected" data-change="unchanged">
+              <h4>Requirement without a scenario rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement contains no scenario</dd>
+                <dt>Then</dt>
+                <dd>validation fails and identifies the requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-conforming-document-accepted" data-change="unchanged">
+              <h4>Conforming document accepted</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document satisfies every structural rule</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds and reports no structural errors</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-an-upstream-edit-marks-dependents-for-review-rather-than-gating-work" data-change="unchanged">
+            <h3>An upstream edit marks dependents for review rather than gating work <span class="hs-id">req-an-upstream-edit-marks-dependents-for-review-rather-than-gating-work</span></h3>
+            <p>Validation SHALL report a dependent unit as needing review when the unit it references changes materially. Such a report SHALL NOT block continued work, SHALL NOT impose a phase gate, and SHALL NOT require regeneration of the dependent artifact. Exploration, proposal, design, implementation, and verification SHALL be able to loop.</p>
+            <article class="scenario" id="scenario-requirement-revised-during-implementation" data-change="unchanged">
+              <h4>Requirement revised during implementation</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>tasks and verification that reference a requirement</dd>
+                <dt>When</dt>
+                <dd>that requirement's obligation changes while implementation is underway</dd>
+                <dt>Then</dt>
+                <dd>validation reports the referencing units as needing review, and work continues</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reconciliation-clears-the-report" data-change="unchanged">
+              <h4>Reconciliation clears the report</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent reconciles the units reported as needing review</dd>
+                <dt>Then</dt>
+                <dd>validation stops reporting them, and no artifact was regenerated wholesale</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-stale-reference-is-reported-not-fatal" data-change="unchanged">
+              <h4>Stale reference is reported, not fatal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a dependent unit still resolves but describes behavior the referenced requirement no longer states</dd>
+                <dt>Then</dt>
+                <dd>validation reports the inconsistency as needing review rather than as a structural error</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-cross-references-must-resolve" data-change="unchanged">
+            <h3>Cross-references must resolve <span class="hs-id">req-cross-references-must-resolve</span></h3>
+            <p>Validation SHALL verify that every reference to a semantic unit resolves to a unit that exists. This includes fragment links within the document, and references from tasks, verification, evidence, and risks to the requirements and scenarios they address.</p>
+            <p>A reference resolves in the places that document-schema's "Cross-references address units by identifier" makes reachable. <strong>Validation SHALL read the other documents a reference can reach for the identifiers they declare, and SHALL report nothing about them.</strong> A diagnostic belongs to the document being validated. The documents it reaches are reported when they are validated themselves, so a defect in one of them is reported once, against the document that has it.</p>
+            <p>A reference that resolves nowhere SHALL be reported against the unit that makes it, and the report SHALL name the places that were searched. "No unit in the document declares that identifier" is true of a document that reaches only itself. For a task in a change it would hide that the change's specification and the accepted specifications were searched too.</p>
+            <p><strong>A reachable document that cannot be read, or whose markup needs the parser to recover, declares nothing a reference can rely on.</strong> A reference that resolves in no other place SHALL be reported, and the report SHALL name that document as unread. It SHALL NOT claim that no unit declares the identifier. A document with more than one reading has no determinate content, so identifiers taken from it are a guess. And a report that no unit declares the identifier would send the author to add a unit that may already be there.</p>
+            <p>A change that has no specification yet is a change in progress. Its specification is then a place that declares nothing, and it SHALL NOT be reported as a document that could not be read.</p>
+            <article class="scenario" id="scenario-dangling-task-reference" data-change="unchanged">
+              <h4>Dangling task reference</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task references a requirement identifier that does not exist</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the task and the unresolved identifier</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-broken-fragment-link" data-change="unchanged">
+              <h4>Broken fragment link</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document links to a fragment with no matching element</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the link</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-cross-references-must-resolve-reference-to-a-removed-requirement" data-change="unchanged">
+              <h4>Reference to a removed requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task or verification references a requirement marked removed</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reference-resolved-by-the-change-s-specification" data-change="unchanged">
+              <h4>A reference resolved by the change's specification</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification declares <code>req-x</code>, and also declares a requirement with no scenario</dd>
+                <dt>When</dt>
+                <dd>the change's tasks document, whose task names <code>req-x</code> in its <code>data-refs</code>, is validated</dd>
+                <dt>Then</dt>
+                <dd>validation of the tasks document succeeds, and it reports nothing about the reference or about the specification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-dangling-reference-in-a-change-says-where-it-looked" data-change="unchanged">
+              <h4>A dangling reference in a change says where it looked</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task in a change names in its <code>data-refs</code> an identifier that no reachable place declares</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the task, the identifier, and the places that were searched</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reachable-document-that-cannot-be-read" data-change="unchanged">
+              <h4>A reachable document that cannot be read</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification's markup needs the parser to recover</dd>
+                <dt>When</dt>
+                <dd>a task in that change names in its <code>data-refs</code> a requirement that no other reachable place declares</dd>
+                <dt>Then</dt>
+                <dd>validation of the tasks document fails, and the report names the specification as the document that could not be read</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-with-no-specification-yet" data-change="unchanged">
+              <h4>A change with no specification yet</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change that has no specification, and an accepted specification declaring <code>req-y</code></dd>
+                <dt>When</dt>
+                <dd>a task in that change names <code>req-y</code> in its <code>data-refs</code></dd>
+                <dt>Then</dt>
+                <dd>the reference resolves, and nothing is reported about the missing specification</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-markup-must-be-deterministically-parseable" data-change="unchanged">
+            <h3>Markup must be deterministically parseable <span class="hs-id">req-markup-must-be-deterministically-parseable</span></h3>
+            <p>Validation SHALL reject a document whose markup cannot be parsed into a single unambiguous structure. Constructs that different parsers would interpret differently SHALL be rejected rather than accepted with a guess.</p>
+            <p>A conforming document SHALL produce zero recovered parse errors by default. Any recovered parse error SHALL fail validation unless the project permits that specific recovery.</p>
+            <article class="scenario" id="scenario-improperly-nested-elements" data-change="unchanged">
+              <h4>Improperly nested elements</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains overlapping or improperly nested elements</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the location</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-ambiguous-construct" data-change="unchanged">
+              <h4>Ambiguous construct</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains markup whose interpretation depends on parser error recovery</dd>
+                <dt>Then</dt>
+                <dd>validation fails rather than silently accepting one interpretation</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-permitted-parser-recoveries-are-enumerated-and-pinned" data-change="unchanged">
+            <h3>Permitted parser recoveries are enumerated and pinned <span class="hs-id">req-permitted-parser-recoveries-are-enumerated-and-pinned</span></h3>
+            <p>The project SHALL pin an exact parser version. Every permitted recovery SHALL be enumerated individually, SHALL carry a stable internal diagnostic code owned by this project, and SHALL be justified by a fixture that demonstrates the recovery is unambiguous across consumers.</p>
+            <p>Permitted recoveries SHALL NOT be derived by collecting whatever a sample of documents happens to produce. A parser version change SHALL require deliberate review of the enumeration before the new version is adopted.</p>
+            <article class="scenario" id="scenario-diagnostic-codes-are-owned-by-this-project" data-change="unchanged">
+              <h4>Diagnostic codes are owned by this project</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a parser that reports a recovery as free text rather than as a typed code</dd>
+                <dt>When</dt>
+                <dd>validation reports that recovery</dd>
+                <dt>Then</dt>
+                <dd>it reports this project's own stable diagnostic code, so a reworded parser message does not change the reported code</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-parser-rewords-a-message" data-change="unchanged">
+              <h4>Parser rewords a message</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a new parser version changes the wording of a recovery message</dd>
+                <dt>Then</dt>
+                <dd>the project's checks fail rather than silently widening or narrowing what documents are accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-ambiguous-recovery-is-not-permitted" data-change="unchanged">
+              <h4>Ambiguous recovery is not permitted</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a recovery is proposed for the permitted enumeration and no fixture shows it is unambiguous across consumers</dd>
+                <dt>Then</dt>
+                <dd>the recovery is not permitted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-coarse-parser-message-covering-two-faults" data-change="unchanged">
+              <h4>Coarse parser message covering two faults</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a parser that reports two distinct faults with one identical message</dd>
+                <dt>When</dt>
+                <dd>the enumeration is built</dd>
+                <dt>Then</dt>
+                <dd>it distinguishes the two faults by parser state, or it permits neither</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-remote-and-hidden-network-dependencies-are-rejected" data-change="unchanged">
+            <h3>Remote and hidden network dependencies are rejected <span class="hs-id">req-remote-and-hidden-network-dependencies-are-rejected</span></h3>
+            <p>Validation SHALL reject any document that depends on a resource outside the project. This includes remote scripts, stylesheets, fonts, images, and iframes, and any construct capable of initiating a network request when the document is opened.</p>
+            <article class="scenario" id="scenario-remote-script-rejected" data-change="unchanged">
+              <h4>Remote script rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document references a script by absolute URL</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the reference</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-remote-font-rejected" data-change="unchanged">
+              <h4>Remote font rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document's styling loads a font from a remote origin</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-concealed-request-rejected" data-change="unchanged">
+              <h4>Concealed request rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains a construct that would issue a network request without a visible remote reference, such as a prefetch directive or a beacon</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-local-asset-accepted" data-change="unchanged">
+              <h4>Local asset accepted</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document references the project's shared runtime by relative path</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-code-examples-cannot-execute" data-change="unchanged">
+            <h3>Code examples cannot execute <span class="hs-id">req-code-examples-cannot-execute</span></h3>
+            <p>Validation SHALL ensure that example code shown in a document is inert. Code presented as content SHALL NOT be capable of executing as part of the page, and SHALL NOT be able to terminate its container and inject markup into the document.</p>
+            <p>The security property is the absence of element descendants. A code element's children SHALL contain text and comment nodes only. Validation SHALL NOT require exactly one text node, because a parser splits text around a comment and an empty example has no children at all.</p>
+            <article class="scenario" id="scenario-script-shown-as-an-example" data-change="unchanged">
+              <h4>Script shown as an example</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document displays a JavaScript snippet as an example</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds and the snippet does not execute when the document is opened</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-empty-example-accepted" data-change="unchanged">
+              <h4>Empty example accepted</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a code element has no children</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds, because an empty example carries no element descendant</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-text-split-by-a-comment-accepted" data-change="unchanged">
+              <h4>Text split by a comment accepted</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a parser represents a code element's content as two text nodes separated by a comment</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds, because no child is an element</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-presentational-element-inside-an-example-rejected" data-change="unchanged">
+              <h4>Presentational element inside an example rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a code element contains a child element, including a purely presentational one</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the example is no longer inert text</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-container-escape-rejected" data-change="unchanged">
+              <h4>Container escape rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an example's content would close its containing element and introduce live markup</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the example</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-executable-script-accepted-only-from-the-pinned-runtime" data-change="unchanged">
+              <h4>Executable script accepted only from the pinned runtime</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains an executable script that is not part of the pinned runtime</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-visualization-specifications-are-validated" data-change="unchanged">
+            <h3>Visualization specifications are validated <span class="hs-id">req-visualization-specifications-are-validated</span></h3>
+            <p>Validation SHALL check every embedded diagram or chart specification against its own format. An invalid specification SHALL be reported at authoring time rather than failing silently in the browser.</p>
+            <article class="scenario" id="scenario-invalid-chart-specification" data-change="unchanged">
+              <h4>Invalid chart specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document embeds a chart specification that its format rejects</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the location and the underlying error</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-invalid-diagram-source" data-change="unchanged">
+              <h4>Invalid diagram source</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document embeds diagram source that cannot be parsed by the diagram library</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-chart-data-is-local" data-change="unchanged">
+              <h4>Chart data is local</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a chart specification loads its data from a remote URL</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the document would not render offline</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-no-javascript-readability-is-enforced" data-change="unchanged">
+            <h3>No-JavaScript readability is enforced <span class="hs-id">req-no-javascript-readability-is-enforced</span></h3>
+            <p>Validation SHALL reject a document whose semantic content is not present in its markup. Content that only appears after scripts run SHALL be treated as absent.</p>
+            <article class="scenario" id="scenario-script-injected-requirement-rejected" data-change="unchanged">
+              <h4>Script-injected requirement rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's text is supplied by a script rather than present in the markup</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-diagram-without-a-fallback" data-change="unchanged">
+              <h4>Diagram without a fallback</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains a diagram with no source or textual description present in the markup</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-diagnostics-are-actionable-and-machine-readable" data-change="unchanged">
+            <h3>Diagnostics are actionable and machine-readable <span class="hs-id">req-diagnostics-are-actionable-and-machine-readable</span></h3>
+            <p>Every validation failure SHALL report the rule violated, the location within the document, and the offending identifier or content where one applies. Diagnostics SHALL be available in a machine-readable form so that agents and continuous integration can consume them without parsing prose.</p>
+            <article class="scenario" id="scenario-human-readable-output" data-change="unchanged">
+              <h4>Human-readable output</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor validates a failing document</dd>
+                <dt>Then</dt>
+                <dd>the output names the rule, the location, and what to fix</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-machine-readable-output" data-change="unchanged">
+              <h4>Machine-readable output</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent validates a failing document and requests structured output</dd>
+                <dt>Then</dt>
+                <dd>it receives each diagnostic as structured data with a stable rule identifier</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-stable-rule-identifiers" data-change="unchanged">
+              <h4>Stable rule identifiers</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the same violation is reported across versions of the validator</dd>
+                <dt>Then</dt>
+                <dd>the rule identifier is unchanged, so suppressions and tests remain valid</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-all-violations-are-reported-in-one-pass" data-change="unchanged">
+            <h3>All violations are reported in one pass <span class="hs-id">req-all-violations-are-reported-in-one-pass</span></h3>
+            <p>Validation SHALL report every violation it can detect in a single run rather than stopping at the first. Where one failure prevents further analysis, validation SHALL report what it could determine and state that analysis was curtailed.</p>
+            <article class="scenario" id="scenario-multiple-independent-violations" data-change="unchanged">
+              <h4>Multiple independent violations</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document has a duplicate identifier, a dangling reference, and a remote script</dd>
+                <dt>Then</dt>
+                <dd>all three are reported in one run</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unparseable-document" data-change="unchanged">
+              <h4>Unparseable document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document cannot be parsed at all</dd>
+                <dt>Then</dt>
+                <dd>validation reports the parse failure and states that no further rules were evaluated</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-violations-are-classified-by-severity" data-change="unchanged">
+            <h3>Violations are classified by severity <span class="hs-id">req-violations-are-classified-by-severity</span></h3>
+            <p>Every rule SHALL be classified as an error or a warning. An error SHALL cause validation to fail. A warning SHALL be reported without failing validation. Rules concerning structural conformance, unresolved references, executable content, and network dependencies SHALL be errors.</p>
+            <article class="scenario" id="scenario-warning-does-not-fail-validation" data-change="unchanged">
+              <h4>Warning does not fail validation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document triggers only warnings</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds and the warnings are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-warnings-can-be-made-fatal" data-change="unchanged">
+              <h4>Warnings can be made fatal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests strict validation</dd>
+                <dt>Then</dt>
+                <dd>warnings are treated as errors, so continuous integration can enforce them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-safety-rules-cannot-be-downgraded" data-change="unchanged">
+              <h4>Safety rules cannot be downgraded</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains a remote script or executable content</dd>
+                <dt>Then</dt>
+                <dd>the violation is reported as an error and cannot be reduced to a warning</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-an-asset-reference-must-match-the-bytes-it-names" data-change="unchanged">
+            <h3>An asset reference must match the bytes it names <span class="hs-id">req-an-asset-reference-must-match-the-bytes-it-names</span></h3>
+            <p>Validation SHALL reject a document whose asset reference does not resolve to stored bytes whose hash equals the hash named by that reference. A reference naming bytes the project does not store SHALL be reported as unresolved. A reference resolving to bytes whose hash differs from the name SHALL be reported as a mismatch, and the two SHALL be distinguishable diagnostics because they have different causes.</p>
+            <p>A reference SHALL resolve only where its path, followed from the document's directory, reaches the directory of the store above the document. A reference whose path reaches another directory SHALL be reported as unresolved, whatever bytes its address names, and the report SHALL name the directory the path leads to and the path to the store.</p>
+            <p>This rule SHALL apply only to a document validated within a project that has an asset store. A document validated outside such a project SHALL NOT have its asset references resolved, and SHALL NOT be rejected for naming bytes that no store holds. The rule states a relationship between a document and the bytes beside it, and where there are no bytes there is no relationship to violate.</p>
+            <p>Where a document's asset reference ascends out of the document's own directory, and no asset store is found in any directory above it, validation SHALL report that reference. Such a reference asserts that a store sits above the document, and the absence of one contradicts the reference rather than placing the document outside the rule's scope.</p>
+            <p>A reference that does not ascend SHALL remain unreported when no store is found. This is what keeps a document whose references are symbolic — a conformance fixture, or a document written to be read rather than rendered — outside the rule, and the distinction is exact: a fixture's references name a store beside the document that has never existed, while an ascending reference names a store the document was generated against.</p>
+            <p>A document SHALL NOT be able to exempt itself. The scope SHALL be determined by whether a store is present and by the shape of the reference, never by a declaration inside the document, because a rule a document can switch off protects nothing. Reference shape is not such a declaration: it is written by whatever generated the document, and changing it to silence the rule breaks the reference it describes.</p>
+            <p>This rule SHALL be an error rather than a warning, and SHALL NOT be reducible to a warning. A document that renders against bytes other than the ones it names is misreporting its own provenance.</p>
+            <article class="scenario" id="scenario-reference-matches-stored-bytes" data-change="unchanged">
+              <h4>Reference matches stored bytes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>every asset reference in a document names the hash of the bytes stored at its location</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-document-validated-with-no-store-present" data-change="unchanged">
+              <h4>Document validated with no store present</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document that is not part of a project with an asset store, such as a conformance fixture whose references are symbolic</dd>
+                <dt>When</dt>
+                <dd>it is validated</dd>
+                <dt>Then</dt>
+                <dd>its asset references are not resolved, and their targets being absent is not a violation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-ascending-reference-with-no-store-above-it" data-change="unchanged">
+              <h4>An ascending reference with no store above it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document whose asset references ascend out of its own directory, such as a change directory copied away from the project that holds its store</dd>
+                <dt>When</dt>
+                <dd>it is validated</dd>
+                <dt>Then</dt>
+                <dd>validation reports the ascending references, because each one names a store that is not there</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-strict-validation-does-not-accept-dead-ascending-references" data-change="unchanged">
+              <h4>Strict validation does not accept dead ascending references</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document carrying only ascending asset references and no store in any directory above it</dd>
+                <dt>When</dt>
+                <dd>it is validated in strict mode</dd>
+                <dt>Then</dt>
+                <dd>validation does not report the document as accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-cannot-exempt-itself" data-change="unchanged">
+              <h4>A document cannot exempt itself</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document declares that its asset references are not to be resolved, by any marker it carries</dd>
+                <dt>Then</dt>
+                <dd>the declaration has no effect, and a document inside a project with a store is checked regardless</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reference-to-bytes-the-project-does-not-store" data-change="unchanged">
+              <h4>Reference to bytes the project does not store</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document references an asset hash that no stored asset matches</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the reference as unresolved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-stored-bytes-do-not-match-the-name" data-change="unchanged">
+              <h4>Stored bytes do not match the name</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an asset location whose contents were replaced with different bytes</dd>
+                <dt>When</dt>
+                <dd>a document referencing that location is validated</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports a mismatch rather than an absent asset</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-stale-reference-cannot-pass" data-change="unchanged">
+              <h4>Stale reference cannot pass</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document authored against one revision of a stylesheet</dd>
+                <dt>When</dt>
+                <dd>it is stored beside a different revision of that stylesheet</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the reference and the bytes disagree</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-mismatch-cannot-be-downgraded" data-change="unchanged">
+              <h4>Mismatch cannot be downgraded</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests that asset mismatches be treated as warnings</dd>
+                <dt>Then</dt>
+                <dd>the violation is still reported as an error</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-stored-address-through-a-path-to-another-directory" data-change="unchanged">
+              <h4>A stored address through a path to another directory</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document below a project's store, whose asset reference names stored bytes through a path that reaches a directory other than the store's</dd>
+                <dt>When</dt>
+                <dd>it is validated</dd>
+                <dt>Then</dt>
+                <dd>the reference is reported as unresolved, naming the directory the path leads to and the path to the store</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-path-that-leaves-and-re-enters-the-store-s-directory" data-change="unchanged">
+              <h4>A path that leaves and re-enters the store's directory</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an asset reference's path climbs out of the store's directory and back into it, landing on it</dd>
+                <dt>Then</dt>
+                <dd>the reference resolves, as a browser loading it would</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-project-must-not-store-one-asset-s-bytes-more-than-once" data-change="unchanged">
+            <h3>A project must not store one asset's bytes more than once <span class="hs-id">req-a-project-must-not-store-one-asset-s-bytes-more-than-once</span></h3>
+            <p>Validation SHALL reject a project that stores identical asset bytes at more than one location. The report SHALL name every location holding the duplicated bytes, so a contributor can tell which copy to remove.</p>
+            <p>Two assets whose bytes differ SHALL NOT be reported as duplicates, however similar their names, versions, or purposes.</p>
+            <p>This rule takes a project as its subject rather than a document, so it SHALL be evaluated where a project is in view. A directory holding no asset store has nothing to duplicate, and SHALL NOT be reported.</p>
+            <p><strong>A project's stores SHALL be the asset stores within the project's own directory, <code>htmlspec/</code>, and no others.</strong> The comparison across stores SHALL be made among those stores alone. A repository holding a project can hold other stores that are not the project's — a conformance fixture that is a project of its own, a toolchain's source copy of the runtime, a vendored copy another tool reads — and bytes those stores share with the project's are not the project storing its bytes twice. The subject of this rule is one project, and a comparison that reaches past the project's directory has changed its subject to the repository.</p>
+            <p>A store outside the project's directory SHALL still be checked on its own, so a store that holds identical bytes at two of its own locations is reported wherever it lives. It SHALL NOT be compared with the project's stores or with any other store.</p>
+            <p>The report SHALL state which stores it treated as the project's and which it checked on their own, so a contributor can tell a duplication that is not the project's from a check that did not run.</p>
+            <p>Where no project is in view, every store SHALL be checked on its own, as before.</p>
+            <article class="scenario" id="scenario-duplicate-copies-of-one-library" data-change="unchanged">
+              <h4>Duplicate copies of one library</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project storing the same library bytes in two locations</dd>
+                <dt>When</dt>
+                <dd>the project is validated</dd>
+                <dt>Then</dt>
+                <dd>validation fails and names both locations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-copy-per-document-is-rejected" data-change="unchanged">
+              <h4>A copy per document is rejected</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project in which each document carries its own copy of the runtime</dd>
+                <dt>When</dt>
+                <dd>the project is validated</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the shared-runtime obligation is violated</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-different-revisions-are-not-duplicates" data-change="unchanged">
+              <h4>Different revisions are not duplicates</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project storing two revisions of one stylesheet whose bytes differ</dd>
+                <dt>When</dt>
+                <dd>the project is validated</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds, because distinct bytes are not a duplicate</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-one-store-serving-many-documents" data-change="unchanged">
+              <h4>One store serving many documents</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>many documents referencing one stored copy of each library</dd>
+                <dt>When</dt>
+                <dd>the project is validated</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-project-beside-a-fixture-that-carries-its-own-store" data-change="unchanged">
+              <h4>A project beside a fixture that carries its own store</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a repository holding a project, and a conformance fixture elsewhere in the repository whose store holds bytes identical to the project's</dd>
+                <dt>When</dt>
+                <dd>the project's asset topology is checked</dd>
+                <dt>Then</dt>
+                <dd>no duplication is reported, and the report names the fixture's store as checked on its own</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-project-beside-a-toolchain-s-source-copy-of-the-runtime" data-change="unchanged">
+              <h4>A project beside a toolchain's source copy of the runtime</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a repository whose root holds a store of the runtime outside the project's directory, and a project whose store holds the same bytes</dd>
+                <dt>When</dt>
+                <dd>the project's asset topology is checked</dd>
+                <dt>Then</dt>
+                <dd>no duplication is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-stores-inside-the-project" data-change="unchanged">
+              <h4>Two stores inside the project</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose own directory holds two stores with identical bytes, such as one beside a change's documents</dd>
+                <dt>When</dt>
+                <dd>the project's asset topology is checked</dd>
+                <dt>Then</dt>
+                <dd>the duplication is reported and names both locations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-store-outside-the-project-that-duplicates-within-itself" data-change="unchanged">
+              <h4>A store outside the project that duplicates within itself</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a store outside the project's directory holding identical bytes at two of its own locations</dd>
+                <dt>When</dt>
+                <dd>the project's asset topology is checked</dd>
+                <dt>Then</dt>
+                <dd>that duplication is reported, and the store is not compared with the project's</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-asset-rules-are-checked-as-part-of-the-project-s-check-suite" data-change="unchanged">
+            <h3>Asset rules are checked as part of the project's check suite <span class="hs-id">req-asset-rules-are-checked-as-part-of-the-project-s-check-suite</span></h3>
+            <p>The asset reference and duplication rules SHALL be evaluated by the project's single check command, so a contributor and continuous integration verify the same asset topology. A project whose documents validate individually but whose asset topology violates these rules SHALL fail the check suite.</p>
+            <article class="scenario" id="scenario-topology-regression-fails-the-suite" data-change="unchanged">
+              <h4>Topology regression fails the suite</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change introduces a second copy of a stored asset</dd>
+                <dt>Then</dt>
+                <dd>the check command fails and identifies the duplicated locations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-per-document-validation-is-not-sufficient" data-change="unchanged">
+              <h4>Per-document validation is not sufficient</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose every document passes validation on its own</dd>
+                <dt>When</dt>
+                <dd>two documents together hold duplicate asset bytes</dd>
+                <dt>Then</dt>
+                <dd>the check command still fails, because the violation is a property of the project rather than of one document</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-specification-must-not-carry-task-units" data-change="unchanged">
+            <h3>A specification must not carry task units <span class="hs-id">req-a-specification-must-not-carry-task-units</span></h3>
+            <p>Validation SHALL reject a <code>specification</code> document carrying a task unit. The report SHALL name the task and say that a specification records the obligation a task satisfied rather than the work that satisfied it.</p>
+            <p>This SHALL be the <strong>only</strong> placement rule in the vocabulary. No other combination of unit and kind SHALL be prohibited, and validation SHALL report nothing about any other. In particular, a requirement unit in a <code>proposal</code>, a task unit in a <code>design</code>, and a decision unit in a <code>tasks</code> document SHALL all be accepted without diagnostic.</p>
+            <p>The rule is an error because a specification is read by tools and by later changes as the statement of the contract, and a task appearing there would offer work as though it were an obligation.</p>
+            <article class="scenario" id="scenario-a-task-in-a-specification" data-change="unchanged">
+              <h4>A task in a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specification carries a task unit</dd>
+                <dt>Then</dt>
+                <dd>validation fails and names the unit</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-in-a-proposal" data-change="unchanged">
+              <h4>A requirement in a proposal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal carries a requirement unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about it, and the document is accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-task-in-a-design" data-change="unchanged">
+              <h4>A task in a design</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design carries a task unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about it, and the document is accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-prose-in-any-kind" data-change="unchanged">
+              <h4>Prose in any kind</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document of any kind carries headings, paragraphs, and figures with no unit markup</dd>
+                <dt>Then</dt>
+                <dd>no placement diagnostic is reported, because prose belongs everywhere</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-tasks-document-must-carry-at-least-one-task" data-change="unchanged">
+            <h3>A tasks document must carry at least one task <span class="hs-id">req-a-tasks-document-must-carry-at-least-one-task</span></h3>
+            <p>Validation SHALL reject a <code>tasks</code> document carrying no task unit. The stage exists to enumerate work, and a tasks document that enumerates none records nothing.</p>
+            <p>This is a <strong>completeness</strong> rule and not a placement rule. It constrains what the document must contain rather than which units are permitted in it, so a tasks document carrying other units alongside its tasks SHALL NOT be reported for them.</p>
+            <article class="scenario" id="scenario-an-empty-tasks-document" data-change="unchanged">
+              <h4>An empty tasks document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a tasks document carries no task unit</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tasks-document-must-carry-at-least-one-task-a-tasks-document-carrying-other-units" data-change="unchanged">
+              <h4>A tasks document carrying other units</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a tasks document carries its tasks and also a decision unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about the decision, because the rule constrains what must be present rather than what is permitted</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-specification-requirement-without-verification-is-reported-as-incomplete" data-change="unchanged">
+            <h3>A specification requirement without verification is reported as incomplete <span class="hs-id">req-a-specification-requirement-without-verification-is-reported-as-incomplete</span></h3>
+            <p>Validation SHALL report a requirement in a <code>specification</code> document that no verification names. A specification is an as-built record, and a requirement with nothing attesting to it records an intention rather than a result.</p>
+            <p>This SHALL be <strong>advisory</strong> — a warning, never an error. Verification arrives as work completes, so a specification in progress legitimately has requirements not yet verified, and a rule that failed the document would gate the work that produces the verification.</p>
+            <p>A requirement that a verification names SHALL NOT be reported, whatever outcome that verification records, <code>partial</code> included. The report asks whether a verification names the requirement, not what the verification found. A requirement whose check failed, was blocked, or covered only part of it is named by a record that says so, and reporting it as unverified would treat an unwelcome result as a missing one. That would teach an author to record a pass, which is the reason runbook-execution's "A run's conformance to its runbook's contract is reported and never gated" gives for a run. This rule SHALL apply only to the <code>specification</code> kind: a requirement unit appearing in any other kind SHALL NOT be checked for verification, because it is not part of the contract there.</p>
+            <article class="scenario" id="scenario-a-requirement-with-no-verification" data-change="unchanged">
+              <h4>A requirement with no verification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specification states a requirement that no verification names</dd>
+                <dt>Then</dt>
+                <dd>validation reports a warning, and the document is still accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-fully-verified-specification" data-change="unchanged">
+              <h4>A fully verified specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>every requirement in a specification is named by a verification</dd>
+                <dt>Then</dt>
+                <dd>nothing is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-whose-check-failed" data-change="unchanged">
+              <h4>A requirement whose check failed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specification states a requirement whose only verification records the outcome <code>failed</code></dd>
+                <dt>Then</dt>
+                <dd>nothing is reported about that requirement, because a verification names it and its outcome states the result</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-verified-only-in-part" data-change="unchanged">
+              <h4>A requirement verified only in part</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specification states a requirement whose only verification records the outcome <code>partial</code></dd>
+                <dt>Then</dt>
+                <dd>nothing is reported about that requirement, because a verification names it, and that verification states what it did not check</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-verification-is-not-a-gate" data-change="unchanged">
+              <h4>Verification is not a gate</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor validates a specification whose verification is not yet recorded</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds, because recording verification is the work in progress rather than a violation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unverified-requirement-in-a-proposal" data-change="unchanged">
+              <h4>An unverified requirement in a proposal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal carries a requirement unit that no verification names</dd>
+                <dt>Then</dt>
+                <dd>nothing is reported, because a proposal's units are not part of the contract</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-contract-rules-apply-to-every-kind" data-change="unchanged">
+            <h3>The contract rules apply to every kind <span class="hs-id">req-the-contract-rules-apply-to-every-kind</span></h3>
+            <p>The rules that make a document readable, parseable, and offline SHALL apply to all four kinds without relaxation. Freedom of structure at the proposal and design kinds SHALL NOT extend to markup that cannot be parsed unambiguously, a reference that resolves to nothing, a remote or executable dependency, or an asset reference that disagrees with the bytes beside it.</p>
+            <p>A kind decides how much <em>shape</em> validation requires. It SHALL NOT decide whether a document opens.</p>
+            <p>A kind SHALL NOT decide what a reference can reach, either. That is decided by where a document sits, so a change's proposal, design, and tasks reach the same documents.</p>
+            <article class="scenario" id="scenario-a-proposal-with-a-remote-script" data-change="unchanged">
+              <h4>A proposal with a remote script</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal loads a script from outside the project</dd>
+                <dt>Then</dt>
+                <dd>validation fails, exactly as it does for any other kind</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-design-with-a-dangling-reference" data-change="unchanged">
+              <h4>A design with a dangling reference</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design references an identifier that no unit declares, in the design or in any document it can reach</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because a pointer to nothing is a defect at every stage</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-design-references-its-change-s-specification" data-change="unchanged">
+              <h4>A design references its change's specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a decision in a change's design names in its <code>data-refs</code> a requirement that the change's specification declares</dd>
+                <dt>Then</dt>
+                <dd>the reference resolves, exactly as it would from a task in the same change</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-proposal-that-needs-error-recovery" data-change="unchanged">
+              <h4>A proposal that needs error recovery</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal's markup requires the parser to recover</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because a document with more than one reading has no determinate content whatever its kind</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-change-markup-in-or-around-a-semantic-unit-is-rejected" data-change="unchanged">
+            <h3>Change markup in or around a semantic unit is rejected <span class="hs-id">req-change-markup-in-or-around-a-semantic-unit-is-rejected</span></h3>
+            <p>Validation SHALL reject a document in which an <code>ins</code> or a <code>del</code> element sits inside a semantic unit, encloses one, or is one because its own class names the unit, except in the one place this requirement permits it. These two elements are HTML's change markup: <code>del</code> marks text an edit removed, and <code>ins</code> marks text an edit added. An element of the same name inside SVG or MathML belongs to that language and is not change markup. Each such element SHALL be reported as an error under a rule identifier of its own. The diagnostic SHALL name the element and the unit it sits in or encloses, and SHALL quote the element's text, so that an author can find the edit in a long statement. It SHALL also say why the markup is not permitted where it sits.</p>
+            <p><strong>Change markup SHALL be permitted inside a requirement or a scenario marked <code>modified</code>, in a change's specification.</strong> There, <code>del</code> marks words the change deleted from the accepted text and <code>ins</code> marks words it added, and document-schema's "A deleted word is recorded apart from what a unit states" keeps the deleted words out of every statement and entry. A change's specification is the one document whose modified units restate accepted text as the change edited it, for the merge to apply. So it is the one place where "these words are new" and "these words were deleted" are claims about something a reader can check: the accepted text before the merge. The markup is permitted there, not required. A modified unit that marks no words is valid, because whether its marks are complete can only be checked against the accepted text, which one document does not hold.</p>
+            <p>The permission SHALL be decided by the unit the markup's text belongs to, which is the nearest unit that encloses it. So a scenario marked <code>modified</code> inside a requirement marked <code>modified</code> may carry markup. A scenario marked <code>unchanged</code> inside that requirement may not, because it states that its text is the accepted text.</p>
+            <p>The permission SHALL NOT extend to any of the following, in a change's specification or anywhere else:</p>
+            <ul>
+              <li>
+                <p>a unit marked <code>added</code>, <code>removed</code>, or <code>unchanged</code>. Every word of a new unit is new, so there is no accepted text to mark against. A removed unit is withdrawn whole, and its change state says so. An unchanged unit states that none of its text changed;</p>
+              </li>
+              <li>
+                <p>a decision, evidence, risk, or verification unit, whatever its change state. An accepted specification holds requirements and scenarios, so no other unit has accepted text that a change's marks could be read against;</p>
+              </li>
+              <li>
+                <p>a task, in any document. A task gives up its words by being dropped with a reason, and its state already shows that;</p>
+              </li>
+              <li>
+                <p>markup in a unit's heading, or in the paragraph stating the heading a requirement replaced. A heading is a name and not a statement. A requirement's new name is stated with a <code>renamed-from</code> paragraph, which the merge and its comparison already read, and a scenario keeps its identifier when its heading changes;</p>
+              </li>
+              <li>
+                <p>markup that encloses a unit, or is one because its own class names the unit, because a unit's change state already says whether it is new or withdrawn.</p>
+              </li>
+            </ul>
+            <p>A change's specification SHALL be recognized by where the document sits: the specification directly within a change's directory, whether the change is active or archived. A change's proposal, design, and tasks, an accepted specification, a runbook's documents, a file beneath a change's evidence, and a document outside any project SHALL NOT carry the permission. A document SHALL NOT be able to claim the permission by what it declares, because a change's specification and an accepted specification declare the same kind. A document outside any project sits in no change, so the rule applies to it without the permission.</p>
+            <p>The reason for the rule is that change markup states a history, and a unit has a history to state only where it restates accepted text as a change edited it. Anywhere else the markup says something false or empty. An accepted specification that kept a mark would go on claiming that a word is new. An unchanged scenario with a mark would claim both that its text is the accepted text and that part of it is not. A new unit would mark as new some of the words that are all new. Before document-schema's "A deleted word is recorded apart from what a unit states" gave <code>del</code> its meaning, the markup also corrupted the model. A deleted phrase ran into the statement beside the words that replaced it, a deleted paragraph became a second statement, and a deleted link still counted as a reference.</p>
+            <p><strong>It SHALL be an error and not a warning.</strong> A warning reports a document that is incomplete or needs review, and it never gates work. Markup outside its one place is neither. The document states something false about the contract, and a document whose markup contradicts its own units does not conform. This rule is also the check that a merge left no markup in an accepted specification. As a warning, it would let every check a project can run accept an accepted contract that still shows a deleted phrase on its page.</p>
+            <p><strong>It SHALL cover <code>ins</code> as well as <code>del</code>, and permit them in the same place.</strong> They are one vocabulary for one edit. An inserted word does no harm to the model, because its text is current text and the projection keeps it. It is rejected outside the permitted place anyway, because a word marked as new states an edit, and no edit of accepted text is being stated there. Inside the permitted place, an insertion with nothing marked as removed is a whole edit: a change that only adds a word to a list deletes nothing.</p>
+            <p>The rule SHALL apply to every unit in every kind, and whatever contract version the document declares. A document SHALL NOT exempt itself from the rule by declaring an earlier version, because a rule a document can switch off protects nothing.</p>
+            <p>Change markup outside every unit SHALL NOT be reported by this rule. A unit is where a document states its contract, and prose outside every unit projects into no unit's field. A document MAY mark a wording change with <code>del</code> and <code>ins</code> in that prose, as a proposal showing a before and an after would.</p>
+            <p>An element that only draws a line through text, such as <code>s</code> or the obsolete <code>strike</code>, SHALL NOT be reported by this rule. HTML defines <code>s</code> as content that is no longer accurate or relevant, not as an edit to the document, and it stays presentational.</p>
+            <article class="scenario" id="scenario-a-deleted-phrase-and-an-inserted-word-in-one-statement" data-change="unchanged">
+              <h4>A deleted phrase and an inserted word in one statement</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a requirement in an accepted specification whose statement is <code>The spellings are fixed: &lt;code&gt;list&lt;/code&gt;, &lt;code&gt;status&lt;/code&gt;, &lt;code&gt;sync&lt;/code&gt;, &lt;code&gt;instructions&lt;/code&gt;, and &lt;del&gt;nothing else&lt;/del&gt;&lt;ins&gt;&lt;code&gt;store&lt;/code&gt;&lt;/ins&gt; SHALL name them.</code></dd>
+                <dt>When</dt>
+                <dd>the document is validated</dd>
+                <dt>Then</dt>
+                <dd>validation fails with one error for the <code>del</code> and one for the <code>ins</code>, each naming the requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deleted-paragraph-in-a-requirement" data-change="unchanged">
+              <h4>A deleted paragraph in a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement marked <code>added</code> holds a paragraph wrapped in <code>del</code></dd>
+                <dt>Then</dt>
+                <dd>validation fails and names the requirement, because a requirement the change introduces has no accepted paragraph to delete</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-inserted-word-with-nothing-marked-as-removed" data-change="unchanged">
+              <h4>An inserted word with nothing marked as removed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a unit marked <code>unchanged</code> contains an <code>ins</code> element and no <code>del</code> element</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the unit states that none of its text changed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-change-markup-in-a-nested-unit" data-change="unchanged">
+              <h4>Change markup in a nested unit</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change's specification holding a requirement marked <code>modified</code></dd>
+                <dt>When</dt>
+                <dd>a scenario inside it that is marked <code>unchanged</code> has a <code>del</code> element in one of its entries</dd>
+                <dt>Then</dt>
+                <dd>validation fails and names the scenario, because the scenario states that its text is the accepted text</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-unit-wrapped-in-change-markup" data-change="unchanged">
+              <h4>A unit wrapped in change markup</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a <code>del</code> element encloses a whole requirement, in any document, a change's specification included</dd>
+                <dt>Then</dt>
+                <dd>validation fails and names the requirement, because a requirement's change state is how a document says it is withdrawn</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-element-that-is-itself-a-unit" data-change="unchanged">
+              <h4>A change element that is itself a unit</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a <code>del</code> element's own class names a unit, such as <code>&lt;del class="decision"&gt;</code></dd>
+                <dt>Then</dt>
+                <dd>validation fails and names that unit, because it would still project as one the document states</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-any-unit-of-any-kind" data-change="unchanged">
+              <h4>Any unit of any kind</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a decision, task, evidence, risk, or verification unit carries change markup, in a document of any kind, wherever the document sits and whatever the unit's change state</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-declaring-an-earlier-contract-version" data-change="unchanged">
+              <h4>A document declaring an earlier contract version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document declaring an earlier accepted contract version carries change markup inside a unit</dd>
+                <dt>Then</dt>
+                <dd>validation fails, exactly as it does for a document declaring the current version</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-change-markup-outside-every-unit" data-change="unchanged">
+              <h4>Change markup outside every unit</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a proposal whose prose outside every unit marks a wording change with <code>del</code> and <code>ins</code></dd>
+                <dt>When</dt>
+                <dd>it is validated</dd>
+                <dt>Then</dt>
+                <dd>this rule reports nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-struck-through-phrase-is-not-change-markup" data-change="unchanged">
+              <h4>A struck-through phrase is not change markup</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's statement contains an <code>s</code> element</dd>
+                <dt>Then</dt>
+                <dd>this rule reports nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-word-inserted-into-a-modified-requirement" data-change="unchanged">
+              <h4>A word inserted into a modified requirement</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change's specification whose requirement marked <code>modified</code> states <code>… &lt;code&gt;list&lt;/code&gt;, &lt;code&gt;status&lt;/code&gt;, &lt;ins&gt;&lt;code&gt;sync&lt;/code&gt;, &lt;/ins&gt;&lt;code&gt;instructions&lt;/code&gt;, and &lt;code&gt;store&lt;/code&gt; name the operations OpenSpec also provides.</code></dd>
+                <dt>When</dt>
+                <dd>the document is validated</dd>
+                <dt>Then</dt>
+                <dd>this rule reports nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-word-and-a-paragraph-deleted-from-a-modified-requirement" data-change="unchanged">
+              <h4>A word and a paragraph deleted from a modified requirement</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change's specification whose requirement marked <code>modified</code> has <code>&lt;del&gt;and &lt;/del&gt;</code> inside one statement and a paragraph wrapped in <code>del</code></dd>
+                <dt>When</dt>
+                <dd>the document is validated</dd>
+                <dt>Then</dt>
+                <dd>this rule reports nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-modified-scenario-in-a-modified-requirement" data-change="unchanged">
+              <h4>A modified scenario in a modified requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change's specification holds a scenario marked <code>modified</code> inside a requirement marked <code>modified</code>, and the scenario carries change markup in one of its entries</dd>
+                <dt>Then</dt>
+                <dd>this rule reports nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-archived-change-keeps-its-marks" data-change="unchanged">
+              <h4>An archived change keeps its marks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an archived change's specification carries change markup in a requirement marked <code>modified</code></dd>
+                <dt>Then</dt>
+                <dd>this rule reports nothing, because an archived change is still a change, and its marks are its record of the edit</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-same-markup-outside-a-change-s-specification" data-change="unchanged">
+              <h4>The same markup outside a change's specification</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a requirement marked <code>modified</code> whose statement carries change markup</dd>
+                <dt>When</dt>
+                <dd>it sits in an accepted specification, in a change's proposal, design, or tasks, in a runbook's document, beneath a change's evidence, or in a document outside any project</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because only a change's specification restates accepted text for the merge to apply</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-change-markup-in-a-unit-s-heading" data-change="unchanged">
+              <h4>Change markup in a unit's heading</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change's specification holds a requirement marked <code>modified</code> with a <code>del</code> element in its heading</dd>
+                <dt>Then</dt>
+                <dd>validation fails, and the diagnostic says that a requirement's new name is stated with a <code>renamed-from</code> paragraph</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

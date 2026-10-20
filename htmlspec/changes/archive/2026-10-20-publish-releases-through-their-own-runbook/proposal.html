@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Publish releases through their own runbook</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Publish releases through their own runbook</h1>
+        <p>A release is prepared inside its change: the release runbook advances the version, regenerates the instruction files, writes the changelog entry, and confirms the release check. From 1.0 on, a release must also reach the public repository and four channels, and those steps can only run after the change is archived, against another repository. This change gives them a runbook of their own, <code>publish</code>, so each release is published by one run of it after archival. The run makes the public tag through GitHub's API on the public merge commit, so no ref ever travels from this repository to the public one. The program does not change. Release 0.34.0.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Publish releases through their own runbook</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>The plan for 1.0 put the publishing steps at the end of the release runbook, in <code>commit-the-contract-and-the-command-line</code>. The code review of that plan's pull request, #63, found five problems with that placement. Each one is a reason for this change.</p>
+          <ul>
+            <li><strong>The obvious tag command publishes the private history.</strong> The private and public release tags would share the name <code>vX.Y.Z</code>. When <code>git tag vX.Y.Z &lt;merge&gt;</code> fails because the private tag exists, the natural next command, <code>git push &lt;public&gt; vX.Y.Z</code>, sends the private tag and every private commit behind it. The pre-push hook and the public ruleset guard only <code>main</code>, so nothing stops it, and the push also runs the release workflow on the private tree. The review reproduced this with the real hook.</li>
+            <li><strong>Nothing in the plan works against the empty public repository.</strong> <code>Firefly-Projects/htmlspec</code> exists and holds no commit. The export's first run must bootstrap it, and the active ruleset refuses that first direct push to <code>main</code>. No step said what to do.</li>
+            <li><strong>A release run after archival repeats finished work.</strong> <code>htmlspec run release --as v1.0.0</code> copies the whole procedure, so its record opens with the four steps already done inside the change, and one requirement that can only be met before archival. Following the record would advance the version again.</li>
+            <li><strong>The co-owner step was in no step.</strong> The crates' co-owner, the team <code>firefly-developers</code>, can only be added after the first publish, by an owner.</li>
+            <li><strong>The changes disagreed about the accounts.</strong> They now exist, and the plan said they would be made later.</li>
+          </ul>
+          <p>runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-a-project-keeps-its-procedures-in-a-fourth-place">"A project keeps its procedures in a fourth place"</a> keeps a project's procedures as runbooks, each a directory in that place, so a second runbook beside <code>release</code> needs no new rule.</p>
+        </section>
+        <section id="hs-what-working-looks-like">
+          <h2>What working looks like</h2>
+          <ol>
+            <li><code>htmlspec list --runbooks</code> lists <code>publish</code> beside <code>release</code>, and <code>htmlspec preflight publish</code> reports it ready inside the development shell.</li>
+            <li>After a release's change is archived and merged, <code>htmlspec run publish --as vX.Y.Z</code> starts a record that holds only the publishing steps.</li>
+            <li>The run reviews the exact export privately before anything leaves this machine, and only then pushes it as a pull request on the public repository.</li>
+            <li>On the first run only, the run bootstraps the empty public repository with ruleset 25362895 off for that one push, and stops unless the ruleset is active again afterwards.</li>
+            <li>The public tag is created through GitHub's API on the commit that merged the export's pull request. No step pushes any ref from this repository to the public one.</li>
+            <li>The run watches the release workflow, adds <code>firefly-developers</code> as each crate's co-owner on the first release, and records that each channel installs the version.</li>
+            <li>This is release 0.34.0, and <code>scripts/check</code> passes.</li>
+          </ol>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <p><strong>A new runbook, <code>htmlspec/runbooks/publish/</code>,</strong> with its specification, its tasks, a <code>VERSION</code> of 0.1.0, and a <code>CHANGELOG.md</code>. Its specification states what a publishing run requires, among them the hazards the review found. Its tasks are the steps, in order.</p>
+          <p><strong>The release runbook is untouched here.</strong> <code>ship-through-four-channels</code> takes it to 0.3.0, and it keeps the steps that run inside a change.</p>
+          <p><strong>The 1.0 change loses its publishing steps.</strong> <code>commit-the-contract-and-the-command-line</code> now follows this change and promises only the contract and the command line.</p>
+          <p><strong>The program does not change.</strong></p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <p><strong>Append the publishing steps to the release runbook.</strong> The first plan did this. Rejected, because a run after archival copies the steps already done inside the change, and the review reproduced that record.</p>
+          <p><strong>Push the public tag from this repository, from the export's fetched copy of the public <code>main</code>.</strong> It works when typed exactly. Rejected, because one wrong word sends the private tag. Creating the tag through the API involves no push at all, so a guard can refuse every push from this repository to the public one without an exception.</p>
+          <p><strong>Leave the first-run bootstrap to the contributor's memory.</strong> Rejected. A step done once, in an order that matters, and with a protection switched off, is the kind of step a runbook exists to hold.</p>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <p><strong>In scope.</strong> The <code>publish</code> runbook, its requirements and steps, a rehearsal of what can be rehearsed without the public services, and release 0.34.0.</p>
+          <p><strong>Not in scope.</strong> The export tool, its private review, and the push guard belong to <code>publish-a-public-tree</code>. The release workflow and the crate publisher belong to <code>ship-through-four-channels</code>. Contract 1.0.0 belongs to <code>commit-the-contract-and-the-command-line</code>. The first real run is not a task here: it is the first release after 1.0.0's archival.</p>
+          <p><strong>Settled by the contributor.</strong> The accounts exist: on 2026-10-18 the contributor had <code>Firefly-Projects/htmlspec</code> created, empty, with ruleset 25362895 requiring a pull request into <code>main</code>, and <code>Firefly-Projects/homebrew-tap</code>, empty; stored <code>CARGO_REGISTRY_TOKEN</code> and <code>HOMEBREW_TAP_TOKEN</code>; granted crates.io access to the organization; and named <code>firefly-developers</code> as the crates' co-owner. On 2026-10-19 the contributor turned on GitHub's "Keep my email addresses private", so a merge in the public repository records a noreply address.</p>
+          <p><strong>Requirements.</strong> This change adds, modifies, and removes no accepted requirement. A runbook's requirements are what it requires of a run, as runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-a-runbook-records-what-its-history-taught">"A runbook records what its history taught"</a> states, and runbook-execution's <a href="../../../specs/runbook-execution/spec.html#req-a-run-leaves-a-record-where-the-runbook-keeps-them">"A run leaves a record where the runbook keeps them"</a> already gives each publication its record. The contract is silent on how a release is published, and this change keeps it so: the procedure is the runbook's.</p>
+          <p><strong>The release.</strong> 0.34.0, a minor increment, my choice under project-bootstrap's <a href="../../../specs/project-bootstrap/spec.html#req-archival-requires-the-project-version-to-advance">"Archival requires the project version to advance"</a>, which leaves the size to judgment: the project gains a procedure, and the program is unchanged.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

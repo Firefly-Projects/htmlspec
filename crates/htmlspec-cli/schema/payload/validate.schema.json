@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://html-spec.dev/schema/payload/1/validate.schema.json",
+  "title": "htmlspec validate --json",
+  "description": "The payload `htmlspec validate --json` (`get validity`) writes: the whole run, then one entry per document in discovery order. It is written even when a document cannot be read, and that document's entry carries `error` instead of `report`. A later 1.x release can add a property to any object in this payload, and only a major release removes, renames, or retypes one, so a consumer ignores a property it does not know.",
+  "type": "object",
+  "required": [
+    "accepted",
+    "documents",
+    "errors",
+    "warnings",
+    "results"
+  ],
+  "properties": {
+    "accepted": {
+      "type": "boolean"
+    },
+    "documents": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "errors": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "warnings": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "report": {
+            "$ref": "#/definitions/report"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "report": {
+      "description": "One document's report, as htmlspec_validate::StructuredReport writes it.",
+      "type": "object",
+      "required": [
+        "accepted",
+        "summary",
+        "diagnostics"
+      ],
+      "properties": {
+        "accepted": {
+          "type": "boolean"
+        },
+        "summary": {
+          "type": "object",
+          "required": [
+            "errors",
+            "warnings"
+          ],
+          "properties": {
+            "errors": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "warnings": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/diagnostic"
+          }
+        },
+        "curtailed": {
+          "type": "object",
+          "required": [
+            "reason",
+            "message"
+          ],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "enum": [
+                "fatal-parse-error"
+              ]
+            },
+            "message": {
+              "type": "string"
+            },
+            "recoveredErrors": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "diagnostic": {
+      "description": "One diagnostic, as htmlspec_validate::StructuredDiagnostic writes it. The four optional fields are present only where the rule supplies them.",
+      "type": "object",
+      "required": [
+        "rule",
+        "namespace",
+        "severity",
+        "message"
+      ],
+      "properties": {
+        "rule": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "unitId": {
+          "type": "string"
+        },
+        "schemaPath": {
+          "type": "string"
+        },
+        "projectionRule": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

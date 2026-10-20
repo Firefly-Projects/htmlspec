@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Publish releases through their own runbook</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Publish releases through their own runbook</h1>
+        <p>What this change established. A release reaches the public through one run of the <code>publish</code> runbook, which archival publishes at 0.1.0. The export delivers only a commit the private repository's <code>main</code> holds, takes each read by the content it covers so that it survives a squash merge, and names every file changed since its read. The pre-push hook refuses the public repository under any spelling of its address, and a release publishes only when every target built and the formula passed. Release 0.34.0.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Publish releases through their own runbook</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-the-public-repository-receives-only-reviewed-exports" data-change="modified">
+            <h3>The public repository receives only reviewed exports of the private one <span class="hs-id">req-the-public-repository-receives-only-reviewed-exports</span></h3>
+            <p>The project's public repository SHALL receive only trees exported from its private working repository. Each tree SHALL come from a committed ref of the private repository, through the allowlist of paths that may cross, with every rewrite applied at the count it expects, found clean by the scan against the private pattern file, passed by the project's full suite run inside the exported tree, and reviewed by a person as the exact tree that is pushed.</p>
+            <ins>
+              <p>A tree SHALL reach the public repository only from a commit the private repository's <code>main</code> holds, so that the reads of its paths and the contributor's sign-off it is delivered under are ones a reviewed pull request landed. A read SHALL name the content it covers, so that it survives the squash merge that lands it, and every file under an allowlisted path whose content differs from the content its read names, added or changed since, SHALL be refused, each one named.</p>
+            </ins>
+            <p>Each export SHALL arrive in a commit whose only parent is the public repository's own <code>main</code>, or with no parent for the first commit of an empty public repository, made by a GitHub noreply identity as author and committer, and naming its source ref and commit. No commit of the private repository's history SHALL reach the public repository, and the private repository SHALL refuse any push of its own to the public one, tags included<ins>, under any spelling of the public repository's address</ins>.</p>
+            <p>The publishing tooling, its allowlist, rewrites, pattern file, and tests, SHALL stay in the private repository and SHALL be absent from every export, because its tables name the material they guard against.</p>
+            <article class="scenario" id="scenario-a-planted-private-string-is-refused" data-change="unchanged">
+              <h4>A planted private string is refused at the scan</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an allowlisted file holding a string the private pattern file names</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the scan refuses, naming the file and the line, and nothing is committed or pushed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-vanished-rewrite-is-refused" data-change="unchanged">
+              <h4>A rewrite whose text is gone is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a rewrite whose expected text no longer appears the number of times it states</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the export stops, naming the file and the text it expected</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-failing-suite-is-refused" data-change="unchanged">
+              <h4>A failing suite is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an exported tree in which the project's suite fails</dd>
+                <dt>When</dt>
+                <dd>the export runs the suite inside it</dd>
+                <dt>Then</dt>
+                <dd>the export stops before anything is committed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unreviewed-tree-is-refused" data-change="unchanged">
+              <h4>An unreviewed tree is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a push or a bootstrap is asked for without naming the tree a person reviewed, or names a different one</dd>
+                <dt>Then</dt>
+                <dd>it refuses, and nothing reaches the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unread-path-or-changed-image-is-refused" data-change="modified">
+              <h4>An unread path, a newly added file, or a changed image is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an allowlisted path nobody recorded as read, a file added <ins>or changed </ins>beneath an allowlisted <del>directory</del><ins>path</ins> since <del>its read</del><ins>the content its read names</ins>, or an image whose bytes differ from the blob a person read</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the export refuses, naming each one<ins>, however many there are</ins></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-personal-identity-is-refused" data-change="unchanged">
+              <h4>A commit identity that is not a GitHub noreply address is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the export is to commit with an author or committer that is not a GitHub noreply address</dd>
+                <dt>Then</dt>
+                <dd>it refuses before anything reaches the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-private-history-reaches-the-public-repository" data-change="unchanged">
+              <h4>No commit of the private history reaches the public repository</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a first commit is bootstrapped into an empty public repository and a later export is pushed</dd>
+                <dt>Then</dt>
+                <dd>the first commit has no parent, the later one has only the public repository's main as its parent, and no commit or blob that only the private history holds is in the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-tooling-never-crosses" data-change="unchanged">
+              <h4>The publishing tooling never crosses</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>any tree is exported</dd>
+                <dt>Then</dt>
+                <dd>it holds nothing of the publishing tooling or of the workflow that tests it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-push-from-the-private-repository-is-refused" data-change="modified">
+              <h4>A push from the private repository to the public one is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the private working repository pushes anything, a branch or a tag, to the public repository<ins>, under any spelling of its address</ins></dd>
+                <dt>Then</dt>
+                <dd>its pre-push hook refuses, because the push would carry the private history</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-read-survives-the-squash-merge-that-lands-it" data-change="added">
+              <h4>A read survives the squash merge that lands it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a read recorded on a branch, naming the content it read</dd>
+                <dt>When</dt>
+                <dd>the branch is squash-merged into <code>main</code> and deleted, and its commits are gone</dd>
+                <dt>Then</dt>
+                <dd>the export of <code>main</code> accepts the read, because <code>main</code> holds the content it names</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-delivery-of-a-commit-main-does-not-hold-is-refused" data-change="added">
+              <h4>A delivery of a commit main does not hold is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a commit the private repository's <code>main</code> does not hold, carrying a signed readiness record</dd>
+                <dt>When</dt>
+                <dd>a push or a bootstrap exports it</dd>
+                <dt>Then</dt>
+                <dd>it refuses, naming the commit, and nothing reaches the public repository</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-release-reaches-every-channel-from-one-tag" data-change="modified">
+            <h3>A release reaches every channel from one tag <span class="hs-id">req-a-release-reaches-every-channel-from-one-tag</span></h3>
+            <p>Every release SHALL be cut from one tag, <code>vX.Y.Z</code>, whose version equals the version the workspace declares, and the binaries, the crates, and the Homebrew formula the release produces SHALL each name that version. The release SHALL refuse a tag that names another version before it builds anything.</p>
+            <p>Publication SHALL begin only from a version tag in the public repository, <code>Firefly-Projects/htmlspec</code>, only for a commit that repository's <code>main</code> holds, and only after the check suite has passed on that commit. A tag in any other repository SHALL publish nothing.<ins> A release SHALL publish only from a run in which the binary of every target it releases was built and the formula passed its check, though runs elsewhere leave some of those jobs out.</ins></p>
+            <p>A publication interrupted partway SHALL finish when run again, and SHALL NOT publish any version twice: the crates publish one at a time, a version the registry already holds is skipped, and a rate limit is waited out within a stated budget, after which the run stops and names the crates that remain. Every request the release makes to crates.io SHALL carry a fixed User-Agent that names the project, and no personal information.</p>
+            <article class="scenario" id="scenario-a-tag-naming-another-version" data-change="unchanged">
+              <h4>A tag naming another version</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a workspace that declares 0.33.0</dd>
+                <dt>When</dt>
+                <dd>the release runs on the tag <code>v9.9.9</code></dd>
+                <dt>Then</dt>
+                <dd>it refuses before any build, naming both versions</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tag-in-another-repository" data-change="unchanged">
+              <h4>A tag in another repository</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a version tag is pushed to a repository other than the public one</dd>
+                <dt>Then</dt>
+                <dd>the workflow verifies and builds, and its release, crates, and tap jobs publish nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tag-on-a-commit-main-does-not-hold" data-change="unchanged">
+              <h4>A tag on a commit main does not hold</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a version tag in the public repository names a commit that its <code>main</code> does not hold</dd>
+                <dt>Then</dt>
+                <dd>the release refuses it, and nothing publishes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-artifact-names-the-version" data-change="unchanged">
+              <h4>Every artifact names the version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release builds from a tag</dd>
+                <dt>Then</dt>
+                <dd>each binary reports that version, each crate is packaged at it, and the formula installs it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-formula-matches-the-release" data-change="unchanged">
+              <h4>The formula matches the release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the formula is rendered for a release</dd>
+                <dt>Then</dt>
+                <dd>each target's digest is the one the release's <code>SHA256SUMS</code> records, and the rendered formula passes Homebrew's strict audit, installs, and passes its test in a local tap</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-publication-stopped-by-the-rate-limit" data-change="unchanged">
+              <h4>A publication stopped by the rate limit</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a crates publication that published some crates and stopped on the registry's rate limit</dd>
+                <dt>When</dt>
+                <dd>it runs again</dd>
+                <dt>Then</dt>
+                <dd>it skips the crates already published, publishes the rest, and publishes nothing twice</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-request-names-the-project" data-change="unchanged">
+              <h4>Every request names the project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release sends a request to crates.io</dd>
+                <dt>Then</dt>
+                <dd>its User-Agent names the project and its public repository, and no header carries personal information</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-missing-a-target-publishes-nothing" data-change="added">
+              <h4>A run missing a target publishes nothing</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a run on a version tag in the public repository in which a build failed, the formula's check did not pass, or <code>SHA256SUMS</code> names no tarball for one of the four targets</dd>
+                <dt>When</dt>
+                <dd>the run reaches the release</dd>
+                <dt>Then</dt>
+                <dd>the release job is skipped, or its first step refuses, and nothing publishes</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-reads-orphaned-by-squash-merges" data-change="added" data-refs="req-the-public-repository-receives-only-reviewed-exports">
+            <h3>Reads recorded by commit, orphaned by two squash merges <span class="hs-id">evidence-reads-orphaned-by-squash-merges</span></h3>
+            <p>The squash merges of <code>publish-a-public-tree</code>, #64, and <code>ship-through-four-channels</code>, #67, each left the commit every read named out of <code>main</code>'s history, and each time the export refused every allowlisted path. <code>test_a_read_survives_the_squash_merge_that_lands_it</code>, with the read recorded by commit as the old record asked, failed on the old export with <q>a commit this repository does not hold</q>. The 24 rows of <code>publish/READINESS.md</code> recorded at <code>99c0fe4</code> were converted to the content each one covered there, which read nothing again.</p>
+          </section>
+          <section class="evidence" id="evidence-three-ways-past-the-tooling" data-change="added" data-refs="req-the-public-repository-receives-only-reviewed-exports">
+            <h3>Three ways past the tooling, reproduced by the review and closed <span class="hs-id">evidence-three-ways-past-the-tooling</span></h3>
+            <p>The code review of #69, at <code>d3ac207</code>, reproduced each. A refusal of 26 changed files named 20, and recording the content it gave let the 26th export unread. <code>publish/export --ref 4e92325 --bootstrap</code>, a commit no branch holds whose readiness record is signed as a rehearsal's, passed the sign-off check and pushed to a local bare repository. The pre-push hook let a push through to the public repository's address with a user in it, with <code>ssh.github.com</code>'s port, and with a slash after the scp colon. After the fixes, at <code>eba6f38</code>, the same bootstrap of <code>4e92325</code> exits 1, saying the commit is not in <code>refs/remotes/origin/main</code>, and the local target holds no ref.</p>
+          </section>
+          <section class="evidence" id="evidence-the-export-of-the-fixes" data-change="added" data-refs="req-the-public-repository-receives-only-reviewed-exports">
+            <h3>The export of the fixes, run as a dry run <span class="hs-id">evidence-the-export-of-the-fixes</span></h3>
+            <p><code>publish/export --ref eba6f38 --dry-run</code>, against an empty bare repository on this machine, read every path's recorded content as current, exported 1519 files, applied 23 rewrites at 212 occurrences, scanned the tree clean with its four images each read at its blob id, and ran <code>scripts/check</code> inside the exported tree, where all 14 checks passed.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-read-survives-the-squash-merge" data-change="added" data-outcome="passed" data-refs="scenario-a-read-survives-the-squash-merge-that-lands-it">
+            <h3>A read survives the squash merge that lands it <span class="hs-id">verify-a-read-survives-the-squash-merge</span></h3>
+            <p data-field="method"><code>publish/test</code>'s <code>test_a_read_survives_the_squash_merge_that_lands_it</code> records a read on a branch, squash-merges it, deletes the branch, expires the reflog, and collects garbage, and the dry run of <code>main</code> then passes. <code>test_a_read_recorded_by_commit_is_refused_naming_the_content_to_record</code> and <code>test_a_read_of_content_this_repository_does_not_hold_stops_the_export</code> see the two rows it cannot use refused, each naming the content to record.</p>
+          </section>
+          <section class="verification" id="verify-every-changed-file-is-named" data-change="added" data-outcome="passed" data-refs="scenario-an-unread-path-or-changed-image-is-refused">
+            <h3>Every file changed since its read is refused, each one named <span class="hs-id">verify-every-changed-file-is-named</span></h3>
+            <p data-field="method"><code>test_every_file_changed_since_its_read_is_named_however_many</code> adds 26 files under a read directory and finds each name in the refusal. <code>test_a_single_allowlisted_file_changed_since_its_read_stops_the_export</code> changes an allowlisted file, as opposed to a directory, and sees it refused. <code>test_a_file_added_under_an_allowlisted_directory_since_its_read_stops_the_export</code> and <code>test_a_file_changed_under_an_allowlisted_path_since_its_read_stops_the_export</code> pass beside them. With the list cut to 20 again, or the file's own path emptied of names, the matching new test fails.</p>
+          </section>
+          <section class="verification" id="verify-a-delivery-off-main-is-refused" data-change="added" data-outcome="passed" data-refs="scenario-a-delivery-of-a-commit-main-does-not-hold-is-refused">
+            <h3>A delivery of a commit main does not hold is refused <span class="hs-id">verify-a-delivery-off-main-is-refused</span></h3>
+            <p data-field="method"><code>test_a_delivery_exports_only_a_commit_main_holds</code> sees a branch's commit, with a signed record, refused for <code>--bootstrap</code> and then for <code>--push</code>, with nothing pushed, and delivered once <code>main</code> holds it. <code>test_a_delivery_with_no_record_of_main_is_refused</code> sees a clone with no <code>refs/remotes/origin/main</code> refused. With the ancestry check removed, the first test fails. The tests have no exemption: a fixture's commit on <code>main</code> moves its <code>refs/remotes/origin/main</code>, as a merge and a fetch do.</p>
+          </section>
+          <section class="verification" id="verify-every-spelling-of-the-public-address-is-refused" data-change="added" data-outcome="passed" data-refs="scenario-a-push-from-the-private-repository-is-refused">
+            <h3>Every spelling of the public address is refused <span class="hs-id">verify-every-spelling-of-the-public-address-is-refused</span></h3>
+            <p data-field="method"><code>publish/test</code>'s hook tests run <code>.githooks/pre-push</code> from a checkout holding <code>publish/export</code> on seventeen spellings of the public repository's address, among them the seven it once matched, the three the review found passing, and an ssh <code>Host</code> alias, and see each refused for a tag and for a branch. This repository's own address, a lookalike name, a local path, and a <code>file://</code> address pass. Against the hook as it was, the first test fails. The normalisation gave the same answers under bash 5.3 and the bash 3.2 macOS ships.</p>
+          </section>
+          <section class="verification" id="verify-the-export-of-the-fixes-passes" data-change="added" data-outcome="passed" data-refs="req-the-public-repository-receives-only-reviewed-exports">
+            <h3>The tooling's tests, and the export of the fixes <span class="hs-id">verify-the-export-of-the-fixes-passes</span></h3>
+            <p data-field="method"><code>publish/test</code> ran 45 tests, all passing, and the dry run recorded as evidence passed every step. That dry run read the readiness record at <code>eba6f38</code>, so every read the fixes recorded names the content that commit holds.</p>
+          </section>
+          <section class="verification" id="verify-a-run-missing-a-target-publishes-nothing" data-change="added" data-outcome="partial" data-refs="req-a-release-reaches-every-channel-from-one-tag scenario-a-run-missing-a-target-publishes-nothing">
+            <h3>A run missing a target publishes nothing <span class="hs-id">verify-a-run-missing-a-target-publishes-nothing</span></h3>
+            <p data-field="method">Read from <code>.github/workflows/release.yml</code> and checked by actionlint 1.7.12 with ShellCheck 0.11.0, which reported no error. The release job needs <code>sums</code>, <code>formula</code>, and <code>suite</code>, its condition holds no status function, so GitHub runs it only when all three succeeded, and its first step refuses a <code>SHA256SUMS</code> naming no tarball for any target <code>python3 scripts/release_facts.py targets</code> prints. <code>scripts/check-publish-crates</code> passes its three tests of the build matrix, all four targets or the two Linux targets with <code>--without-macos</code>.</p>
+            <p data-field="unchecked">No run has reached the release job, which runs only on a version tag in the public repository, so neither its skip nor its refusal has run.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

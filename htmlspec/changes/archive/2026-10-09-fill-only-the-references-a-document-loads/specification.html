@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Fill only the references a document loads</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Fill only the references a document loads</h1>
+        <p>This change makes deterministic-formatting's "Formatting preserves meaning" state the fill as its one exception to preserving every attribute value: an asset reference that names bytes the project's store does not hold is filled, and one that names bytes the store holds is left as written. It bounds the exception to the attributes through which an element loads an asset, the ones document-validation's "An asset reference must match the bytes it names" judges, so a hyperlink, and text that quotes a reference, are left as the author wrote them.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Fill only the references a document loads</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-09-fill-only-the-references-a-document-loads/specs/deterministic-formatting/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-deterministic-formatting">deterministic-formatting</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-deterministic-formatting">
+          <h2>deterministic-formatting</h2>
+          <section class="requirement" id="req-formatting-preserves-meaning" data-change="modified">
+            <h3>Formatting preserves meaning <span class="hs-id">req-formatting-preserves-meaning</span></h3>
+            <p>Formatting SHALL NOT change a document's semantic content. It SHALL preserve every semantic unit, every identifier, every attribute value, every cross-reference, and the document order of content. It SHALL NOT add, remove, or reorder semantic units.</p>
+            <ins>
+              <p>One kind of attribute value is excepted. Where an asset reference names bytes the project's store does not hold, formatting SHALL fill it with the address of the bytes the toolchain ships. A reference that names bytes the store holds SHALL be left as written, even when the store also holds a newer revision, because the reference records what the document was authored against.</p>
+            </ins>
+            <ins>
+              <p>An asset reference SHALL be the value of an attribute through which an element loads an asset. These are the same attributes that document-validation's "<a href="../../../specs/document-validation/spec.html#req-an-asset-reference-must-match-the-bytes-it-names">An asset reference must match the bytes it names</a>" judges, so the formatter and the validator SHALL NOT disagree about which values are references. A hyperlink is a citation, not something the document loads, and SHALL NOT be filled. Text SHALL NOT be read as an asset reference. Prose that quotes one, whether as characters in a code element or escaped in an example, is content, and formatting SHALL leave it as the author wrote it.</p>
+            </ins>
+            <p data-field="note">Migration note: as built, the formatter's scanner and the tree the asset rules walk are not held to agreement in two cases, and the change's record kept this statement's words. On a document whose parse recovered errors, such as one with an <code>&lt;img&gt;</code> inside <code>&lt;select&gt;</code>, the tree drops what the scanner reports; <code>format</code> refuses such a document and writes nothing for it, and the cross-checks compare the two only on documents read without error. On a value holding a character reference, the tree decodes <code>&amp;amp;</code> and the scanner does not, and no shipped asset name holds an <code>&amp;</code>. The <a href="design.html#hs-risks-trade-offs">design's Risks / Trade-offs</a> records both as risks the change does not close, and <a href="tasks.html#task-7-1">task 7.1</a> records the second as not taken at review.</p>
+            <article class="scenario" id="scenario-identifiers-survive-formatting" data-change="unchanged">
+              <h4>Identifiers survive formatting</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is formatted</dd>
+                <dt>Then</dt>
+                <dd>every semantic unit retains the identifier it had before</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-content-order-preserved" data-change="unchanged">
+              <h4>Content order preserved</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document with requirements in a deliberate order is formatted</dd>
+                <dt>Then</dt>
+                <dd>the requirements appear in the same order</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-whitespace-sensitive-content-untouched" data-change="unchanged">
+              <h4>Whitespace-sensitive content untouched</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains a preformatted code excerpt</dd>
+                <dt>Then</dt>
+                <dd>formatting leaves that content's internal whitespace and line breaks exactly as authored</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-formatting-an-invalid-document" data-change="unchanged">
+              <h4>Formatting an invalid document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>formatting is applied to a document that fails validation</dd>
+                <dt>Then</dt>
+                <dd>the formatter either produces canonically formatted output without altering meaning, or refuses and reports why — it never silently repairs or discards content</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-prose-that-quotes-an-asset-reference" data-change="added">
+              <h4>Prose that quotes an asset reference</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose store does not hold the bytes <code>assets/htmlspec.css</code> names</dd>
+                <dt>When</dt>
+                <dd>a document's prose quotes <code>href="assets/htmlspec.css"</code> in a code element, and the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the quoted words are unchanged, and only references on the document's own loading elements are filled</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-hyperlink-to-an-asset" data-change="added">
+              <h4>A hyperlink to an asset</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose store does not hold the bytes a document's hyperlink names</dd>
+                <dt>When</dt>
+                <dd>the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the hyperlink is left as written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reference-that-names-stored-bytes" data-change="added">
+              <h4>A reference that names stored bytes</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document whose stylesheet reference names a revision the store holds, and a store that also holds a newer revision</dd>
+                <dt>When</dt>
+                <dd>the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the reference still names the revision it was authored against</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each evidence unit below, and each verification unit in the next section, summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links. The record is the authority.</p>
+          </aside>
+          <section class="evidence" id="evidence-the-measurement-2026-10-09" data-change="added" data-refs="req-formatting-preserves-meaning">
+            <h3>What the formatter rewrites today, measured against HEAD <span class="hs-id">evidence-the-measurement-2026-10-09</span></h3>
+            <p>For task 1.1, with <code>htmlspec 0.28.0 (08f12a923d5c)</code>, in a scratch project made by <code>init</code> and <code>new change</code>, one <code>format</code> run on a proposal holding three paragraphs made four fills: two <code>&lt;code&gt;</code> quotations and one escaped <code>&lt;pre&gt;&lt;code&gt;</code> example, none of them an attribute of any element, and the <code>href</code> of an <code>&lt;a&gt;</code>. <code>validate</code> accepted the document before and after, and <code>format --check</code> exited 0 only once the author's words had been changed. With the <code>&lt;a&gt;</code> pointed at an absent address the document was still accepted; with the stylesheet <code>&lt;link&gt;</code> pointed at it, <code>validate</code> reported <code>asset/unresolved</code>. The asset rules read thirteen element and attribute pairs, <code>&lt;a href&gt;</code> not among them, and the formatter matched <code>href="</code> and <code>src="</code> as substrings anywhere in the source. A search of <code>git ls-files '*.html'</code> found no tracked document that quotes an asset attribute in prose or links to an asset from an <code>&lt;a&gt;</code>. Recorded in <a href="evidence/the-measurement-2026-10-09.md"><code>evidence/the-measurement-2026-10-09.md</code></a>.</p>
+          </section>
+          <section class="evidence" id="evidence-the-change-measured-2026-10-09" data-change="added" data-refs="req-formatting-preserves-meaning">
+            <h3>The measurement repeated against the change <span class="hs-id">evidence-the-change-measured-2026-10-09</span></h3>
+            <p>For task 5.1, with the debug binary built from the change, in the same scratch project at the same commit, <code>format --check</code> and <code>format</code> reported the proposal canonical, exit 0, and <code>git diff</code> afterwards was empty, where HEAD had made four fills. With the <code>&lt;a&gt;</code> naming an absent address, <code>validate</code> reported 0 errors and <code>format --check</code> canonical, exit 0. With the <code>&lt;link&gt;</code> naming it, <code>validate</code> reported <code>asset/unresolved</code> and <code>format --check</code> filled <code>htmlspec.css</code>, exit 1. In a copy of the staged migration, all 109 documents were canonical. With both <code>href&lt;!-- --&gt;=</code> workarounds in <code>establish-a-runbook</code> restored, its <code>design.html</code> was canonical under the change and had its <code>&lt;code&gt;</code> quotation filled by <code>htmlspec 0.18.0</code>, while its <code>tasks.html</code> was canonical under both. Recorded in <a href="evidence/the-change-measured-2026-10-09.md"><code>evidence/the-change-measured-2026-10-09.md</code></a>.</p>
+          </section>
+          <section class="evidence" id="evidence-mutation-testing-2026-10-09" data-change="added" data-refs="req-formatting-preserves-meaning">
+            <h3>Mutation testing <span class="hs-id">evidence-mutation-testing-2026-10-09</span></h3>
+            <p>For task 5.2, the ten mutations the task names and a sharper version of mutation 6, 6b, were each applied and the assets, format, and validate crates' tests run. All eleven were caught: mutation 10 survived its first run and mutation 9 was caught only by a property test, so each gained a direct test first. For task 7.1, twelve mutations of the review's fixes to <code>tags.rs</code>, F1 to F12, were run against the format and validate crates' tests, and all twelve were caught, F10 and F12 after a new test each. F12's first run had not compiled, and the script's check for compilation was corrected. Recorded in <a href="evidence/mutation-testing-2026-10-09.md"><code>evidence/mutation-testing-2026-10-09.md</code></a>.</p>
+          </section>
+          <section class="evidence" id="evidence-what-the-implementation-revealed-2026-10-09" data-change="added" data-refs="req-formatting-preserves-meaning">
+            <h3>What the implementation revealed <span class="hs-id">evidence-what-the-implementation-revealed-2026-10-09</span></h3>
+            <p>For task 5.4, neither cross-check found a disagreement between the scanner and the tree on its first run, and three rules taken from the HTML specification held for the pinned parser: <code>noscript</code> is raw text, a <code>&lt;template&gt;</code>'s contents are not in the tree, and a CDATA section inside <code>&lt;svg&gt;</code> is text. The corpus test compared 128 of the repository's 138 HTML documents, holding 640 references, and skipped the 10 under <code>fixtures/parse-errors/</code>. At review, three documents read without error, holding an SVG <code>&lt;style&gt;</code> or <code>&lt;title&gt;</code>, an SVG <code>&lt;template&gt;</code>, and a script whose <code>&lt;!--&lt;script&gt;</code> postpones its end, showed the cross-checks passing while "SHALL NOT disagree" did not hold; all three are now followed, each with a fragment. Writing those fragments found that the pinned parser makes no <code>annotation-xml</code> an integration point, where the HTML specification makes one, and the scanner follows the parser. Recorded in <a href="evidence/what-the-implementation-revealed-2026-10-09.md"><code>evidence/what-the-implementation-revealed-2026-10-09.md</code></a>.</p>
+          </section>
+          <section class="evidence" id="evidence-the-runbook-ran-2026-10-09" data-change="added" data-refs="req-formatting-preserves-meaning">
+            <h3>The release runbook's run for 0.28.1 <span class="hs-id">evidence-the-runbook-ran-2026-10-09</span></h3>
+            <p>For tasks 6.1 and 6.2, the release runbook at version <code>0.1.0</code> worked as written. The increment <code>0.28.0</code> → <code>0.28.1</code>, a patch, was confirmed by the contributor on 2026-10-09 before the version moved, on the reasoning that the formatter now does what "Formatting preserves meaning" already required, the document contract stays at <code>0.7.0</code>, and no committed document is reformatted. All 45 installed files changed only their <code>generatedBy</code> stamp, and <code>scripts/check-release</code> passed on the declared version. Recorded in <a href="evidence/the-runbook-ran-2026-10-09.md"><code>evidence/the-runbook-ran-2026-10-09.md</code></a>.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-the-scratch-proposal-s-quoted-markup" data-change="added" data-outcome="passed" data-refs="scenario-prose-that-quotes-an-asset-reference">
+            <h3>The scratch proposal's quoted markup, formatted by the built change <span class="hs-id">verify-the-scratch-proposal-s-quoted-markup</span></h3>
+            <p data-field="method">For task 5.1, in the scratch project of <a href="evidence/the-measurement-2026-10-09.md"><code>evidence/the-measurement-2026-10-09.md</code></a>, section 1, where <code>init</code> stored the runtime under <code>htmlspec/assets/</code>, the proposal quoted <code>href="../../assets/htmlspec.css"</code> and <code>src="../../assets/htmlspec.js"</code> in <code>&lt;code&gt;</code> elements and an escaped <code>&lt;link&gt;</code> in a <code>&lt;pre&gt;&lt;code&gt;</code> example, each of which <code>htmlspec 0.28.0</code> had filled. With the debug binary built from the change, <code>format --check</code> and <code>format</code> reported the proposal canonical, exit 0, and <code>git diff</code> afterwards was empty. With the document's own stylesheet <code>&lt;link&gt;</code> then pointed at an absent address, <code>format --check</code> filled <code>htmlspec.css</code> and exited 1. <a href="evidence/the-change-measured-2026-10-09.md"><code>evidence/the-change-measured-2026-10-09.md</code></a> records both in section 1.</p>
+          </section>
+          <section class="verification" id="verify-the-scratch-proposal-s-hyperlink" data-change="added" data-outcome="passed" data-refs="scenario-a-hyperlink-to-an-asset">
+            <h3>The scratch proposal's hyperlink, formatted by the built change <span class="hs-id">verify-the-scratch-proposal-s-hyperlink</span></h3>
+            <p data-field="method">For task 5.1, the same proposal held <code>&lt;a href="../../assets/htmlspec.css"&gt;</code>, which <code>htmlspec 0.28.0</code> had filled. With the debug binary built from the change, <code>format</code> left <code>git diff</code> empty. With the <code>&lt;a&gt;</code> then pointed at the absent address <code>../../assets/sha256-0000000000000000/htmlspec.css</code>, <code>format --check</code> reported the proposal canonical, exit 0. <a href="evidence/the-change-measured-2026-10-09.md"><code>evidence/the-change-measured-2026-10-09.md</code></a> records both in section 1.</p>
+          </section>
+          <section class="verification" id="verify-the-formatter-s-references-against-the-tree" data-change="added" data-outcome="partial" data-refs="req-formatting-preserves-meaning">
+            <h3>The formatter's references against the asset rules', over the corpus and generated documents <span class="hs-id">verify-the-formatter-s-references-against-the-tree</span></h3>
+            <p data-field="method">The cross-checks in the validator's <code>rules/assets.rs</code> test module compare the references the formatter's <code>asset_references</code> finds with those the asset rules' <code>referenced_assets</code> finds in the parsed tree, as element, attribute and value, in document order: over the repository's HTML documents, and over generated documents the parser reads without error. <a href="evidence/what-the-implementation-revealed-2026-10-09.md"><code>evidence/what-the-implementation-revealed-2026-10-09.md</code></a> records in section 1 that neither found a disagreement on its first run, and that the corpus test compared 128 of the repository's 138 HTML documents, holding 640 references. It records in section 6 that the code review then found three documents read without error on which the two disagreed while the cross-checks passed, and that all three are now followed, each with a fragment in the cross-check.</p>
+            <p data-field="unchecked">"the formatter and the validator SHALL NOT disagree about which values are references", for a document whose parse recovered errors: the corpus test skipped the 10 documents under <code>fixtures/parse-errors/</code>, and the generated documents are held to agreement only where the parser recovered no error</p>
+            <p data-field="unchecked">"Formatting SHALL NOT change a document's semantic content. It SHALL preserve every semantic unit, every identifier, every attribute value, every cross-reference, and the document order of content. It SHALL NOT add, remove, or reorder semantic units.": the cross-checks compare the references the two find, and format no document</p>
+            <p data-field="unchecked">"Where an asset reference names bytes the project's store does not hold, formatting SHALL fill it with the address of the bytes the toolchain ships. A reference that names bytes the store holds SHALL be left as written, even when the store also holds a newer revision": the cross-checks decide no fill</p>
+            <p data-field="unchecked">"A hyperlink is a citation, not something the document loads, and SHALL NOT be filled", and prose that quotes a reference "formatting SHALL leave it as the author wrote it": the cross-checks show which values each finds as a reference, and write nothing</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

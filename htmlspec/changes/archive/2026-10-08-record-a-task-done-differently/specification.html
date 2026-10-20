@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Record a task done differently</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Record a task done differently</h1>
+        <p>Under "A task declares completion state", a <code>done</code> task may state a deviation, one paragraph saying what was done where that departs from the task's words, which stay as written; a deviation on a <code>todo</code>, <code>in-progress</code>, or <code>dropped</code> task, a second one in one task, and one on any other unit make a document invalid. Under "The command surface reports what a project holds", the enumeration of changes carries how many <code>done</code> tasks state a deviation, apart from the per-state counts and shown for people only where it is not zero, and under "The command surface reports a change's completion", the completion report states the same count, from the same source, and names each task.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Record a task done differently</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-08-record-a-task-done-differently/specs/document-schema/spec.md</code><br><code>openspec/changes/archive/2026-10-08-record-a-task-done-differently/specs/toolchain-packaging/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-document-schema">document-schema</a></li>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-document-schema">
+          <h2>document-schema</h2>
+          <section class="requirement" id="req-a-task-declares-completion-state" data-change="modified">
+            <h3>A task declares completion state <span class="hs-id">req-a-task-declares-completion-state</span></h3>
+            <p>A task unit SHALL declare whether it is complete in a machine-readable attribute, distinct from any visual checkbox. Completion state SHALL be one of <code>todo</code>, <code>in-progress</code>, <code>done</code>, or <code>dropped</code>. A dropped task SHALL state why.</p>
+            <ins>
+              <p><strong>A <code>done</code> task MAY state a deviation: what was done, where that departs from the task's words.</strong> The deviation SHALL be stated in one paragraph marked <code>data-field="deviation"</code>, and SHALL project into the task's <code>deviation</code> field. A task that states a deviation is <code>done</code>, because the work happened. A <code>done</code> task that states no deviation SHALL be read as done as its words say.</p>
+            </ins>
+            <ins>
+              <p>The reason is that none of the four states says "done, but not as written", and work lands that way. Marked <code>done</code> with a note, such a task claims its words were carried out, because a note is prose that no field and no count reads. Marked <code>dropped</code>, it claims the work did not happen, which is false. The deviation keeps both facts: the state says the work is finished, and the deviation says how it was done.</p>
+            </ins>
+            <ins>
+              <p>A task's words SHALL be kept as written when it states a deviation. They record what was planned, and designs, evidence, and later changes cite a task by them. The deviation is stated beside the words and SHALL NOT replace them.</p>
+            </ins>
+            <ins>
+              <p>The following SHALL make a document invalid:</p>
+            </ins>
+            <ins>
+              <ul>
+                <li>
+                  <p>a <code>deviation</code> paragraph in a task whose state is <code>todo</code> or <code>in-progress</code>, because nothing has been done that could differ from the words;</p>
+                </li>
+                <li>
+                  <p>a <code>deviation</code> paragraph in a task whose state is <code>dropped</code>, because a dropped task's work did not happen and its reason already states why. A task whose work partly happened is <code>done</code>, and its deviation states which part;</p>
+                </li>
+                <li>
+                  <p>more than one <code>deviation</code> paragraph in one task, because a task has one account of what was done, and the projection does not choose between two.</p>
+                </li>
+              </ul>
+            </ins>
+            <ins>
+              <p>A <code>deviation</code> paragraph in any unit other than a task names no field of that unit, and is invalid for that reason.</p>
+            </ins>
+            <p data-field="note">Migration note: as built, <code>schema/deviation-not-done</code> also reports a deviation on a task that declares no state, which none of the conditions above names, so such a task draws the schema's error for its missing state and this one beside it. <a href="tasks.html#task-4-2">Task 4.2</a> records the choice, made because neither the design nor this delta reaches the case, and <a href="tasks.html#task-9-1">task 9.1</a> records that the contributor kept it as built. <a href="evidence/what-the-implementation-revealed-2026-10-08.md"><code>evidence/what-the-implementation-revealed-2026-10-08.md</code></a> gives the reasoning, under "A task that declares no state".</p>
+            <article class="scenario" id="scenario-reporting-progress" data-change="unchanged">
+              <h4>Reporting progress</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a consumer reads a document containing ten tasks of which four are <code>done</code></dd>
+                <dt>Then</dt>
+                <dd>the consumer can report progress without parsing prose or rendered markup</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-dropped-task-without-a-reason" data-change="unchanged">
+              <h4>Dropped task without a reason</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task declares state <code>dropped</code> and gives no reason</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-task-done-another-way-than-its-words-say" data-change="added">
+              <h4>A task done another way than its words say</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task declares state <code>done</code> and carries one <code>data-field="deviation"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, the task is <code>done</code>, and a consumer reads what was done from the task's <code>deviation</code> field</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-task-done-as-its-words-say" data-change="added">
+              <h4>A task done as its words say</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task declares state <code>done</code> and carries no <code>deviation</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>its <code>deviation</code> field is absent, and the task is read as done as its words say</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deviation-on-a-task-not-yet-done" data-change="added">
+              <h4>A deviation on a task not yet done</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task whose state is <code>todo</code> or <code>in-progress</code> carries a <code>deviation</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deviation-on-a-dropped-task" data-change="added">
+              <h4>A deviation on a dropped task</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task whose state is <code>dropped</code> carries a reason and a <code>deviation</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because a dropped task's work did not happen</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-deviations-in-one-task" data-change="added">
+              <h4>Two deviations in one task</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a <code>done</code> task carries two <code>deviation</code> paragraphs</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deviation-outside-a-task" data-change="added">
+              <h4>A deviation outside a task</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement, scenario, decision, evidence, risk, or verification unit carries a <code>data-field="deviation"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because the field belongs to a task</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-the-command-surface-reports-what-a-project-holds" data-change="modified">
+            <h3>The command surface reports what a project holds <span class="hs-id">req-the-command-surface-reports-what-a-project-holds</span></h3>
+            <p>The command surface SHALL provide an operation that enumerates a project's active changes, and SHALL be able to enumerate its accepted specifications instead. The enumeration SHALL be available as a structured payload.</p>
+            <p>This is the operation that lets a workflow select what it acts on. A workflow that cannot enumerate a project's changes must have its subject named for it every time, and instructions written against such a surface omit the selection step rather than performing it.</p>
+            <p><strong>Because it exists for selection, the enumeration of active changes SHALL carry how much of each change's work is complete.</strong> A list of names is not something a workflow or a contributor can select from on any basis other than order, and a selection made at the moment of archiving is made about a directory that is about to move and a contract that is about to be rewritten.</p>
+            <p>The completion carried SHALL be a count of the change's tasks in each state the contract defines, rather than a single fraction. A fraction cannot separate a change nobody has started from one whose every task is under way, nor a change whose outstanding tasks were abandoned from one whose outstanding tasks remain to be done; those are different situations and a selection is made between them.</p>
+            <ins>
+              <p><strong>Beside those counts, the enumeration SHALL carry how many of the change's <code>done</code> tasks state a deviation</strong>, as document-schema's "A task declares completion state" defines one: the tasks done another way than their words say. Such a task SHALL be counted as <code>done</code>, in the count of that state and in any fraction, and SHALL NOT be subtracted from either. Its work happened, and a report that left it out would show finished work as outstanding. The count SHALL be carried apart from the per-state counts, and those SHALL still account for every task exactly once, because a deviation is not a state.</p>
+            </ins>
+            <ins>
+              <p>The count exists because a count of states cannot show it. A change that did every task as its words say and a change that did half of them another way both read as finished, and a reviewer choosing which change to check, or what to read before archiving one, is choosing between exactly those two.</p>
+            </ins>
+            <ins>
+              <p>Only a task whose state is <code>done</code> SHALL be counted as done differently. A task that declares another state and carries a deviation is a document that does not satisfy the schema, and counting it as done differently would attribute to it a state it never declared. This is the reading this requirement already takes for a task that declares no state.</p>
+            </ins>
+            <ins>
+              <p>Where the enumeration renders a change's completion for people as a fraction, the numerator SHALL remain every <code>done</code> task and the denominator every task, as they are without this count. The count of tasks done differently SHALL be shown in the change's row where it is not zero, and SHALL NOT be shown where it is zero. Most changes do every task as written, and a figure that reads zero on nearly every row teaches a reader to pass over it.</p>
+            </ins>
+            <p>The counts<ins>, including the count of tasks done differently,</ins> SHALL be derived from the same source as the operation that reports a change's completion, so that the enumeration, that operation, and archival cannot disagree about one change. A second traversal that recounted the same tasks would be a second answer to one question, and the disagreement would be invisible to a test written against either operation alone.</p>
+            <p>A task that declares no state SHALL be counted apart from the states the contract defines, and SHALL be counted as outstanding wherever outstanding work is reported. The document schema requires a state, so such a task is a document that does not satisfy it; the counts are read from projections rather than from validated documents, and reporting an undeclared task under a state it never declared would attribute to a document something it does not say. Counting it as outstanding is the reading the report about incomplete work already takes, and the two SHALL NOT differ.</p>
+            <p>A change whose tasks document is absent SHALL be enumerated with its completion absent, rather than reported as a count of zero. A zero fraction reads as a change with no work outstanding, which is the opposite of what an unwritten tasks document means.</p>
+            <p>The enumeration of accepted specifications is unaffected by the above, which governs changes only.</p>
+            <p>The order of the enumeration SHALL NOT depend on the completion it carries. A listing that reorders itself as work progresses cannot be selected from twice.</p>
+            <p><strong>The enumeration of active changes SHALL also carry each change's stated predecessor and whether that predecessor is resolved.</strong> The strongest reason not to select a change is that the change it follows is unfinished, and a listing that reports a change as ready to work on while its predecessor is open reports the opposite of what the selection needs.</p>
+            <p>The order of the enumeration SHALL NOT depend on the ordering it reports, for the same reason it does not depend on the completion it carries. A dependency order is additionally unstable in a way name order is not: a cycle has no such order at all.</p>
+            <article class="scenario" id="scenario-enumerating-active-changes" data-change="unchanged">
+              <h4>Enumerating active changes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>each active change is named, and archived changes are not among them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-enumerating-accepted-specifications" data-change="unchanged">
+              <h4>Enumerating accepted specifications</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a project's accepted specifications are enumerated</dd>
+                <dt>Then</dt>
+                <dd>each is named</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-structured-enumeration" data-change="unchanged">
+              <h4>A structured enumeration</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested</dd>
+                <dt>Then</dt>
+                <dd>the enumeration is emitted as a payload a workflow can select from</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-s-progress-is-visible-in-the-listing" data-change="unchanged">
+              <h4>A change's progress is visible in the listing</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change some of whose tasks are done</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the change is named and how much of its work is complete is reported beside it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-changes-at-the-same-fraction-in-different-states" data-change="unchanged">
+              <h4>Two changes at the same fraction in different states</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>one change whose tasks are all <code>todo</code> and another the same size whose tasks are all <code>in-progress</code></dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the two are distinguishable from the enumeration alone</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-outstanding-work-that-was-abandoned" data-change="unchanged">
+              <h4>Outstanding work that was abandoned</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose remaining tasks are all <code>dropped</code></dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>it is distinguishable from a change whose remaining tasks are still to be done</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-command-surface-reports-what-a-project-holds-a-change-with-a-task-done-differently" data-change="added">
+              <h4>A change with a task done differently</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change of four tasks, two of them <code>done</code>, one of which states a deviation</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>two of four tasks are reported done, and one task is reported as done differently, apart from the per-state counts</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deviation-leaves-the-per-state-counts-whole" data-change="added">
+              <h4>A deviation leaves the per-state counts whole</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change one of whose <code>done</code> tasks states a deviation</dd>
+                <dt>When</dt>
+                <dd>the enumeration is requested as a structured payload</dd>
+                <dt>Then</dt>
+                <dd>the per-state counts sum to the total, and the count of tasks done differently is carried apart from them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-every-task-was-done-as-written" data-change="added">
+              <h4>A change whose every task was done as written</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change none of whose tasks states a deviation</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated for people</dd>
+                <dt>Then</dt>
+                <dd>the change's row shows no count of tasks done differently, and the structured payload reports that count as zero</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-deviation-on-a-task-that-is-not-done" data-change="added">
+              <h4>A deviation on a task that is not done</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change one of whose <code>todo</code> tasks carries a deviation</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>that task is counted as <code>todo</code>, and not as done differently</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-task-that-declares-no-state" data-change="unchanged">
+              <h4>A task that declares no state</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change one of whose tasks declares no state</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>that task is counted apart from the defined states, and the change does not read as though its work were resolved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-enumeration-and-the-completion-report-agree" data-change="modified">
+              <h4>The enumeration and the completion report agree</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>any active change</dd>
+                <dt>When</dt>
+                <dd>its completion is read from the enumeration and from the operation that reports a change's completion</dd>
+                <dt>Then</dt>
+                <dd>the two report the same counts<ins>, including how many tasks were done differently</ins></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-with-no-tasks-document" data-change="unchanged">
+              <h4>A change with no tasks document</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change whose tasks document is absent</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the change is named and its completion is reported as absent rather than as zero</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-order-does-not-follow-progress" data-change="unchanged">
+              <h4>Order does not follow progress</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose changes are at differing stages of completion</dd>
+                <dt>When</dt>
+                <dd>the changes are enumerated twice, with work completed in between</dd>
+                <dt>Then</dt>
+                <dd>the order is unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-predecessor-is-unfinished" data-change="unchanged">
+              <h4>A change whose predecessor is unfinished</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change that follows another active change</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the predecessor is named beside it and reported as unresolved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-predecessor-is-done" data-change="unchanged">
+              <h4>A change whose predecessor is done</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change whose stated predecessor is archived</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the predecessor is named beside it and reported as resolved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-order-does-not-follow-the-stated-sequence" data-change="unchanged">
+              <h4>Order does not follow the stated sequence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose changes state predecessors</dd>
+                <dt>When</dt>
+                <dd>the changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the order is by name and does not follow the stated sequence</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-command-surface-reports-a-change-s-completion" data-change="modified">
+            <h3>The command surface reports a change's completion <span class="hs-id">req-the-command-surface-reports-a-change-s-completion</span></h3>
+            <p>The command surface SHALL provide an operation that reports, for one change, which of its artifacts are present and how many of its tasks are complete. The report SHALL be available as a structured payload.</p>
+            <ins>
+              <p><strong>The report SHALL also state how many of the change's <code>done</code> tasks state a deviation, and SHALL name each one.</strong> For such a task the deviation, not its words, is the claim about what was done, so a reviewer checking the change before archival compares each deviation with the work. A count alone would leave them searching the tasks document for the tasks it counts. The count SHALL be the one the enumeration of changes carries, derived from the same source.</p>
+            </ins>
+            <p>Archival SHALL derive its report about incomplete work from this same operation, so that a contributor who checks a change before archiving it and the archival that follows cannot disagree about what the change holds.</p>
+            <article class="scenario" id="scenario-a-change-mid-implementation" data-change="unchanged">
+              <h4>A change mid-implementation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>completion is reported for a change with a proposal, a design, tasks, and no specification</dd>
+                <dt>Then</dt>
+                <dd>the report names the specification as absent and states how many tasks remain</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archival-and-the-report-agree" data-change="unchanged">
+              <h4>Archival and the report agree</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival reports incomplete work for a change</dd>
+                <dt>Then</dt>
+                <dd>the count it reports is the count the completion operation reports for that change</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-command-surface-reports-a-change-s-completion-a-change-with-a-task-done-differently" data-change="added">
+              <h4>A change with a task done differently</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change one of whose <code>done</code> tasks states a deviation</dd>
+                <dt>When</dt>
+                <dd>completion is reported for that change</dd>
+                <dt>Then</dt>
+                <dd>the task is counted as complete, and the report states that one task was done differently and names it</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Every evidence and verification unit in this section and the next was written when this document was migrated. Each summarizes a record carried unchanged in this change's <code>evidence/</code>, as project-migration's "Evidence crosses unchanged" requires, and links it, and the record is the authority. One record bears on no requirement this specification states, and has no unit: <a href="evidence/the-runbook-ran-2026-10-08.md"><code>evidence/the-runbook-ran-2026-10-08.md</code></a> records the release.</p>
+          </aside>
+          <section class="evidence" id="evidence-the-measurement-2026-09-30" data-change="added" data-refs="req-a-task-declares-completion-state req-the-command-surface-reports-what-a-project-holds req-the-command-surface-reports-a-change-s-completion">
+            <h3>A task done another way than its words say, measured before the change <span class="hs-id">evidence-the-measurement-2026-09-30</span></h3>
+            <p>Measured on 2026-09-30 with <code>htmlspec 0.18.0</code> and <code>openspec</code> 1.13.1, before this change (<a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a>). OpenSpec counted <code>accept-a-described-change</code> at 27/28, its <code>[~]</code> task 5.2 unfinished, and <code>sync-a-change-into-the-accepted-contract</code> complete at 31/31, its struck-through task 4.5 done; migrated, the two listed <code>27/28  done</code> and <code>30/31  done</code>, each with one dropped task. The staged migration's 24 tasks documents held 970 tasks and 76 task units with a migration note, which one reader classified as 33 done not as the words say (19 another way, 11 only part, 3 more), 20 with no record, 21 corrections or history, and 2 state mappings, and all 33 were <code>done</code>. A paragraph marked <code>data-field="outcome"</code>, the field's name before it was renamed <code>deviation</code> on 2026-10-01, was refused with <code>schema/projection</code> 4.0 at <code>task-done-differently</code>, while the same words as a note listed <code>2/4  in-progress</code> and as a dropped task's reason <code>1/4  in-progress</code>, and <code>status</code> reported <code>3 of 4</code> for each. A second <code>reason</code> validated and the projection kept the first, and no unit in the 116 staged documents repeated a <code>reason</code>, <code>mitigation</code>, or <code>method</code>.</p>
+          </section>
+          <section class="evidence" id="evidence-the-measurement-repeated-2026-10-08" data-change="added" data-refs="req-a-task-declares-completion-state req-the-command-surface-reports-what-a-project-holds req-the-command-surface-reports-a-change-s-completion">
+            <h3>The measurement, repeated against HEAD before any change <span class="hs-id">evidence-the-measurement-repeated-2026-10-08</span></h3>
+            <p>Measured on 2026-10-08 with <code>htmlspec 0.24.0</code> built from <code>main</code> at <code>b768860</code>, and <code>openspec</code> 1.13.2 (<a href="evidence/the-measurement-repeated-2026-10-08.md"><code>evidence/the-measurement-repeated-2026-10-08.md</code></a>). Every result of the 2026-09-30 record held: OpenSpec reported 27/28 and 31/31; the staged migration still held 76 task units with a migration note, and the 33 class-A tasks were all <code>done</code> with their notes; and <code>data-field="deviation"</code> was refused with <code>schema/projection</code> 4.0 at <code>task-done-differently</code> while the listing read <code>2/4  in-progress</code>, the note variant <code>2/4</code>, and the dropped variant <code>1/4</code>. A second <code>deviation</code>, and a <code>deviation</code> on the <code>todo</code> or the <code>dropped</code> task, each drew <code>schema/projection</code> 4.0, recorded as the baseline for task 7.1, and a second <code>reason</code> was still discarded silently.</p>
+          </section>
+          <section class="evidence" id="evidence-what-it-builds-on-2026-10-08" data-change="added" data-refs="req-a-task-declares-completion-state req-the-command-surface-reports-what-a-project-holds req-the-command-surface-reports-a-change-s-completion">
+            <h3>What this change builds on, as built <span class="hs-id">evidence-what-it-builds-on-2026-10-08</span></h3>
+            <p>Task 1.4's reading of the code at <code>b768860</code> on 2026-10-08, before any edit (<a href="evidence/what-it-builds-on-2026-10-08.md"><code>evidence/what-it-builds-on-2026-10-08.md</code></a>). <code>CONTRACT_VERSION</code> was <code>0.4.0</code>, moved to <code>0.3.0</code> by <code>reject-change-markup-inside-a-unit</code> and to <code>0.4.0</code> by <code>mark-the-words-a-modification-changed</code>, so this change moves it to <code>0.5.0</code>. The stem <code>"done"</code> is the literal <code>schema_rust_split.rs</code> forbids in rule code, so the rule reads <code>done</code> through <code>don</code>, as <code>dropp</code> finds <code>dropped</code>. The fixture generator's <code>HAND_AUTHORED</code> table already keeps the four hand-authored fixtures. <code>status</code> resolves its project from the working directory, so it is split into <code>status</code> and <code>status_of</code>. The other claims the design rests on held, among them that <code>project_task</code> accepts only <code>reason</code> and <code>note</code>, that no caller reports a repeated single-valued field, that <code>Completion</code> feeds <code>list</code>, <code>status</code>, and archival's <code>open_tasks</code>, and that the name <code>deviation</code> was free.</p>
+          </section>
+          <section class="evidence" id="evidence-the-change-measured-2026-10-08" data-change="added" data-refs="req-a-task-declares-completion-state req-the-command-surface-reports-what-a-project-holds req-the-command-surface-reports-a-change-s-completion">
+            <h3>The measurement, repeated against the built change <span class="hs-id">evidence-the-change-measured-2026-10-08</span></h3>
+            <p>Task 7.1's run on 2026-10-08 against the built change, <code>htmlspec 0.24.0 (7c4b09132aea-dirty)</code> (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>). The four-task document with its deviation validated with exit 0; <code>list</code> showed <code>measure-a-deviation  2/4  in-progress  1 done differently</code>; <code>list --json</code> carried <code>"doneDifferently": 1</code> beside per-state counts summing to 4; and <code>status --change</code> added <code>1 done differently: task-done-differently</code>. A deviation on the <code>todo</code> or the <code>dropped</code> task drew <code>schema/deviation-not-done</code>, and a second deviation <code>schema/projection</code> 4.5.1. The note and dropped variants printed what they printed on HEAD. HEAD's binary refused the built document for the 4.0 fault and for <code>schemaVersion</code> <code>0.5.0</code>, and the 116 staged documents projected byte-identically under both builds.</p>
+          </section>
+          <section class="evidence" id="evidence-mutation-testing-2026-10-08" data-change="added" data-refs="req-a-task-declares-completion-state req-the-command-surface-reports-what-a-project-holds req-the-command-surface-reports-a-change-s-completion">
+            <h3>Mutation testing <span class="hs-id">evidence-mutation-testing-2026-10-08</span></h3>
+            <p>Task 7.2's run on 2026-10-08 (<a href="evidence/mutation-testing-2026-10-08.md"><code>evidence/mutation-testing-2026-10-08.md</code></a>). Nine mutations of <code>project.rs</code>, <code>relations.rs</code>, and <code>commands.rs</code>, each applied alone, were all caught, none by a test added because of the run. Mutation 2, the rule also firing on <code>done</code>, failed 162 tests, because every document built from the tasks template carries a <code>done</code> task with a deviation. Mutations 3, 6, and 7 were each caught by one test, and mutation 9 was caught on both sides of the column.</p>
+          </section>
+          <section class="evidence" id="evidence-what-the-implementation-revealed-2026-10-08" data-change="added" data-refs="req-a-task-declares-completion-state req-the-command-surface-reports-what-a-project-holds req-the-command-surface-reports-a-change-s-completion">
+            <h3>What the implementation revealed <span class="hs-id">evidence-what-the-implementation-revealed-2026-10-08</span></h3>
+            <p>Task 7.4's record on 2026-10-08 (<a href="evidence/what-the-implementation-revealed-2026-10-08.md"><code>evidence/what-the-implementation-revealed-2026-10-08.md</code></a>). Besides the four corrections made before any code: a column blank at zero still carried a separator, so the column and its separator are written only where some row has a count; a deviation on a task that declares no state is reported, which neither the design nor the delta specification says; and a fresh change lists as <code>1/3  in-progress  1 done differently</code>, where it listed <code>0/2  in-progress</code>, because the template's third example counts. Among the smaller findings are the fifth projection edit, to section 6.1, the README's contract version, the renumbered <code>apply</code> steps, and a test literal corrected from 33 spaces to 29.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-task-done-another-way-than-its-words-say" data-change="added" data-outcome="passed" data-refs="scenario-a-task-done-another-way-than-its-words-say">
+            <h3>A done task's deviation, validated and projected by the built change <span class="hs-id">verify-a-task-done-another-way-than-its-words-say</span></h3>
+            <p data-field="method">Task 7.1 put the measurement's four-task document, whose <code>done</code> task <code>task-done-differently</code> carries one <code>data-field="deviation"</code> paragraph, in a scratch project's active change, validated it with the built change's <code>htmlspec validate</code>, and projected it with <code>project-model</code> rebuilt against the built change.</p>
+            <p><code>validate</code> exited 0 with no diagnostics, and the projection held the task with <code>"state": "done"</code> and its <code>deviation</code> holding the paragraph's text (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "The four-task document, with its deviation").</p>
+          </section>
+          <section class="verification" id="verify-a-task-done-as-its-words-say" data-change="added" data-outcome="passed" data-refs="scenario-a-task-done-as-its-words-say">
+            <h3>Done tasks with no deviation, projected and listed by the built change <span class="hs-id">verify-a-task-done-as-its-words-say</span></h3>
+            <p data-field="method">The 116 <code>.html</code> files of a scratch copy of the staged migration, none of which carries a deviation paragraph, were projected by <code>project-model</code> built at HEAD and built at this change, and the two outputs compared. The note variant of the four-task document, whose <code>done</code> task carries a note and no deviation, was listed and its completion reported with the built binary.</p>
+            <p>The two projections were byte-identical, and the record states that the new field is absent wherever it is not stated. The note variant listed <code>2/4  in-progress</code>, as on HEAD, and its <code>status --json</code> carried <code>"doneDifferently": 0</code> (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "Beside HEAD" and "The staged migration is unchanged").</p>
+          </section>
+          <section class="verification" id="verify-a-deviation-on-a-task-not-yet-done" data-change="added" data-outcome="partial" data-refs="scenario-a-deviation-on-a-task-not-yet-done">
+            <h3>A deviation on the todo task, validated by the built change <span class="hs-id">verify-a-deviation-on-a-task-not-yet-done</span></h3>
+            <p data-field="method">The four-task document with a deviation paragraph added to its <code>todo</code> task <code>task-open</code> was validated with the built binary.</p>
+            <p>It exited 1 with <code>schema/deviation-not-done</code> at <code>task-open</code> (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "Beside HEAD"). The record holds no variant with a deviation on an <code>in-progress</code> task.</p>
+            <p data-field="unchecked">a task whose state is <code>in-progress</code> carries a <code>deviation</code> paragraph</p>
+          </section>
+          <section class="verification" id="verify-a-deviation-on-a-dropped-task" data-change="added" data-outcome="passed" data-refs="scenario-a-deviation-on-a-dropped-task">
+            <h3>A deviation on the dropped task, validated by the built change <span class="hs-id">verify-a-deviation-on-a-dropped-task</span></h3>
+            <p data-field="method">The four-task document with a deviation paragraph added to its <code>dropped</code> task <code>task-abandoned</code>, which carries its reason, was validated with the built binary.</p>
+            <p>It exited 1 with <code>schema/deviation-not-done</code> at <code>task-abandoned</code> (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "Beside HEAD").</p>
+          </section>
+          <section class="verification" id="verify-two-deviations-in-one-task" data-change="added" data-outcome="passed" data-refs="scenario-two-deviations-in-one-task">
+            <h3>Two deviations on the done task, validated by the built change <span class="hs-id">verify-two-deviations-in-one-task</span></h3>
+            <p data-field="method">The four-task document with a second deviation paragraph in its <code>done</code> task <code>task-done-differently</code> was validated with the built binary.</p>
+            <p>It exited 1 with <code>schema/projection</code>, <code>projectionRule</code> 4.5.1, at <code>task-done-differently</code> (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "Beside HEAD").</p>
+          </section>
+          <section class="verification" id="verify-a-change-with-a-task-done-differently-in-the-listing" data-change="added" data-outcome="passed" data-refs="scenario-the-command-surface-reports-what-a-project-holds-a-change-with-a-task-done-differently">
+            <h3>The change with a task done differently, enumerated by the built change <span class="hs-id">verify-a-change-with-a-task-done-differently-in-the-listing</span></h3>
+            <p data-field="method">The change holding the four-task document, two of whose tasks are <code>done</code> and one of those states a deviation, was enumerated with the built binary's <code>htmlspec list</code> and <code>htmlspec list --json</code>.</p>
+            <p><code>list</code> printed <code>measure-a-deviation  2/4  in-progress  1 done differently</code>, and <code>list --json</code> carried <code>"doneDifferently": 1</code> beside <code>"total": 4</code>, outside <code>tasks</code>, which held <code>"done": 2</code> (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "The four-task document, with its deviation").</p>
+          </section>
+          <section class="verification" id="verify-a-deviation-leaves-the-per-state-counts-whole" data-change="added" data-outcome="passed" data-refs="scenario-a-deviation-leaves-the-per-state-counts-whole">
+            <h3>The per-state counts in the built change's payload <span class="hs-id">verify-a-deviation-leaves-the-per-state-counts-whole</span></h3>
+            <p data-field="method">The same change's <code>htmlspec list --json</code>, from the built binary.</p>
+            <p>Its per-state counts were 2 + 1 + 0 + 1 + 0 = 4, the total, and <code>doneDifferently</code> sat beside <code>total</code>, not among them (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "The four-task document, with its deviation").</p>
+          </section>
+          <section class="verification" id="verify-a-change-whose-every-task-was-done-as-written" data-change="added" data-outcome="partial" data-refs="scenario-a-change-whose-every-task-was-done-as-written">
+            <h3>Changes with no deviation, enumerated for people by the built change <span class="hs-id">verify-a-change-whose-every-task-was-done-as-written</span></h3>
+            <p data-field="method">The note and dropped variants of the four-task document, in which no task states a deviation, were enumerated with the built binary's <code>htmlspec list</code>.</p>
+            <p>The rows read <code>2/4  in-progress</code> and <code>1/4  in-progress</code>, with no count of tasks done differently (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "Beside HEAD"). The record shows these variants' <code>status --json</code> carrying <code>"doneDifferently": 0</code>, and not the enumeration's structured payload.</p>
+            <p data-field="unchecked">the structured payload reports that count as zero</p>
+          </section>
+          <section class="verification" id="verify-a-deviation-on-a-task-that-is-not-done" data-change="added" data-outcome="passed" data-refs="scenario-a-deviation-on-a-task-that-is-not-done">
+            <h3>A deviation on the todo task, enumerated by the built change <span class="hs-id">verify-a-deviation-on-a-task-that-is-not-done</span></h3>
+            <p data-field="method">The four-task document with a deviation paragraph on its <code>todo</code> task as well as on its <code>done</code> task was enumerated with the built binary.</p>
+            <p>The counter read the <code>todo</code> task as <code>todo</code> only, and <code>doneDifferently</code> stayed 1, the <code>done</code> task's; <code>list</code> printed <code>2/4  in-progress  1 done differently</code> (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "Beside HEAD" and "An invalid document still counts as the design says").</p>
+          </section>
+          <section class="verification" id="verify-a-change-with-a-task-done-differently-in-the-completion-report" data-change="added" data-outcome="passed" data-refs="scenario-the-command-surface-reports-a-change-s-completion-a-change-with-a-task-done-differently">
+            <h3>The change with a task done differently, reported by the built change <span class="hs-id">verify-a-change-with-a-task-done-differently-in-the-completion-report</span></h3>
+            <p data-field="method">Completion was reported for the same change with the built binary's <code>htmlspec status --change measure-a-deviation</code> and its <code>--json</code> form.</p>
+            <p>It printed <code>3 of 4 task(s) done or dropped</code>, counting <code>task-done-differently</code> among them, then <code>1 done differently: task-done-differently</code>, and its JSON <code>tasks</code> carried <code>"doneDifferently": 1</code> and <code>"doneDifferentlyTasks": ["task-done-differently"]</code> (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, "The four-task document, with its deviation").</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

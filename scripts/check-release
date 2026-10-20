@@ -1,0 +1,870 @@
+#!/usr/bin/env python3
+"""Release hygiene: every archived change records a version, every version is
+recorded in the changelog, and every published runbook release is accounted for.
+
+Why this is a script rather than a Rust test
+-------------------------------------------
+The facts it reads are facts about *this repository* — its workspace version, its
+archive directory, its changelog. A test inside a shipped crate asserting them would
+make the product's test suite depend on its own repository's release history, so a
+consumer running `cargo test` would be checking html-spec's changelog rather than
+their own. `scripts/check-prompt` set the precedent for a check that belongs to the
+repository rather than to a crate.
+
+Python for the same reason as that script: standard library only, and a bare
+`python3` shebang so `patchShebangs` rewrites it to the interpreter the derivation
+pins. `pkgs.python3` is already a build input for `check-prompt`, so this stage adds
+none.
+
+Why it reads files and never git
+--------------------------------
+`flake.nix` filters the build source, and the derivation receives a snapshot rather
+than a repository. There is no `.git` inside the sandbox where CI runs the suite, so
+`git log`, `git diff`, and `git describe` are all unavailable. A check written against
+history would pass on a contributor's machine and fail in CI, which is the divergence
+one shared suite exists to prevent.
+
+The filter keeps `VERSION` files, `*.json`, `*.html`, `*.md`, and `scripts/`, which is what
+makes this possible: the archive's recorded versions and inventories, the adoption marker,
+the runbooks, and the changelog are all among them.
+
+Why it asks about the archive rather than the working change
+-----------------------------------------------------------
+A stage in `scripts/check` is a shell command. It passes or it fails, and the suite has
+no advisory level. "Fail if the version has not advanced" is therefore unusable: a
+change under way legitimately has not advanced the version, because the patch-versus-minor
+decision is best made once the work's shape is known. Such a stage would be red from a
+change's first commit to its last, and a suite that is always red is one a contributor
+learns to skip.
+
+So this asks four questions of the archive, which is a settled record:
+
+  1. Every archived change records a version.
+  2. Every recorded version is distinct.
+  3. Every recorded version has a changelog entry.
+  4. Every published runbook release is accounted for.
+
+The fourth is the one `carry-a-runbook-to-another-machine` added, and it has the same shape as the
+other three: it asks about the archive rather than about the work in progress. A runbook whose
+canonical documents have changed while its version has not is *not* a fault here — unarchived work
+can legitimately still be choosing its release number, and a stage that failed it would be red from
+the first edit to the last. What is a fault is a published snapshot reusing a version for different
+content, because that is a settled record contradicting itself. Archival is where the increment
+becomes obligatory, and `htmlspec archive --check` reports it before then.
+
+Beside the archive, it asks two questions of the crates the workspace publishes, which
+`ship-through-four-channels` added:
+
+  5. Every internal dependency pins exactly the declared version.
+  6. Every published crate carries a copy of the root LICENSE, byte for byte.
+
+The six crates release together from one tag, and each `htmlspec-*` entry in
+`[workspace.dependencies]` carries `version = "=X.Y.Z"` so a published crate depends on exactly
+the others it was tested with. That has a right answer at every moment, unlike "has the version
+advanced", because `scripts/set-version` moves the version and every pin in one edit: a pin that
+differs from the declared version is a stale string, never work in progress. A crate published to
+crates.io holds its own directory and nothing else, so each carries its own LICENSE, and a copy
+that differs from the root's is never work in progress either.
+
+Given `--tag vX.Y.Z`, it asks a seventh, which the release workflow asks before it builds:
+
+  7. The tag names exactly the version Cargo.toml declares.
+
+Why it reads the same fixtures the Rust reader does
+---------------------------------------------------
+The published inventory has two readers: this script, and `runbook_release.rs` in the shipped
+program. They cannot share code, because this script runs where no build has happened — the release
+stage of the suite is a shell command, and the archival path needs the same facts before it writes
+anything. Two readers of one format is exactly the situation where a rule stated twice diverges, so
+both are tested against `fixtures/release/`: one set of files, one set of expected decisions, and a
+failure on either side names the case.
+
+Each has a correct answer at every moment. An unfinished change is not in the archive
+and is never asked about, so archiving becomes the act that must satisfy the rule —
+which is also the moment the increment is known.
+
+The cost, accepted deliberately: a change under way with no changelog entry passes.
+`archive.md` is where a contributor is told what archiving requires, so the repair for
+that miss is a line in the instructions rather than a stage that cries wolf.
+
+Usage:
+  scripts/check-release              check this repository
+  scripts/check-release --root R     check the repository rooted at R
+  scripts/check-release --tag vX.Y.Z check this repository, and that the tag names its version
+  scripts/check-release --self-test  check this reader against the shared fixtures
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from release_facts import section_fields  # noqa: E402
+
+# The file each archived change carries, naming the version the project shipped it in.
+VERSION_FILE = "VERSION"
+
+# Versions at or below this are the project's first release, made before an archived
+# change recorded its version at all. Seven changes were archived under 0.1.0, and that
+# is the truth rather than an accident: they all shipped in it. Recording seven separate
+# versions would describe releases nobody ever installed.
+#
+# This is self-retiring. The moment the project's version advances past the baseline,
+# every subsequent change is checked for a distinct version of its own, and this
+# constant stops applying to anything new. Do not delete it while an archive at or below
+# it still exists — the distinctness rule fails immediately without it.
+BASELINE = (0, 1, 0)
+
+# The files a runbook's release is recorded in, and the two metadata files that hold the published
+# history. Spelled here and in `runbook_release.rs`, which is why both readers are tested against
+# `fixtures/release/` rather than against their own idea of the format.
+RUNBOOK_VERSION_FILE = "VERSION"
+RUNBOOK_CHANGELOG_FILE = "CHANGELOG.md"
+INVENTORY_FILE = "runbooks.json"
+ADOPTION_FILE = "runbook-releases.json"
+INVENTORY_FORMAT = "htmlspec-runbook-inventory/v1"
+ADOPTION_FORMAT = "htmlspec-runbook-adoption/v1"
+
+# A fingerprint is the algorithm and a whole sha256 value. A digest in another form would compare
+# unequal to the same content, which reads as a changed document — the failure this shape refuses.
+DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+
+# Where this repository keeps its project: the archive, the adoption marker, and the runbooks it
+# publishes. The product reads the same files through `ProjectRoot`; this script runs where no build
+# has happened and cannot link it, so the place is spelled here, once, and the format the two
+# readers share is tested through `fixtures/release/`.
+PROJECT = Path("htmlspec")
+RUNBOOKS = (PROJECT / "runbooks",)
+
+
+def parse_version(text: str) -> tuple[int, ...] | None:
+    """A dotted numeric version, as a tuple that orders correctly.
+
+    Returns None rather than raising, because a caller distinguishes "no version here"
+    from "a version that will not parse" by where it looked.
+    """
+    stripped = text.strip()
+    if not re.fullmatch(r"\d+(\.\d+)*", stripped):
+        return None
+    return tuple(int(part) for part in stripped.split("."))
+
+
+def show(version: tuple[int, ...]) -> str:
+    return ".".join(str(part) for part in version)
+
+
+def workspace_version(root: Path) -> tuple[int, ...] | None:
+    """The version under `[workspace.package]` in the workspace manifest.
+
+    Read by `release_facts.section_fields`, which every script of the release shares, so the
+    version this checks is the one `pack-release` names a tarball with and `publish-crates`
+    publishes.
+    """
+    manifest = root / "Cargo.toml"
+    if not manifest.is_file():
+        return None
+    version = section_fields(manifest.read_text(encoding="utf-8"), "workspace.package").get("version")
+    return parse_version(version) if version else None
+
+
+# The prefix every crate this workspace publishes is named with. An entry under
+# `[workspace.dependencies]` with this prefix is one of the six crates that release together.
+INTERNAL_CRATE = "htmlspec-"
+
+
+def internal_pins(root: Path) -> list[tuple[str, str | None]]:
+    """Each internal dependency entry in the workspace manifest, and the version it names.
+
+    An entry is a line under `[workspace.dependencies]` whose key begins `htmlspec-`, and its
+    version is the `version = "..."` inside its inline table, or None when it names none. Read
+    with a regex for the reason `workspace_version` gives: one inline table per line is all
+    this needs, and it is the shape the manifest and `scripts/set-version` both write.
+    """
+    manifest = root / "Cargo.toml"
+    if not manifest.is_file():
+        return []
+    found = []
+    section = None
+    for line in manifest.read_text(encoding="utf-8").splitlines():
+        header = re.fullmatch(r"\s*\[([^\]]+)\]\s*", line)
+        if header:
+            section = header.group(1).strip()
+            continue
+        if section != "workspace.dependencies":
+            continue
+        entry = re.match(r"\s*(" + re.escape(INTERNAL_CRATE) + r"[A-Za-z0-9_-]+)\s*=", line)
+        if not entry:
+            continue
+        version = re.search(r'\bversion\s*=\s*"([^"]*)"', line)
+        found.append((entry.group(1), version.group(1) if version else None))
+    return found
+
+
+def internal_pin_faults(root: Path, declared: tuple[int, ...]) -> list[str]:
+    """Every internal dependency entry that does not pin exactly the declared version.
+
+    The six crates release together from one tag, so each pins the others to exactly the
+    workspace's version. Cargo cannot read that version into a dependency entry, so the pins
+    are strings a release advances, and a stale one fails here rather than at the publish.
+    """
+    wanted = f"={show(declared)}"
+    faults = []
+    for name, version in internal_pins(root):
+        if version is None:
+            faults.append(
+                f'{name} in [workspace.dependencies] names no version. Add version = "{wanted}" '
+                f"beside its path, because the crates release together and pin one another exactly"
+            )
+        elif version != wanted:
+            faults.append(
+                f'{name} in [workspace.dependencies] pins version "{version}", and the workspace '
+                f'declares {show(declared)}. Run scripts/set-version, which moves the version and '
+                f"every pin together"
+            )
+    return faults
+
+
+def tag_faults(tag: str, declared: tuple[int, ...]) -> list[str]:
+    """Whether a release tag names exactly the declared version.
+
+    The release workflow asks this before it builds anything, so a tag pushed at a commit whose
+    `Cargo.toml` says something else publishes nothing: the binaries, the crates, and the
+    formula would each name a version the tag does not.
+    """
+    match = re.fullmatch(r"v(\d+\.\d+\.\d+)", tag)
+    if not match:
+        return [f"tag {tag} is not a release tag. A release tag is v and the version, as in v1.2.3"]
+    named = parse_version(match.group(1))
+    if named != declared:
+        return [
+            f"tag {tag} names {match.group(1)}, and Cargo.toml declares {show(declared)}. A "
+            f"release is tagged at the commit that declares its version"
+        ]
+    return []
+
+
+# The license text every published crate carries a copy of, named as the root's file is.
+LICENSE_FILE = "LICENSE"
+
+
+def published_crates(root: Path) -> list[Path]:
+    """Each crate directory under `crates/` whose manifest does not declare `publish = false`."""
+    found = []
+    for manifest in sorted((root / "crates").glob("*/Cargo.toml")):
+        text = manifest.read_text(encoding="utf-8")
+        if not re.search(r"(?m)^\s*publish\s*=\s*false\s*$", text):
+            found.append(manifest.parent)
+    return found
+
+
+def license_faults(root: Path) -> list[str]:
+    """Every published crate whose LICENSE is missing or differs from the root's.
+
+    A crate published to crates.io holds its own directory and nothing else, so the root's
+    LICENSE reaches nobody who installs a crate. The MIT license asks that its notice travel
+    with the software, so each crate carries a copy, and a copy that differs from the root's
+    is a crate published under terms nobody chose.
+    """
+    original = root / LICENSE_FILE
+    if not original.is_file():
+        return [f"no {LICENSE_FILE} at the repository root, so no crate's copy can be compared"]
+    text = original.read_bytes()
+    faults = []
+    for crate in published_crates(root):
+        copy = crate / LICENSE_FILE
+        relative = copy.relative_to(root)
+        if not copy.is_file():
+            faults.append(
+                f"{relative} is missing. A published crate holds only its own directory, so "
+                f"it carries a copy of the root {LICENSE_FILE}"
+            )
+        elif copy.read_bytes() != text:
+            faults.append(
+                f"{relative} differs from the root {LICENSE_FILE}. Copy the root's over it, "
+                f"so every crate is published under the license the project declares"
+            )
+    return faults
+
+
+def archived_versions(archive: Path) -> list[tuple[str, tuple[int, ...] | None]]:
+    """Each archived change and the version it records, in sorted order.
+
+    A directory with no version file yields None, which is a finding rather than an
+    error: the point of this check is to report exactly that.
+    """
+    if not archive.is_dir():
+        return []
+    found = []
+    for entry in sorted(archive.iterdir()):
+        if not entry.is_dir():
+            continue
+        marker = entry / VERSION_FILE
+        version = parse_version(marker.read_text(encoding="utf-8")) if marker.is_file() else None
+        found.append((entry.name, version))
+    return found
+
+
+def changelog_versions(changelog: Path) -> set[tuple[int, ...]] | None:
+    """Every version named by a changelog heading.
+
+    Returns None when the file is absent, which is distinct from a file that names no
+    version. Reads headings only: an entry's prose is the author's, and a changelog
+    exists to be read by a person.
+    """
+    if not changelog.is_file():
+        return None
+    versions = set()
+    for line in changelog.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("#"):
+            continue
+        for candidate in re.findall(r"\d+(?:\.\d+)+", line):
+            parsed = parse_version(candidate)
+            if parsed is not None:
+                versions.add(parsed)
+    return versions
+
+
+def changelog_headings(text: str) -> list[tuple[int, ...]]:
+    """Every version a changelog heading names, in the order written, repeats kept.
+
+    The project changelog reader above returns a *set*, which is right for "does this version have
+    an entry" and wrong here: a runbook changelog heading one version twice cannot say which entry is
+    the release, and a set cannot see that. A heading is a line beginning `#`, and a version in it is
+    any dotted numeric run of exactly three components — the same rule the Rust reader applies.
+    """
+    found = []
+    for line in text.splitlines():
+        if not line.startswith("#"):
+            continue
+        for candidate in re.findall(r"\d+(?:\.\d+)+", line):
+            parsed = parse_version(candidate)
+            if parsed is not None and len(parsed) == 3:
+                found.append(parsed)
+    return found
+
+
+def read_json(path: Path) -> tuple[object | None, list[str]]:
+    """One JSON file, as a value and a list of reasons it could not be read.
+
+    Absent is `(None, [])`: an adoption marker that does not exist yet is the ordinary state before
+    adoption, not a fault. Anything else — unreadable, not JSON — is a fault, because a metadata file
+    this check cannot read is a history it cannot order.
+    """
+    if not path.is_file():
+        return None, []
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as error:
+        return None, [f"{path} cannot be read: {error}"]
+    try:
+        return json.loads(text), []
+    except json.JSONDecodeError as error:
+        return None, [f"{path} is not JSON: {error}"]
+
+
+def read_inventory(path: Path) -> tuple[list[dict] | None, list[str]]:
+    """One archive's published runbook inventory.
+
+    Returns `None` for an absent file, which is a different answer from an empty list: an inventory
+    of no runbooks is a record, and a missing inventory after adoption is a missing record. The
+    caller decides which of those a given archive is allowed to have.
+    """
+    value, faults = read_json(path)
+    if faults or value is None:
+        return None, faults
+    if not isinstance(value, dict):
+        return None, [f"{path} is not one JSON object"]
+    declared = value.get("format")
+    if declared != INVENTORY_FORMAT:
+        return None, [
+            f"{path} declares the format {declared!r}, and this reader reads {INVENTORY_FORMAT!r}"
+        ]
+    unknown = sorted(set(value) - {"format", "runbooks"})
+    if unknown:
+        return None, [
+            f"{path} carries {', '.join(unknown)}, which is not a field an inventory has. An "
+            "unknown field is refused rather than ignored: it is a fact this reader would not read"
+        ]
+    entries = value.get("runbooks")
+    if entries is None:
+        return None, [
+            f"{path} states no runbooks. An inventory of none states an empty list, so a missing "
+            "file and an empty inventory cannot be confused"
+        ]
+    if not isinstance(entries, list):
+        return None, [f"{path} holds a runbook list that is not a list"]
+
+    found: list[dict] = []
+    faults = []
+    seen: dict[str, int] = {}
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            faults.append(f"{path} entry {index} is not one JSON object")
+            continue
+        extra = sorted(
+            set(entry) - {"name", "version", "specification", "procedure", "changelog"}
+        )
+        if extra:
+            faults.append(
+                f"{path} entry {index} carries {', '.join(extra)}, which is not a field an entry has"
+            )
+            continue
+        name = entry.get("name")
+        version = parse_version(entry.get("version") or "")
+        if not isinstance(name, str) or not name:
+            faults.append(f"{path} entry {index} does not name its runbook")
+            continue
+        if version is None:
+            faults.append(f"{path} entry {index} ({name}) states no parseable version")
+            continue
+        for field in ("specification", "procedure"):
+            digest = entry.get(field)
+            if not isinstance(digest, str) or not DIGEST.fullmatch(digest):
+                faults.append(
+                    f"{path} entry {index} ({name}) fingerprints its {field} document as "
+                    f"{digest!r}, which is not `sha256:` and 64 lowercase hexadecimal characters"
+                )
+        changelog = entry.get("changelog")
+        if not isinstance(changelog, str):
+            faults.append(
+                f"{path} entry {index} ({name}) carries no changelog snapshot. It is carried in "
+                "full so that deleting or renaming the runbook cannot make a past release "
+                "unverifiable"
+            )
+            continue
+        if name in seen:
+            faults.append(
+                f"{path} records {name} twice, so which of the two this archive published is not a "
+                "question the file can answer"
+            )
+            continue
+        seen[name] = index
+        found.append(
+            {
+                "name": name,
+                "version": version,
+                "specification": entry["specification"],
+                "procedure": entry["procedure"],
+                "changelog": changelog,
+            }
+        )
+    if faults:
+        return None, faults
+    return found, []
+
+
+def read_adoption(path: Path) -> tuple[tuple[int, ...] | None, list[str]]:
+    """The project version runbook publication was adopted at, from the planning root's marker."""
+    value, faults = read_json(path)
+    if faults or value is None:
+        return None, faults
+    if not isinstance(value, dict):
+        return None, [f"{path} is not one JSON object"]
+    declared = value.get("format")
+    if declared != ADOPTION_FORMAT:
+        return None, [
+            f"{path} declares the format {declared!r}, and this reader reads {ADOPTION_FORMAT!r}"
+        ]
+    unknown = sorted(set(value) - {"format", "version"})
+    if unknown:
+        return None, [
+            f"{path} carries {', '.join(unknown)}, which is not a field a marker has. The marker is "
+            "never advanced on a later release, so a field claiming an advance is refused"
+        ]
+    version = parse_version(value.get("version") or "")
+    if version is None:
+        return None, [f"{path} names no parseable project version"]
+    return version, []
+
+
+def release_faults(previous: dict | None, current: dict) -> list[str]:
+    """Whether one runbook's release may follow the one before it.
+
+    The same decisions `runbook_release.rs` reaches, in the same order, and both readers are tested
+    against `fixtures/release/cases.json` so the two cannot drift. A repeated snapshot of unchanged
+    content at one version is *not* a duplicate release: it is one release recorded twice, which is
+    why content is compared before versions are.
+    """
+    faults: list[str] = []
+    name = current["name"]
+    version = current["version"]
+    headings = changelog_headings(current["changelog"])
+
+    repeated = sorted({h for h in headings if headings.count(h) > 1})
+    for heading in repeated:
+        faults.append(
+            f"the runbook {name}'s {RUNBOOK_CHANGELOG_FILE} heads {show(heading)} more than once, "
+            "so it cannot say which entry is the release"
+        )
+    if version not in headings:
+        faults.append(
+            f"the runbook {name} declares {show(version)} and its {RUNBOOK_CHANGELOG_FILE} has no "
+            "heading naming it. A carried runbook identifies its release by the pair"
+        )
+
+    if previous is None:
+        if version <= (0, 0, 0):
+            faults.append(
+                f"the runbook {name} declares {show(version)}, which is not a release: a first "
+                "published version is above 0.0.0"
+            )
+        return faults
+
+    changed = (
+        current["specification"] != previous["specification"]
+        or current["procedure"] != previous["procedure"]
+    )
+    if version < previous["version"]:
+        faults.append(
+            f"the runbook {name} declares {show(version)}, ordered before the "
+            f"{show(previous['version'])} that {previous['archive']} published. Publishing it would "
+            "move the runbook backwards"
+        )
+    elif version == previous["version"] and changed:
+        faults.append(
+            f"the runbook {name} declares {show(version)}, which {previous['archive']} already "
+            "published with different canonical content. A version identifies one released procedure"
+        )
+    return faults
+
+
+def published_runbook_faults(root: Path, archive: Path) -> list[str]:
+    """The fourth question: every published runbook release is accounted for.
+
+    Reads the archive rather than the working runbooks for the comparison, for the reason the
+    docstring gives for the other three: unarchived work can legitimately still be choosing its
+    release number. What it asks of the working runbooks is only that each one *has* a version and a
+    heading for it, which has a right answer at every moment.
+    """
+    faults: list[str] = []
+
+    # Every runbook the repository currently holds, in the place this repository keeps them.
+    current: dict[str, dict] = {}
+    for holder in RUNBOOKS:
+        directory = root / holder
+        if not directory.is_dir():
+            continue
+        for runbook in sorted(directory.iterdir()):
+            if not runbook.is_dir() or not (runbook / "tasks.html").is_file():
+                continue
+            version_file = runbook / RUNBOOK_VERSION_FILE
+            changelog_file = runbook / RUNBOOK_CHANGELOG_FILE
+            if not version_file.is_file():
+                faults.append(
+                    f"the runbook {runbook.name} has no {RUNBOOK_VERSION_FILE}. A runbook carried to "
+                    "another machine identifies its release by that file and the heading naming it, "
+                    "because the archive that would otherwise say where it came from did not travel"
+                )
+                continue
+            version = parse_version(version_file.read_text(encoding="utf-8"))
+            if version is None:
+                faults.append(
+                    f"the runbook {runbook.name} declares "
+                    f"{version_file.read_text(encoding='utf-8').strip()!r}, which is not three "
+                    "nonnegative dot-separated integers"
+                )
+                continue
+            if version <= (0, 0, 0):
+                faults.append(
+                    f"the runbook {runbook.name} declares {show(version)}, which is not a release"
+                )
+            headings = (
+                changelog_headings(changelog_file.read_text(encoding="utf-8"))
+                if changelog_file.is_file()
+                else []
+            )
+            if not changelog_file.is_file():
+                faults.append(
+                    f"the runbook {runbook.name} declares {show(version)} and has no "
+                    f"{RUNBOOK_CHANGELOG_FILE} heading it"
+                )
+            elif version not in headings:
+                faults.append(
+                    f"the runbook {runbook.name} declares {show(version)} and its "
+                    f"{RUNBOOK_CHANGELOG_FILE} has no heading naming it"
+                )
+            current[runbook.name] = {"name": runbook.name, "version": version}
+
+    # Published history, ordered by the project version each archive recorded rather than by the
+    # directory's name: a name is a label a contributor may fix, and a history that moved when
+    # somebody tidied a directory name is a history nobody can rely on.
+    adoption_file = root / PROJECT / ADOPTION_FILE
+    adopted, adoption_faults = read_adoption(adoption_file)
+    faults.extend(adoption_faults)
+
+    snapshots: list[tuple[tuple[int, ...], str, dict]] = []
+    inventories = 0
+    if archive.is_dir():
+        recorded: list[tuple[tuple[int, ...] | None, Path]] = []
+        for entry in sorted(archive.iterdir()):
+            if not entry.is_dir():
+                continue
+            marker = entry / VERSION_FILE
+            version = (
+                parse_version(marker.read_text(encoding="utf-8")) if marker.is_file() else None
+            )
+            recorded.append((version, entry))
+
+        for version, entry in sorted(
+            recorded, key=lambda pair: (pair[0] or (), pair[1].name)
+        ):
+            inventory_file = entry / INVENTORY_FILE
+            entries, entry_faults = read_inventory(inventory_file)
+            faults.extend(entry_faults)
+            if entries is None:
+                if inventory_file.is_file():
+                    # A defective snapshot is reported rather than treated as an absent predecessor:
+                    # skipping it would make the next release look like a first one.
+                    continue
+                if adopted is not None and version is not None and version >= adopted:
+                    faults.append(
+                        f"{entry.name} records project version {show(version)}, at or after the "
+                        f"{show(adopted)} adoption of runbook publication, and carries no "
+                        f"{INVENTORY_FILE}. A missing inventory after adoption is a missing record "
+                        "rather than old history"
+                    )
+                continue
+            inventories += 1
+            if adopted is None:
+                faults.append(
+                    f"{entry.name} carries an {INVENTORY_FILE} and {adoption_file} does not exist. "
+                    "The marker is what says from which release a missing inventory means something "
+                    "is wrong, so an inventory without it leaves the history with no beginning"
+                )
+            for release in entries:
+                snapshots.append((version or (), entry.name, release))
+
+    if adopted is not None and not any(
+        version == adopted for version, _, _ in snapshots
+    ) and not any(
+        version == adopted
+        for version, entry in (
+            (
+                parse_version((entry / VERSION_FILE).read_text(encoding="utf-8"))
+                if (entry / VERSION_FILE).is_file()
+                else None,
+                entry,
+            )
+            for entry in sorted(archive.iterdir())
+            if archive.is_dir() and entry.is_dir()
+        )
+    ):
+        faults.append(
+            f"{adoption_file} names project version {show(adopted)} and no archive records it, so "
+            "the first published inventory cannot be found"
+        )
+
+    # One comparison per runbook name, against the snapshot before it.
+    last: dict[str, dict] = {}
+    for version, entry_name, release in snapshots:
+        previous = last.get(release["name"])
+        faults.extend(
+            f"{entry_name}: {fault}" for fault in release_faults(previous, release)
+        )
+        last[release["name"]] = {**release, "archive": entry_name}
+
+    # A runbook whose canonical documents changed since its last snapshot has not necessarily chosen
+    # its next version yet, and that is not a fault of the working tree. Archival is where the
+    # increment becomes obligatory, so this reports it as pending rather than failing it.
+    for name, declared in current.items():
+        published = last.get(name)
+        if published is None or published["version"] == declared["version"]:
+            continue
+    return faults
+
+
+def self_test(root: Path) -> int:
+    """Check this reader against the fixtures it shares with the Rust one.
+
+    A separate mode rather than a second script, because the subject is this file's own reading of a
+    format two programs read: `--self-test` asks whether this reader agrees with the decisions the
+    fixtures record, and the ordinary mode asks whether this repository does.
+    """
+    fixtures = root / "fixtures" / "release"
+    cases_file = fixtures / "cases.json"
+    if not cases_file.is_file():
+        print(f"no shared fixtures at {cases_file}", file=sys.stderr)
+        return 2
+    cases = json.loads(cases_file.read_text(encoding="utf-8"))
+    faults: list[str] = []
+
+    for case in cases["inventories"]:
+        path = fixtures / case["file"]
+        entries, found = read_inventory(path)
+        if case["parses"]:
+            if found:
+                faults.append(f"{case['file']}: refused here and the manifest says it parses: {found}")
+            else:
+                names = [entry["name"] for entry in entries or []]
+                if names != case["runbooks"]:
+                    faults.append(
+                        f"{case['file']}: read {names} and the manifest says {case['runbooks']}"
+                    )
+        elif not found:
+            faults.append(f"{case['file']}: parsed here and the manifest says it should not")
+
+    for case in cases["adoptions"]:
+        path = fixtures / case["file"]
+        version, found = read_adoption(path)
+        if case["parses"]:
+            if found:
+                faults.append(f"{case['file']}: refused here and the manifest says it parses: {found}")
+            elif show(version) != case["version"]:
+                faults.append(
+                    f"{case['file']}: read {show(version)} and the manifest says {case['version']}"
+                )
+        elif not found:
+            faults.append(f"{case['file']}: parsed here and the manifest says it should not")
+
+    for case in cases["comparisons"]:
+        current = case["current"]
+        current = {
+            **current,
+            "version": parse_version(current["version"]),
+        }
+        previous = case["previous"]
+        if previous is not None:
+            previous = {
+                **previous["release"],
+                "version": parse_version(previous["release"]["version"]),
+                "archive": previous["archive"],
+            }
+        refused = release_faults(previous, current)
+        wanted = case["decision"] == "refuse"
+        if bool(refused) != wanted:
+            faults.append(
+                f"{case['name']}: this reader "
+                f"{'refused' if refused else 'published'} and the manifest says "
+                f"{case['decision']}: {refused}"
+            )
+
+    if faults:
+        print("release-checker self-test:", file=sys.stderr)
+        for fault in faults:
+            print(f"!!! {fault}", file=sys.stderr)
+        print(f"\n{len(faults)} disagreement(s) with the shared fixtures", file=sys.stderr)
+        return 1
+    total = (
+        len(cases["inventories"]) + len(cases["adoptions"]) + len(cases["comparisons"])
+    )
+    print(f"  ok  {total} shared fixture case(s) read the same way both readers read them")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="check release hygiene")
+    parser.add_argument("--root", type=Path, default=Path("."), help="the repository root")
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="check this reader against the shared fixtures rather than against this repository",
+    )
+    parser.add_argument(
+        "--tag",
+        help="a release tag, vX.Y.Z, which must name the version Cargo.toml declares",
+    )
+    arguments = parser.parse_args()
+    root = arguments.root.resolve()
+
+    if arguments.self_test:
+        return self_test(root)
+
+    faults: list[str] = []
+
+    declared = workspace_version(root)
+    if declared is None:
+        print(f"no parseable version in {root / 'Cargo.toml'}", file=sys.stderr)
+        return 2
+
+    archive = root / PROJECT / "changes" / "archive"
+    archives = archived_versions(archive)
+    if not archives:
+        print(f"no archived changes under {archive}", file=sys.stderr)
+        return 2
+
+    entries = changelog_versions(root / "CHANGELOG.md")
+    if entries is None:
+        faults.append(
+            "no CHANGELOG.md at the repository root. Every version the project ships "
+            "records what changed in it"
+        )
+        entries = set()
+
+    # 1. Every archived change records a version.
+    for name, version in archives:
+        if version is None:
+            faults.append(
+                f"{name} records no version. Add {VERSION_FILE} naming the version it "
+                f"shipped in, so the release it belongs to is recoverable"
+            )
+
+    # 2. Every recorded version above the baseline is distinct. At or below the
+    #    baseline, several changes share one release and that is recorded as the truth.
+    seen: dict[tuple[int, ...], str] = {}
+    for name, version in archives:
+        if version is None or version <= BASELINE:
+            continue
+        if version in seen:
+            faults.append(
+                f"{name} records version {show(version)}, which {seen[version]} already "
+                f"records. A version names the change that produced it"
+            )
+        else:
+            seen[version] = name
+
+    # 3. Every recorded version has a changelog entry, and so does the version the
+    #    project currently declares.
+    wanted = {version for _, version in archives if version is not None}
+    wanted.add(declared)
+    for version in sorted(wanted):
+        if version not in entries:
+            faults.append(
+                f"no CHANGELOG.md heading names version {show(version)}. A shipped "
+                f"version records what changed in it"
+            )
+
+    # 4. Every published runbook release is accounted for, and every runbook the repository holds
+    #    can name the release it is at.
+    faults.extend(published_runbook_faults(root, archive))
+
+    # 5. Every internal dependency pins exactly the declared version.
+    pins = internal_pins(root)
+    faults.extend(internal_pin_faults(root, declared))
+
+    # 6. Every published crate carries the root's license text.
+    licensed = published_crates(root)
+    faults.extend(license_faults(root))
+
+    # 7. A release tag, when one is given, names the declared version.
+    if arguments.tag is not None:
+        faults.extend(tag_faults(arguments.tag, declared))
+
+    if faults:
+        print("release hygiene:", file=sys.stderr)
+        for fault in faults:
+            print(f"!!! {fault}", file=sys.stderr)
+        print(
+            f"\n{len(faults)} fault(s) across {len(archives)} archived change(s), "
+            f"declared version {show(declared)}",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(
+        f"  ok  {len(archives)} archived change(s) record a version, and "
+        f"{len(wanted)} version(s) are in the changelog"
+    )
+    print(f"  ok  declared version {show(declared)} has a changelog entry")
+    print(f"  ok  {len(pins)} internal dependency pin(s) name ={show(declared)}")
+    print(f"  ok  {len(licensed)} published crate(s) carry the root {LICENSE_FILE}")
+    if arguments.tag is not None:
+        print(f"  ok  tag {arguments.tag} names the declared version")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

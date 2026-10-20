@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Ship through four channels</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Ship through four channels</h1>
+        <p>The contributor chose four ways for people to install html-spec 1.0: the Nix flake, prebuilt binaries on a GitHub release, crates.io, and Homebrew. Today only the flake works, and only for someone who can read this private repository. This change makes the other three work from one release tag in the public repository, <code>Firefly-Projects/htmlspec</code>: it makes the six library and program crates publishable, adds a release workflow that builds the binaries, publishes the crates, and updates a Homebrew formula, and says in the README how to install through each channel. It releases nothing: the first tag is pushed after the 1.0.0 change. Revised on 2026-10-19 after the code review of #63.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Ship through four channels</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><strong>The contributor decided the channels on 2026-10-16:</strong> the Nix flake, GitHub release binaries, crates.io, and Homebrew. The crates are owned by the crates.io account <code>smurphy8</code>, with a <code>Firefly-Projects</code> GitHub team as co-owner, and the Homebrew tap is a repository in the same organization, <code>Firefly-Projects/homebrew-tap</code>. Each channel's state today, measured on this branch:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Channel</th>
+                <th>Today</th>
+                <th>What it needs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Nix flake</td>
+                <td><code>flake.nix</code> already declares <code>packages.default</code> and <code>apps.default</code> for four systems</td>
+                <td>Nothing but a public repository: <code>nix run github:Firefly-Projects/htmlspec</code> then works</td>
+              </tr>
+              <tr>
+                <td>GitHub release binaries</td>
+                <td>No release workflow. <code>.github/workflows/</code> holds <code>check.yml</code>, <code>pr-guard.yml</code>, and <code>publish.yml</code></td>
+                <td>A workflow that builds macOS and Linux binaries on a version tag and attaches them with checksums</td>
+              </tr>
+              <tr>
+                <td>crates.io</td>
+                <td>None of the names is taken: <code>cargo search htmlspec</code> found nothing on 2026-10-16</td>
+                <td>Three blockers fixed, then a publish from the tag within crates.io's limit on new crates</td>
+              </tr>
+              <tr>
+                <td>Homebrew</td>
+                <td>Nothing</td>
+                <td>A formula in <code>Firefly-Projects/homebrew-tap</code> that installs the release binary and checks its digest</td>
+              </tr>
+            </tbody>
+          </table>
+          <p><strong>The two crates.io blockers.</strong> First, the workspace names its own crates by path alone, in <code>[workspace.dependencies]</code>, and a published crate needs a version on every dependency it names. Second, <code>htmlspec-assets</code> reads the document templates and <code>vendor.lock.json</code> from the repository's root <code>assets/</code> through <code>include_str!("../../../assets/…")</code>, and its build script reads the vendored runtime from <code>../../assets</code>. A published crate holds only its own directory, so built from crates.io it finds none of them. Third, no crate carries license text, and <code>htmlspec-assets</code> ships vendored files under the BSD-3-Clause license while its manifest names MIT alone.</p>
+          <p><strong>Two more crates reach outside their directory without blocking a publish.</strong> <code>htmlspec-parse</code>'s build script reads the workspace's <code>Cargo.toml</code> and <code>Cargo.lock</code> to record the pinned <code>html5ever</code>, and reports <code>unknown</code> when they are absent, which its own tripwire test catches. Several crates' tests read <code>fixtures/</code> and <code>README.md</code>. Cargo builds a published package without its tests, so neither stops a crate from building. The first version of this proposal said that no other crate reads outside its directory, and that was wrong.</p>
+          <p><strong>Publishing six new crates meets a limit.</strong> crates.io lets one account publish a burst of five new crates, so a single command publishing all six stops at the sixth, and a rerun stops at the first crate that already exists.</p>
+          <p>toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-the-program-is-distributable-as-a-standalone-artifact">"The program is distributable as a standalone artifact"</a> requires that the toolchain can be packaged to run without a source checkout. It says nothing about where the artifact is published or how a release reaches it.</p>
+        </section>
+        <section id="hs-what-working-looks-like">
+          <h2>What working looks like</h2>
+          <ol>
+            <li><code>cargo publish --workspace --dry-run</code> packages and builds all six crates, in dependency order, from their own directories, each with its license text.</li>
+            <li><code>scripts/set-version X.Y.Z</code> moves the version and every internal pin together, and the release runbook's version step runs it.</li>
+            <li>In the public repository, pushing a tag <code>v1.0.0</code> whose version matches <code>Cargo.toml</code> runs one workflow. It builds the macOS and Linux binaries, attaches them to a GitHub release with a checksum file and the version's changelog entry, publishes the crates one at a time, and updates the formula in <code>Firefly-Projects/homebrew-tap</code>. A publication stopped by crates.io's rate limit finishes when the job runs again.</li>
+            <li>A tag whose version does not match <code>Cargo.toml</code> stops the workflow before anything is built.</li>
+            <li>After it: <code>nix run github:Firefly-Projects/htmlspec</code>, <code>brew install Firefly-Projects/tap/htmlspec</code>, <code>cargo install --locked htmlspec-cli</code>, and a downloaded binary each print <code>htmlspec 1.0.0</code> with the revision it was built from.</li>
+            <li>In this private repository the workflow builds the four binaries on a pull request that touches the release, and publishes nothing, whatever is tagged.</li>
+            <li>The README's getting-started section names all four channels. This is release 0.33.0, and <code>scripts/check</code> passes.</li>
+          </ol>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <p><strong>The crates become publishable.</strong> Each internal dependency carries the workspace's version. The templates, the lockfile, and the vendored runtime move into <code>htmlspec-assets</code>'s own directory, and every reader of the root <code>assets/</code> moves with them, with no link left behind. Each crate carries its license text. One script moves the version and every pin together.</p>
+          <p><strong>A release workflow.</strong> <code>.github/workflows/release.yml</code> checks and builds on every pull request that touches the release, in either repository, and publishes only from a version tag in <code>Firefly-Projects/htmlspec</code>. There it attaches the binaries, publishes the crates through a script that skips what already exists and waits out the rate limit, and pushes the new formula to the tap. Only the job that makes the release can write to the repository.</p>
+          <p><strong>A formula, generated per release.</strong> The tap's <code>Formula/htmlspec.rb</code> names each binary's address and digest, written by the workflow from the release it just made.</p>
+          <p><strong>The README says how to install.</strong> One line per channel.</p>
+          <p><strong>The release runbook's version step runs the script,</strong> as runbook 0.3.0, which also gains the fallback stylesheet.</p>
+          <p><strong>The program changes only in the revision it reports,</strong> which a build outside Git now finds instead of printing <code>unknown</code>.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <p><strong>Keep a link at the root to the moved assets.</strong> Rejected after the review: <code>git archive</code> does not match a link by a directory path, so the export stops, and the Nix source filter drops it, so three tests fail.</p>
+          <p><strong>Publish the six crates with one <code>cargo publish --workspace</code>.</strong> Rejected after the review: the sixth new crate meets crates.io's limit, and cargo 1.90 cannot skip the crates a rerun finds already published.</p>
+          <p><strong>Copy the assets into the crate at publish time.</strong> Rejected. A crate built from crates.io has no repository to copy from, so the files must live in the crate's directory, and keeping one copy there avoids two copies that drift.</p>
+          <p><strong>Publish the program alone and vendor the libraries into it.</strong> Rejected. The libraries are separate crates with their own tests and boundaries, and the README already describes them as the public contract's implementation. Merging them to publish one crate would undo that.</p>
+          <p><strong>Publish from a person's machine.</strong> Rejected. One tag, one workflow, and one log make every release repeatable and reviewable, which is the reason the contributor asked for a script for publishing too.</p>
+          <p><strong>A Homebrew formula that builds from source.</strong> Rejected for now. It needs a Rust toolchain on the installing machine and takes minutes. The binary formula installs in seconds, and the release already builds the binaries.</p>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <p><strong>In scope.</strong> Publishable crates, the version script, the release workflow and its tag check, the crate publisher, the formula and its generator, the README's install lines, the release runbook's 0.3.0, the export allowlist's two entries, and release 0.33.0.</p>
+          <p><strong>Not in scope.</strong> The accounts: the contributor created <code>Firefly-Projects/htmlspec</code> and <code>Firefly-Projects/homebrew-tap</code> and stored both secrets on 2026-10-18. The steps that run after archival, among them the public tag and the co-owner step, belong to <code>publish-releases-through-their-own-runbook</code>. Windows binaries, and a submission to Homebrew's core repository, are left for later. Contract 1.0.0 belongs to <code>commit-the-contract-and-the-command-line</code>.</p>
+          <p><strong>Settled by the contributor on 2026-10-18.</strong> The <code>Firefly-Projects</code> GitHub team that co-owns the crates is <code>firefly-developers</code>.</p>
+          <p><strong>Requirements.</strong> toolchain-packaging gains one: a release reaches every channel from one tag whose version matches the declared version, each channel's artifact names the same version, and a publication interrupted partway finishes when run again.</p>
+          <p><strong>The release.</strong> 0.33.0, as the plan the contributor reviewed numbers it. The program is unchanged, and the repository gains its release pipeline.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

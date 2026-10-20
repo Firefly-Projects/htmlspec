@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Commit the contract and the command line: tasks</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Commit the contract and the command line: tasks</h1>
+        <p>The work that makes the 1.0 promises requirements and holds them: contract 1.0.0 with the fixtures and the contract test it touches, the run record, the payload schemas and the surface snapshot, the README, the record of the accounts, and release 1.0.0. The first public release is not a task here: it is the first run of the publish runbook, after archival. Revised on 2026-10-19 after the code review of #63; the publishing steps moved to another change.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Commit the contract and the command line: tasks</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-the-contract">1. The contract</a></li>
+          <li><a href="#hs-the-surface">2. The surface</a></li>
+          <li><a href="#hs-the-readme">3. The README</a></li>
+          <li><a href="#hs-the-accounts">4. The accounts</a></li>
+          <li><a href="#hs-the-release">5. The release</a></li>
+          <li><a href="#hs-review-and-archival">6. Review and archival</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-the-contract">
+          <h2>1. The contract</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done" data-refs="req-the-element-contract-is-published-as-a-machine-readable-schema">
+              <h3>1.1 Make the contract 1.0.0, keeping every earlier version. <span class="hs-id">task-1-1</span></h3>
+              <p>Append <code>1.0.0</code> to the schema's accepted versions, set <code>CONTRACT_VERSION</code>, the four templates, and the projection specification's contract-version line to it, and add the contract changelog's 1.0.0 entry. A test validates one document under every accepted version and finds no error under 1.0.0 that an earlier version did not report (design decisions 1 and 2).</p>
+              <p data-field="deviation">The test runs over every conformance fixture rather than one document: <code>no_document_gains_an_error_under_the_newest_contract_version</code> in <code>conformance/tests/conformance.rs</code> redeclares each of the 77 fixtures at every accepted version and finds no error under 1.0.0 that the earlier declaration did not report. The schema's <code>$id</code> and its <code>schemaVersion</code> description moved to 1.0.0 with the rest, the templates' pinned hashes in <code>vendor.lock.json</code> with the templates, and the contract changelog's policy now describes the promise.</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Restate the contract test that kept every accepted version within one major. <span class="hs-id">task-1-2</span></h3>
+              <p><code>a_minor_bump_keeps_accepting_the_versions_it_succeeded</code> requires every version of the newest major and keeps <code>0.1.0</code> to <code>0.7.0</code> beside it, as decision 2's requirement states. See it fail against the old rule with 1.0.0 added, then pass under the new one.</p>
+              <p data-field="note">With 1.0.0 appended and the old rule in place, it failed with "0.1.0 is accepted beside 1.0.0, and a major bump is where versions leave the set". Under the new rule it requires <code>0.1.0</code> to <code>0.7.0</code>, every version of the newest major the changelog dates, and nothing from another major, and passes.</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Pin the fixtures that use 0.7.0's vocabulary at 0.7.0. <span class="hs-id">task-1-3</span></h3>
+              <p>The fixture generator pins the 20 fixtures that declare <code>0.7.0</code>, so regenerating at 1.0.0 leaves them byte for byte as they are, and adds one fixture declaring <code>1.0.0</code>, with its row in <code>crates/htmlspec-validate/tests/schema_rust_split.rs</code>.</p>
+              <p data-field="deviation">Pinned, and one fixture added, <code>valid-declaring-the-current-contract-version</code>. The generator also had to freeze the fallback stylesheet out of its base: the templates carry it since 0.31.0, the committed fixtures were never regenerated after that, and a regeneration rewrote all 76 of them by nine lines. With the fallback frozen out, as the example risk already was, regenerating at 1.0.0 leaves every committed fixture byte for byte. Nothing checks that the committed fixtures match the generator: the base's comment names a harness test that does not exist.</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done" data-refs="req-a-document-declares-its-identity-and-provenance">
+              <h3>1.4 Make a run's record declare the current contract version, in its head and its masthead. <span class="hs-id">task-1-4</span></h3>
+              <p>The record's head and masthead in <code>crates/htmlspec-cli/src/runs.rs</code> read <code>CONTRACT_VERSION</code> instead of <code>0.1.0</code>, with a test that reads both from a new record (design decision 3).</p>
+              <p data-field="note">The CLI now depends on <code>htmlspec-schema</code> directly, already in its tree through the validator, to read <code>CONTRACT_VERSION</code>. The test is <code>a_new_record_declares_the_current_contract_version_in_its_head_and_its_masthead</code> in <code>tests/run.rs</code>. An existing assertion there, that a run's release stays out of the <code>htmlspec-version</code> tag, passed only because both were <code>0.1.0</code>, and now names the contract version and refuses the runbook's.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-the-surface">
+          <h2>2. The surface</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done" data-refs="req-a-single-command-exposes-validate-format-and-init">
+              <h3>2.1 Record the 1.0 command surface from the program's parser. <span class="hs-id">task-2-1</span></h3>
+              <p>Every operation and every request-verb object with its flags, and the exit codes, into <code>crates/htmlspec-cli/tests/surface/1.0.json</code> (design decision 5).</p>
+              <p data-field="note">Recorded by <code>write_the_current_minors_surface</code>, an ignored test in <code>src/surface.rs</code> that reads clap's declaration: the two global options, the nineteen operations with both spellings and their arguments keyed as a contributor types them (<code>--strict</code>, <code>&lt;1&gt;</code>), the payload each writes or <code>null</code>, and the five exit outcomes with their codes. Both spellings of every operation are read, and the surface refuses to build where they take different arguments.</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done" data-refs="req-output-is-available-in-human-and-machine-forms">
+              <h3>2.2 Publish a schema for each <code>--json</code> payload. <span class="hs-id">task-2-2</span></h3>
+              <p><code>crates/htmlspec-cli/schema/payload/&lt;operation&gt;.schema.json</code> for every operation that offers <code>--json</code>, written from each place that builds its payload, with every field it can emit and <code>additionalProperties</code> false. Copy them into <code>1.0.json</code>.</p>
+              <p data-field="note">Thirteen schemas, one per operation that writes a payload, each self-contained, every object declaring its properties. They were written with <code>additionalProperties</code> false on every object, and the review moved that strictness into the suite's reading of them, as design decision 11 records. The diagnostic, the untaken rename, and the untaken content difference are shared definitions, and a test holds each to one text. <code>list</code> and <code>run</code> are a <code>oneOf</code> of their shapes, and <code>show</code>'s variants are told apart by a constant. The coverage test's first run tightened one: a paragraph only one side holds never carries <code>onlyThisSide</code>.</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Hold every payload to its schema, and every schema field to a payload. <span class="hs-id">task-2-3</span></h3>
+              <p>One test validates every payload the tests produce against its schema, and fails on an undeclared field and on a changed type. Another fails when a field a schema declares appears in no payload the tests produce. Add the cases the review named until it passes: <code>validate</code>'s <code>results[].error</code>, <code>report.curtailed</code>, and <code>recoveredErrors</code>, the diagnostic fields <code>schemaPath</code>, <code>projectionRule</code>, and <code>note</code>, <code>list</code>'s <code>follows</code>, <code>state</code>, <code>total</code>, and <code>tasks</code>, the elements of <code>followsCycles</code>, and <code>show</code>'s variants.</p>
+              <p data-field="deviation">Not one test each, but a check and a test. Every helper in <code>tests/</code> that runs the binary hands its arguments and output to <code>support::held</code>, which validates the payload against its operation's schema, so every payload any of the 264 existing integration tests produces is held where it is produced, and an undeclared field or a changed type fails that test. Coverage is counted in one test, <code>tests/payloads.rs</code>, over the payloads it produces, because test binaries share no state and run in no promised order. It builds the cases the review named: an unreadable document, the repository's fixtures for a curtailed report and every diagnostic field, a change with a tasks document and a predecessor, two changes following each other, every comparison, paragraph, and scenario variant of <code>show</code>, and a promotion plan whose gate finds an unknown disposition, an unreadable derivation, and a collision. All 251 declared properties are carried.</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done" data-refs="req-exit-codes-distinguish-outcomes">
+              <h3>2.4 Fail the suite when a released surface is lost, or a minor has none. <span class="hs-id">task-2-4</span></h3>
+              <p>The test passes when the current surface holds everything in every file of <code>tests/surface/</code>, with additions allowed, and when the declared version's major and minor have a file. It is seen failing on a renamed flag, a changed exit code, a removed payload field, and a version moved to a minor with no file.</p>
+              <p data-field="deviation">Seen failing on each of the four, against the program and then reverted: <code>--strict</code> declared as <code>--strictly</code> failed the surface test with four lost facts; the cancelled exit code changed from 3 to 4 failed it with <code>exitCodes/cancelled: 3, now 4</code>; <code>openTasks</code> removed from <code>status</code>'s payload failed the payload test, "openTasks is a required property"; and the workspace moved to 1.1.0 failed with "the crate declares 1.1, and tests/surface holds no 1.1.json". Unit tests keep each case failing on a surface edited the one way, with a changed type, a field no longer always present, a withdrawn value, a lost spelling, and an optional argument made required beside them, and an addition passing. One rule more than the task asked: the current minor's file must equal the current surface, so an addition is recorded in the minor that makes it (design decision 5's note).</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-the-readme">
+          <h2>3. The README</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 State the 1.0 promises in the README. <span class="hs-id">task-3-1</span></h3>
+              <p>The project status says 1.0.0 is released, what it promises, and which two requirements state the promises, and the paragraph calling the 0.x vocabulary provisional goes (design decision 9).</p>
+              <p data-field="note">The project status says 1.0.0 is the first release that makes promises, states both, names document-schema's "The contract's version is a semantic version" and toolchain-packaging's "The command surface is stable within a major version", and points at the surface file and the payload schemas. The paragraph calling the 0.x vocabulary provisional is gone, and the reference section says where the payload schemas are.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-the-accounts">
+          <h2>4. The accounts</h2>
+          <p>The contributor's tasks, because each needs the contributor's accounts (design decision 7).</p>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Create <code>Firefly-Projects/htmlspec</code>, empty, with a branch ruleset on <code>main</code>. <span class="hs-id">task-4-1</span></h3>
+              <p>A public repository with no commit, and a ruleset that requires a pull request into <code>main</code>.</p>
+              <p data-field="note">Done on 2026-10-18. <code>Firefly-Projects/htmlspec</code> was created public and empty, with <code>main</code> as its default branch and the private repository's merge settings: squash only, branches deleted on merge. Ruleset 25362895, "Protect main", applies to the default branch with no bypass: a pull request is required, with no approving review, and deletion and force pushes are refused. No status check is required, because the repository has no workflows until the first export lands.</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Create <code>Firefly-Projects/homebrew-tap</code>, empty. <span class="hs-id">task-4-2</span></h3>
+              <p data-field="note">Done on 2026-10-18: public, with no commits.</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Store the two release secrets in <code>Firefly-Projects/htmlspec</code>. <span class="hs-id">task-4-3</span></h3>
+              <p><code>CARGO_REGISTRY_TOKEN</code>, a crates.io token from the account <code>smurphy8</code> able to publish the six crates, and <code>HOMEBREW_TAP_TOKEN</code>, able to write to the tap and nothing else.</p>
+              <p data-field="note">Done on 2026-10-18. Both secrets were decrypted from the contributor's encrypted key files and piped to <code>gh secret set</code> without being printed. <code>HOMEBREW_TAP_TOKEN</code> is a fine-grained token, and the contributor was asked to limit it to the tap's contents. It expires around 2027-01-16.</p>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 Name the <code>Firefly-Projects</code> team that co-owns the crates. <span class="hs-id">task-4-4</span></h3>
+              <p>The question <code>ship-through-four-channels</code> left open. The first release adds that team as owner once the crates exist.</p>
+              <p data-field="note">Named on 2026-10-18: <code>firefly-developers</code>. The GitHub API reports it in <code>Firefly-Projects</code>, visible to the organization's members, with one member. The first release adds it to each of the six crates with <code>cargo owner --add github:Firefly-Projects:firefly-developers</code>, once they exist.</p>
+            </li>
+            <li class="task" id="task-4-5" data-change="added" data-state="done">
+              <h3>4.5 Grant crates.io access to the <code>Firefly-Projects</code> organization. <span class="hs-id">task-4-5</span></h3>
+              <p>crates.io can add a GitHub team as an owner only where the organization lets crates.io read it.</p>
+              <p data-field="note">Done on 2026-10-18 by the contributor, by their report: GitHub's API does not show an application's organization access to this session.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-the-release">
+          <h2>5. The release</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done" data-refs="req-the-project-records-what-changed-in-each-version-it-ships">
+              <h3>5.1 Advance the release to 1.0.0. <span class="hs-id">task-5-1</span></h3>
+              <p>Run <code>scripts/set-version 1.0.0</code>, as the release runbook's version step says. The changelog entry states the two promises and that the vocabulary does not change. <code>spec.nix</code> waits for archival (design decision 10).</p>
+              <p data-field="note"><code>scripts/set-version 1.0.0</code> moved the version and the five pins and relocked offline. <code>htmlspec init --tools claude,codex,pi</code>, run with the binary at 1.0.0, changed the 45 installed instruction files, each in its <code>generatedBy</code> line and nowhere else, and wrote nothing new. The changelog entry states both promises, that the vocabulary does not change, and that the release publishes nothing.</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Run <code>scripts/check</code> in full, and the export as a dry run. <span class="hs-id">task-5-2</span></h3>
+              <p>All stages here, the surface and payload tests among them, and <code>publish/export</code> as a dry run, whose suite run inside the exported tree also passes.</p>
+              <p data-field="note">On 2026-10-20 at this change's head: <code>scripts/check</code> passed all fourteen stages, the surface and payload tests among them, and <code>publish/export --ref HEAD --dry-run</code> passed against an empty local bare repository, with the suite passing inside the exported tree. The export first refused the 96 files this change added or changed under eleven allowlisted paths, and passed once <code>publish/READINESS.md</code> recorded their reads.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-review-and-archival">
+          <h2>6. Review and archival</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Take the code review, and settle each finding. <span class="hs-id">task-6-1</span></h3>
+              <p data-field="note">One review of pull request #70 ran on 2026-10-20 and verified seven findings and three nits. Every one is settled in the design's notes and decision 11: the payload <code>run --as</code> writes when it refuses is now in run's schema, the published schemas admit what a minor adds while the suite reads them strictly, the surface writer refuses a loss, the surface walks every alias and records <code>--help</code>, <code>--version</code>, and <code>help</code>, the exit outcomes are placed by a match, the released files are compared within a major, the README says what review rather than the suite holds, and the archive payload no longer admits a resolution it never writes.</p>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done" data-refs="req-archival-requires-the-project-version-to-advance">
+              <h3>6.2 Archive the change with <code>htmlspec archive</code>, after its predecessor. <span class="hs-id">task-6-2</span></h3>
+              <p>Only once <code>publish-releases-through-their-own-runbook</code> is archived. Raise <code>spec.nix</code> to 1.0.0. The specification adds design decision 2's requirement to document-schema and decision 4's to toolchain-packaging. Then <code>htmlspec run publish --as v1.0.0</code> is the first public release (design decision 8).</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

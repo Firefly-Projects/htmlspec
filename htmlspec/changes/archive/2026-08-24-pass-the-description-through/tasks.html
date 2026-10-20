@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Pass the description through</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Pass the description through</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Pass the description through</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-24-pass-the-description-through/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-establish-the-loss-before-changing-anything">1. Establish the loss before changing anything</a></li>
+          <li><a href="#hs-2-the-hint-is-a-property-of-the-workflow">2. The hint is a property of the workflow</a></li>
+          <li><a href="#hs-3-the-writers-emit-it">3. The writers emit it</a></li>
+          <li><a href="#hs-4-the-bodies-consume-it">4. The bodies consume it</a></li>
+          <li><a href="#hs-5-check-it-against-produced-files">5. Check it against produced files</a></li>
+          <li><a href="#hs-6-check-it-against-the-case-that-failed">6. Check it against the case that failed</a></li>
+          <li><a href="#hs-7-the-contract">7. The contract</a></li>
+          <li><a href="#hs-8-release">8. Release</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-establish-the-loss-before-changing-anything">
+          <h2>1. Establish the loss before changing anything</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 <a href="evidence/the-loss-2026-08-22.md">Record that no generated file carries a placeholder</a>: <code>grep -rc 'ARGUMENTS' .claude .codex .pi</code> returns 0 in every file, and no body under <code>crates/htmlspec-assets/instructions/</code> contains the token.</h3>
+              <p>Both halves matter — the frontmatter that declares an argument and the body that consumes it are separate omissions</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 <a href="evidence/the-loss-2026-08-22.md">Quote the two writers by file and line</a>: <code>write_skills</code> at <code>crates/htmlspec-cli/src/install.rs:88</code> and <code>write_commands</code> at <code>:124</code>, neither emitting <code>argument-hint</code>.</h3>
+              <p>Name the fields each does emit, so the omission is shown against a complete list rather than asserted</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 <a href="evidence/the-loss-2026-08-22.md">Record the convention from an artifact rather than from memory</a>: Claude Code's example plugin ships <code>argument-hint</code> with <code>$ARGUMENTS</code> in both its command and its skill form and documents the two as loaded identically, and a Codex plugin command branches on <code>$ARGUMENTS</code>.</h3>
+              <p>A convention this change follows must be shown to exist</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 <a href="evidence/the-loss-2026-08-22.md">Confirm no existing test asserts anything about arguments</a>, so a green suite is expected rather than evidence the surface works.</h3>
+              <p>Put this first because it is what makes the absence of a failing build unsurprising</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-the-hint-is-a-property-of-the-workflow">
+          <h2>2. The hint is a property of the workflow</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Add <code>argument_hint: &amp;'static str</code> to <code>Workflow</code> in <code>crates/htmlspec-assets/src/instructions.rs</code>, documented with why it is per-workflow rather than one shared string</h3>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Give each of the seven workflows a hint naming what it takes: a description of the work for <code>new</code> and <code>ff</code>, the idea for <code>explore</code>, the change to act on for <code>apply</code>, <code>verify</code>, <code>continue</code>, and <code>archive</code></h3>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Make every hint optional in form — <code>[description]</code>, not <code>&lt;description&gt;</code> — so a bare invocation is not rejected by a tool.</h3>
+              <p>A required hint would break the behavior the archived change deliberately kept</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Do not add a constant in <code>install.rs</code> instead.</h3>
+              <p><code>project-bootstrap</code> requires the workflow set to be data, and a hint in the writer makes a new workflow's hint a change to a function</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-the-writers-emit-it">
+          <h2>3. The writers emit it</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Emit <code>argument-hint</code> in <code>write_skills</code>, in the frontmatter beside <code>allowed-tools</code></h3>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Emit <code>argument-hint</code> in <code>write_commands</code>, in the same position, so the two kinds of file differ in their header only where they must</h3>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Leave <code>write_region</code> untouched.</h3>
+              <p>A marked region in a shared file has no invocation, so there is no argument to declare — and <code>Installed.regions</code> being its own field is what keeps the tests below from reaching it</p>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 Change no other field.</h3>
+              <p><code>name</code>'s absence from command files is a settled decision with three recorded wrong attempts behind it, and this change must not disturb it</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-the-bodies-consume-it">
+          <h2>4. The bodies consume it</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Add an opening <code>## What you were asked</code> section carrying <code>$ARGUMENTS</code> to each of the seven bodies under <code>crates/htmlspec-assets/instructions/</code></h3>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Put it at the top, before the procedure.</h3>
+              <p>An agent that reads seven sections of method before learning its input has been given the document in the wrong order</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 State in the section that an empty substitution means nothing was passed and the workflow's own guidance on an absent input applies.</h3>
+              <p>Without this an agent cannot tell a lost input from an absent one, and suspecting the former is what produced the recorded refusal</p>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 Change nothing else in any body.</h3>
+              <p>The guidance is correct as of 0.3.0 and re-opening it would re-litigate an archived change</p>
+            </li>
+            <li class="task" id="task-4-5" data-change="added" data-state="done">
+              <h3>4.5 Use <code>$ARGUMENTS</code> for every tool.</h3>
+              <p>A per-tool spelling would put a tool-specific string in a body the contract requires to be tool-independent</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-check-it-against-produced-files">
+          <h2>5. Check it against produced files</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Add a test to <code>install.rs</code> that installs for every tool in <code>TOOLS</code>, reads back every skill and command file, and asserts the frontmatter declares a hint and the body carries the placeholder</h3>
+              <p data-field="deviation">Migration note: the build also added a test over <code>WORKFLOWS</code>, <code>every_workflow_declares_an_optional_argument</code> in <code>crates/htmlspec-assets/src/instructions.rs</code>, beside this one, <code>every_invocable_file_declares_and_consumes_an_argument</code>. It asserts that every workflow declares a hint, that no hint is required in form, and that every body carries the placeholder. <a href="evidence/the-checks-failing-2026-08-22.md"><code>evidence/the-checks-failing-2026-08-22.md</code></a> records both tests failing before the repair.</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Assert against the files rather than against <code>WORKFLOWS</code>, following the stated convention on <code>every_generated_name_is_loadable</code> and <code>generated_files_record_the_generating_version</code>: a value assembled by a format string at write time is invisible to a check on its inputs</h3>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 <a href="evidence/the-checks-failing-2026-08-22.md">Confirm the test fails before the writers are changed, and record the failure</a>.</h3>
+              <p>A test that has never failed is a test whose subject is unproven</p>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 <a href="evidence/the-checks-failing-2026-08-22.md">Confirm the region-delivered tool is not reached</a>, by construction rather than by an exclusion in the test body</h3>
+            </li>
+            <li class="task" id="task-5-5" data-change="added" data-state="done">
+              <h3>5.5 Run <code>cargo test</code> and <code>./scripts/check</code>.</h3>
+              <p>The bodies are embedded in the binary, so the generated-file tests read the amended text</p>
+            </li>
+          </ul>
+          <figure data-migration="drawn">
+            <figcaption>The order task 5.3 states: the test task 5.1 adds is seen failing, and the failure recorded, before the writers are changed by tasks 3.1 and 3.2, although the numbering puts section 3 first. Drawn when this document was migrated, from the text beside it.</figcaption>
+            <details>
+              <summary>Diagram source</summary>
+              <pre class="mermaid">flowchart LR
+  t51["5.1 Add the test to install.rs"] --&gt; t53{"5.3 The test fails, and the failure is recorded"}
+  t53 --&gt; t31["3.1 Emit argument-hint in write_skills"]
+  t53 --&gt; t32["3.2 Emit argument-hint in write_commands"]</pre>
+            </details>
+          </figure>
+        </section>
+        <section id="hs-6-check-it-against-the-case-that-failed">
+          <h2>6. Check it against the case that failed</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Rebuild, reinstall into a scratch project, and confirm the installed files carry both the hint and the placeholder</h3>
+              <p data-field="note">Migration note: nothing this change carries records this check. The task is already ticked in the commit that implemented the change, <code>4f2f3e7</code>.</p>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 <a href="evidence/pi-substitutes-2026-08-24.md">Run the recorded tally-mark request through <code>/htmlspec-new</code></a> and confirm the description reaches the agent and a change is created on the first exchange, with a derived name stated in the report</h3>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 <a href="evidence/pi-substitutes-2026-08-24.md">Confirm the derived name comes from the contributor's description rather than from the worked example the body ships</a>.</h3>
+              <p>This is what the archived change's dropped task could not observe, and the distinction is the whole point of the run</p>
+              <p data-field="deviation">Migration note: the confirmation was made from the proposal's body, not from the derived name. The derived name, <code>add-tally-counters</code>, is identical to the worked example's, and <a href="evidence/pi-substitutes-2026-08-24.md"><code>evidence/pi-substitutes-2026-08-24.md</code></a> records that the name alone cannot tell derivation from copying. What it records as settling the question is the proposal's two tabs and Stats tab, which the worked example does not have.</p>
+            </li>
+            <li class="task" id="task-6-4" data-change="added" data-state="dropped">
+              <h3>6.4 <strong>Dropped.</strong> Run a bare <code>/htmlspec-new</code> with no description and confirm it still asks rather than inventing, and that the empty section did not read as a lost input.</h3>
+              <p data-field="reason">The empty path is asserted two ways in code — <code>every_workflow_declares_an_optional_argument</code> requires each hint to be optional in form so no tool rejects a bare invocation, and each body states that an empty substitution means nothing was passed — but no live run observed it. One attempt was made and proved nothing: the files it exercised were 0.2.0 copies with no placeholder at all, so the agent had no empty section to read. The remaining risk is narrow and asymmetric: a bare invocation that wrongly asks is the behavior this change preserves deliberately, so the failure mode a run would catch is a tool rejecting the invocation outright, which the optional-form assertion already prevents at the point the file is written. Worth stating at archival rather than leaving as an unticked box</p>
+            </li>
+            <li class="task" id="task-6-5" data-change="added" data-state="done">
+              <h3>6.5 Record both runs as evidence.</h3>
+              <p><a href="evidence/pi-substitutes-2026-08-24.md"><code>evidence/pi-substitutes-2026-08-24.md</code></a> records the described-change run on Pi; the bare-invocation run is recorded there as not yet observed on a live tool. The check for an invocation surface is a transcript, because substitution happens in a tool this program does not control</p>
+              <p data-field="deviation">Migration note: only the described-change run was recorded. <a href="evidence/pi-substitutes-2026-08-24.md"><code>evidence/pi-substitutes-2026-08-24.md</code></a> records it, for tasks 6.2, 6.3, and 6.6, and does not mention the bare-invocation run. No evidence file this change carries records that run, or the attempt task 6.4 describes.</p>
+            </li>
+            <li class="task" id="task-6-6" data-change="added" data-state="done">
+              <h3>6.6 <a href="evidence/pi-substitutes-2026-08-24.md">Note in the evidence whether Cursor and Pi substitute</a>, if a run on either is available.</h3>
+              <p>The design accepts not knowing; recording an observation costs nothing and retires a stated risk</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-the-contract">
+          <h2>7. The contract</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Add to <a href="../../../specs/project-bootstrap/spec.html"><code>openspec/specs/project-bootstrap/spec.md</code></a> the obligation that a generated invocation surface passes a contributor's arguments to the agent, and that a workflow declares what it takes</h3>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done">
+              <h3>7.2 Write the requirement so it does not reach a delivery kind with no command surface, rather than stating an exception for one</h3>
+            </li>
+            <li class="task" id="task-7-3" data-change="added" data-state="done" data-refs="scenario-an-invocation-carrying-a-description">
+              <h3>7.3 Add a scenario for <a href="specification.html#scenario-an-invocation-carrying-a-description">an invocation carrying a description</a>, one for a bare invocation, and one for the placeholder surviving into the produced file</h3>
+            </li>
+            <li class="task" id="task-7-4" data-change="added" data-state="done">
+              <h3>7.4 Apply it as a partial update, leaving every requirement and scenario this change does not name intact</h3>
+            </li>
+            <li class="task" id="task-7-5" data-change="added" data-state="done">
+              <h3>7.5 Confirm no other accepted requirement is touched, and run <code>openspec validate --all</code></h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-8-release">
+          <h2>8. Release</h2>
+          <ul>
+            <li class="task" id="task-8-1" data-change="added" data-state="done">
+              <h3>8.1 Regenerate this repository's own 35 installed files, so the project can use the fix it ships.</h3>
+              <p><code>0.3.0</code> was released to repair exactly the fault of dogfooding text the source had removed</p>
+            </li>
+            <li class="task" id="task-8-2" data-change="added" data-state="done">
+              <h3>8.2 Advance the workspace version and update <code>Cargo.lock</code> offline.</h3>
+              <p><code>--locked</code> fails the suite's stages otherwise</p>
+            </li>
+            <li class="task" id="task-8-3" data-change="added" data-state="done">
+              <h3>8.3 Write the changelog entry, and state in it what the run established about the archived change's dropped task 5.2 — as a remark, since that task stays dropped and this change does not reopen it</h3>
+            </li>
+            <li class="task" id="task-8-4" data-change="added" data-state="todo">
+              <h3>8.4 Record the version in the archived change's <code>VERSION</code> file at archival, and confirm <code>scripts/check-release</code> passes with it</h3>
+              <p data-field="note">Migration note: the source leaves this task unticked. The change's <a href="VERSION"><code>VERSION</code></a> file, carried beside this document, records <code>0.4.0</code>, and it was written in commit <code>bfc3835</code>, which archived the change. Nothing records whether <code>scripts/check-release</code> was confirmed to pass with it.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

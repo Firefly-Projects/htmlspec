@@ -1,0 +1,282 @@
+{
+  "comment": [
+    "The wire-format fixtures both readers of a runbook release share.",
+    "",
+    "scripts/check-release reads these in Python and crates/htmlspec-cli/src/runbook_release.rs",
+    "reads them in Rust, because the release check runs where no build has happened. Sharing the",
+    "fixtures rather than the code is what keeps the two from disagreeing about version ordering",
+    "or about what a legacy archive is: a rule stated twice is a rule that diverges, and the",
+    "divergence surfaces as a suite that passes locally and fails in continuous integration.",
+    "",
+    "Each case carries the reason it exists, because a fixture whose purpose is unstated is one",
+    "a later contributor deletes to make a failure go away."
+  ],
+  "inventoryFormat": "htmlspec-runbook-inventory/v1",
+  "adoptionFormat": "htmlspec-runbook-adoption/v1",
+  "digestAlgorithm": "sha256",
+  "inventories": [
+    {
+      "file": "inventory-two-runbooks.json",
+      "parses": true,
+      "runbooks": [
+        "cookies",
+        "release"
+      ],
+      "why": "The ordinary shape: two runbooks, each with both fingerprints and its changelog snapshot."
+    },
+    {
+      "file": "inventory-empty.json",
+      "parses": true,
+      "runbooks": [],
+      "why": "An empty inventory is a record, not an absence: a missing file and a file saying 'there were no runbooks' are different facts, and only the second is a record."
+    },
+    {
+      "file": "inventory-duplicate-name.json",
+      "parses": false,
+      "why": "Two entries for one runbook leave the predecessor question unanswerable."
+    },
+    {
+      "file": "inventory-malformed-digest.json",
+      "parses": false,
+      "why": "A digest in another form would compare unequal to the same content, which reads as a changed document."
+    },
+    {
+      "file": "inventory-unknown-field.json",
+      "parses": false,
+      "why": "An unknown field is a fact neither reader would read, so it is refused rather than ignored."
+    },
+    {
+      "file": "inventory-unknown-format.json",
+      "parses": false,
+      "why": "A format this program does not read is not a history it can order."
+    },
+    {
+      "file": "inventory-missing-changelog.json",
+      "parses": false,
+      "why": "The changelog is carried as a snapshot so a deleted or renamed runbook cannot make a past release unverifiable."
+    },
+    {
+      "file": "inventory-no-runbooks-key.json",
+      "parses": false,
+      "why": "An inventory of none states an empty list rather than omitting it, so the two cannot be confused."
+    }
+  ],
+  "adoptions": [
+    {
+      "file": "adoption-valid.json",
+      "parses": true,
+      "version": "0.15.0",
+      "why": "The ordinary shape: the first project version subject to inventories."
+    },
+    {
+      "file": "adoption-unknown-format.json",
+      "parses": false,
+      "why": "A marker in a format this program does not read cannot say when the obligation began."
+    },
+    {
+      "file": "adoption-missing-version.json",
+      "parses": false,
+      "why": "A marker names the version adopted at; without one there is no beginning to the history."
+    },
+    {
+      "file": "adoption-unknown-field.json",
+      "parses": false,
+      "why": "The marker is never advanced on a later release, so a field claiming an advance is refused rather than read."
+    }
+  ],
+  "comparisons": [
+    {
+      "name": "the-first-release",
+      "previous": null,
+      "current": {
+        "name": "release",
+        "version": "0.1.0",
+        "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+        "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+        "changelog": "# Changelog\n\n## 0.1.0\n\nThe first release.\n"
+      },
+      "decision": "publish",
+      "why": "A runbook with no prior snapshot publishes at any version above 0.0.0."
+    },
+    {
+      "name": "the-first-release-at-the-unreleased-version",
+      "previous": null,
+      "current": {
+        "name": "release",
+        "version": "0.0.0",
+        "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+        "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+        "changelog": "# Changelog\n\n## 0.0.0\n\nAdoption.\n"
+      },
+      "decision": "refuse",
+      "why": "0.0.0 is the version a runbook carries before it has been released at all."
+    },
+    {
+      "name": "unchanged-content-at-one-version",
+      "previous": {
+        "archive": "2026-01-01-one",
+        "project": "0.15.0",
+        "release": {
+          "name": "release",
+          "version": "0.1.0",
+          "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+          "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+          "changelog": "# Changelog\n\n## 0.1.0\n\nThe first release.\n"
+        }
+      },
+      "current": {
+        "name": "release",
+        "version": "0.1.0",
+        "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+        "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+        "changelog": "# Changelog\n\n## 0.1.0\n\nThe first release.\n"
+      },
+      "decision": "publish",
+      "why": "Identical content at the same version is one release snapshotted twice, not a duplicate release."
+    },
+    {
+      "name": "a-version-only-release",
+      "previous": {
+        "archive": "2026-01-01-one",
+        "project": "0.15.0",
+        "release": {
+          "name": "release",
+          "version": "0.1.0",
+          "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+          "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+          "changelog": "# Changelog\n\n## 0.1.0\n\nThe first release.\n"
+        }
+      },
+      "current": {
+        "name": "release",
+        "version": "0.2.0",
+        "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+        "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+        "changelog": "# Changelog\n\n## 0.2.0\n\nA second release.\n\n## 0.1.0\n\nThe first.\n"
+      },
+      "decision": "publish",
+      "why": "An unchanged runbook may advance its version with a matching changelog entry."
+    },
+    {
+      "name": "changed-content-without-a-bump",
+      "previous": {
+        "archive": "2026-01-01-one",
+        "project": "0.15.0",
+        "release": {
+          "name": "release",
+          "version": "0.1.0",
+          "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+          "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+          "changelog": "# Changelog\n\n## 0.1.0\n\nThe first release.\n"
+        }
+      },
+      "current": {
+        "name": "release",
+        "version": "0.1.0",
+        "specification": "sha256:40ecfa3fc986dd5f7aebf01ac91fba5473e73bace3beeafb829dadfbcfb4850d",
+        "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+        "changelog": "# Changelog\n\n## 0.1.0\n\nThe first release.\n"
+      },
+      "decision": "refuse",
+      "why": "One version must not identify two different released contracts."
+    },
+    {
+      "name": "changed-procedure-without-a-bump",
+      "previous": {
+        "archive": "2026-01-01-one",
+        "project": "0.15.0",
+        "release": {
+          "name": "release",
+          "version": "0.1.0",
+          "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+          "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+          "changelog": "# Changelog\n\n## 0.1.0\n\nThe first release.\n"
+        }
+      },
+      "current": {
+        "name": "release",
+        "version": "0.1.0",
+        "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+        "procedure": "sha256:e013818a44c9b6b8c7c1803336594742f84e80eaea0044d76245eb7667dfc547",
+        "changelog": "# Changelog\n\n## 0.1.0\n\nThe first release.\n"
+      },
+      "decision": "refuse",
+      "why": "A changed procedure is a changed release whichever document moved."
+    },
+    {
+      "name": "a-downgrade-with-identical-content",
+      "previous": {
+        "archive": "2026-02-02-two",
+        "project": "0.16.0",
+        "release": {
+          "name": "release",
+          "version": "0.2.0",
+          "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+          "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+          "changelog": "# Changelog\n\n## 0.2.0\n\nA second release.\n\n## 0.1.0\n\nThe first.\n"
+        }
+      },
+      "current": {
+        "name": "release",
+        "version": "0.1.0",
+        "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+        "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+        "changelog": "# Changelog\n\n## 0.2.0\n\nA second release.\n\n## 0.1.0\n\nThe first.\n"
+      },
+      "decision": "refuse",
+      "why": "The gate is an ordering rather than a difference test, and this is the case that separates them: the content did not differ."
+    },
+    {
+      "name": "a-release-its-changelog-does-not-head",
+      "previous": null,
+      "current": {
+        "name": "release",
+        "version": "0.1.0",
+        "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+        "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+        "changelog": "# Changelog\n\n## 0.0.9\n\nSomething else.\n"
+      },
+      "decision": "refuse",
+      "why": "A carried runbook identifies its release by the version and the heading together."
+    },
+    {
+      "name": "a-release-its-changelog-heads-twice",
+      "previous": null,
+      "current": {
+        "name": "release",
+        "version": "0.1.0",
+        "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+        "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+        "changelog": "# Changelog\n\n## 0.1.0\n\nOne.\n\n## 0.1.0\n\nTwice.\n"
+      },
+      "decision": "refuse",
+      "why": "A changelog heading one version twice cannot say which entry is the release."
+    },
+    {
+      "name": "a-renamed-runbook-begins-a-new-lineage",
+      "previous": null,
+      "current": {
+        "name": "shipping",
+        "version": "0.1.0",
+        "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+        "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+        "changelog": "# Changelog\n\n## 0.1.0\n\nThe first release.\n"
+      },
+      "decision": "publish",
+      "why": "Identity is the directory name, so a rename starts a new lineage above 0.0.0 rather than continuing the old one."
+    },
+    {
+      "name": "a-second-runbook-at-the-same-version",
+      "previous": null,
+      "current": {
+        "name": "cookies",
+        "version": "0.1.0",
+        "specification": "sha256:def1e4e9aa03a20cb470d16eba69eddbe2b79a3306fc222c8fcc5ed1bc734723",
+        "procedure": "sha256:9aade1573d766b9ace3ff2fccc9e5ddab866fd64aa9ac0a3e3d054ce9f8ef722",
+        "changelog": "# Changelog\n\n## 0.1.0\n\nThe first release.\n"
+      },
+      "decision": "publish",
+      "why": "Distinctness is per runbook, so two runbooks may each be at 0.1.0."
+    }
+  ]
+}

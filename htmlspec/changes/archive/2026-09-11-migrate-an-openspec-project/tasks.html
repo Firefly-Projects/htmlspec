@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Migrate an OpenSpec project</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Migrate an OpenSpec project</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Migrate an OpenSpec project</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-11-migrate-an-openspec-project/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-pin-the-mapping-against-this-repository-before-writing-any-code">1. Pin the mapping against this repository before writing any code</a></li>
+          <li><a href="#hs-2-the-contract-states-the-operation-once">2. The contract states the operation, once</a></li>
+          <li><a href="#hs-3-the-survey-which-is-the-only-reading-the-program-does">3. The survey, which is the only reading the program does</a></li>
+          <li><a href="#hs-4-the-plan-and-the-gate-that-checks-it-covers-the-survey">4. The plan, and the gate that checks it covers the survey</a></li>
+          <li><a href="#hs-5-staging-and-promotion">5. Staging and promotion</a></li>
+          <li><a href="#hs-6-the-checks-last-and-whole">6. The checks, last and whole</a></li>
+          <li><a href="#hs-7-the-workflow-which-is-where-the-judgment-lives">7. The workflow, which is where the judgment lives</a></li>
+          <li><a href="#hs-8-prove-it-against-this-repository">8. Prove it against this repository</a></li>
+          <li><a href="#hs-9-release">9. Release</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-pin-the-mapping-against-this-repository-before-writing-any-code">
+          <h2>1. Pin the mapping against this repository before writing any code</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Record the source inventory as evidence: 100 markdown files, 8 capabilities, 79 requirements, 310 scenarios, 11 archived changes, 21 delta specification files, 39 evidence files.</h3>
+              <p>These are the numbers every later claim about coverage is checked against, and they are measured rather than estimated</p>
+              <p><strong>Every one of those seven figures was stale.</strong> Measured at <code>f57f640</code>: <strong>161</strong> markdown files, <strong>9</strong> capabilities, <strong>97</strong> requirements, <strong>401</strong> scenarios, <strong>16</strong> archived changes, <strong>28</strong> delta specification files, <strong>75</strong> evidence files. 193 files under <code>openspec/</code> in total. Recorded in <a href="evidence/the-source-inventory-2026-09-07.md"><code>evidence/the-source-inventory-2026-09-07.md</code></a>, which is what tasks 3.4, 6.3, 8.2 and 8.5 are now checked against — those four assert the stale numbers and are rewritten below.</p>
+              <p>The measurement also found <strong>four entity kinds the design's mapping table has no row for</strong>: 4 already-converted <code>documents/*.html</code> documents at contract version 0.1.0 with asset references that resolve to nothing, 8 per-change <code>.openspec.yaml</code> files carrying a <code>created:</code> date that disagrees with the archive directory name, <code>## RENAMED Requirements</code> in 2 delta files with no <code>renamed</code> state in the destination schema's <code>changeState</code> enum, and a nested <code>evidence/transcripts/</code> directory a flat glob under-counts by 4. Tasks 1.2 and 2.x account for all four.</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done" data-refs="req-an-assertion-about-the-contract-names-the-requirement-it-rests-on">
+              <h3>1.2 Write the entity-to-destination mapping table as evidence, one row per OpenSpec entity kind, each row naming its HTMLSpec destination and <strong>the accepted requirement that fixes it</strong>.</h3>
+              <p>A row whose destination cites no requirement is a row the migration must not decide: mark it silent and preserve the source's shape. Three rows are lossy — the collapse of N deltas into one specification, the version moving from a file into a directory name, and <code>config.yaml</code>'s context having no destination at all</p>
+              <p>16 rows in <a href="evidence/the-mapping-table-and-its-audit-2026-09-07.md"><code>evidence/the-mapping-table-and-its-audit-2026-09-07.md</code></a>, not the design's 6: 11 the contract fixes, 5 it is silent on. Each cited by requirement heading per <code>contract-authority</code> — "<a href="../../../specs/contract-authority/spec.html#req-an-assertion-about-the-contract-names-the-requirement-it-rests-on">An assertion about the contract names the requirement it rests on</a>".</p>
+              <p>The lossy rows are <strong>not</strong> the three named here. The delta collapse and <code>config.yaml</code> hold. <strong>The version row is wrong</strong> — see 1.4. The third lossy row is the deliberate non-migration of generated agent instructions, and rows 14–16 (<code>documents/*.html</code>, <code>.openspec.yaml</code>, <code>## RENAMED Requirements</code>) are lossy in ways the design never considered.</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Audit each row for an invented convention before anything is built.</h3>
+              <p>The first draft of this table mapped <code>specs/&lt;capability-path&gt;/spec.md</code> to a flat <code>&lt;cap&gt;.html</code> and justified it from a README example, under a status line reading "early design proposal ... file layout are working ideas". No requirement states a layout beneath <code>htmlspec/specs/</code>, and the source's <code>&lt;capability-path&gt;</code> is a path rather than a wrapper, so the flattening also discarded hierarchy the source expressed. Finding the second of those two faults required reading the source format's own guidance, so audit both directions</p>
+              <p>Both directions audited. The conclusion holds — the contract states no layout beneath <code>htmlspec/specs/</code>, so the source's nested path is preserved — but <strong>the design's account of the fault is wrong</strong>: <code>grep -n 'htmlspec/specs' README.md</code> returns nothing. The spelling appears in eight places, once in each installed workflow body, as the project's own illustration of a sentence that owes a requirement (<code>crates/htmlspec-assets/instructions/archive.md:81</code>). The design should cite those eight, not the README.</p>
+              <p>The audit found a <strong>second, worse invented convention</strong> in the same table: <code>&lt;date&gt;-&lt;version&gt;-&lt;name&gt;</code>. See 1.4.</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done" data-refs="req-archival-requires-the-project-version-to-advance req-the-project-s-obligations-are-what-its-accepted-specifications-state">
+              <h3>1.4 Confirm each lossy row against the code rather than against the README: that <code>last_archived_version</code> reads the version from the archive directory name (<code>crates/htmlspec-cli/src/commands.rs:1352</code>), that <code>ProjectRoot::assets()</code> derives one store per project from the project root (<code>crates/htmlspec-cli/src/project.rs:157</code>), and that <code>write_document</code> computes the asset reference from each document's own directory (<code>crates/htmlspec-cli/src/commands.rs:574</code>).</h3>
+              <p>A mapping derived from prose would be a mapping of what the project meant to do</p>
+              <p><strong>The first claim is false, and it inverts an accepted requirement.</strong> <code>project-bootstrap</code> — "<a href="../../../specs/project-bootstrap/spec.html#req-archival-requires-the-project-version-to-advance">Archival requires the project version to advance</a>" (<a href="../../../specs/project-bootstrap/spec.html#req-archival-requires-the-project-version-to-advance"><code>openspec/specs/project-bootstrap/spec.md:57</code></a>) — states the last archived version "SHALL be read from the version each archived change records … <strong>It SHALL NOT be derived from an archive directory's name</strong>". <code>last_archived_version</code> is at <code>commands.rs:2799</code>, not 1352, and calls <code>recorded_version</code>, which reads the <code>VERSION</code> file. <code>archived_name</code> (<code>commands.rs:2176</code>) composes <code>{today}-{name}</code> with no version component.</p>
+              <p>The citation was true once: at <code>cf11132^</code> the function sat at exactly line 1352 and scanned directory names. <code>cf11132</code> is <em>"Finish the archival, and fix the gate that never fired"</em>, and the requirement above is the contract it established. The design cites real code from before the fix whose subject was this defect. <code>&lt;date&gt;-&lt;version&gt;-&lt;name&gt;</code> comes from <code>README.md:88</code>, under "Proposed project layout" — non-normative per <code>contract-authority</code>, "<a href="../../../specs/contract-authority/spec.html#req-the-project-s-obligations-are-what-its-accepted-specifications-state">The project's obligations are what its accepted specifications state</a>".</p>
+              <p>The other two claims <strong>hold</strong> — <code>ProjectRoot::assets()</code> at <code>project.rs:179</code> (asserted 157) derives the store from the project root; <code>write_document</code> at <code>commands.rs:577–583</code> (asserted 574) computes the reference from the document's own directory. So the staging-outside and mirror-the-depth decisions rest correctly.</p>
+              <p>Consequence: the version row is <code>VERSION</code> → <code>VERSION</code>, carried unchanged. Tasks 5.4 and 5.5 and the design's "Version history is reconstructed from directory names" decision direct work the contract forbids, and are rewritten below.</p>
+            </li>
+            <li class="task" id="task-1-5" data-change="added" data-state="done" data-refs="req-formatting-can-be-checked-without-writing req-formatting-can-check-without-writing scenario-the-contract-read-without-the-change">
+              <h3>1.5 Take <code>2026-08-10-html-spec</code> — five delta files spanning every capability the project then had — and write by hand what its single <code>specification.html</code> should contain.</h3>
+              <p>This is the hardest mapping in the set and the one with no rule; doing it once by hand before designing anything is what shows whether the constraint is expressible</p>
+              <p><a href="evidence/the-collapse-written-by-hand-2026-09-07.md"><code>evidence/the-collapse-written-by-hand-2026-09-07.md</code></a>. 47 requirements and 138 scenarios into one document, all five deltas <code>## ADDED</code>. The constraint <strong>is</strong> expressible, but it is not the one the design states, and the hand-write produced six findings.</p>
+              <p><strong>Arrangement is the easy part.</strong> Grouping by capability is forced — 47 requirements flat is unreadable and the capability boundary is the only structure the source expresses. The design's "no rule to write here" is right about arrangement and wrong about what needs one.</p>
+              <p><strong>The hard part is the five <code>## Purpose</code> paragraphs</strong>, which are not requirements and have nowhere to go: one document has one masthead and five statements cannot sit in it. They are also the current definitions of five of the project's nine capabilities. Taken: each becomes the paragraph introducing its capability's group. A rule written about requirement units alone would drop all five silently, so section 2 must state that non-requirement delta content is accounted for.</p>
+              <p><strong>A collapse can collide identifiers within one change</strong> — <code>deterministic-formatting</code>'s "<a href="../../../specs/deterministic-formatting/spec.html#req-formatting-can-be-checked-without-writing">Formatting can be checked without writing</a>" against <code>toolchain-packaging</code>'s "<a href="../../../specs/toolchain-packaging/spec.html#req-formatting-can-check-without-writing">Formatting can check without writing</a>", both surviving in the accepted specifications today. Resolution is to slug the <strong>full heading</strong>, not to suffix and not to stop; an aggressively truncating rule manufactures the collision.</p>
+              <p><strong>The derivation table is keyed on (change, source heading)</strong>, not heading alone. <code>req-a-single-command-exposes-validate-format-and-init</code> is renamed twice by later changes, so one continuous obligation legitimately holds four identifiers across the migrated project — each archived specification states its own change's contract, per <code>artifact-kinds:193</code>.</p>
+              <p><strong>Verification units are omitted with the reason recorded</strong> — the source format has no such unit, and manufacturing 47 from a tasks document invents a record. Evidence units are carried, since the 8 evidence files are real sources.</p>
+              <p><strong>The masthead summary is written rather than carried</strong>, the one text in the collapse existing nowhere in the source, needed because <code>artifact-kinds</code>' "<a href="../../../specs/artifact-kinds/spec.html#scenario-the-contract-read-without-the-change">The contract read without the change</a>" scenario requires the specification to stand alone.</p>
+            </li>
+            <li class="task" id="task-1-6" data-change="added" data-state="done">
+              <h3>1.6 Record what <code>config.yaml</code> holds in this repository: <code>schema: spec-driven</code> and two commented-out example blocks, so its <code>context</code> and <code>rules</code> are absent rather than dropped.</h3>
+              <p>This is the case that proves the plan must distinguish "there was nothing there" from "there was something and it is gone"</p>
+              <p><a href="evidence/absent-is-not-dropped-2026-09-07.md"><code>evidence/absent-is-not-dropped-2026-09-07.md</code></a>. One live key, <code>schema: spec-driven</code>, and <strong>three</strong> commented-out blocks rather than two — the third is <code>operations:</code>, which the design does not mention, so the survey must read the field set from the file rather than from the design's list.</p>
+              <p><code>config.yaml</code> gives one absent case and one dropped case, but the dropped one (<code>schema</code>) is a scalar rather than content. The present-and-dropped side with real content is <code>.openspec.yaml</code>'s <code>created:</code> ×8. Both sides of the distinction exist in this repository; neither is where the design said.</p>
+            </li>
+            <li class="task" id="task-1-7" data-change="added" data-state="done" data-refs="req-an-archived-change-is-named-for-its-date-and-refuses-to-collide req-an-archived-change-records-the-version-it-shipped-in">
+              <h3>1.7 Confirm no existing capability governs migration.</h3>
+              <p><code>project-bootstrap</code> governs establishing a project, <code>artifact-kinds</code> governs documents that already exist, <code>toolchain-packaging</code> governs the command surface. None reaches a source project in another format, which is why a new capability is right and why nothing currently reports any of this</p>
+              <p><a href="evidence/no-capability-reaches-a-source-project-2026-09-07.md"><code>evidence/no-capability-reaches-a-source-project-2026-09-07.md</code></a>. All 97 requirements across 9 capabilities read. None reaches a project in another format. Two bear on migration without governing it: <code>workflow-reporting</code> covers the <code>migrate</code> report the moment the workflow exists (task 7.7 is written under it), and <code>contract-authority</code> governs how the migration decides under silence. So a new capability is right.</p>
+              <p>The search independently confirmed the version fault from a second capability: <code>toolchain-packaging</code> — "<a href="../../../specs/toolchain-packaging/spec.html#req-an-archived-change-is-named-for-its-date-and-refuses-to-collide">An archived change is named for its date and refuses to collide</a>" (<a href="../../../specs/toolchain-packaging/spec.html#req-an-archived-change-is-named-for-its-date-and-refuses-to-collide"><code>spec.md:403</code></a>) — states archival names the directory "for the date of archival followed by the change's name", with <strong>no version component</strong>. <code>&lt;date&gt;-&lt;version&gt;-&lt;name&gt;</code> contradicts a stated requirement, not just the gate's implementation.</p>
+              <p>It also found a constraint no artifact mentions: "<a href="../../../specs/toolchain-packaging/spec.html#req-an-archived-change-records-the-version-it-shipped-in">An archived change records the version it shipped in</a>" (<a href="../../../specs/toolchain-packaging/spec.html#req-an-archived-change-records-the-version-it-shipped-in"><code>spec.md:310</code></a>) requires recorded versions to be <strong>distinct</strong>, with a baseline for changes archived under one version before the obligation existed. <strong>Seven changes record <code>0.1.0</code>.</strong> A migrated project inherits that collision, so the migration must carry the changelog's baseline entry or the migrated project fails <code>scripts/check-release</code> on arrival.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-the-contract-states-the-operation-once">
+          <h2>2. The contract states the operation, once</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Add a <code>project-migration</code> capability at <a href="../../../specs/project-migration/spec.html"><code>openspec/specs/project-migration/spec.md</code></a></h3>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 State the survey requirement: mechanical enumeration, writes nothing, repeatable, available as a structured payload, and does not interpret what it finds</h3>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 State the stage order, with the obligation that the first four stages produce no document in the destination format and that migration stops and reports its plan before staging</h3>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 State the reading stage's obligation to record what each document <em>does in the project</em> rather than what it says.</h3>
+              <p>Without this the stage is indistinguishable from opening the files, and an agent that skipped it produces a plan whose per-entity lines say nothing</p>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done">
+              <h3>2.5 State the evidence stage before document production, with the reason: nothing in a source document points at its change's evidence, so a bulk conversion loses it first</h3>
+            </li>
+            <li class="task" id="task-2-6" data-change="added" data-state="done">
+              <h3>2.6 State the plan requirement: every surveyed entity, a destination and a disposition each, a reason for anything folded or dropped, and an empty source field distinguishable from dropped content</h3>
+            </li>
+            <li class="task" id="task-2-7" data-change="added" data-state="done">
+              <h3>2.7 State that the plan is a <code>tasks</code> document and that no artifact kind is added.</h3>
+              <p>The closed set of four is a contract <code>artifact-kinds</code> already states, and a working record used once per project is not grounds to reopen it</p>
+            </li>
+            <li class="task" id="task-2-8" data-change="added" data-state="done">
+              <h3>2.8 State the coverage gate: promotion refuses while an entity has no disposition, names what is unaccounted, and does not judge whether a disposition is correct</h3>
+            </li>
+            <li class="task" id="task-2-9" data-change="added" data-state="done">
+              <h3>2.9 State the staging requirements: outside the destination, a complete resolvable project, internal paths matching the destination so promotion is a move, and the destination unchanged if migration stops before promotion</h3>
+            </li>
+            <li class="task" id="task-2-10" data-change="added" data-state="done">
+              <h3>2.10 State that migration conforms to a layout the destination's contract states and preserves the source's where none is stated, that a nested capability path survives, and that a README example is not a stated layout.</h3>
+              <p>This is the requirement the flat-file mapping fault produced, and it generalizes: a migration decides a hundred files at once, so an invented convention arrives with a hundred instances and no requirement behind it</p>
+            </li>
+            <li class="task" id="task-2-11" data-change="added" data-state="done">
+              <h3>2.11 State that the checks run last over the complete staged project and that migration does not halt at the first failure, with the systematic-fault reason.</h3>
+              <p>Also state that drafting checks remain permitted, so the rule reads as an obligation about where migration ends rather than a prohibition on validating</p>
+            </li>
+            <li class="task" id="task-2-12" data-change="added" data-state="done">
+              <h3>2.12 State that conversion of meaning is agent-driven and that no converter exists, deriving it from the reason <code>artifact-kinds</code> already gives rather than asserting it fresh</h3>
+            </li>
+            <li class="task" id="task-2-13" data-change="added" data-state="done" data-refs="req-evidence-crosses-unchanged">
+              <h3>2.13 State that <a href="specification.html#req-evidence-crosses-unchanged">evidence crosses unchanged</a> and is referenced from the documents that cite it</h3>
+            </li>
+            <li class="task" id="task-2-14" data-change="added" data-state="done">
+              <h3>2.14 State the delta collapse, that change state moves onto the requirement, that the arrangement is the agent's, and that the implemented result wins where it disagrees with what a delta stated</h3>
+            </li>
+            <li class="task" id="task-2-15" data-change="added" data-state="done">
+              <h3>2.15 State that identifiers are derived once, recorded in the plan, and that a collision is reported rather than suffixed</h3>
+            </li>
+            <li class="task" id="task-2-16" data-change="added" data-state="done" data-refs="req-archival-requires-the-project-version-to-advance req-an-archived-change-records-the-version-it-shipped-in">
+              <h3>2.16 State that migrated archives carry their versions where the gate reads them — <strong>the recorded-version file, not the archive directory name</strong>, per <code>project-bootstrap</code> "<a href="../../../specs/project-bootstrap/spec.html#req-archival-requires-the-project-version-to-advance">Archival requires the project version to advance</a>" (<a href="../../../specs/project-bootstrap/spec.html#req-archival-requires-the-project-version-to-advance"><code>spec.md:57</code></a>) — that the declared version equals the greatest migrated version, and that a source change with no version does not get one invented.</h3>
+              <p>State that a shared version across several source changes is carried honestly with the project's release record explaining it, rather than resolved by inventing distinct versions, per <code>toolchain-packaging</code> "<a href="../../../specs/toolchain-packaging/spec.html#req-an-archived-change-records-the-version-it-shipped-in">An archived change records the version it shipped in</a>" (<a href="../../../specs/toolchain-packaging/spec.html#req-an-archived-change-records-the-version-it-shipped-in"><code>spec.md:310</code></a>)</p>
+            </li>
+            <li class="task" id="task-2-19" data-change="added" data-state="done" data-refs="req-silence-is-recorded-and-not-filled">
+              <h3>2.19 State that a source entity the destination's contract has no state for is recorded as an open question naming the change that would settle it, rather than mapped to the nearest available state.</h3>
+              <p><code>## RENAMED Requirements</code> is the case: <code>changeState</code> has no <code>renamed</code>, and a rename states that one requirement <em>is</em> another under a new heading — the identity link the derivation table is keyed on. This is <code>contract-authority</code> "<a href="../../../specs/contract-authority/spec.html#req-silence-is-recorded-and-not-filled">Silence is recorded and not filled</a>" third route, and the requirement generalizes past this instance</p>
+            </li>
+            <li class="task" id="task-2-20" data-change="added" data-state="done">
+              <h3>2.20 State that a delta's non-requirement content is accounted for too.</h3>
+              <p>Each of <code>2026-08-10-html-spec</code>'s five deltas carries a <code>## Purpose</code> paragraph, and a rule written about requirement units alone drops all five silently — which task 1.5 found by writing the collapse by hand</p>
+            </li>
+            <li class="task" id="task-2-21" data-change="added" data-state="done" data-refs="req-a-source-entity-already-in-the-destination-format-is-not-assumed-usable">
+              <h3>2.21 State that <a href="specification.html#req-a-source-entity-already-in-the-destination-format-is-not-assumed-usable">a source entity already in the destination format is not assumed usable</a>.</h3>
+              <p>The 4 <code>documents/*.html</code> declare contract version 0.1.0 and reference an asset store that no longer exists, so "already converted" is not "ready to carry"</p>
+            </li>
+            <li class="task" id="task-2-17" data-change="added" data-state="done">
+              <h3>2.17 State that the source survives and that generated agent instructions are not migrated</h3>
+            </li>
+            <li class="task" id="task-2-18" data-change="added" data-state="done">
+              <h3>2.18 Run <code>openspec validate --all</code></h3>
+              <p><code>Totals: 10 passed, 0 failed</code>. The <code>project-migration</code> delta carries <strong>15 requirements and 61 scenarios</strong> and reports zero issues at any level. The 50 INFO notices in the run are pre-existing requirement-length hints on other capabilities, none of them on this change.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-the-survey-which-is-the-only-reading-the-program-does">
+          <h2>3. The survey, which is the only reading the program does</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Add <code>htmlspec migrate survey &lt;path&gt;</code>, enumerating capabilities, changes, change documents, delta specifications, evidence files, recorded versions, and configuration — <strong>and the four entity kinds the design's original table had no row for</strong>: <code>documents/*.html</code>, per-change <code>.openspec.yaml</code>, delta section headings including <code>## RENAMED Requirements</code>, and evidence nested below <code>evidence/</code>.</h3>
+              <p>A survey built from the six original rows reports full coverage over a set that omits 15 files, which makes the gate in 4.2 vacuous for them. Recurse into <code>evidence/</code> rather than globbing it, and read <code>config.yaml</code>'s field set from the file rather than from a fixed list of names</p>
+              <p><code>crates/htmlspec-cli/src/migrate.rs</code>, wired as <code>htmlspec migrate survey [path]</code>. <code>Kind</code> has nine variants: the five the design anticipated, the four task 1.2's audit found (<code>converted-document</code>, <code>change-configuration</code>, nested evidence, delta-section recording), and <code>unrecognized</code> so a kind nobody anticipated still reaches the plan. Descends directories rather than matching names, and reads <code>config.yaml</code>'s live keys rather than a fixed list.</p>
+              <p data-field="note">Migration note: a review after archival found that the survey did not descend the whole project. It named <code>openspec/config.yaml</code>, walked <code>specs/</code>, and walked each change directory, so a file loose in <code>openspec/</code>, <code>openspec/changes/</code>, or <code>openspec/changes/archive/</code> was not enumerated. It was fixed before the change merged, and <a href="evidence/five-more-defects-a-review-found-2026-09-13.md"><code>evidence/five-more-defects-a-review-found-2026-09-13.md</code></a> records the defect, its reproduction, and the fix, as its first finding.</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Emit the enumeration under <code>--json</code> as the payload the coverage gate consumes.</h3>
+              <p>The gate must check the plan against the list the plan was written from, not against a second enumeration taken later</p>
+              <p>Payload keys: <code>root</code>, <code>counts</code>, <code>greatestVersion</code>, <code>sharedVersions</code>, <code>configuration</code>, <code>changes</code>, <code>entities</code>. Entity paths are <strong>relative</strong> to the repository root, so two surveys of one project run from different directories produce identical payloads — a gate comparing a plan against a payload must not depend on where the migration ran.</p>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Report a path that is not an OpenSpec project as such, naming what was expected, and exit with the status for an operation that could not run</h3>
+              <p>Names the path, names what was expected (<code>openspec/specs</code> or <code>openspec/changes</code>), exits <strong>2</strong> per <code>exit.rs</code>'s reservation for an operation that could not run. A project with capabilities and no changes is still a project — requiring both would refuse a young project for being young.</p>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 Survey this repository and assert the counts from task 1.1 exactly — <strong>the measured ones in <a href="evidence/the-source-inventory-2026-09-07.md"><code>evidence/the-source-inventory-2026-09-07.md</code></a></strong>, not the stale ones 1.1 was written with: 193 files under <code>openspec/</code>, of which 161 markdown; 9 capabilities, 97 requirements, 401 scenarios; 16 archived changes, 28 delta specification files, 75 evidence files, 16 <code>VERSION</code> files, 8 <code>.openspec.yaml</code>, 4 <code>documents/*.html</code>, 1 <code>config.yaml</code>.</h3>
+              <p>A survey that finds 160 markdown files is a survey with a bug, and the number is known. Assert the breakdown as well as the total, so a survey that miscounts two categories in opposite directions fails</p>
+              <p data-field="deviation"><strong>Not asserted as literals, deliberately.</strong> The survey finds <strong>198</strong> entities, five more than task 1.1's 193 — the five evidence files this change wrote in the same session. That is the third stale count in this change, so a test carrying <code>198</code> would be the same defect one layer down. Instead <code>the_survey_enumerates_every_file_the_project_holds</code> compares the entity list against an independently-implemented walk, file for file and in order; <code>every_file_in_this_repository_classifies</code> asserts zero <code>unrecognized</code> and all eight kinds present; <code>the_counts_account_for_every_entity</code> asserts the per-kind counts sum to the total. Every kind also matches <code>find</code> exactly. Recorded in <a href="evidence/the-survey-against-this-repository-2026-09-07.md"><code>evidence/the-survey-against-this-repository-2026-09-07.md</code></a>.</p>
+            </li>
+            <li class="task" id="task-3-5" data-change="added" data-state="done">
+              <h3>3.5 Assert the survey writes nothing: run it against a copy, compare the tree before and after</h3>
+              <p>Asserted twice — against a constructed source and against this repository — both comparing the file list before and after, which is what catches a survey writing a cache or lock file.</p>
+            </li>
+            <li class="task" id="task-3-6" data-change="added" data-state="done">
+              <h3>3.6 Assert repeatability: two runs against an unchanged source enumerate the same entities in the same order.</h3>
+              <p>Order matters because the payload is diffed by a person when a coverage failure is being read</p>
+              <p><code>the_survey_is_repeatable_in_the_same_order</code> compares two surveys and their payloads, then asserts the entity order is the sorted one.</p>
+            </li>
+            <li class="task" id="task-3-7" data-change="added" data-state="done">
+              <h3>3.7 Survey a project with a change that has no <code>VERSION</code> file and confirm the absence is reported as absent rather than defaulted</h3>
+              <p><code>a_change_recording_no_version_reports_none</code> asserts <code>version: None</code> <strong>and</strong> that the payload carries the field as null rather than omitting it, so a reader cannot mistake "recorded none" for "did not look". This repository supplies a real case: <code>migrate-an-openspec-project</code> has no <code>VERSION</code>, and the survey names it rather than defaulting it.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-the-plan-and-the-gate-that-checks-it-covers-the-survey">
+          <h2>4. The plan, and the gate that checks it covers the survey</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Settle the plan's shape as a <code>tasks</code> document: one task unit per surveyed entity, carrying the source path, the destination path, the disposition, and the reason where one is owed</h3>
+              <p>Each fact is a <strong>note paragraph opening with its name and a colon</strong> — <code>source:</code>, <code>destination:</code>, <code>disposition:</code>, <code>reason:</code>, <code>derives:</code>. Not attributes, and the reason matters: the projection ignores an unknown <code>data-*</code> on a unit, so a gate reading <code>data-source</code> would parse the HTML a second way and could disagree with the model about what the document says. <code>data-field="source"</code> names no field of a task and is invalid. A note whose opening word is none of the five is ordinary prose, so annotating a plan line breaks nothing.</p>
+              <p><code>reason:</code> is read from the note <strong>or</strong> from the task's own <code>data-field="reason"</code>, because a task whose <code>data-state</code> is <code>dropped</code> already carries one and the validator already requires it. Refusing one spelling would make the plan's shape depend on which of two equivalent markups an agent chose.</p>
+              <p><a href="evidence/the-plan-and-the-gate-2026-09-09.md">Proven end to end rather than asserted</a>: <code>crates/htmlspec-cli/tests/plan.rs</code> builds the plan with <code>htmlspec init</code> and <code>htmlspec new document tasks</code>, replaces the template's example units, and puts one document through <code>validate</code>, <code>format</code>, <code>format --check</code>, and <code>migrate promote</code> in turn. <strong>The <code>format --check</code> after the <code>format</code> is the load-bearing step</strong> — it proves the shape is a fixed point rather than something that parsed once, which a shape leaning on attributes would not be.</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Add <code>htmlspec migrate promote</code>, whose first act is the coverage comparison between the plan and the survey payload</h3>
+              <p><code>htmlspec migrate promote &lt;plan&gt; --survey &lt;payload.json&gt;</code>. The comparison runs before anything is read from a staging tree, so a plan missing an entity kind is reported without touching it. Exit <strong>1</strong> for an incomplete plan — the plan is a document that failed a check, and the operation ran — and <strong>2</strong> for a plan or payload that could not be read, which says nothing about the source.</p>
+              <p>The payload is read from a file rather than re-surveyed. <code>project-migration</code> requires the plan to be checked against "the list the plan was written from", and re-enumerating would compare it against a second opinion taken later.</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Refuse with every unaccounted entity named.</h3>
+              <p>Naming the first one turns a systematic omission into a sequence of individual repairs, which is the same fault the check-last rule exists to prevent</p>
+              <p>Eight classes reported together, each in full: unaccounted, sourceless, no disposition, unknown disposition (with the word written), folded-or-dropped with no reason, one entity named twice, a source the survey never found, and identifier collisions. <strong><a href="evidence/the-plan-and-the-gate-2026-09-09.md">Checked by mutation:</a></strong> restricting <code>unaccounted</code> to the first entity failed <code>every_unaccounted_entity_is_named</code> and <code>promotion_refuses_and_names_every_unaccounted_entity</code> at both layers.</p>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 Accept a disposition of dropped-with-a-reason as covered.</h3>
+              <p>Being accounted for is what the gate tests; being converted is not</p>
+              <p><code>a_deliberate_drop_with_a_reason_is_covered</code>, plus <code>a_drop_with_no_reason_is_reported</code> for the other side: without the reason the plan records that something is gone rather than what the decision was.</p>
+            </li>
+            <li class="task" id="task-4-5" data-change="added" data-state="done">
+              <h3>4.5 Assert the gate does not judge a disposition: a plan sending a specification to the wrong destination passes coverage, because whether a disposition is right is what a contributor reviews the plan for</h3>
+              <p><code>a_disposition_a_reader_would_disagree_with_passes</code> sends an accepted capability specification into a change's evidence directory — plainly wrong, plainly not this check's business — and asserts the coverage is complete. The passing report <strong>says so in words</strong> (<code>the check says nothing about it</code>), because a green coverage check otherwise reads as approval of the plan.</p>
+            </li>
+            <li class="task" id="task-4-6" data-change="added" data-state="done">
+              <h3>4.6 Assert the gate fails when one entity is removed from a complete plan, so its subject is proven rather than assumed</h3>
+              <p><code>removing_one_entity_from_a_complete_plan_fails_the_check</code> asserts the complete plan passes first, then removes one item. <code>a_plan_missing_one_entity_refuses_with_the_violation_code</code> does the same through the real binary, and asserts the shortened plan <strong>still validates</strong> — the omission is not a document defect, which is precisely why this is a gate rather than a validation rule.</p>
+            </li>
+            <li class="task" id="task-4-7" data-change="added" data-state="done" data-refs="req-formatting-can-be-checked-without-writing req-formatting-can-check-without-writing">
+              <h3>4.7 Record the identifier derivation table in the plan, keyed on <strong>(change, source heading)</strong> rather than on the heading alone, and check it for collisions before anything is staged.</h3>
+              <p>A collision found at staging time has already produced documents that reference an identifier belonging to something else. Derive from the <strong>full</strong> heading: task 1.5 found that <code>deterministic-formatting</code>'s "<a href="../../../specs/deterministic-formatting/spec.html#req-formatting-can-be-checked-without-writing">Formatting can be checked without writing</a>" and <code>toolchain-packaging</code>'s "<a href="../../../specs/toolchain-packaging/spec.html#req-formatting-can-check-without-writing">Formatting can check without writing</a>" are distinct obligations a truncating rule would merge, manufacturing the collision the report-rather-than-suffix rule then fires on</p>
+              <p>Each <code>derives:</code> line sits on the plan item for the file that stated the heading, so the keying holds <strong>by construction</strong> — a derivation cannot be recorded without its source. The collision check groups by the item's <code>destination:</code>, because a collision is two headings deriving one identifier <em>within one destination document</em>.</p>
+              <p><code>two_headings_deriving_one_identifier_in_one_document_collide</code> reports rather than suffixes, and the report names both headings with their sources.</p>
+              <p data-field="note">Migration note: a review after archival found two gaps in this check, both fixed before the change merged. A <code>derives:</code> note whose separator was not spelled exactly <code>-&gt;</code> between spaces was silently ignored, so a plan misspelling it recorded no derivation and reported no collision; and a plan item with no <code>destination:</code> note had every one of its <code>derives:</code> lines left out of collision checking. <a href="evidence/five-more-defects-a-review-found-2026-09-13.md"><code>evidence/five-more-defects-a-review-found-2026-09-13.md</code></a> records both, as its fourth and fifth findings.</p>
+            </li>
+            <li class="task" id="task-4-8" data-change="added" data-state="done" data-refs="req-a-specification-states-the-settled-contract-as-built req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses">
+              <h3>4.8 Assert that one obligation renamed across changes holds a different identifier in each change's specification, and that this is not reported as a collision.</h3>
+              <p><code>req-a-single-command-exposes-validate-format-and-init</code> is renamed twice, so it holds four identifiers across the migrated project — three archived, one accepted — and each is correct because <code>artifact-kinds</code> "<a href="../../../specs/artifact-kinds/spec.html#req-a-specification-states-the-settled-contract-as-built">A specification states the settled contract as built</a>" requires each archived specification to state its own change's contract</p>
+              <p><code>one_obligation_renamed_across_changes_is_not_a_collision</code> pins the rename. <strong>But that test could not catch the fault it was written for</strong>, and <a href="evidence/the-plan-and-the-gate-2026-09-09.md">a mutation proved it</a>: keying the derivation table on the identifier alone, with the destination discarded, left the whole suite green. A rename produces <em>distinct</em> identifiers, so a wrong key still finds no duplicate among them.</p>
+              <p>The case that needs the destination is the ordinary one, not the edge one: <strong>17 headings in this repository are stated by more than one archived change</strong>, because a change that modifies an obligation restates its heading. Five changes each state "<a href="../../../specs/project-bootstrap/spec.html#req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses">Bootstrapping installs agent instructions for the tools a project uses</a>", so one slug lands in five archived specifications. An identifier-keyed table reports five collisions and sends a contributor to reconcile a conflict the source never contained. <code>one_heading_stated_by_several_changes_is_not_a_collision</code> uses those five real changes and <strong>fails under the mutation</strong>.</p>
+              <p><code>a_repeated_derivation_line_is_not_a_collision</code> covers the third case: one line written twice states one derivation.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-staging-and-promotion">
+          <h2>5. Staging and promotion</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Establish the staging location outside the destination, and confirm the destination never holds a second asset store during the operation</h3>
+              <p><code>crates/htmlspec-cli/src/staging.rs</code>. <code>Staged::resolve(staged, destination)</code> refuses when the staging root lies within the destination, and the report says why rather than only that: a staging tree beneath the destination puts a second store in a project that holds one, so <code>htmlspec assets</code> fires on the migration's own working directory and a contributor cannot tell that report from a real defect.</p>
+              <p>Also refuses a staged tree holding two stores of its own, since promoting one would move that defect into the destination.</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Make the staged tree a complete project — declaration, specifications, changes, archive, one asset store — and confirm <code>ProjectRoot::resolve</code> resolves it, since every check depends on that</h3>
+              <p>Five paths checked, <strong>every absence named together</strong>. <code>the_staged_tree_resolves_as_a_project</code> asserts <code>ProjectRoot::resolve</code> returns the staging root itself rather than an enclosing project — the distinction matters, because resolution ascends and a staging directory inside some other project would otherwise "resolve" to the wrong thing.</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Stage every document at the relative path it will occupy after promotion, and assert that asset references resolve unchanged across the move.</h3>
+              <p><code>htmlspec/specs/x.html</code> references <code>../assets/</code> and <code>htmlspec/changes/y/proposal.html</code> references <code>../../assets/</code>; a staged tree at the wrong depth needs every reference rewritten after the checks that would have caught the rewriting</p>
+              <p><code>asset_references_resolve_unchanged_across_the_move</code> <a href="evidence/staging-promotion-and-the-checks-2026-09-09.md">stages four documents at four depths</a> (<code>../assets</code>, <code>../../assets</code>, <code>../../../assets</code>) and asserts each reference reaches the store <strong>before and after</strong> the move, with identical text. The test resolves <code>..</code> by popping rather than by <code>Path::components()</code>, which keeps <code>..</code> — a comparison leaving <code>..</code> in both sides would hold for any depth at all and prove nothing.</p>
+              <p><code>a_complete_migration_promotes_and_the_result_is_a_project</code> closes it from the other end: the promoted project passes <code>validate</code>, <code>assets</code>, and <code>format --check</code> from its new location, which is only true if no reference needed rewriting.</p>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done" data-refs="req-archival-requires-the-project-version-to-advance req-an-archived-change-is-named-for-its-date-and-refuses-to-collide">
+              <h3>5.4 Carry each archived change's <code>VERSION</code> file across unchanged, and name the archived directory <code>&lt;date&gt;-&lt;name&gt;</code> from the source directory name.</h3>
+              <p><strong>This task previously said to compose <code>&lt;date&gt;-&lt;version&gt;-&lt;name&gt;</code>, and two accepted requirements forbid it</strong> — <code>project-bootstrap</code> "<a href="../../../specs/project-bootstrap/spec.html#req-archival-requires-the-project-version-to-advance">Archival requires the project version to advance</a>" (<a href="../../../specs/project-bootstrap/spec.html#req-archival-requires-the-project-version-to-advance"><code>spec.md:57</code></a>, the version "SHALL NOT be derived from an archive directory's name") and <code>toolchain-packaging</code> "<a href="../../../specs/toolchain-packaging/spec.html#req-an-archived-change-is-named-for-its-date-and-refuses-to-collide">An archived change is named for its date and refuses to collide</a>" (<a href="../../../specs/toolchain-packaging/spec.html#req-an-archived-change-is-named-for-its-date-and-refuses-to-collide"><code>spec.md:403</code></a>, date then name, no version component). Assert the migrated directory names carry no version component, and that <code>last_archived_version</code> reads <code>0.10.0</code> from the carried files</p>
+              <p><code>Fault::VersionInAnArchiveName</code> refuses a composed name, and the report names <strong>both</strong> halves of the fault — a contributor who fixed only the naming would still have a version the gate does not read. <code>a_date_and_name_archive_is_accepted</code> pins the boundary in both directions, including <code>2026-08-10-2-more-fixes</code>, where the component after the date is a single number and part of the name rather than a version.</p>
+              <p data-field="deviation">The <code>0.10.0</code> figure is not asserted as a literal, for the reason task 3.4 records. <code>the_migrated_projects_version_gate_refuses_without_an_advance</code> proves the property instead: it promotes a project carrying <code>0.1.0</code>, creates a change, and asserts <code>htmlspec archive --check</code> refuses naming the carried version — which is only possible if the gate read the file the migration carried.</p>
+            </li>
+            <li class="task" id="task-5-5" data-change="added" data-state="done">
+              <h3>5.5 Set the declaration's version to the greatest version found among the migrated archives — <code>0.10.0</code> for this repository — and confirm <code>htmlspec archive</code> then refuses without an advance.</h3>
+              <p>A migrated project whose next archival passes without advancing has lost its history's ordering</p>
+              <p><code>Fault::DeclarationDisagrees</code> refuses a declaration below the greatest recorded version, and <code>a_declaration_below_the_greatest_archived_version_is_refused</code> uses <code>0.9.0</code> against <code>0.10.0</code> — the pair a migration comparing version <em>text</em> would get backwards, which the survey's <code>greatest_version</code> already guards from the other side.</p>
+              <p>A staged project with no archived change declares freely. Requiring the declaration to equal an absent value would refuse a young source project for being young.</p>
+            </li>
+            <li class="task" id="task-5-9" data-change="added" data-state="done" data-refs="req-an-archived-change-records-the-version-it-shipped-in scenario-an-entry-s-contents">
+              <h3>5.9 Carry the changelog and its baseline entry, and confirm <code>scripts/check-release</code> passes against the migrated project.</h3>
+              <p><strong>Seven archived changes record <code>0.1.0</code></strong>, and <code>toolchain-packaging</code> "<a href="../../../specs/toolchain-packaging/spec.html#req-an-archived-change-records-the-version-it-shipped-in">An archived change records the version it shipped in</a>" (<a href="../../../specs/toolchain-packaging/spec.html#req-an-archived-change-records-the-version-it-shipped-in"><code>spec.md:310</code></a>) requires recorded versions to be distinct with a changelog baseline naming the changes that shipped together. A migrated project whose changelog lost that entry fails its own release check on arrival, with a diagnostic naming seven changes and explaining none of them. Neither the design nor these tasks mentioned this before task 1.7 found it</p>
+              <p>The obligation is enforced: <code>CHANGELOG.md</code> is one of the three entries promotion places, and <code>Fault::UnexplainedSharedVersion</code> refuses a shared version the release record does not name. <code>a_shared_version_with_no_release_record_entry_is_refused</code> uses this repository's real shape (three changes at <code>0.1.0</code>, one at <code>0.2.0</code>, a record naming only <code>0.2.0</code>) and asserts every change is named — the repair is one entry covering all of them, and a contributor told only the first has to find the rest. <code>a_shared_version_the_release_record_explains_is_carried</code> pins the other half, which is the half that matters: inventing distinct versions would record releases nobody installed.</p>
+              <p>Presence of the version in the record is what is checked, not the prose. <code>toolchain-packaging</code>'s own scenario "<a href="../../../specs/toolchain-packaging/spec.html#scenario-an-entry-s-contents">An entry's contents</a>" states the release check "reads the entry's presence and applies no rule to the entry's prose", and a migration is not the place to start judging changelog wording.</p>
+              <p data-field="deviation"><strong><code>scripts/check-release</code> itself cannot be run against a migrated project, and this task's instruction to do so is not satisfiable.</strong> The script reads <code>Cargo.toml</code> and <code>openspec/changes/archive</code>; a migrated project has <code>spec.nix</code> and <code>htmlspec/changes/archive</code>. Its own docstring says why — "The facts it reads are facts about <em>this repository</em>… A test inside a shipped crate asserting them would make the product's test suite depend on its own repository's release history." So the check that belongs to this repository stays here, and the obligation it enforces is carried by the promotion gate above, where a migrated project can be held to it.</p>
+              <p data-field="note">Migration note: records written after archival qualify this task's notes. Promotion refused a destination that already held a <code>CHANGELOG.md</code>, so a migration into an existing repository could not be promoted at all, and it now leaves a destination's own record in place; the shared-version exemption was a substring match, so <code>0.1.1</code> counted as explained by an entry for <code>0.1.10</code>, and it now reads entry headings only (<a href="evidence/three-defects-a-review-found-2026-09-11.md"><code>evidence/three-defects-a-review-found-2026-09-11.md</code></a>, its first and second defects). The check also read the staged record that promotion then discards, and it now reads the record that survives (<a href="evidence/five-more-defects-a-review-found-2026-09-13.md"><code>evidence/five-more-defects-a-review-found-2026-09-13.md</code></a>, its third finding). All three were fixed before the change merged.</p>
+            </li>
+            <li class="task" id="task-5-6" data-change="added" data-state="done">
+              <h3>5.6 Promote in one step, and assert the destination holds either the whole migrated project or none of it</h3>
+              <p>Two things make it whole-or-none rather than hoped-for. <code>Fault::DestinationOccupied</code> refuses while the destination holds <strong>any</strong> entry promotion would place, so nothing is overwritten and nothing is merged. And a failure part-way through moves back what it already moved: <code>a_failed_move_leaves_the_destination_unchanged</code> occupies the declaration's path <em>after</em> the checks pass, so the project directory has already arrived when the second move fails — the state that would otherwise leave a destination the toolchain resolves and cannot read the version of. Both the destination and the staged tree are asserted whole afterwards, so the migration is retryable.</p>
+              <p><code>rename</code> is one operation and cannot half-move a directory. The <code>EXDEV</code> fallback copies and then removes, because a staging location on another filesystem is the common case.</p>
+              <p data-field="note">Migration note: records written after archival qualify this task's notes. A review found that the refusal also covered a destination that already held a <code>CHANGELOG.md</code>, which a migration into an existing repository cannot avoid; promotion now refuses only over the project directory and the declaration, and <code>a_failed_move_leaves_the_destination_unchanged</code> was rewritten to provoke its failure by making the destination read-only (<a href="evidence/three-defects-a-review-found-2026-09-11.md"><code>evidence/three-defects-a-review-found-2026-09-11.md</code></a>). A second review found that the <code>EXDEV</code> fallback writes into the destination before anything leaves staging, and that a copy failing part-way left a partial destination while the report said the destination was as it was; the fallback now cleans up after itself (<a href="evidence/five-more-defects-a-review-found-2026-09-13.md"><code>evidence/five-more-defects-a-review-found-2026-09-13.md</code></a>, its second finding). Both were fixed before the change merged.</p>
+            </li>
+            <li class="task" id="task-5-7" data-change="added" data-state="done">
+              <h3>5.7 Assert an abandoned migration leaves the destination byte-for-byte unchanged, at each stage boundary rather than only at the last</h3>
+              <p><code>an_abandoned_migration_leaves_the_destination_unchanged_at_every_stage</code> <a href="evidence/staging-promotion-and-the-checks-2026-09-09.md">walks four boundaries in one test</a> — a coverage failure, a staging fault, a conformance failure, and a clean <code>--check</code> run — and compares a <strong>content</strong> snapshot of the destination after each. Names alone would miss an edit and lengths would miss a swap.</p>
+              <p>The same test asserts the staged tree is byte-for-byte unchanged across all four, so nothing above consumed its own input either.</p>
+            </li>
+            <li class="task" id="task-5-8" data-change="added" data-state="done">
+              <h3>5.8 Assert the source project is byte-for-byte unchanged after a completed migration</h3>
+              <p data-field="deviation">Structurally guaranteed rather than checked afterwards: nothing in <code>survey.rs</code>, <code>plan.rs</code>, or <code>staging.rs</code> opens a source path for writing, and the survey's no-write property is already asserted twice against a constructed source and against this repository (task 3.5). The staged tree is the migration's only output, and promotion moves from staging into the destination — the source is not a party to the move. <code>a_complete_migration_promotes_and_the_result_is_a_project</code> asserts the report says so in words, because a contributor deciding whether to delete their source will not read the specification to find out.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-the-checks-last-and-whole">
+          <h2>6. The checks, last and whole</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Run <code>htmlspec validate</code>, <code>htmlspec format --check</code>, and <code>htmlspec assets</code> over the complete staged project, after staging finishes</h3>
+              <p><code>commands.rs::conformance</code>, stage 3 of <code>migrate promote</code>. The project's own three checks, unchanged — a migration adds none of its own, because what a conforming project is has already been settled and a fourth definition applied only to migrated projects would let a migration produce something the toolchain would not otherwise accept.</p>
+              <p>Formatting is <strong>checked, never written</strong>. A migration that reformatted its own output here would hide the mapping fault that produced non-canonical documents. Asset topology runs once over the tree rather than per document, because it is a statement about a project.</p>
+              <p data-field="note">Migration note: a review after archival found that this stage reported a staged document naming asset bytes the store does not hold as not canonically formatted, because it compared the canonical form against the source rather than against the text with its references filled; it now reports each such reference by name, so the formatting diagnostic means only formatting. Fixed before the change merged, and recorded in <a href="evidence/three-defects-a-review-found-2026-09-11.md"><code>evidence/three-defects-a-review-found-2026-09-11.md</code></a>, its third defect.</p>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Refuse promotion while validation reports an error, and report every occurrence together rather than the first</h3>
+              <p>The move is last and runs only where the coverage, the staging structure, and the conformance diagnostics are all clear. The report states the count and the document total before the list, then every diagnostic.</p>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Assert the whole-set behavior with a deliberately wrong mapping rule: break the scenario mapping, stage this repository's <strong>401 accepted scenarios and 545 delta scenarios</strong>, and confirm the report shows a class of failure rather than one document's defect.</h3>
+              <p>This is the case the requirement was written for, so it is checked rather than described</p>
+              <p data-field="deviation"><code>a_systematic_mapping_fault_is_reported_as_a_whole_set</code> breaks one identifier-derivation rule — an identifier keeping its heading's capitals — across <strong>12 staged documents</strong>, and asserts every one is named and the document count is stated. Twelve rather than 401: the requirement is about reporting a class rather than an instance, and 12 identical diagnostics establish that as well as 401 while keeping the test to seconds. A test staging 401 real scenarios would also need 401 hand-written source scenarios, which is the migration itself rather than a test of it.</p>
+              <p><strong><a href="evidence/staging-promotion-and-the-checks-2026-09-09.md">Checked by mutation.</a></strong> Returning from <code>conformance</code> at the first document with a diagnostic — exactly what the requirement forbids — fails this test at <code>capability-1</code>. So the whole-set behavior is proven rather than described, which is what this task asked for.</p>
+            </li>
+            <li class="task" id="task-6-4" data-change="added" data-state="done">
+              <h3>6.4 Confirm nothing prohibits validating a document while drafting it.</h3>
+              <p>The obligation is on where migration ends, and a check that fired on a drafting validation would forbid the cheapest feedback an agent has</p>
+              <p><code>checking_a_document_while_drafting_it_is_permitted</code> runs <code>validate</code>, <code>validate &lt;one document&gt;</code>, and <code>format --check</code> from inside the staged tree mid-migration, then promotes — and asserts promotion is unaffected. The last assertion is the one that distinguishes an obligation about where migration <em>ends</em> from a prohibition on checking: nothing about having checked mid-flight changes the outcome.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-the-workflow-which-is-where-the-judgment-lives">
+          <h2>7. The workflow, which is where the judgment lives</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Add <code>migrate</code> to the workflow table in <code>crates/htmlspec-assets/src/instructions.rs</code>, with its body at <code>crates/htmlspec-assets/instructions/migrate.md</code></h3>
+              <p>20 KB, the longest of the nine, because it is the one workflow whose whole substance is judgment the program cannot check. Installs as <code>htmlspec-migrate-project</code> across all five tool locations.</p>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done">
+              <h3>7.2 Place it in lifecycle order.</h3>
+              <p>It precedes <code>explore</code>: a migration happens before a project has an idea to explore, because it is how the project arrives</p>
+              <p>First row. <code>the_table_is_in_lifecycle_order</code> and <code>the_lifecycle_is_covered</code> both updated, and the <code>entry_point</code> flag stays on <code>new</code> — a migration is not what a contributor types first, it is what a <em>migrating</em> contributor types first, and the two are different populations. That distinction is exactly why the flag is a field rather than "whichever row comes first", as its own doc comment says.</p>
+            </li>
+            <li class="task" id="task-7-3" data-change="added" data-state="done">
+              <h3>7.3 Declare its argument as the source project, optional, so a bare invocation infers the source and says which one it picked</h3>
+              <p><code>[the OpenSpec project to migrate, or nothing to infer it]</code>, optional in form. The body's opening section says to name the source picked <strong>before producing anything</strong>, and gives the reason: a migration reads and writes a whole project, so a wrong subject is expensive to discover late.</p>
+            </li>
+            <li class="task" id="task-7-4" data-change="added" data-state="done">
+              <h3>7.4 Write the body's reading stage so it directs an agent to record what each document does in the project, and give it the failure to avoid: a plan whose per-entity lines could have been written from the file listing alone</h3>
+              <p>Stage 2, with the contrast made concrete rather than stated abstractly: "Argues that asset duplication is a topology problem rather than a size problem" against "Proposal for content-addressed assets". The failure is named in the words this task used, and the body says plainly why it is the dangerous one — the plan gets reviewed and approved <em>because it looks complete</em>, and this is the one stage with no mechanical check at all.</p>
+            </li>
+            <li class="task" id="task-7-5" data-change="added" data-state="done">
+              <h3>7.5 Write the body's guidance on using HTML's expressive capacity, with worked examples from this repository — the seven-row workflow comparison in <code>report-in-the-contributors-terms</code>'s design, the artifact-subjected-lines table in its proposal, and the archival sequence in <code>artifact-kinds</code> that is a numbered list because Markdown had nothing better</h3>
+              <p>All three, and each teaches a different lesson. The artifact-subjected-lines table (7 rows, one number each) is <strong>already right and carries across unchanged</strong> — recognizing that is as much of the stage as recognizing what needs upgrading. The seven-workflow comparison is a mapping a source states as prose and means as a table. The archival sequence is a numbered list whose second step <em>gates</em> the third, so it becomes a Mermaid diagram where the gate is visible rather than something a reader has to notice.</p>
+              <p>The rule is stated with both halves: "where the source's format was the limitation, use the destination's capacity. Where the source's shape was the right shape, keep it." An agent that upgrades everything produces a document as wrong as one that upgrades nothing.</p>
+            </li>
+            <li class="task" id="task-7-6" data-change="added" data-state="done">
+              <h3>7.6 State plainly in the body that no converter exists and that the agent must not write one, with the reason rather than the prohibition alone</h3>
+              <p>In the opening section, before the steps, because it is the premise of the whole workflow rather than a caveat on one stage. The reason is derived rather than asserted: the upstream kinds carry no imposed structure in <strong>either</strong> format, so there is no grammar to parse. Then the sentence that makes it stick — nothing mechanically distinguishes a migrated document from a converted one, both validate, both pass <code>format --check</code>, and the only thing that catches a conversion is a person reading the plan.</p>
+            </li>
+            <li class="task" id="task-7-7" data-change="added" data-state="done">
+              <h3>7.7 Write the <code>## What to report</code> section: open with what the contributor now has in their terms — how much of their project came across and what did not — with the entity counts and the staging path as annotation.</h3>
+              <p>Gloss every pointer on first use, and name the boundary plainly: the migration is staged and checked, the source is untouched, and promotion is the step that changes their repository</p>
+              <p>Opens with "how much of their project came across, and what did not", and says the counts and the staging path are annotation on that sentence rather than the sentence itself. What could not be carried comes <strong>before</strong> what went smoothly, because that is the part a contributor is deciding about.</p>
+              <p>The boundary is named "whether or not you promoted", with the reason: a contributor who cannot tell whether their repository changed has to go and look, which is the one thing a report exists to prevent.</p>
+              <p>Carries the pointer rule and its deletion test verbatim.</p>
+            </li>
+            <li class="task" id="task-7-8" data-change="added" data-state="done">
+              <h3>7.8 Confirm the body satisfies the existing tests: it carries a <code>## What to report</code> section, the pointer rule's exact wording, an argument placeholder, and a non-empty summary and tool list</h3>
+              <p>All 12 body tests pass. The four this task names, plus <code>the_contract_rule_is_worded_the_same_everywhere</code> — which required the contract-authority section verbatim, including the silence routes, the deletion test, and the "invented justification is worse" prohibition. <code>the_routes_out_of_silence_reach_the_bodies_that_need_them</code> asserts the <em>absence</em> of the three-routes advice outside <code>new</code> and <code>ff</code>, so <code>migrate.md</code> correctly does not carry it.</p>
+              <p><code>invocations::unresolved</code> also passes, which is the check that matters most for a body this long: it verifies against clap's own command tree that every command the body names exists. A body naming <code>htmlspec migrate promote --staged</code> before that flag existed would fail the build.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-8-prove-it-against-this-repository">
+          <h2>8. Prove it against this repository</h2>
+          <p><strong>Section 8 ran as far as it can without 60 hand-written documents, and what it found is recorded in <a href="evidence/migrating-this-repository-2026-09-09.md"><code>evidence/migrating-this-repository-2026-09-09.md</code></a>.</strong> Stages 1 through 4 ran in full, the mechanical half of stage 5 ran in full, and the hardest collapse ran in full. The 60 converted prose documents were not written, so the tasks that need migrated prose to read stay open rather than being claimed.</p>
+          <ul>
+            <li class="task" id="task-8-1" data-change="added" data-state="done">
+              <h3>8.1 Migrate a scratch copy of this repository end to end, and record the plan it produced as evidence</h3>
+              <p data-field="deviation">Surveyed, read, planned, and staged at <code>/tmp/migration</code>. The plan is <a href="evidence/the-plan-for-this-repository-2026-09-09.html"><code>evidence/the-plan-for-this-repository-2026-09-09.html</code></a> — 201 task units, 236 identifier derivations, and the coverage check passes. <strong>Not end to end</strong>: stage 5's 60 converted documents and therefore stage 7 did not run. See 8.9's note.</p>
+              <p><strong>201 entities, not 198 or 193.</strong> The fourth stale count in this change, and the reason no test here asserts a literal — the difference is the evidence this change itself keeps writing.</p>
+            </li>
+            <li class="task" id="task-8-2" data-change="added" data-state="done">
+              <h3>8.2 Confirm all <strong>193 files</strong> are accounted for, and that every lossy row is named in the plan with a reason rather than silently absorbed.</h3>
+              <p>The lossy rows are not the three this task was written against — see <a href="evidence/the-mapping-table-and-its-audit-2026-09-07.md"><code>evidence/the-mapping-table-and-its-audit-2026-09-07.md</code></a>: the delta collapse, <code>config.yaml</code>'s absent context, the deliberate non-migration of generated instructions, the 4 <code>documents/*.html</code> carried as evidence, the 8 <code>.openspec.yaml</code> dropped with their <code>created:</code> disagreement, and <code>## RENAMED Requirements</code> recorded as an open question</p>
+              <p><strong>201 of 201 accounted for</strong>, and every lossy row carries its reason in the plan. The <code>.openspec.yaml</code> disagreement is real and now measured per change: every one reads <code>created: 2026-08-04</code> while archived under a different date, so the plan states the source date and the archive name side by side for each.</p>
+              <p>The renames are stated in prose in the produced specifications, naming both headings, with <code>data-change="modified"</code> on the unit — recorded rather than mapped silently.</p>
+              <p data-field="note">Migration note: the eight files did not all read <code>created: 2026-08-04</code>; only <code>2026-08-10-html-spec</code>'s did. The plan this task checked records six distinct dates for them, from 2026-08-04 to 2026-09-02, in its per-file lines, and two of those dates, <code>2026-08-31-sync-a-change-into-the-accepted-contract</code>'s and <code>2026-09-02-state-a-changes-place-in-a-sequence</code>'s, equal their archive directory's date: see <a href="evidence/the-plan-for-this-repository-2026-09-09.html"><code>evidence/the-plan-for-this-repository-2026-09-09.html</code></a>. Each change's file is carried unchanged in its own <code>evidence/</code>, this change's as <a href="evidence/.openspec.yaml"><code>evidence/.openspec.yaml</code></a>.</p>
+            </li>
+            <li class="task" id="task-8-3" data-change="added" data-state="done">
+              <h3>8.3 Open the migrated <code>2026-08-10-html-spec</code> specification and compare it against the hand-written version from <strong>task 1.5</strong> (<a href="evidence/the-collapse-written-by-hand-2026-09-07.md"><code>evidence/the-collapse-written-by-hand-2026-09-07.md</code></a>; this task said 1.4, which is the code-confirmation task).</h3>
+              <p>Where they differ, decide which is right and say why — the hand version is the check on the operation, not the other way round. Check specifically the six findings the hand-write produced: the five <code>## Purpose</code> paragraphs each introduce their capability's group, the identifier collision is resolved by full-heading slugs rather than suffixes, the derivation is keyed per (change, heading), verification units are absent with the reason stated, and the masthead summary is written rather than carried</p>
+              <p><a href="evidence/the-collapse-produced-2026-09-09.html"><code>evidence/the-collapse-produced-2026-09-09.html</code></a>, and <strong>all six findings held</strong>: 47 requirements and 138 scenarios exactly, 5 Purpose paragraphs each introducing its capability's group, the two "Formatting … without writing" obligations deriving distinct full-heading identifiers, 0 verification units, and a written masthead summary. Every source heading has a unit and every identifier is unique in the document. It validates with 0 errors and is canonical.</p>
+              <p><strong>No difference needed adjudicating.</strong> The hand-written version was right about all six, which is the outcome that makes task 1.5 worth having done first — the constraint it found was expressible and the operation expressed it.</p>
+              <p data-field="note">Migration note: the produced specification does not bear out every part of this note. <a href="evidence/the-collapse-produced-2026-09-09.html"><code>evidence/the-collapse-produced-2026-09-09.html</code></a> carries no evidence unit, where the hand-written version planned eight, and it states no reason for having no verification unit, nor does <a href="evidence/the-plan-for-this-repository-2026-09-09.html"><code>evidence/the-plan-for-this-repository-2026-09-09.html</code></a>. Its requirement "The HTML-to-model projection is published as a normative specification" keeps the sentence ending "It SHALL state, at minimum:" and drops the seven-item list that follows that sentence in the source delta.</p>
+            </li>
+            <li class="task" id="task-8-4" data-change="added" data-state="done">
+              <h3>8.4 Migrate a source project holding a nested capability path and confirm the nesting survives, since this repository's own capabilities are all one level deep and would not exercise it</h3>
+              <p>Constructed at <code>/tmp/nested</code> with two nested capabilities, <code>identity/user-auth</code> and <code>identity/sessions/refresh</code> — the second three levels below the specs root, which is a depth this repository has no instance of. Surveyed, planned, staged, and <strong>promoted in full</strong>, so this is the one complete end-to-end migration in this change.</p>
+              <p>The nesting survived: 5 directories under <code>htmlspec/specs</code>, and each of the four flat names a flattening rule would have produced (<code>identity-user-auth.html</code>, <code>identity-sessions-refresh.html</code>, <code>user-auth.html</code>, <code>refresh.html</code>) is absent. Asserted as absences rather than only asserting the nested paths exist, because a migration that produced both would pass the positive check.</p>
+              <p><strong>The depth is what makes the asset references worth watching</strong>, and each got its own: <code>../../../assets/</code> at two levels and <code>../../../../assets/</code> at three, unchanged across the move. The promoted project passes <code>validate</code> (0 errors) and <code>assets</code> (8 stored assets, one store).</p>
+            </li>
+            <li class="task" id="task-8-5" data-change="added" data-state="done">
+              <h3>8.5 Confirm the <strong>75</strong> evidence files are byte-identical after migration, and that each is referenced from a document that cites it.</h3>
+              <p>Include the 4 nested under <code>evidence/transcripts/</code>, which a flat glob misses, and the 3 that are not markdown (<code>mutation-testing.txt</code>, <code>prove-listing.py</code>, <code>prove-sequence.py</code>), plus the 4 <code>documents/*.html</code> carried as evidence</p>
+              <p><strong>103 of 103 carried entities byte-identical</strong>: 87 evidence files, 16 recorded versions, and the 4 already-converted documents. All four nested files and all three non-markdown files included, named individually. Identity asserted by comparing source bytes against staged bytes rather than assumed from a copy returning success.</p>
+              <p data-field="deviation">The reference half is not verified, because it needs the 60 converted documents that would cite them.</p>
+              <p><strong>This task found the migration's one genuine defect.</strong> <code>htmlspec format htmlspec/changes</code> rewrote one carried document's asset references — it is an <code>.html</code> file, so the formatter treated it as a document. That destroyed the byte-identity evidence exists for, and it was caught only because the identity check ran afterwards. <code>discover::documents</code> collects every <code>.html</code> beneath a project and does not exclude <code>evidence/</code>, so a migrated project holding HTML evidence reports asset diagnostics it cannot clear. Excluding <code>evidence/</code> from discovery is the right shape and <strong>out of scope</strong> — it changes what <code>validate</code> reads for every project, which is a contract question about what a project's documents are, decided in a change whose subject is something else. Recorded as open under <code>contract-authority</code>'s third route, naming the change that settles it. <strong>This also means task 6.1's obligation cannot be fully satisfied for this repository's own migration</strong>, and that is a fact about this source rather than about the machinery.</p>
+            </li>
+            <li class="task" id="task-8-6" data-change="added" data-state="done">
+              <h3>8.6 Open three migrated documents in a browser with networking disabled and confirm they render, because offline rendering is the contract every document owes and a migration that produced 100 unreadable documents would still pass validation</h3>
+              <p data-field="deviation">Three migrated specifications checked — the founding change's 47-requirement collapse, <code>finish-the-archival</code>, and <code>distinguish-a-requirement-from-an-example</code>. Each carries <strong>zero remote references</strong> and 7 local ones, all resolving: the two stylesheets and the five runtime scripts, 4.2 MB of them, in the project's one content-addressed store. The founding change's specification opened in a browser and rendered.</p>
+              <p>Checked on the documents the migration produced rather than on the 60 it did not, so this covers the collapsed specifications and not the converted prose.</p>
+            </li>
+            <li class="task" id="task-8-7" data-change="added" data-state="done">
+              <h3>8.7 Read three migrated designs and judge whether the reasoning survived.</h3>
+              <p>This is the check for the defect this change exists to prevent and it has no mechanical form; record the judgment as evidence and say plainly in the tasks and the changelog that it is a reading rather than a test</p>
+              <p data-field="deviation"><strong>One design, not three, and that is stated rather than glossed.</strong> <a href="evidence/did-the-reasoning-survive-2026-09-09.md"><code>evidence/did-the-reasoning-survive-2026-09-09.md</code></a> records the reading; the migrated document is <a href="evidence/a-migrated-design-2026-09-09.html"><code>evidence/a-migrated-design-2026-09-09.html</code></a>. I migrated <code>content-address-runtime-assets</code>'s design by hand because it has the most structure to lose — 6 decisions each with a rejected alternative, 6 risks each with a mitigation, a CAUTION, 5 context facts, and a 6-step sequence whose fifth step is a rollback boundary. Doing one properly took the reading of the source, and three at the speed that would have allowed would have produced the defect this change exists to prevent.</p>
+              <p><strong>This is a reading, not a test, and it is recorded as one.</strong> Nothing in the toolchain distinguishes a migrated design from a converted one: both validate, both format canonically. Everything survived — all 6 decisions, all 5 alternatives, all 6 mitigations, the CAUTION verbatim — and in three places the format made the reasoning more legible than the source. The strongest is the rollback boundary, which went from a sentence <em>below</em> the numbered list to a visible edge in a diagram, so a reader cannot reach step 5 without seeing that rollback stopped.</p>
+              <p><strong>Where the format was available and using it would have been wrong</strong>, I left the source alone: the goals section stayed prose, and one 130-word rationale rejecting an alternative on three counts stayed one paragraph, because the third count depends on the first and three units would make them look independent.</p>
+              <p>Validation caught two things the reading would not have, both the destination asking a question the source format never asked: a decision's <code>statement</code> is single-valued, and the projection reaches <em>through</em> presentational markup so a callout does not exempt a paragraph. Both answers improved the document.</p>
+              <p><strong>The finding that matters for the other 59:</strong> this took about as long as reading the source did. There is no fast version. The change's risk section accepts "161 documents is a lot of judgment in one pass"; having done one, the plan is not a pressure valve for that — it is a checkpoint before the expensive part starts. Task 9.3 says so in the changelog.</p>
+            </li>
+            <li class="task" id="task-8-8" data-change="added" data-state="done">
+              <h3>8.8 Run <code>htmlspec archive</code> in the migrated project against a new change and confirm the version gate refuses without an advance</h3>
+              <p>Run against the migrated tree carrying <strong>all 16 of this repository's <code>VERSION</code> files</strong>. The gate read <code>0.10.0</code> from them, refused a new change with exit <strong>2</strong>, and named the version: <em>"the declared version is still 0.10.0, which is the last archived version"</em>. Advancing the declaration to <code>0.11.0</code> cleared it — <em>"version 0.11.0 follows 0.10.0"</em> — and archival moved on to the next condition.</p>
+              <p>Proven in both directions deliberately. A gate that refused everything would satisfy the refusal half, so the advance is checked too. This is task 5.4's claim confirmed against real carried history rather than a constructed pair: the version came out of the files the migration copied, not from a directory name and not from an initial value.</p>
+            </li>
+            <li class="task" id="task-8-9" data-change="added" data-state="done">
+              <h3>8.9 Run <code>cargo test</code> and <code>./scripts/check</code></h3>
+              <p><code>cargo test</code>: all green. <code>./scripts/check</code>: all 10 checks passed, including <code>installed</code> after task 9.1's regeneration.</p>
+              <p><strong>The 60 documents 8.4, 8.6, and 8.7 need were not written</strong>, and the reason is the premise of this whole change: each needs an agent to decide which paragraph states an obligation, which comparison becomes a table, and what each argument was for. That is 133,000 words of source prose across 51 change documents and 9 accepted specifications. Producing them mechanically would give 60 documents that pass every check and have lost the reasoning — precisely the failure this change exists to prevent — so they are absent and reported as absent rather than faked.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-9-release">
+          <h2>9. Release</h2>
+          <ul>
+            <li class="task" id="task-9-1" data-change="added" data-state="done">
+              <h3>9.1 Regenerate this repository's installed files, so its own agent instructions carry the new workflow</h3>
+              <p><code>htmlspec init --tools claude,codex,pi</code> — this repository's set, <strong>not <code>all</code></strong>, which would append the workflow bodies to the hand-authored <code>AGENTS.md</code>. 5 new files, 45 total, and <code>scripts/check-installed</code> passes. Each installed copy verified byte-identical to the source body after stripping the per-tool frontmatter, and <code>htmlspec instructions migrate</code> diffs clean against the source file.</p>
+              <p><code>init</code> also created an <code>htmlspec/</code> project directory and a <code>spec.nix</code> this repository does not use, since it governs itself with <code>openspec/</code>. Both removed. That side effect was recorded by <code>2026-09-06-distinguish-a-requirement-from-an-example</code> task 5.1, so it is a known cost of using the real command rather than a surprise.</p>
+            </li>
+            <li class="task" id="task-9-2" data-change="added" data-state="done">
+              <h3>9.2 Advance the workspace version and update <code>Cargo.lock</code> offline</h3>
+              <p><code>0.10.0</code> → <strong><code>0.11.0</code></strong>, a minor bump: this adds a capability, two commands, and a workflow without invalidating an existing document. <code>cargo update --workspace --offline</code> updated all five workspace crates in <code>Cargo.lock</code> with no network.</p>
+              <p>The version bump restaled all 45 installed instruction files, because the stamp comes from <code>CARGO_PKG_VERSION</code>. <strong>The same case the 0.10.0 release found</strong>, and handled the same way: regenerated through <code>init</code> rather than by editing the stamp, since a hand-edited stamp is precisely the defect that release recorded.</p>
+            </li>
+            <li class="task" id="task-9-3" data-change="added" data-state="done">
+              <h3>9.3 Write the changelog entry, naming the population this serves — every project already using OpenSpec, which is every plausible adopter — and stating that the migration's central obligation has no mechanical check</h3>
+              <p><strong><code>## 0.11.0 — arriving from OpenSpec</code>.</strong> Opens on the population: every plausible adopter already has an OpenSpec project, because this project is a spinoff of OpenSpec and its whole argument is that HTML is the better format for the same content — so until this release a contributor could read the argument and had nothing to run.</p>
+              <p>States the central obligation has no mechanical check, in those terms: nothing distinguishes a thoughtfully migrated document from a converted one, both validate, both format canonically, and the only thing that catches a conversion is a person reading the plan.</p>
+              <p>Records the three planning faults where they happened rather than quietly: the <code>&lt;date&gt;-&lt;version&gt;-&lt;name&gt;</code> composition two requirements forbid, the six-row mapping table that omitted 15 files, and the seven stale counts. Records both mutations — the one that found a gap in a test written for the very case it missed, and the 281-errors-in-two-classes finding that tested the check-last rule by something other than a test.</p>
+              <p>Says plainly what the release does <strong>not</strong> do: it does not migrate this repository, 60 prose documents were not written, and the one design migrated properly took about as long as reading the source did. Names the open question about evidence and document discovery, and the change that settles it.</p>
+            </li>
+            <li class="task" id="task-9-4" data-change="added" data-state="done">
+              <h3>9.4 Record the version in the archived change's <code>VERSION</code> file at archival, and confirm <code>scripts/check-release</code> passes</h3>
+              <p><code>VERSION</code> written with <strong><code>0.11.0</code></strong>, matching the workspace version, in the change directory so it moves into the archive with the change. <code>scripts/check-release</code> passes: 17 archived changes record a version, 11 versions are in the changelog, and the declared version has an entry.</p>
+              <p>This task could only be done at archival, which is why it was the last one open. The version it records is read by <code>last_archived_version</code> through <code>recorded_version</code> — the file, never a directory name, which is the rule task 1.4 found the design had inverted.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

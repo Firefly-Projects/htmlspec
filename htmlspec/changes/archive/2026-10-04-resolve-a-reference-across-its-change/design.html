@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Resolve a reference across its change</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Resolve a reference across its change</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Resolve a reference across its change</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-04-resolve-a-reference-across-its-change/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>See <a href="proposal.html">proposal.md</a> for why. The shape of the current system that the approach depends on:</p>
+          <ul>
+            <li><strong>Resolution reads one projection.</strong> <code>refs::validate</code> in <code>crates/htmlspec-validate/src/rules/refs.rs</code> builds <code>addressable_identifiers</code> from the projection it is given. It reports <code>refs/unresolved</code> for a reference outside that set, and <code>refs/removed-target</code> for one naming a unit the same document marks <code>removed</code>. The message says "no unit in the document declares that identifier".</li>
+            <li><strong>A rule sees a <code>Subject</code>, and nothing else.</strong> <code>Subject</code> (<code>engine.rs:138</code>) holds the projection and the asset store. Its comment says why the store is handed to rules rather than reached for: "a rule that read the filesystem itself could depend on a path that exists on one machine and not another". This change follows the same arrangement. The CLI reads the other documents, and the rule reads sets of identifiers.</li>
+            <li>
+              <p><strong>One CLI function validates.</strong> <code>validate_source</code> (<code>crates/htmlspec-cli/src/commands.rs:209</code>) pairs a document with <code>store_for(path)</code>. Its callers are:</p>
+              <ul>
+                <li><code>validate</code>;</li>
+                <li><code>new document</code> (<code>write_document</code>);</li>
+                <li>archival's gate on the specification;</li>
+                <li><code>sync</code>;</li>
+                <li>promotion's <code>conformance</code>;</li>
+                <li><code>run</code>, through <code>validate_source_at</code>, when it composes a record.</li>
+              </ul>
+              <p><code>store_for</code> walks upward from the document's own directory. It does not start from where the command was pointed, so that naming one file checks what naming its directory would.</p>
+            </li>
+            <li><strong>The layout is derived in one place.</strong> <code>ProjectRoot</code> in <code>crates/htmlspec-cli/src/project.rs</code> owns the positions of <code>specs/</code>, <code>changes/</code>, <code>changes/archive/</code>, and <code>runbooks/</code>. <code>is_change_evidence</code> shows the pattern for a positional question: compare canonical paths against a location the root derives.</li>
+            <li><strong>"The accepted specifications" already has one reader.</strong> <code>merge_state</code> (<code>commands.rs:3545</code>) reads every document <code>discover::documents</code> finds under <code>specs/</code>. Its comment calls an identifier that two of them hold "a fault in those specifications", and it takes either.</li>
+            <li><strong>The model records how a reference was written.</strong> <code>ReferenceOrigin::Attribute</code> means <code>data-refs</code>, and <code>ReferenceOrigin::Link</code> means a same-document fragment (projection specification, section 5). Section 10.1 assigns reference resolution to the validator and not to the projection.</li>
+            <li>
+              <p><strong>Measured</strong> (<a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a>). All 24 changes in the staged migration are archived. Their 56 linking units point at three kinds of target:</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Target</th>
+                    <th>Units</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>the unit's own change's specification</td>
+                    <td>31</td>
+                  </tr>
+                  <tr>
+                    <td>an accepted specification</td>
+                    <td>23</td>
+                  </tr>
+                  <tr>
+                    <td>another change's specification</td>
+                    <td>2</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p>Of the 68 links, 36 point at a unit marked <code>added</code> or <code>modified</code>, and 1 points at a removed unit. Two identifiers are each declared by two accepted specifications.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong></p>
+          <ul>
+            <li>A <code>data-refs</code> entry in one of a change's documents resolves in its change's specification and in the accepted specifications, in a stated order.</li>
+            <li>Where a document sits has one definition. It is derived once, and change 5 can read it.</li>
+            <li>No rule reads a file. A rule is given the identifiers it needs, and nothing more.</li>
+            <li>A loose document, and so every conformance fixture, is untouched. No document that validates today fails afterwards.</li>
+          </ul>
+          <p><strong>Non-Goals:</strong></p>
+          <ul>
+            <li><code>review/*</code> across documents. See decision 8.</li>
+            <li>Checking a plain link to another document. It projects into nothing (projection section 5.1), and giving it meaning is a projection change.</li>
+            <li>References between changes, and references to a change's proposal, design, or tasks.</li>
+            <li>Adding <code>data-refs</code> to tasks at archival. The CLI says a change's specification "is produced at archival, from the completed change", so a task written at <code>new</code> usually has no change specification to reference yet. Whether archival should then add references is a question about the archival instructions.</li>
+            <li>A project-level check that no two accepted specifications declare one identifier.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-decision-1">
+            <h3>1. Three places, tried in order, and the first that declares the identifier wins</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Placement</th>
+                  <th>Where the document sits</th>
+                  <th>Reaches, after itself</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>loose</td>
+                  <td>outside any project; beneath a change's <code>evidence/</code>; anywhere else under <code>htmlspec/</code> the layout does not name</td>
+                  <td>nothing</td>
+                </tr>
+                <tr>
+                  <td>change document</td>
+                  <td>directly within a change's directory, active or archived, and not its <code>specification.html</code></td>
+                  <td>the change's specification, then the accepted specifications</td>
+                </tr>
+                <tr>
+                  <td>change specification</td>
+                  <td><code>specification.html</code> directly within a change's directory</td>
+                  <td>the accepted specifications</td>
+                </tr>
+                <tr>
+                  <td>accepted specification</td>
+                  <td>beneath <code>specs/</code>, at any depth</td>
+                  <td>the other accepted specifications</td>
+                </tr>
+                <tr>
+                  <td>runbook document</td>
+                  <td>beneath <code>runbooks/</code>, including a run's record</td>
+                  <td>nothing</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>A reference resolves in the first place that declares its identifier, and the unit found there is the one it means. <strong>The order matters when two places declare one identifier</strong>, and that happens in two ordinary cases.</p>
+            <ul>
+              <li>A change's specification restates an accepted requirement it modifies under the same identifier. <a href="evidence/the-measurement-2026-09-30.md">The staged migration has 2 links to an accepted requirement whose identifier the linking change's own specification also declares, as <code>modified</code>.</a></li>
+              <li>A change's specification declares a requirement it withdraws, marked <code>removed</code>, while the accepted specification still holds it unchanged until the merge.</li>
+            </ul>
+            <p>In both cases the change's statement is the one its own documents mean, so the change's specification comes before the accepted specifications.</p>
+            <p><strong>Considered: every document in the project is reachable.</strong> This is rejected. A task could then name another change's requirement. The contract relates changes only through "<a href="../../../specs/artifact-kinds/spec.html#req-a-change-states-the-change-it-follows">A change states the change it follows</a>", and that relation is a fact about a whole directory, not a reference. The staged tree has 2 task units that link to another change's specification. Those links stay plain.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> When task 5.3 later gave these 2 units' links as <code>data-refs</code>, both resolved: each identifier they name is also declared by an accepted specification, where those changes' requirements were merged, so each resolves in the accepted specifications, the third place document-schema's "Cross-references address units by identifier" lists. <a href="evidence/the-rule-measured-2026-10-03.md"><code>evidence/the-rule-measured-2026-10-03.md</code></a>, section 5.3, records it.</p>
+            </aside>
+            <p><strong>Considered: the change's specification and nothing more.</strong> This is rejected. <a href="evidence/the-measurement-2026-09-30.md">23 of the 56 staged units link to an accepted specification</a>, and the contract sentence being implemented names accepted specifications already.</p>
+            <p><strong>Considered: the accepted specifications before the change's specification.</strong> This is rejected, because it gets the second case wrong. A task naming a requirement its change withdraws would resolve to the accepted, unchanged copy and pass. <a href="evidence/mutation-testing-2026-10-03.md">Mutation 3 in task 5.4 checks this order.</a></p>
+          </section>
+          <section class="decision" id="decision-only-a-data-refs-entry-reaches-beyond-its-document" data-change="added" data-status="accepted">
+            <h3>2. Only a <code>data-refs</code> entry reaches beyond its document <span class="hs-id">decision-only-a-data-refs-entry-reaches-beyond-its-document</span></h3>
+            <p>A reference whose origin is <code>Link</code> still resolves in its own document only. The same anchor is also in the model's <code>links</code>, where <code>refs/broken-link</code> checks it against the page's element identifiers. So a fragment link to a unit that only another document declares keeps producing both diagnostics, as <code>a_dangling_link_reference_is_reported_like_an_attribute_one</code> pins today.</p>
+            <p data-field="rationale"><strong>Considered: resolving a link reference in the same places.</strong> This is rejected. The model would record a relationship that resolves, while a reader following the link arrives nowhere. The reference would be true and the hyperlink false, and only <code>refs/broken-link</code> would say so.</p>
+          </section>
+          <section id="hs-decision-3">
+            <h3>3. Where a document sits is a type: <code>Placement</code></h3>
+            <p><code>Placement</code> has the five variants of the table, and none carries data. <code>ProjectRoot</code> in <code>project.rs</code> derives it by position, on canonical paths, the way <code>is_change_evidence</code> does. A document that has not been written yet is placed by its parent directory and its file name, because <code>run</code> validates a record it has composed before it writes it, and refuses to write one that fails. The derivation happens once per document, in the CLI, and every rule reads the result.</p>
+            <p>A loose document is one the project's layout does not place. That covers four cases:</p>
+            <ul>
+              <li>There is no project. This is every conformance fixture.</li>
+              <li>The file is beneath a change's evidence. artifact-kinds' "<a href="../../../specs/artifact-kinds/spec.html#req-a-change-s-evidence-is-kept-in-the-change-and-is-not-one-of-its-documents">A change's evidence is kept in the change and is not one of its documents</a>" says evidence is not a document of the project, so a record that is checked by name reaches what it would reach anywhere.</li>
+              <li>The file is directly within <code>changes/archive/</code>, which is not a change.</li>
+              <li>The file is anywhere else under <code>htmlspec/</code> that none of the four places names, such as a subdirectory of a change other than its evidence.</li>
+            </ul>
+            <p><strong>Change 5 reuses this type.</strong> <code>mark-the-words-a-modification-changed</code> allows <code>&lt;ins&gt;</code> and <code>&lt;del&gt;</code> only in a unit marked <code>modified</code> in a change's specification, and "a change's specification" is <code>Placement::ChangeSpecification</code>. So the type is public in <code>htmlspec-validate</code>, and <code>Subject</code> gives it on its own, not only as an input to resolution. A conformance suite can build a subject at any placement without touching the filesystem (decision 4).</p>
+            <p><strong>Considered: take the placement from the declared kind.</strong> This is rejected. A change's specification, an accepted specification, and a runbook's specification all declare <code>specification</code>. The kind says what a document is, not where it sits.</p>
+            <p><strong>Considered: a boolean for "inside a change".</strong> This is rejected. There are five cases, and change 5 needs the specification apart from the change's other documents. <code>AGENTS.md</code> §3 prefers a sum type to a flag.</p>
+            <p><strong>Considered: decide by file name alone.</strong> This is rejected. A runbook also has a <code>specification.html</code>, and so could a change's evidence.</p>
+          </section>
+          <section id="hs-decision-4">
+            <h3>4. Rules read sets, and the CLI reads files</h3>
+            <p>The types go in a new module of <code>htmlspec-validate</code>, re-exported from <code>lib.rs</code>:</p>
+            <pre><code>pub enum Placement { Loose, ChangeDocument, ChangeSpecification, AcceptedSpecification, RunbookDocument }
+
+/// A place beyond a document that its references can reach.
+pub enum Place { ChangeSpecification, AcceptedSpecifications }
+
+impl Placement {
+    /// The places this placement reaches after the document itself, in the order they are tried.
+    pub const fn reaches(self) -&gt; &amp;'static [Place];
+}
+
+/// What one place declares, as far as resolving a reference needs to know.
+pub struct Declared { units: BTreeSet&lt;String&gt;, withdrawn: BTreeSet&lt;String&gt;, unread: Vec&lt;Unread&gt; }
+pub struct Unread { pub document: String, pub reason: String }
+
+/// A document's placement, and what each place it reaches declares.
+pub struct Scope { placement: Placement, places: Vec&lt;(Place, Declared)&gt; }
+
+impl Scope {
+    pub fn loose() -&gt; Self;
+    pub fn gather(placement: Placement, declared: impl FnMut(Place) -&gt; Declared) -&gt; Self;
+    pub fn placement(&amp;self) -&gt; Placement;
+}</code></pre>
+            <ul>
+              <li><code>Scope::gather</code> calls <code>declared</code> once for each place that <code>placement.reaches()</code> names, in that order. So the CLI cannot supply a place the placement does not reach, and it cannot leave one out. The order is stated once, in <code>reaches</code>, which is pure and is tested without I/O.</li>
+              <li><code>Declared</code> is built in the same crate, from projections the CLI parsed. It takes each unit's identifier, and it marks as withdrawn each unit whose change state is the schema's "removed" value. That value is found the way <code>refs::removed_state</code> finds it today. So the CLI never names a change state, and a figure identifier, which can never be a reference target, is never gathered.</li>
+              <li><code>Subject</code> gains <code>scope: &amp;Scope</code> and a <code>placement()</code> accessor. <code>engine::run</code> takes the scope beside the store. Every loose caller passes <code>Scope::loose()</code>: the conformance harness, the template test, the <code>validate_file</code> example, and the rule tests.</li>
+              <li>In the CLI, <code>validate_source</code> takes the document's path and derives both the store and the scope from it. No caller can then pair a document with another document's surroundings, or forget the scope. The documents it reads are cached for the run. A whole-project <code>validate</code> reads each accepted specification once, and each change's specification once, and does not read them again for every document.</li>
+            </ul>
+            <p><strong>Considered: give rules a filesystem handle.</strong> This is rejected, for the reason <code>Subject</code>'s own comment gives for the store.</p>
+            <p><strong>Considered: one flat set of every identifier in the project.</strong> This is rejected. It loses the order and the withdrawn state of each place, and decision 1 needs both.</p>
+            <p><strong>Considered: carry the scope inside <code>Store</code>.</strong> This is rejected. The store is about bytes, and the asset rules are scoped by it alone. Putting references into it would let an asset rule see them.</p>
+          </section>
+          <section class="decision" id="decision-every-accepted-specification-is-reachable-from-a-change-s-documents-and-from-each-other" data-change="added" data-status="accepted">
+            <h3>5. Every accepted specification is reachable, from a change's documents and from each other <span class="hs-id">decision-every-accepted-specification-is-reachable-from-a-change-s-documents-and-from-each-other</span></h3>
+            <p>"The accepted specifications" means the documents <code>merge_state</code> already reads: every document that discovery finds under <code>specs/</code>. One function answers this for both, so <code>sync</code> and validation cannot disagree about which documents are the accepted contract. An accepted specification reaches the others and not itself, because the first place already covers it. That also means validation reads the document as it was given, not a copy on disk.</p>
+            <p data-field="rationale"><strong>Considered: an accepted specification reaches only itself.</strong> This is rejected. A reference names a unit and never a capability, and the merge puts each requirement in the accepted specification for its capability. So a verification whose reference resolved in its change's specification could stop resolving once the merge split the two units between two capabilities. The merge would then have to avoid creating a fault it cannot see.</p>
+            <p data-field="rationale"><strong>Considered: only the accepted specification of the capability a change touches.</strong> This is rejected. A reference carries no capability, so the program would have to guess one.</p>
+          </section>
+          <section class="decision" id="decision-an-archived-change-reaches-what-an-active-one-does" data-change="added" data-status="accepted">
+            <h3>6. An archived change reaches what an active one does <span class="hs-id">decision-an-archived-change-reaches-what-an-active-one-does</span></h3>
+            <p data-field="note"><strong>Confirmed by the contributor on 2026-10-01</strong>, with the risk below accepted.</p>
+            <p>A document directly within <code>changes/archive/&lt;dated-name&gt;/</code> is placed exactly as one directly within <code>changes/&lt;name&gt;/</code>. It reaches its own change's specification, then the accepted specifications.</p>
+            <p data-field="rationale"><strong>Considered: an archived change does not reach the accepted specifications.</strong> The archive is history, and the accepted contract keeps moving after a change is archived. This is rejected all the same. Archival moves a directory. Under this alternative, every task that referenced an accepted requirement would be valid the moment before archival and invalid the moment after, and <code>validate</code> would fail on the archive the day it was written. A rule that makes a valid change invalid by moving it is worse than the risk it avoids, which is recorded below.</p>
+            <p data-field="rationale"><a href="evidence/the-measurement-2026-09-30.md">All 24 staged changes are archived, and 23 of their units link to an accepted specification.</a></p>
+          </section>
+          <section class="decision" id="decision-a-withdrawn-unit-is-withdrawn-wherever-the-reference-finds-it" data-change="added" data-status="accepted" data-refs="scenario-cross-references-address-units-by-identifier-reference-to-a-removed-requirement scenario-cross-references-must-resolve-reference-to-a-removed-requirement">
+            <h3>7. A withdrawn unit is withdrawn wherever the reference finds it <span class="hs-id">decision-a-withdrawn-unit-is-withdrawn-wherever-the-reference-finds-it</span></h3>
+            <p><code>REMOVED_TARGET</code> is applied in the place that resolves the reference, not only in the document that makes it. The accepted scenarios already describe this case. document-schema's "<a href="specification.html#scenario-cross-references-address-units-by-identifier-reference-to-a-removed-requirement">Reference to a removed requirement</a>" and <a href="specification.html#scenario-cross-references-must-resolve-reference-to-a-removed-requirement">document-validation's scenario of the same name</a> each have a task referencing a removed requirement. A task and a requirement rarely share a document, so until now those scenarios mostly described a case the rule could not reach.</p>
+            <p data-field="note"><a href="evidence/the-measurement-2026-09-30.md">The cost is measured.</a> One staged task links to a removed scenario: task 5.1 of <code>2026-08-21-distinguish-command-names-from-skill-names</code>, "Withdraw the … scenario". That link cannot become a <code>data-refs</code> entry.</p>
+            <p data-field="rationale"><strong>Considered: exempt a cross-document reference from the rule.</strong> This is rejected. It contradicts both scenarios, and a task that claims to implement a withdrawn requirement would pass.</p>
+            <p data-field="rationale"><strong>Considered: exempt a task that withdraws what it references.</strong> This is rejected. A reference says only "relates to". The model has no way to say "withdraws", and adding one is vocabulary.</p>
+          </section>
+          <section id="hs-decision-8">
+            <h3>8. Review warnings stay within one document</h3>
+            <p><code>review/stale-reference</code> and <code>review/stale-verification</code> keep reading <code>subject.projection</code> alone. Of the 68 staged links, 36 point at a unit marked <code>added</code> or <code>modified</code>. What a change's tasks serve is what the change adds and modifies, so reaching across documents would warn on nearly every reference that follows the template's advice. <a href="evidence/the-measurement-2026-09-30.md">The staged tree already carries 317 <code>review/stale-reference</code> warnings from references within one document.</a></p>
+            <p>The asymmetry this leaves is recorded as not in this change: a reference within one document to an <code>added</code> unit warns, and the same reference from a task to its change's specification does not.</p>
+          </section>
+          <section id="hs-decision-9">
+            <h3>9. An identifier two accepted specifications declare still resolves</h3>
+            <p>This follows <code>merge_state</code>, which takes either. The staged migration holds two such identifiers, both scenarios. Reporting them per document would blame the referencing document for a fault it does not contain and cannot fix, because a <code>data-refs</code> entry cannot name a capability. Where the accepted place holds more than one unit with the identifier, the reference is withdrawn if any of them is marked <code>removed</code>. <a href="evidence/the-measurement-2026-09-30.md">All 726 staged accepted units are unchanged</a>, so this does not arise today.</p>
+          </section>
+          <section class="decision" id="decision-a-document-that-cannot-be-read-declares-nothing-a-reference-can-rely-on" data-change="added" data-status="accepted">
+            <h3>10. A document that cannot be read declares nothing a reference can rely on <span class="hs-id">decision-a-document-that-cannot-be-read-declares-nothing-a-reference-can-rely-on</span></h3>
+            <p>A reachable document that cannot be read, or whose parse recovered, goes into <code>Declared::unread</code> with its path and the reason. It is not treated as an empty set. When a reference resolves nowhere and a place it reached has an unread document, the report names that document. A change with no <code>specification.html</code> is not unread: that place declares nothing, which is what a change in progress looks like.</p>
+            <p data-field="rationale"><strong>Considered: an empty set.</strong> This is rejected. It is an in-band sentinel, and the report would say that no unit declares the identifier, which sends the author to add a unit that may already exist.</p>
+            <p data-field="rationale"><strong>Considered: fail the whole run.</strong> This is rejected. One unreadable specification would stop <code>validate</code> from reporting on every other document in the project. The document itself is still reported when it is validated.</p>
+          </section>
+          <section id="hs-decision-11">
+            <h3>11. The report says where it looked</h3>
+            <p>The rule identifier stays <code>refs/unresolved</code>. The message names the places searched, taken from the scope, for example: "no unit in this document, in its change's specification, or in the accepted specifications declares that identifier". A loose document keeps today's message word for word. The conformance fixtures pin rule identifiers, not messages, so none of them changes.</p>
+          </section>
+          <section id="hs-decision-12">
+            <h3>12. No document that validates today fails afterwards</h3>
+            <p>The first place is always the document itself. A reference that resolves there resolves to the same unit it did before, and meets the same withdrawal check. A reference that failed before either resolves now or is reported as <code>refs/removed-target</code>, which is still an error. <code>review/*</code> is unchanged. So validation only moves from failing to passing. Task 5.2 checks this on real data: the staged tree must give exactly its current result, <a href="evidence/the-measurement-2026-09-30.md">109 documents, 0 errors, and 781 warnings</a>.</p>
+          </section>
+          <section id="hs-decision-13">
+            <h3>13. The prose that stated the old rule</h3>
+            <p>The following change:</p>
+            <ul>
+              <li><code>assets/template-tasks.html:40</code> becomes: "A task in a change may reference the requirement it serves with <code>data-refs</code>, once that requirement exists in the change's specification or in the project's accepted specifications." "In a change" keeps the note true when the template is used for a runbook's tasks.</li>
+              <li><code>new.md</code>, section "The tasks", gains the same fact in one sentence.</li>
+              <li>The <code>run</code> help text in <code>main.rs</code> changes to say that a reference from a runbook's documents resolves within that document.</li>
+              <li>In <code>runs.rs</code>, the module comment changes, and so do the two sentences that it writes into every new record.</li>
+            </ul>
+            <p>The following stay:</p>
+            <ul>
+              <li>The <code>FOLLOWS</code> comment in <code>project.rs</code> stays, because a change is not a unit and the comment is still true.</li>
+              <li>Records already written keep their sentence. It is still true of a record, and a record is history.</li>
+              <li>The note on the <code>valid-runbook-run-record</code> fixture in <code>generate_fixtures.rs</code> stays for the same reason. Leaving it means the generator, which deletes four hand-written fixtures when it runs, does not have to run.</li>
+            </ul>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>[A later change withdraws an accepted requirement that an archived change's document references.]</strong> → <code>validate</code> then reports that archived reference as unresolved, and the change doing the withdrawing has to edit the archived document. That is loud and not silent, and it happens before the withdrawing change can pass the project's checks. <a href="evidence/the-measurement-2026-09-30.md">It is rare: one of this project's 24 archived changes withdrew a requirement.</a> Whether an archived reference should resolve against the contract as it stood at archival is not in this change.</li>
+            <li><strong>[Reading other documents costs time.]</strong> → Each one is read once per run (decision 4). <a href="evidence/the-measurement-2026-09-30.md">The staged tree takes 19.2 seconds to validate today.</a> Task 5.2 measures it again, and an increase worth acting on is recorded there.</li>
+            <li><strong>[A task that withdraws a requirement cannot reference it.]</strong> → <a href="evidence/the-measurement-2026-09-30.md">Measured at 1 of 68 staged links.</a> It can link to the requirement or name it in prose, as it does today.</li>
+            <li><strong>[Placement and the store walk disagree at a repository boundary.]</strong> → <code>ProjectRoot::resolve</code> stops at <code>.git</code> and <code>store_for</code> does not. A document in a nested repository inside a project is therefore loose, while it still sits in the outer project's store. That is the boundary <code>ProjectRoot</code> exists to keep, and resolution staying inside it is the safer direction.</li>
+            <li><strong>[Messages change.]</strong> → Rule identifiers and severities do not. Fixtures and consumers that match on the rule are unaffected. A loose document's message is unchanged.</li>
+            <li><strong>[Change 5 depends on the variant names.]</strong> → They are this design's table. Renaming one is a change to both designs, and the compiler reports every use.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p><strong>The contract version stays at <code>0.3.0</code></strong>, the version <code>reject-change-markup-inside-a-unit</code> set. <a href="evidence/the-measurement-repeated-2026-10-03.md">This design first said <code>0.2.0</code>, because it was written before that change landed.</a> The <code>crates/htmlspec-schema/CHANGELOG.md</code> table versions the schema, the projection specification, and the fixtures that pin the mapping. It moves on a unit, field, or projection rule. This change adds none of those. It adds no attribute and no model field, and the projection is untouched. Section 10.1 of that specification names reference resolution as a validator rule. The change goes in the compatible direction: a document that failed can now pass, and no document that passed can fail (decision 12). That is the direction the table calls minor, but nothing it versions has moved, so no entry is added. <code>keep-evidence-out-of-document-discovery</code> made the same call when it changed what <code>validate</code> checks and left the schema alone.</p>
+          <p><strong>The release is expected to be <code>0.22.0</code></strong>, the next minor increment after changes 1 to 3. It changes what <code>validate</code> accepts, and it adds no breaking command surface. The contributor confirms the increment at the release task.</p>
+          <p>Rollback is a revert. A document that adopted a <code>data-refs</code> entry across documents fails <code>refs/unresolved</code> on the older toolchain. The failure is loud, and it names the entry.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Pass the description through</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Pass the description through</h1>
+        <p>This change made <em>Bootstrapping installs agent instructions for the tools a project uses</em> require that whatever a contributor types after a workflow's invocation reaches the agent that performs the workflow, in the kinds of file a tool invokes and in no kind that carries no invocation. It made what a workflow takes a declaration belonging to that workflow, required that an absent argument reach the agent as absent, distinguishable from one lost in delivery, and that a workflow stay invocable with none, and required both the declaration and the delivery to be checked against the files the operation produces.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Pass the description through</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-24-pass-the-description-through/specs/project-bootstrap/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-project-bootstrap">project-bootstrap</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-project-bootstrap">
+          <h2>project-bootstrap</h2>
+          <section class="requirement" id="req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses" data-change="modified">
+            <h3>Bootstrapping installs agent instructions for the tools a project uses <span class="hs-id">req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses</span></h3>
+            <p>The bootstrap operation SHALL install, for each selected AI coding tool, the instructions that tool needs to drive the HTMLSpec workflow. Where a tool supports invocable commands, the operation SHALL install those as well as the instructions.</p>
+            <p>The instructions SHALL cover the project's lifecycle from an idea to an archived change, rather than a single stage of it. A contributor who has bootstrapped a project and lists what was installed SHALL find the stage they are at. Instructions covering only the final stage leave every earlier stage to be improvised, which is the case the project's own contract for artifact kinds exists to prevent.</p>
+            <p>A workflow SHALL be installed whether or not a command performs it. Archival is already agent-driven — the program checks a specification it does not produce — so a stage whose work is judgment is the ordinary case rather than the exception.</p>
+            <p>An installed workflow's instructions SHALL NOT name a command the program does not provide, and this SHALL be checked mechanically rather than by review. Naming an absent command sends an agent to an error, and it is the hazard that a rule limiting how many workflows are installed was attempting to avoid.</p>
+            <p>The set of supported tools SHALL be data rather than logic, so that supporting an additional tool is an entry in that set. The set of workflows SHALL likewise be data, so that covering an additional stage is an entry in that set together with its instructions.</p>
+            <p>The order of the workflows SHALL be the order the lifecycle moves through them, because instructions written into a shared file are presented in that order and a reader meets them as a document.</p>
+            <p>How a tool receives instructions SHALL be a property of the tool with one value per tool, rather than a combination of independent settings. A tool for which no instructions could be written is a state the program SHALL NOT be able to reach.</p>
+            <p>Instructions SHALL record the version of the program that generated them, so an installation predating the instructions it should carry is identifiable.</p>
+            <ins>
+              <p>Where a workflow is reached through an invocation, whatever a contributor types after that invocation SHALL reach the agent that performs the workflow. An invocation surface that accepts text and discards it makes the workflow ask for what it was already given, which is the failure a contributor experiences as being asked twice. This obligation reaches the kinds of file a tool invokes and SHALL NOT reach a kind that carries no invocation, because there is no argument to pass where there is nothing to type.</p>
+            </ins>
+            <ins>
+              <p>What a workflow takes SHALL be declared alongside the workflow, and SHALL be a property of that workflow rather than one description shared by all of them. Workflows differ in their input — one begins from a description of work that does not exist, another acts on a change already present — so a shared declaration describes none of them accurately.</p>
+            </ins>
+            <ins>
+              <p>An absent argument SHALL reach the agent as absent rather than as an error, and a workflow SHALL remain invocable with no argument at all. Where nothing was typed, the workflow's own guidance on a missing input applies; a surface that rejected a bare invocation would remove the behavior that is correct when a contributor has genuinely described nothing. An agent SHALL be able to distinguish an argument that was not supplied from one that was lost in delivery, because an agent that suspects the latter asks again for what it was sent.</p>
+            </ins>
+            <ins>
+              <p>An argument's declaration and its delivery SHALL both be checked against the files the operation produces, rather than against the values they derive from. Each is assembled when a file is written, so a check over the inputs passes while a writer that omitted one ships.</p>
+            </ins>
+            <p>Every generated file's declared name SHALL be composed only of lowercase letters, digits, and hyphens, because a tool that reads it may reject any other character. This SHALL hold for each kind of file the operation writes, and SHALL be checked against the files produced rather than against the values they are derived from — a name is assembled at the moment of writing, so a fault introduced there is invisible to a check on the inputs.</p>
+            <p>A generated name SHALL NOT be the invocation a contributor types. The invocation is a property of a tool's command surface, it differs per tool, and it SHALL have one producer; a name field holding it states that fact a second time and states it where a stricter reader rejects it. The name SHALL instead identify the workflow, so that a workflow has one generated identity rather than one per file kind.</p>
+            <p>No two files the operation writes for one tool SHALL declare the same name. A declared name is a registry key for the tool that loads it, so a workflow's identity SHALL be declared once within a tool rather than repeated in each kind of file the workflow produces — a second declaration presents one workflow as two. Where a kind of file does not need a name in order to be found, the operation SHALL NOT write one; a command whose invocation is determined by its file path is such a kind. The same name appearing in two different tools' files is not a repeat, because each tool's namespace is its own.</p>
+            <p data-field="note">Migration note: as built, the region written into a shared file is assembled from the same instruction bodies as the files a tool invokes (<code>write_region</code> in <code>crates/htmlspec-cli/src/install.rs</code> appends each workflow's body), so each workflow's section in that file carries the <code>## What you were asked</code> heading and an unsubstituted <code>$ARGUMENTS</code>. The file declares no argument, as <em>A delivery kind with no invocation</em> states. That is so at commit <code>4f2f3e7</code> and still at <code>139b206</code>, and no document of this change mentions it. The placeholder reaches a kind that carries no invocation, which this requirement says the obligation SHALL NOT reach, and nothing records it as chosen, so it is a defect still in the product.</p>
+            <article class="scenario" id="scenario-installing-for-a-tool-with-commands" data-change="unchanged">
+              <h4>Installing for a tool with commands</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions for a tool that supports invocable commands</dd>
+                <dt>Then</dt>
+                <dd>both the instructions and the commands are written where that tool reads them, one of each per workflow</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-installing-for-a-tool-without-commands" data-change="unchanged">
+              <h4>Installing for a tool without commands</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions for a tool that supports instructions only</dd>
+                <dt>Then</dt>
+                <dd>the instructions are written and no command files are created</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-selected-tool-receives-something" data-change="unchanged">
+              <h4>Every selected tool receives something</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation completes for any selected tool</dd>
+                <dt>Then</dt>
+                <dd>that tool has received instructions, because a selected tool that receives nothing is not a representable outcome</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-lifecycle-is-covered" data-change="unchanged">
+              <h4>The lifecycle is covered</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor lists the workflows installed by the bootstrap operation</dd>
+                <dt>Then</dt>
+                <dd>the stages from exploring an idea through to archiving a completed change are each named</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-workflow-with-no-command-behind-it" data-change="unchanged">
+              <h4>A workflow with no command behind it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a stage of the lifecycle that no command performs</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions</dd>
+                <dt>Then</dt>
+                <dd>that stage's instructions are installed, and they state that the work is the agent's</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-instructions-naming-an-absent-command" data-change="unchanged">
+              <h4>Instructions naming an absent command</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an installed workflow's instructions name an invocation the program does not provide</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks report it, rather than the invocation reaching a contributor</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-workflows-are-presented-in-lifecycle-order" data-change="unchanged">
+              <h4>Workflows are presented in lifecycle order</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>instructions for every workflow are written into one shared file</dd>
+                <dt>Then</dt>
+                <dd>they appear in the order the lifecycle moves through them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-generated-instructions-name-their-version" data-change="unchanged">
+              <h4>Generated instructions name their version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>instructions are installed</dd>
+                <dt>Then</dt>
+                <dd>they record the version of the program that generated them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-invocation-carrying-a-description" data-change="added">
+              <h4>An invocation carrying a description</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes a workflow and types a description of the work after it</dd>
+                <dt>Then</dt>
+                <dd>that description reaches the agent, which acts on it rather than asking what the work is</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-invocation-carrying-nothing" data-change="added">
+              <h4>An invocation carrying nothing</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes a workflow and types nothing after it</dd>
+                <dt>Then</dt>
+                <dd>the workflow runs, the agent observes that no input was supplied, and its guidance for a missing input applies</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-workflow-declares-what-it-takes" data-change="added">
+              <h4>A workflow declares what it takes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs a workflow whose input differs from another's</dd>
+                <dt>Then</dt>
+                <dd>the file it writes declares that workflow's own input rather than a description shared across workflows</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-delivery-kind-with-no-invocation" data-change="added">
+              <h4>A delivery kind with no invocation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>instructions are written into a shared file that no contributor invokes</dd>
+                <dt>Then</dt>
+                <dd>no argument is declared, because there is no invocation to carry one</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-dropped-argument-is-caught-before-release" data-change="added">
+              <h4>A dropped argument is caught before release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operation would write a file that declares an argument its body never consumes, or consumes one it never declares</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks report it against the produced file, rather than a contributor's description being discarded at invocation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-generated-name-is-loadable" data-change="unchanged">
+              <h4>Every generated name is loadable</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs for every supported tool</dd>
+                <dt>Then</dt>
+                <dd>every file it writes declares a name of lowercase letters, digits, and hyphens only</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-name-that-is-not-an-invocation" data-change="unchanged">
+              <h4>A name that is not an invocation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a command file is generated for a tool whose invocation carries a character outside that set</dd>
+                <dt>Then</dt>
+                <dd>the file's declared name identifies the workflow and does not carry the invocation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-workflow-is-listed-once-per-tool" data-change="unchanged">
+              <h4>A workflow is listed once per tool</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a workflow produces both instructions and a command for one tool</dd>
+                <dt>Then</dt>
+                <dd>the workflow's name is declared once across the two, so a contributor listing what is installed finds the workflow once rather than twice</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-repeated-name-is-caught-before-release" data-change="unchanged">
+              <h4>A repeated name is caught before release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation would write the same name into two files one tool loads</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks report it, rather than a contributor meeting a doubled listing when their tool loads them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-malformed-name-is-caught-before-release" data-change="unchanged">
+              <h4>A malformed name is caught before release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a workflow is added whose identity carries a character outside that set</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks report it, rather than a contributor meeting it when their tool loads the file</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each unit below, in this section and in Verification, summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links, and the record is the authority.</p>
+          </aside>
+          <section class="evidence" id="evidence-the-loss-2026-08-22" data-change="added" data-refs="req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses">
+            <h3>Where a contributor's description is lost <span class="hs-id">evidence-the-loss-2026-08-22</span></h3>
+            <p>Section 1, recorded before anything was changed: <code>grep -rc 'ARGUMENTS'</code> returns 0 in every installed file under <code>.claude</code>, <code>.codex</code>, and <code>.pi</code>, and 0 in every body under <code>crates/htmlspec-assets/instructions/</code>. <code>write_skills</code> (<code>install.rs:88</code>) emits <code>name, description, allowed-tools, license, metadata.generatedBy</code>, <code>write_commands</code> (<code>:124</code>) emits <code>description, allowed-tools, generatedBy</code>, neither writes <code>argument-hint</code>, and <code>write_region</code> (<code>:174</code>) has no invocation. Claude Code's example plugin carries <code>argument-hint</code> and <code>$ARGUMENTS</code> in both its command and its skill form, and a Codex plugin command branches on <code>$ARGUMENTS</code>, so two of the four tools with a command surface are confirmed to substitute and Cursor and Pi are not. <code>install.rs</code> and <code>tests/cli.rs</code> hold 0 occurrences of <code>argument-hint</code> or <code>ARGUMENTS</code>. <a href="evidence/the-loss-2026-08-22.md"><code>evidence/the-loss-2026-08-22.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-checks-failing-2026-08-22" data-change="added" data-refs="req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses">
+            <h3>Both checks observed failing before the repair <span class="hs-id">evidence-the-checks-failing-2026-08-22</span></h3>
+            <p>Task 5.3, both new tests run against the unrepaired tree. <code>every_workflow_declares_an_optional_argument</code> failed on <code>explore</code>, the first workflow in lifecycle order, because its body never substitutes <code>$ARGUMENTS</code>. <code>every_invocable_file_declares_and_consumes_an_argument</code> reported 49 missing declarations and 49 missing substitutions, one pair per invocable file: Claude Code 14, Codex 7, Cursor 14, and Pi 14. <code>AGENTS.md</code> appears nowhere in the output, by construction, because <code>Installed.regions</code> is a separate field from <code>skills</code> and <code>commands</code> (task 5.4). The record notes that 0.3.0 shipped with all 49 files missing both halves and a fully green suite. <a href="evidence/the-checks-failing-2026-08-22.md"><code>evidence/the-checks-failing-2026-08-22.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-pi-substitutes-2026-08-24" data-change="added" data-refs="req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses">
+            <h3>The description reaches the agent, run on Pi <span class="hs-id">evidence-pi-substitutes-2026-08-24</span></h3>
+            <p>Tasks 6.2, 6.3, and 6.6, run in Pi against the installed <code>htmlspec 0.4.0</code>: <code>/htmlspec-new</code> followed by the tally-mark description created <code>htmlspec/changes/add-tally-counters/</code> on the first exchange, with no exchange spent asking what the work was. Pi showed no literal <code>$ARGUMENTS</code>, so Pi substitutes, and Cursor remains unobserved. The proposal it wrote mentions "two tabs" 2 times, "Stats tab" 7 times, and "stats" 8 times, and the worked example <code>new.md</code> ships has no stats tab and no tab structure. The record notes that the derived name <code>add-tally-counters</code> is identical to the example's, so only the document body settles where the content came from. It also files a separate defect in the report's register rather than folding it in. <a href="evidence/pi-substitutes-2026-08-24.md"><code>evidence/pi-substitutes-2026-08-24.md</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-an-invocation-carrying-a-description" data-change="added" data-outcome="passed" data-refs="scenario-an-invocation-carrying-a-description">
+            <h3>The tally-mark description, run through <code>/htmlspec-new</code> on Pi <span class="hs-id">verify-an-invocation-carrying-a-description</span></h3>
+            <p data-field="method">A live run in Pi, in <code>~/projects/toy_project</code>, against the installed <code>htmlspec 0.4.0</code>, so the binary and the instructions came from one version: the <code>new</code> workflow invoked as <code>/htmlspec-new</code>, with the recorded tally-mark description typed after it.</p>
+            <p>The record shows the change <code>htmlspec/changes/add-tally-counters/</code> created on the first exchange, with no exchange spent asking what the work was, and a proposal whose two tabs and Stats tab came from the description rather than from the worked example the body ships (<a href="evidence/pi-substitutes-2026-08-24.md"><code>evidence/pi-substitutes-2026-08-24.md</code></a>).</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

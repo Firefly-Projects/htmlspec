@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Distinguish command names from skill names</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Distinguish command names from skill names</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Distinguish command names from skill names</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-21-distinguish-command-names-from-skill-names/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><a href="evidence/duplicate-identity-2026-08-20.md">A Pi session load lists fourteen html-spec entries for seven workflows</a>:</p>
+          <pre><code>- htmlspec-apply-change      - htmlspec:apply
+- htmlspec-archive-change    - htmlspec:archive
+… five more …                … five more …</code></pre>
+          <p><strong>This is a regression the previous change introduced.</strong> <code>conform-generated-frontmatter-names</code> found <code>write_commands</code> writing <code>tool.invocation(workflow.name)</code> into <code>name:</code> — producing <code>/htmlspec:apply</code>, malformed under a loader's lowercase-digits-hyphens rule — and changed it to <code>workflow.directory</code>. <a href="evidence/duplicate-identity-2026-08-20.md">That is the same value <code>write_skills</code> writes.</a> The old value was malformed but <strong>distinct</strong>; the new one is well-formed but <strong>duplicated</strong>.</p>
+          <p>For every tool receiving both skills and commands, the two files now declare one name:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Tool</th>
+                <th>Skills</th>
+                <th>Commands</th>
+                <th>Names in common</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Claude Code</td>
+                <td><code>.claude/skills</code></td>
+                <td><code>.claude/commands/htmlspec</code></td>
+                <td>all 7</td>
+              </tr>
+              <tr>
+                <td>Cursor</td>
+                <td><code>.cursor/skills</code></td>
+                <td><code>.cursor/commands</code></td>
+                <td>all 7</td>
+              </tr>
+              <tr>
+                <td>Pi</td>
+                <td><code>.pi/skills</code></td>
+                <td><code>.pi/prompts</code></td>
+                <td>all 7</td>
+              </tr>
+            </tbody>
+          </table>
+          <p><a href="evidence/duplicate-identity-2026-08-20.md">21 files across three tools, 14 of them checked into this repository.</a> Codex is untouched — <code>SkillsOnly</code>, so there is no second file to collide with.</p>
+          <p><strong>The previous change stated the duplication as a requirement</strong>, which is why no test caught it:</p>
+          <blockquote>
+            <h4>Scenario: One identity per workflow</h4>
+            <ul>
+              <li><strong>WHEN</strong> a workflow produces both instructions and a command for one tool</li>
+              <li><strong>THEN</strong> both declare the same name</li>
+            </ul>
+          </blockquote>
+          <p>That scenario passes. It is also the defect. "One identity per workflow" is the right idea about a workflow's <em>meaning</em> and the wrong rule for a <code>name:</code> field, because a loader uses that field as a registry key and two files claiming one key is a collision. The scenario described the mechanism instead of the obligation, and got the mechanism wrong.</p>
+          <p><strong>A command file does not need the field at all.</strong> The vendored <code>opsx</code> sets in this repository disagree about it, and both load:</p>
+          <pre><code>.claude/commands/opsx/apply.md      name: "OPSX: Apply"
+.pi/prompts/opsx-apply.md           (no name: field)</code></pre>
+          <p><a href="evidence/duplicate-identity-2026-08-20.md">All ten <code>.pi/prompts/opsx-*.md</code> omit <code>name:</code> and work</a>, which is the same evidence the previous change already relied on from the other direction: the <strong>file path</strong> determines the invocation. It verified that renaming the field did not change what a contributor types. The corollary it did not draw is that a field which does not determine the invocation, and which a working installation omits, is not a field worth risking a collision to populate.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong>A command file stops declaring a skill's name.</strong> <code>write_commands</code> no longer writes a <code>name:</code> that duplicates the skill file's. The invocation stays determined by the file path, as it already is and as the previous change proved by loading.</li>
+            <li><strong>The colliding scenario is replaced.</strong> <code>project-bootstrap</code>'s "<a href="specification.html#scenario-one-identity-per-workflow">One identity per workflow</a>" scenario is withdrawn and replaced by one requiring that no two generated files in a tool's namespace declare the same name. This is a withdrawal, not a rewording: the old scenario is satisfiable only by the behavior being removed.</li>
+            <li><strong>A test asserting distinctness.</strong> <code>every_generated_name_is_loadable</code> checks each name's characters and passes today, because both duplicates are well-formed. <a href="evidence/failing-distinctness-check-2026-08-20.md">A second check collects every name a single tool receives across both file kinds and fails on a repeat</a> — which is the property the character check cannot see.</li>
+            <li><a href="evidence/loading-after-omission-2026-08-20.md"><strong>This repository's own 14 files are regenerated</strong></a>, dropping the duplicate entries from the session load that reported this.</li>
+          </ul>
+        </section>
+        <section id="hs-non-goals">
+          <h2>Non-Goals</h2>
+          <ul>
+            <li><strong>Changing what a contributor types.</strong> <code>/htmlspec:apply</code>, <code>$htmlspec-apply</code>, and <code>/htmlspec-apply</code> are unchanged, for the same reason as last time: the file names carry them, and <a href="evidence/loading-after-omission-2026-08-20.md"><code>report_next_command</code> remains the one producer of the spelling</a>.</li>
+            <li><strong>Reverting the previous change.</strong> Its finding was correct and its test stays. The invocation does not belong in a <code>name:</code> field. This change removes the <em>second</em> thing that does not belong there either.</li>
+            <li><strong>Renaming skill directories or command files.</strong> The seven directories and their file names conform and are what the invocation rests on.</li>
+            <li><strong>The eight <code>[Skill conflicts]</code> warnings from <code>~/.agents/skills</code>.</strong> Six are <code>_</code>-prefixed Python package markers whose names sibling imports depend on; two are <code>example-corp:feature</code> and <code>example-corp:mockup</code> from <code>example-corp-product-team</code>. None are generated by this program, and html-spec's own Pi output was verified clean of that fault. That directory is also a read-only duplicate of <code>~/.claude/skills</code> — 147 entries, byte-identical, two 6.1M copies — and whatever installs it was not found. Repairing another repository's names, or de-duplicating a directory this program does not write, is not this change.</li>
+            <li><strong>Auditing whether each loader actually rejects a duplicate name.</strong> The observed symptom is a doubled listing, not a refusal. Not declaring a name a command file does not need is the cheap direction regardless of which loaders would have coped.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

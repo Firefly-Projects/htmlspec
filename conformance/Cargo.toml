@@ -1,0 +1,47 @@
+[package]
+name = "htmlspec-conformance"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "The HTMLSpec conformance suite"
+# Nothing depends on this crate and it publishes no API. It exists to hold the
+# fixture harness, which drives the other crates' public APIs only.
+publish = false
+
+[lints]
+workspace = true
+
+# No library and no binary: the crate is its integration tests. A `lib.rs` would
+# invite the harness to grow helpers that the fixtures then depend on, and the point
+# of the suite is that it uses nothing an independent implementation could not.
+[lib]
+path = "src/lib.rs"
+
+# The fixture generator is a development tool, not part of the distributed toolchain.
+# `required-features` on a feature nothing enables keeps it out of a default build, so
+# the packaged artifact contains the `htmlspec` binary alone — a user who installs the
+# toolchain has no use for a program that rewrites this repository's test fixtures.
+[[bin]]
+name = "generate_fixtures"
+path = "src/bin/generate_fixtures.rs"
+required-features = ["generate-fixtures"]
+
+[features]
+generate-fixtures = []
+
+# The fixture generator is a binary, so it needs these as real dependencies. The
+# harness itself uses only dev-dependencies.
+[dependencies]
+htmlspec-assets = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+htmlspec-assets = { workspace = true }
+htmlspec-format = { workspace = true }
+htmlspec-parse = { workspace = true }
+htmlspec-schema = { workspace = true }
+htmlspec-validate = { workspace = true }
+serde_json = { workspace = true }
+pretty_assertions = { workspace = true }

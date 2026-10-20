@@ -1,0 +1,164 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://html-spec.dev/schema/payload/1/migrate-survey.schema.json",
+  "title": "htmlspec migrate survey --json",
+  "description": "The payload `htmlspec migrate survey --json` (`get survey`) writes: every file an OpenSpec project holds, classified, and the facts a migration plan carries. A later 1.x release can add a property to any object in this payload, and only a major release removes, renames, or retypes one, so a consumer ignores a property it does not know.",
+  "type": "object",
+  "required": [
+    "root",
+    "counts",
+    "greatestVersion",
+    "sharedVersions",
+    "configuration",
+    "changes",
+    "entities"
+  ],
+  "properties": {
+    "root": {
+      "type": "string"
+    },
+    "counts": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/definitions/kind"
+      },
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "greatestVersion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sharedVersions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "required": [
+        "keys"
+      ],
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "archived",
+          "version",
+          "deltaSections",
+          "configuration"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deltaSections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "configuration": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "keys",
+                  "follows"
+                ],
+                "properties": {
+                  "keys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "follows": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "kind",
+          "change"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/definitions/kind"
+          },
+          "change": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "configuration",
+        "accepted-specification",
+        "change-document",
+        "delta-specification",
+        "recorded-version",
+        "evidence",
+        "converted-document",
+        "change-configuration",
+        "release-inventory",
+        "adoption-marker",
+        "unrecognized"
+      ]
+    }
+  }
+}

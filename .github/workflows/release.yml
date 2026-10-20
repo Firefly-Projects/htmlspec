@@ -1,0 +1,395 @@
+# The release: one version tag reaches the GitHub release, crates.io, and Homebrew.
+#
+# Verify and build run wherever this file is, on a pull request that touches what the builds read
+# and on a pushed version tag, so the builds are proven on the pull request that changes them,
+# before it merges. The jobs below them publish, and each runs only on a version tag in the
+# public repository, Firefly-Projects/htmlspec. A tag anywhere else builds, and publishes nothing.
+#
+# The macOS jobs, the two macOS builds and the formula check, run in the public repository, and
+# elsewhere only on a pull request labelled `release-check`. In a private repository a macOS
+# minute costs as much as ten Linux minutes, so a pull request in the private working repository
+# builds the two Linux targets, and adding the label runs all four and the formula at once. In the
+# public repository a pull request runs the four builds, the sums, and the formula, and a version
+# tag runs every job. Nothing publishes unless all four builds, the formula, and the suite passed.
+#
+# The order is the cost of a mistake. Everything that can fail cheaply fails first: the tag is
+# compared with Cargo.toml, its commit is found on main, and the crates are packaged before
+# anything is built. On a tag the whole suite runs beside the builds, and nothing publishes
+# until it passes. The binaries are released before the crates, because a crate published to
+# crates.io cannot be withdrawn, only yanked.
+#
+# The Nix flake is the fourth channel, and it needs no job: `nix run
+# github:Firefly-Projects/htmlspec` builds from the tag's source.
+
+name: release
+
+# A pull request runs this when it touches anything the builds and the formula check read: the
+# manifests and the pinned toolchain, every crate's source and license text, the root license the
+# tarballs carry, the template, the workflow, and every script, the ones it runs and the module
+# they share. A list that named only the release's own files missed the crates themselves, so a
+# change that broke a musl build would have been found by a tag. The list stays rather than going,
+# because macOS minutes cost ten times as much on a private repository, and a pull request that
+# changes only documents builds nothing new. What else the release reads, the archive and the
+# changelog, `scripts/check-release` reads on every pull request as a stage of the suite.
+#
+# `labeled` is among the pull request's events, so adding `release-check` starts the run that
+# builds on macOS without another push. Any other label starts the same run a push would, so its
+# results are as real as the ones it replaces.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    paths:
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - LICENSE
+      - crates/**
+      - packaging/**
+      - scripts/**
+      - .github/workflows/release.yml
+  push:
+    tags: ["v*"]
+
+# A superseded pull request run tells nobody anything. A tag's run is never cancelled, because
+# a cancelled publish is one a person has to finish by hand. Every event of one pull request,
+# a label as much as a push, shares one group, and every run of it runs the same jobs. A run that
+# skipped its jobs would be the newest run of each check, and a pull request's checks report the
+# newest run of each name, so its skips would hide an earlier run's failures.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Read-only by default. The release job alone declares `contents: write`, because creating a
+# release is the only write this repository's token makes.
+permissions:
+  contents: read
+
+env:
+  # Every request cargo makes carries this User-Agent, which names the project and its public
+  # repository and nothing else. A review's probe once sent a contributor's email address to
+  # crates.io in that header.
+  CARGO_HTTP_USER_AGENT: "htmlspec-release (https://github.com/Firefly-Projects/htmlspec)"
+  CARGO_TERM_COLOR: never
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      macos: ${{ steps.targets.outputs.macos }}
+      matrix: ${{ steps.targets.outputs.matrix }}
+      count: ${{ steps.targets.outputs.count }}
+    steps:
+      # The whole history, so a tag's commit can be looked for on main.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The one place this workflow decides whether the macOS jobs run. The build matrix and the
+      # number of tarballs `sums` expects follow from it, and both come from
+      # scripts/release_facts.py, which states the targets and their runners once.
+      - name: Choose the targets this run builds
+        id: targets
+        env:
+          MACOS: ${{ github.repository == 'Firefly-Projects/htmlspec' || contains(github.event.pull_request.labels.*.name, 'release-check') }}
+        run: |
+          set -euo pipefail
+          without=()
+          if [ "$MACOS" != true ]; then
+            without=(--without-macos)
+          fi
+          {
+            echo "macos=$MACOS"
+            echo "matrix=$(python3 scripts/release_facts.py matrix "${without[@]}")"
+            echo "count=$(python3 scripts/release_facts.py targets "${without[@]}" | wc -l | tr -d ' ')"
+          } >> "$GITHUB_OUTPUT"
+          python3 scripts/release_facts.py targets "${without[@]}"
+
+      # A release is made from what main holds. A tag on a commit main does not hold, such as one
+      # on a pull request's branch, publishes nothing.
+      - name: Check a tag's commit is on main
+        if: github.ref_type == 'tag'
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --quiet origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main; then
+            echo "tag $GITHUB_REF_NAME is on $GITHUB_SHA, which main does not hold" >&2
+            exit 1
+          fi
+
+      # The User-Agent above is stated again in scripts/release_facts.py, which the crate
+      # publisher sends. The two are compared here rather than trusted to agree.
+      - name: Check the User-Agent is the publisher's
+        run: |
+          set -euo pipefail
+          test "$CARGO_HTTP_USER_AGENT" = "$(python3 scripts/release_facts.py user-agent)"
+
+      # rust-toolchain.toml pins the compiler, so every job builds with the version a
+      # contributor and `nix flake check` use.
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+
+      # On a tag, `--tag` adds the question that refuses a tag naming another version than
+      # Cargo.toml's, before anything is built. The tag reaches the script through the
+      # runner's own variables, never interpolated into the shell.
+      - name: Check the release record, and the tag against Cargo.toml
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            scripts/check-release --tag "$GITHUB_REF_NAME"
+          else
+            scripts/check-release
+          fi
+
+      # Each crate packaged and built from its own directory, in dependency order, and nothing
+      # uploaded.
+      - name: Package every crate
+        run: cargo publish --workspace --dry-run --locked
+
+  # One entry per target this run builds: all four, or the two static musl targets alone, each on
+  # the runner scripts/release_facts.py names. musl, so a Linux binary runs on any distribution.
+  build:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.verify.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the pinned toolchain and the target
+        run: |
+          set -euo pipefail
+          rustup toolchain install
+          rustup target add "$TARGET"
+
+      - name: Install the musl C toolchain
+        if: endsWith(matrix.target, '-linux-musl')
+        run: sudo apt-get update && sudo apt-get install --yes musl-tools
+
+      # The revision `htmlspec --version` reports is the commit this job builds.
+      - name: Build
+        run: |
+          set -euo pipefail
+          HTMLSPEC_REVISION="$(git rev-parse --short=12 HEAD)"
+          export HTMLSPEC_REVISION
+          cargo build --release --locked --target "$TARGET" -p htmlspec-cli
+
+      # Each binary runs on its own platform, and reports a version and a revision.
+      - name: Run the binary
+        run: |
+          set -euo pipefail
+          binary="target/$TARGET/release/htmlspec"
+          reported="$("$binary" --version)"
+          printf '%s\n' "$reported"
+          case "$reported" in
+            *"(unknown)"*) echo "the binary reports no revision" >&2; exit 1 ;;
+          esac
+          if [ "$RUNNER_OS" = Linux ]; then
+            file "$binary"
+            file "$binary" | grep -Eq 'static(ally|-pie) linked'
+          fi
+
+      - name: Pack the binary with its license texts
+        run: scripts/pack-release "$TARGET" "target/$TARGET/release/htmlspec" dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tarball-${{ matrix.target }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  # The suite, as the check workflow runs it on every pull request and on main. That workflow
+  # does not run on a tag, so a tag runs it here, and nothing publishes until it passes.
+  suite:
+    needs: verify
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Run the check suite
+        run: nix build --print-build-logs .#checks.x86_64-linux.default
+
+  # Over the tarballs this run built, which is every entry of its matrix: four, or two where the
+  # macOS jobs do not run. Any build that failed skips this job, and everything after it.
+  sums:
+    needs: [verify, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: tarball-*
+          path: dist
+          merge-multiple: true
+
+      - name: Write SHA256SUMS over the tarballs this run built
+        env:
+          COUNT: ${{ needs.verify.outputs.count }}
+        run: |
+          set -euo pipefail
+          scripts/pack-release --sums dist
+          cat dist/SHA256SUMS
+          test "$(wc -l < dist/SHA256SUMS)" -eq "$COUNT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: dist/
+          if-no-files-found: error
+
+  # The formula, rendered from this run's SHA256SUMS with addresses pointing at its tarballs,
+  # checked in a tap made for the purpose on a runner with a stock Homebrew: audited, installed,
+  # and tested. On a pull request as on a tag, so a formula that would fail reaches neither the
+  # tap nor a release. It is a macOS job, and it needs the macOS tarballs, so it runs where they
+  # were built; where it is skipped, the jobs that publish are skipped with it.
+  formula:
+    needs: [verify, sums]
+    if: needs.verify.outputs.macos == 'true'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: dist
+
+      - name: Audit, install, and test the formula in a local tap
+        run: scripts/check-formula dist
+
+  # The first job that publishes. Its condition is false on a pull request, and on a tag in any
+  # repository but the public one, so there it is skipped, and the two jobs that need it with
+  # it. Each of those carries the same condition as well, so none of the three depends on
+  # another's being right. Its condition holds no status function, so GitHub runs it only when
+  # sums, formula, and suite all succeeded: a formula skipped or failed publishes nothing.
+  release:
+    needs: [sums, formula, suite]
+    if: github.repository == 'Firefly-Projects/htmlspec' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: dist
+
+      # A release holds every target, whatever the matrix built. This repeats what the formula's
+      # rendering already refused, in the job that publishes, so the guarantee does not rest on a
+      # job that could be skipped.
+      - name: Check SHA256SUMS names a tarball for every target
+        run: |
+          set -euo pipefail
+          for target in $(python3 scripts/release_facts.py targets); do
+            if ! grep -q -- "-$target\.tar\.gz\$" dist/SHA256SUMS; then
+              echo "SHA256SUMS names no tarball for $target" >&2
+              exit 1
+            fi
+          done
+
+      - name: Write the notes from the version's changelog entry
+        run: scripts/release-notes "${GITHUB_REF_NAME#v}" > notes.md
+
+      # A rerun finishes what a run before left. A release that exists, whole or with some of its
+      # files, or still a draft because the run stopped while uploading, gets every file again,
+      # replacing any of the same name, and is published with this run's notes.
+      - name: Create the release, or finish the one a run before began
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          title="htmlspec ${GITHUB_REF_NAME#v}"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "release $GITHUB_REF_NAME exists; uploading its files again"
+            gh release upload "$GITHUB_REF_NAME" --clobber dist/*.tar.gz dist/SHA256SUMS
+            gh release edit "$GITHUB_REF_NAME" --draft=false --title "$title" --notes-file notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --verify-tag \
+              --title "$title" \
+              --notes-file notes.md \
+              dist/*.tar.gz dist/SHA256SUMS
+          fi
+
+  crates:
+    needs: release
+    if: github.repository == 'Firefly-Projects/htmlspec' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    # The publisher's budget is 30 minutes on the clock, publishing and waiting together, and it
+    # stops itself, naming what remains, before it begins a step past that. One publish begun
+    # just inside the budget builds a crate, a few minutes at most, and the toolchain takes one
+    # more. So the job is killed only when something has hung, never partway through a release
+    # the publisher would have finished or stopped cleanly.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+
+      # One crate at a time, in dependency order, skipping each version the index already
+      # holds, so a rerun of this job after an interruption publishes only what is missing.
+      - name: Publish the crates crates.io lacks
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: scripts/publish-crates
+
+  tap:
+    needs: release
+    if: github.repository == 'Firefly-Projects/htmlspec' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: dist
+
+      # Rendered from the SHA256SUMS this run wrote and the release now holds, so each digest in
+      # the formula is the digest of the tarball it names, at the release's own address.
+      - name: Render the formula
+        run: |
+          set -euo pipefail
+          scripts/render-formula --sums dist/SHA256SUMS > htmlspec.rb
+          cat htmlspec.rb
+
+      # HOMEBREW_TAP_TOKEN can write to the tap and nothing else. A credential helper reads it
+      # from the environment when git asks, so it is never in a command line, a remote address,
+      # or a file. The commit is the workflow bot's, so it names no person. A rerun that finds the
+      # same formula already there changes nothing.
+      - name: Push the formula to the tap
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          # The single quotes are the point: the helper expands the variable when git runs it.
+          # shellcheck disable=SC2016
+          helper='!f() { echo username=x-access-token; echo "password=${TAP_TOKEN}"; }; f'
+          git -c credential.helper= -c "credential.helper=$helper" \
+            clone --depth 1 https://github.com/Firefly-Projects/homebrew-tap.git tap
+          git -C tap config credential.helper ""
+          git -C tap config --add credential.helper "$helper"
+          mkdir -p tap/Formula
+          cp htmlspec.rb tap/Formula/htmlspec.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/htmlspec.rb
+          if git diff --cached --quiet; then
+            echo "the tap already holds this formula"
+            exit 0
+          fi
+          git commit -m "htmlspec ${GITHUB_REF_NAME#v}"
+          git push origin HEAD

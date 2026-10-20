@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+#
+# The project's full check suite, as one command.
+#
+# This script is the single definition of "is this revision healthy?". `nix flake
+# check` runs it, continuous integration runs it, and a contributor runs it directly.
+# None of the three maintains its own step list, which is the whole point: duplicated
+# lists drift, and the day they drift is the day CI passes something a contributor's
+# machine rejects.
+#
+# Usage:
+#   scripts/check            run everything
+#   scripts/check --list     print what would run, and exit
+#
+# Every step is expected to pass on a healthy revision. There is no "optional" step
+# and no way to skip one: a suite with a skip flag is a suite whose failures get
+# skipped.
+
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+# Each entry is "name:command". The names appear in the progress output and in a
+# failure, so a failing run says which step failed without the reader parsing cargo.
+#
+# Order is cheapest-first: formatting and lints fail in seconds and catch the most
+# common mistakes, so a contributor is not waiting on the test suite to be told about
+# a missing newline.
+steps=(
+  "format:cargo fmt --all -- --check"
+  "lint:cargo clippy --workspace --all-targets --locked -- -D warnings"
+  # The whole workspace's tests, which include:
+  #   - the conformance suite            (htmlspec-conformance)
+  #   - the presentation checks          (htmlspec-conformance)
+  #   - the projection mapping fixtures  (htmlspec-parse)
+  #   - the formatter's property tests   (htmlspec-format)
+  #   - the asset lockfile verification  (htmlspec-assets)
+  #   - the enhancement-script budget    (htmlspec-assets)
+  #   - the CLI's exit-code contract     (htmlspec-cli)
+  # They are one step because they are one command; splitting them here would be the
+  # duplicated step list this script exists to avoid.
+  "test:cargo test --workspace --all-targets --locked"
+  # `--all-targets` skips doctests, so they are run separately or they would not run
+  # at all. A documented example that no longer compiles is stale documentation.
+  "doctest:cargo test --workspace --doc --locked"
+  # The documents this project ships as *examples* must satisfy the contract this
+  # project defines, and they are checked through the built binary rather than a test
+  # so the step exercises what a contributor actually invokes.
+  #
+  # Only `fixtures/dogfood` — the three hand-authored documents. The other fixture
+  # trees are deliberately malformed: `fixtures/parse-errors` holds documents whose
+  # markup requires error recovery, and `fixtures/projection` and
+  # `fixtures/conformance` hold documents that violate a stated rule on purpose.
+  # Pointing a conformance check at them would fail by design, and pointing a format
+  # check at them would rewrite inputs whose exact bytes are what a fixture pins.
+  "self-conformance:cargo run --quiet --locked --bin htmlspec -- validate fixtures/dogfood"
+  "self-format:cargo run --quiet --locked --bin htmlspec -- format --check fixtures/dogfood"
+  # This repository's own runbooks, in its project's place for them, checked the same two ways as
+  # the dogfood documents and for the same reason: they are documents this project ships as
+  # examples of its own contract, and a shipped document nothing validates is a document that goes
+  # wrong quietly.
+  #
+  # **Two stages rather than two arguments, because `validate` and `format` each take one path.**
+  # `validate fixtures/dogfood htmlspec/runbooks` is a usage error, so extending the existing
+  # stages was not available.
+  #
+  # It caught a real defect on its first run, when the runbook was at the repository root:
+  # `runbooks/release/tasks.html` carried
+  # `data-change="added"` on its four task units while `runbook-authority` requires `unchanged` in
+  # a runbook's canonical documents. Validation does not report that — no rule reads a document's
+  # location — so these stages do not close that gap, and a project-level rule is the successor
+  # that would. What they do close is everything validation *does* report about a document.
+  "self-runbooks:cargo run --quiet --locked --bin htmlspec -- validate htmlspec/runbooks"
+  "self-runbooks-format:cargo run --quiet --locked --bin htmlspec -- format --check htmlspec/runbooks"
+  # Asset topology. A property of a project rather than of any one document, so no amount
+  # of per-document validation observes it: every document can reference the shared runtime
+  # correctly while the project holds two copies of it.
+  #
+  # Run against the repository root, which is a project: the stores within its `htmlspec/` are
+  # compared with one another, and every store outside it — the toolchain's source copy in
+  # `crates/htmlspec-assets/assets/` and the conformance fixtures' own — is checked on its own
+  # for bytes it holds twice and compared with none. So the stage does not report the source copy
+  # as the project's second store, or a revision the project's store also holds as a duplicate.
+  "self-assets:cargo run --quiet --locked --bin htmlspec -- assets ."
+  # The interactive prompt, driven through a pseudo-terminal.
+  #
+  # Not a `cargo test` because it cannot be: `openpty` is an `unsafe` FFI call and this
+  # workspace sets `unsafe_code = "forbid"`. The alternative is a pinned pty crate and
+  # its subtree vendored into the flake, for one test binary. Python's `pty` is
+  # standard-library, so the script costs nothing to depend on.
+  #
+  # It covers the three things no Rust test reaches: that a fresh repository opens with
+  # every row checked, that an empty confirmation is refused rather than accepted, and
+  # that cancelling exits 3 — the one exit code no other test reads from a real process.
+  #
+  # Depends on the debug binary, so it follows the steps that build it.
+  "prompt:cargo build --quiet --locked --bin htmlspec && scripts/check-prompt"
+  # This repository's own installed instruction files, against what the binary writes.
+  #
+  # The bodies are compiled in, so an agent reads the copy under `.claude/`, `.codex/`,
+  # or `.pi/` rather than the file in `crates/htmlspec-assets/instructions/`. Those are
+  # two artifacts and nothing compared them, so they drifted for four releases: `sync`
+  # shipped in 0.7.0 and existed in the binary and in no file an agent could read until
+  # 0.9.0. `project-bootstrap` states the general form — a rule nothing checks is not a
+  # rule — and this is that shape applied to the files this project asks other projects
+  # to trust.
+  #
+  # A stage rather than a `cargo test` because the subject is the working tree's
+  # committed files, and the test suites run inside a sandbox holding a filtered
+  # snapshot. It is the same reason `self-assets` is a stage.
+  "installed:scripts/check-installed"
+  # The crate publisher, against a stub index on 127.0.0.1 and a stub cargo.
+  #
+  # `scripts/publish-crates` runs for real only at a release, and what it publishes cannot be
+  # taken back, so a fault in it would first be seen on crates.io. Here it meets the answers a
+  # release can meet: some of the six already published, HTTP 429 answered once, a wait longer
+  # than its budget, and a run after an interruption. It also asserts that every request carries
+  # the fixed User-Agent and nothing else, and that the publishing order puts each crate after
+  # the ones it depends on, read from this repository's manifests.
+  #
+  # A stage rather than a `cargo test` because the subject is a script, as with `prompt`.
+  "publish-crates:scripts/check-publish-crates"
+  # Release hygiene: every archived change records the version it shipped in, every
+  # version above the baseline is distinct, and every version has a changelog entry.
+  #
+  # Named `release` rather than `lint` because `lint` is already clippy above, and two
+  # stages by one name would make this script's own `FAILED: lint` line ambiguous.
+  #
+  # It asks about the *archive* rather than the working change, because a stage here
+  # passes or fails with no advisory level in between. A change under way legitimately
+  # has not advanced the version yet — that decision is best made once the work's shape
+  # is known — so a rule about work in progress would fail from a change's first commit
+  # to its last. The archive is a settled record, so the question has a right answer at
+  # every moment.
+  #
+  # The release checker's own reading of the runbook-release format, against the fixtures it shares
+  # with the Rust reader.
+  #
+  # A stage of its own rather than folded into `release`, because the two answer different questions
+  # and a failure line that says only `release` would leave a contributor guessing whether this
+  # repository's history is wrong or the checker is. This one is about the checker: two programs read
+  # one format, they cannot share code because this script runs where no build has happened, and a
+  # rule stated twice is a rule that diverges. The fixtures are what they share instead.
+  #
+  # Before `release`, which is the cheapest-first ordering again: a checker that reads the format
+  # wrongly would report the repository's history wrongly, and the second stage's failure would be
+  # about the first.
+  "release-fixtures:scripts/check-release --self-test"
+  # Last because it is fast but least likely to be what someone is iterating on, which
+  # is the same cheapest-first reasoning as the ordering comment above.
+  "release:scripts/check-release"
+)
+
+if [[ "${1:-}" == "--list" ]]; then
+  for step in "${steps[@]}"; do
+    printf '%s\n' "${step%%:*}"
+  done
+  exit 0
+fi
+
+if [[ $# -gt 0 ]]; then
+  printf 'usage: %s [--list]\n' "$0" >&2
+  exit 2
+fi
+
+failed=()
+for step in "${steps[@]}"; do
+  name="${step%%:*}"
+  command="${step#*:}"
+  printf '\n=== %s ===\n' "$name"
+  if ! eval "$command"; then
+    failed+=("$name")
+    # Keep going rather than stopping at the first failure: a contributor fixing
+    # three problems should learn about all three in one run.
+    printf '!!! %s failed\n' "$name" >&2
+  fi
+done
+
+printf '\n'
+if [[ ${#failed[@]} -gt 0 ]]; then
+  printf 'FAILED: %s\n' "${failed[*]}" >&2
+  exit 1
+fi
+printf 'all %d checks passed\n' "${#steps[@]}"

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Record a renamed requirement</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Record a renamed requirement</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Record a renamed requirement</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-26-record-a-renamed-requirement/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>See <a href="proposal.html"><code>proposal.md</code></a> for why. The shape of the current system that the approach depends on:</p>
+          <ul>
+            <li><strong>Identity already survives a rename.</strong> document-schema's "<a href="../../../specs/document-schema/spec.html#req-every-semantic-unit-has-a-stable-unique-identifier">Every semantic unit has a stable unique identifier</a>" keeps a renamed requirement's <code>id</code>. So nothing here touches identifiers. What is missing is a place to state the heading the requirement replaced.</li>
+            <li><strong>Change states are one attribute with a closed vocabulary.</strong> <code>data-change</code> is <code>added</code>, <code>modified</code>, <code>removed</code>, or <code>unchanged</code> (the <code>changeState</code> definition in <code>crates/htmlspec-schema/schema/document.schema.json</code>). It gates nothing, and review warnings and presentation read it.</li>
+            <li><strong>Unit fields already come from marked paragraphs.</strong> The projection specification's section 4 (<code>crates/htmlspec-schema/doc/projection.md</code>) projects <code>data-field="rationale"</code>, <code>"reason"</code>, <code>"mitigation"</code>, <code>"method"</code>, and <code>"note"</code> paragraphs into named fields. A requirement currently accepts <code>statement</code> and <code>note</code>.</li>
+            <li><strong>The merge check compares identifiers only.</strong> <code>merge_state</code> in <code>crates/htmlspec-cli/src/commands.rs</code> is the one comparison that <code>sync</code> and archival share, and it partitions a change's stated identifiers into reached and absent. <a href="evidence/the-premises-2026-09-26.md">A renamed requirement's identifier is already held, so an unapplied rename lands in "reached".</a></li>
+            <li><strong><a href="evidence/the-premises-2026-09-26.md">OpenSpec's semantics are the reference.</a></strong> <code>openspec</code> 1.13.1 (<code>dist/core/specs-apply.js</code>) applies RENAMED before REMOVED, MODIFIED, and ADDED. It requires a MODIFIED block to name the new heading, and it rejects a requirement that is both RENAMED and REMOVED. It rejects a RENAMED target that collides with an ADDED requirement and a rename into a spec that does not yet exist. It treats a rename whose source is gone and whose target is present as already applied, which is a no-op and not an error. Main specs carry no RENAMED section.</li>
+          </ul>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong></p>
+          <ul>
+            <li>A change can state that a requirement replaced a heading, readably and in the projected model.</li>
+            <li>A renamed-and-rewritten requirement records both facts, as OpenSpec's RENAMED plus MODIFIED does.</li>
+            <li>An unapplied rename is reported by the checks that report an unapplied change.</li>
+            <li>Migration carries OpenSpec's RENAMED sections without an open question.</li>
+          </ul>
+          <p><strong>Non-Goals:</strong></p>
+          <ul>
+            <li><strong>Renaming any unit other than a requirement.</strong> OpenSpec renames requirements only, and no observed case needs more. A scenario's heading can change under <code>modified</code> today, and nothing addresses scenarios across changes by heading.</li>
+            <li><strong>A rename history in the accepted contract.</strong> The accepted specification states the current heading, and the archive holds the history, as OpenSpec's main specs do.</li>
+            <li><strong>A program that performs the merge.</strong> This stays the agent's work under artifact-kinds' "<a href="../../../specs/artifact-kinds/spec.html#req-every-synthesis-and-every-contract-update-is-agent-driven">Every synthesis and every contract update is agent-driven</a>". The program only reports.</li>
+            <li><strong>Inferring a rename.</strong> Nothing detects that a heading changed and proposes a <code>renamed-from</code>. A rename is stated by its author or not at all.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-decision-1">
+            <h3>1. A rename is a field on the requirement, separate from <code>data-change</code></h3>
+            <p>The requirement's own heading is the new name. A single <code>&lt;p data-field="renamed-from"&gt;</code> paragraph holds the previous heading. <code>data-change</code> keeps describing what happened to the content.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Source (OpenSpec delta)</th>
+                  <th>html-spec requirement</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>RENAMED only</td>
+                  <td><code>data-change="unchanged"</code> + <code>renamed-from</code></td>
+                </tr>
+                <tr>
+                  <td>RENAMED + MODIFIED (new heading)</td>
+                  <td><code>data-change="modified"</code> + <code>renamed-from</code></td>
+                </tr>
+                <tr>
+                  <td>RENAMED + REMOVED</td>
+                  <td>invalid, as OpenSpec rejects it</td>
+                </tr>
+                <tr>
+                  <td>RENAMED <code>TO:</code> = an ADDED heading</td>
+                  <td>invalid: an <code>added</code> requirement cannot carry <code>renamed-from</code></td>
+                </tr>
+              </tbody>
+            </table>
+            <p><strong>Alternatives considered.</strong></p>
+            <ul>
+              <li><strong>A fifth change state, <code>renamed</code>.</strong> Rejected, and the contributor rejected it as well. A unit carries one state, so a requirement renamed and rewritten in one change loses one of the two facts. Both of this project's own renames are that case.</li>
+              <li>
+                <p><strong>A <code>data-renamed-from</code> attribute on the requirement element.</strong> This was the first shape proposed, and it was chosen over the fifth state for the same reason. It was then replaced by the field for three reasons:</p>
+                <ul>
+                  <li>An attribute is invisible in the rendered page unless a stylesheet exposes it, so the previous heading is present only for tools.</li>
+                  <li>A field paragraph is ordinary text, so it reads with scripts off and with styles off. document-validation's "<a href="../../../specs/document-validation/spec.html#req-no-javascript-readability-is-enforced">No-JavaScript readability is enforced</a>" asks for content present in the markup, and a paragraph meets that more fully than an attribute value does.</li>
+                  <li>The projection already has the machinery for fields, validation already reports an unknown <code>data-field</code>, and the formatter already handles paragraphs. An attribute needs a new projection path, a new formatter case, and a new schema property shape.</li>
+                </ul>
+                <p>The substance of the contributor's choice was "separate from the change state", and a field keeps that. <strong>This is a departure from the preview the contributor selected, and the proposal and this decision say so, so that it can be reversed at review.</strong></p>
+              </li>
+            </ul>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> The <a href="proposal.html">proposal</a> states the field and does not mention the attribute or a departure from the preview.</p>
+            </aside>
+          </section>
+          <section class="decision" id="decision-unchanged-plus-renamed-from-is-a-pure-rename" data-change="added" data-status="accepted" data-refs="req-a-source-distinction-the-destination-cannot-express-is-recorded-as-open-not-mapped-to-the-nearest-state">
+            <h3>2. <code>unchanged</code> plus <code>renamed-from</code> is a pure rename <span class="hs-id">decision-unchanged-plus-renamed-from-is-a-pure-rename</span></h3>
+            <p>The <code>changeState</code> description of <code>unchanged</code> becomes: "the unit's statements and scenarios are carried forward untouched. A requirement whose heading changed says so with a <code>renamed-from</code> paragraph." Without this, a pure rename has no correct state: <code>modified</code> claims the obligation changed, and <code>unchanged</code> claims nothing changed.</p>
+            <p data-field="rationale"><strong>Alternative:</strong> require <code>modified</code> for every rename. Rejected, because it maps OpenSpec's RENAMED-only case onto the state for a content change. That is the substitution project-migration's "<a href="specification.html#req-a-source-distinction-the-destination-cannot-express-is-recorded-as-open-not-mapped-to-the-nearest-state">recorded as open, not mapped to the nearest state</a>" exists to prevent.</p>
+          </section>
+          <section id="hs-decision-3">
+            <h3>3. The placement rules are errors</h3>
+            <p>The rules are:</p>
+            <ul>
+              <li>the field appears only on a requirement;</li>
+              <li>not on an <code>added</code> or <code>removed</code> requirement;</li>
+              <li>at most once per requirement;</li>
+              <li>not empty;</li>
+              <li>not equal to the requirement's own heading.</li>
+            </ul>
+            <p>These are structural facts about one document, like "<a href="../../../specs/document-schema/spec.html#req-a-decision-records-its-outcome-and-rationale">A decision records its outcome and rationale</a>", so they are errors in <code>htmlspec-validate</code> and not review warnings.</p>
+            <p><strong>The heading a rename is compared with is the requirement's <em>heading name</em>.</strong> That is the projected <code>title</code> with the unit's own identifier removed from its end and the result trimmed. This was first written as "the projected <code>title</code>, which excludes the <code>hs-id</code> span", and task 1.2 measured that premise false. The projection takes a title from all of the heading's text, and nothing special-cases <code>class="hs-id"</code>. So the template's <code>&lt;h3&gt;The old heading &lt;span class="hs-id"&gt;req-x&lt;/span&gt;&lt;/h3&gt;</code> projects <code>The old heading req-x</code> (<a href="evidence/the-premises-2026-09-26.md"><code>evidence/the-premises-2026-09-26.md</code></a>). Compared with that title, a <code>renamed-from</code> of <code>The old heading</code> would never be equal.</p>
+            <p>The name is derived from the model alone: the title and the identifier the unit already carries. So the projection is unchanged, and a heading written with the span, without it, or with no space before it names the same heading. Changing projection section 3.1 to drop <code>.hs-id</code> text from every title was the alternative. It was rejected because it reshapes the projected title of every existing document to serve two comparisons that need only a derived name.</p>
+            <p>A <code>renamed-from</code> paragraph outside a requirement is reported by its own rule. Projection section 4.0 does not also report it as a field the unit lacks, so one defect produces one diagnostic, and that diagnostic says a rename belongs on a requirement. An empty <code>renamed-from</code> paragraph is kept by the projection so the "empty" rule can see it. Every other empty paragraph is still discarded.</p>
+          </section>
+          <section id="hs-decision-4">
+            <h3>4. The merge comparison gains a fourth set: untaken renames</h3>
+            <p><code>merge_state</code> keeps its three sets (stated, reached, absent) and adds <code>untakenRenames</code>. That set holds each stated requirement that carries <code>renamedFrom</code>, whose identifier the accepted specifications hold, and whose accepted heading name differs from the change's heading name (decision 3). Each entry names the identifier, the change's heading, and the accepted heading. Heading names rather than titles, so an accepted specification that writes the <code>hs-id</code> span and a change that does not are not reported as a rename.</p>
+            <ul>
+              <li>An untaken rename is <strong>not</strong> also in <code>reached</code>, so "reached" keeps meaning "the contract took this".</li>
+              <li>An identifier that no accepted specification holds is <code>absent</code> and never an untaken rename. One finding per requirement.</li>
+              <li>"Not synced" becomes <code>absent</code> or <code>untakenRenames</code> being non-empty. Archival's structured <code>notSynced</code>-style value and its question derive from that, through the same function, so <code>sync</code> and archival cannot disagree. That keeps the invariant toolchain-packaging's "<a href="specification.html#scenario-the-operation-and-archival-agree">The operation and archival agree</a>" scenario states.</li>
+              <li>The accepted heading equal to the <strong>new</strong> heading means the rename was applied: reached, and nothing reported. This is OpenSpec's "source gone, target present is a no-op".</li>
+            </ul>
+            <figure id="figure-one-finding-per-requirement" data-migration="drawn">
+              <figcaption>Where each requirement a change states lands under this decision: in exactly one of absent, reached, and the untaken renames, with a change not synced while either absent or the untaken renames holds one. toolchain-packaging's "The command surface reports whether a change reached the accepted contract" and "Archival assesses the merge and never performs it" require this partition. Drawn when this document was migrated, from the text beside it.</figcaption>
+              <details>
+                <summary>Diagram source</summary>
+                <pre class="mermaid">flowchart TD
+  stated["A requirement the change states"] --&gt; held{"Do the accepted specifications hold its identifier?"}
+  held -- "no" --&gt; absent["absent, and never an untaken rename"]
+  held -- "yes" --&gt; renamed{"Does it carry renamedFrom?"}
+  renamed -- "no" --&gt; reached["reached"]
+  renamed -- "yes" --&gt; differs{"Does the accepted heading name differ from the change's heading name?"}
+  differs -- "no: the rename was applied" --&gt; reached
+  differs -- "yes" --&gt; untaken["untakenRenames, and not also reached"]
+  absent --&gt; notsynced["not synced"]
+  untaken --&gt; notsynced</pre>
+              </details>
+            </figure>
+            <p><strong>Alternative:</strong> compare every requirement's heading, renamed or not. Rejected. A heading that differs without a stated rename is either an unstated rename or an edit made directly to the accepted contract, and neither is this change's subject. Reporting it would make the check read headings for a purpose the contract never gave it.</p>
+          </section>
+          <section id="hs-decision-5">
+            <h3>5. The accepted specification does not carry <code>renamed-from</code></h3>
+            <p>The <code>sync</code> and <code>archive</code> instructions state that a merged rename changes the heading, keeps the identifier, and drops the <code>renamed-from</code> paragraph. The program does not enforce this, because it cannot tell an accepted specification from a change's by content. See Risks.</p>
+          </section>
+          <section id="hs-decision-6">
+            <h3>6. Migration keeps one identifier through a chain of renames</h3>
+            <p><code>migrate.md</code>'s mapping table replaces its row "<code>## RENAMED Requirements</code> → <em>no state exists</em>" with "→ <code>renamed-from</code> on the <code>TO:</code> requirement, state from the rest of the delta". The identifier rule changes to follow document-schema:</p>
+            <ul>
+              <li>A requirement named in a RENAMED <code>TO:</code> takes the identifier its <code>FROM:</code> heading already resolved to.</li>
+              <li>So <a href="evidence/the-implementation-2026-09-26.md">a chain <code>A → B → C</code> resolves to <code>id(A)</code> in every change and in the accepted specification</a>.</li>
+            </ul>
+            <p>The plan's <code>derives:</code> notes stay one per stated heading. The renaming change's note reads <code>derives: B -&gt; id(A)</code>, and a <code>renamed:</code> note records <code>A -&gt; B</code>. The coverage check's collision rule is unchanged. It compares headings within one destination document, and a renaming change's specification states only <code>B</code>.</p>
+            <p>A heading that changed through REMOVED plus ADDED, with no RENAMED, derives independently. The source did not say that the two are one obligation.</p>
+          </section>
+          <section id="hs-decision-7">
+            <h3>7. Presentation labels the field with generated content</h3>
+            <p>A <code>[data-field="renamed-from"]::before { content: "Renamed from"; }</code> rule, plus quotation styling, goes in the screen and print stylesheets. This follows the existing "text channel" for change states, which the stylesheet already supplies as generated content. Without the stylesheet, the paragraph still reads as the previous heading. Both stylesheets are content-addressed, so <a href="evidence/the-implementation-2026-09-26.md">this is a new revision of each at a new address</a>, added through <code>assets/vendor.lock.json</code>'s procedure. The templates move to the new addresses, and documents that already exist keep the revision they name.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, the "Renamed from" label and the quotation marks are in the screen stylesheet alone, which applies on paper too, and the print stylesheet's new revision sets only the paragraph's ink. <a href="evidence/the-implementation-2026-09-26.md"><code>evidence/the-implementation-2026-09-26.md</code></a>, section "8.1 and 8.2", records it, and so does the comment on the rule in <code>assets/sha256-04ac9a24fc436a87/htmlspec-print.css</code> at <code>51c5aea</code>.</p>
+            </aside>
+          </section>
+          <section id="hs-decision-8">
+            <h3>8. Schema version</h3>
+            <p>The change adds an optional field and makes no existing document invalid. That is a minor bump under the <code>crates/htmlspec-schema/CHANGELOG.md</code> bump table, to <code>0.2.0</code>, recorded there with the projection specification's section 4 edit.</p>
+            <p><strong>The schema accepts both <code>0.1.0</code> and <code>0.2.0</code>.</strong> Before this change, <code>schemaVersion</code> was a <code>const</code> and the match was exact. So a bump to <code>0.2.0</code> alone would invalidate every document that declares <code>0.1.0</code>, which is every document written so far, 23 in this repository alone. That contradicts the bump table's own meaning of minor ("every existing document still validates"). The policy deferred a compatibility range "until a second version exists", and this change creates one. So the question is settled here: <code>schemaVersion</code> becomes a closed enumeration of the versions this toolchain accepts, and the match stays exact against that set. <code>CONTRACT_VERSION</code>, and the version every template and new document declares, becomes <code>0.2.0</code>. A patch or minor bump adds its version to the set, and a major bump is where versions leave it.</p>
+            <p><strong>Alternatives considered.</strong> Bumping to exactly <code>0.2.0</code> and rewriting every document in this repository was rejected, because documents in other projects would stop validating although the proposal says documents already written are unaffected. Not bumping was also rejected. The <code>kind</code> change did replace <code>status</code> without a bump, but that precedent contradicts the bump table this decision is bound by.</p>
+            <p>The accepted vocabulary is the newest version's. A document declaring <code>0.1.0</code> that carries a <code>renamed-from</code> paragraph validates here and fails on a <code>0.1.0</code> toolchain with the unknown-field fault. A document declaring <code>0.2.0</code> fails there too, on its version. So a downgrade is loud either way. A rule tying each field to the version that introduced it is not added. No second field has needed it, and the schema keeps to a subset with no conditional composition.</p>
+          </section>
+          <section id="hs-decision-9">
+            <h3>9. Deliberate differences from OpenSpec's rename rules</h3>
+            <p>Task 1.3 listed each rule in <code>openspec</code> 1.13.1's <code>specs-apply.js</code> against its counterpart here (<a href="evidence/the-premises-2026-09-26.md"><code>evidence/the-premises-2026-09-26.md</code></a>). Five of them have no counterpart, on purpose:</p>
+            <ul>
+              <li>a duplicate <code>TO:</code> heading in one delta;</li>
+              <li>a <code>FROM:</code> spelled like an accepted heading apart from case or spacing ("typo'd header");</li>
+              <li>a <code>TO:</code> heading that already exists alongside the <code>FROM:</code> ("target already exists");</li>
+              <li>a <code>TO:</code> heading that differs from another requirement only in case or spacing;</li>
+              <li>a chain of renames inside one delta. Here one requirement carries at most one <code>renamed-from</code>, so a chain inside one change is stated as its first heading, and migration collapses a source chain to its first <code>FROM:</code>.</li>
+            </ul>
+            <p>The reason is the same for all five. OpenSpec finds the requirement a rename applies to by its heading, so those rules stop a rename from reaching the wrong requirement or none. Here the requirement is found by its identifier, and <code>renamed-from</code> is never a lookup key. The merge comparison reads the accepted requirement that carries the same identifier and reports that requirement's actual heading. So a mistyped <code>renamed-from</code> misdirects nothing, and two requirements sharing a heading are still two identifiers.</p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>An accepted specification can keep a <code>renamed-from</code> paragraph that a merge left behind.</strong> → The <code>sync</code> instructions say to drop it. A stale one is still a true statement about the last rename, so it misleads less than a wrong heading does. If it recurs, a later change can add a check scoped to <code>htmlspec/specs/</code>.</li>
+            <li><strong>An unlabeled line when styles are off.</strong> → <a href="evidence/the-implementation-2026-09-26.md">The field is the previous heading as plain text, and it sits beside a heading that differs from it.</a> This is the same degradation the change-state badges already accept ("Removing channel 3 entirely would leave the document fully legible").</li>
+            <li><strong>The heading comparison and the formatter.</strong> A heading reflowed by <code>htmlspec format</code> must still compare equal. → The comparison uses the projected <code>title</code> after whitespace normalization, which is what the projection already guarantees stable across formatting.</li>
+            <li><strong>The fourth set changes a payload that agents read.</strong> → <code>untakenRenames</code> is additive. The <code>stated</code>, <code>reached</code>, and <code>absent</code> keys and their meanings are unchanged, except that an untaken rename moves out of <code>reached</code>. That move is the defect this change fixes, and the release note says so.</li>
+            <li><strong>The migration plan written before this change</strong> records two renames as open. → It is paused, and the migration resumes against this contract. The two notes become <code>renamed-from</code> paragraphs, and <a href="evidence/the-implementation-2026-09-26.md">the renamed toolchain-packaging requirement keeps <code>req-a-single-command-exposes-validate-format-and-init</code> as its identifier</a>.</li>
+          </ul>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> The third risk, <em>The heading comparison and the formatter</em>, was not revised when decision 3 was: as revised after task 1.2, a rename is compared by heading name, the projected title with the unit's own identifier removed from its end, and not by the projected title. <a href="evidence/the-premises-2026-09-26.md"><code>evidence/the-premises-2026-09-26.md</code></a>, section 1.2, records why. The risk's half about whitespace held: that record found <code>htmlspec format</code> does not reflow heading text, and normalization makes the title identical before and after formatting.</p>
+          </aside>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p>This is additive for documents. No existing document carries the field, and no existing requirement's meaning changes. Rollback is a revert: a document that adopted the field fails validation on the older toolchain with the unknown-field error that already exists, so a downgrade is loud and not silent.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

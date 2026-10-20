@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Distinguish command names from skill names</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Distinguish command names from skill names</h1>
+        <p>This change withdrew the scenario requiring a workflow's instructions and its command, written for one tool, to declare the same name (<em>One identity per workflow</em>). It required instead that no two files the bootstrap operation writes for one tool declare the same name, that a kind of file which does not need a name to be found, such as a command whose invocation is determined by its file path, declare none, and that the project's own checks report a repeated name (<em>Bootstrapping installs agent instructions for the tools a project uses</em>).</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Distinguish command names from skill names</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-21-distinguish-command-names-from-skill-names/specs/project-bootstrap/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-project-bootstrap">project-bootstrap</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-project-bootstrap">
+          <h2>project-bootstrap</h2>
+          <section class="requirement" id="req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses" data-change="modified">
+            <h3>Bootstrapping installs agent instructions for the tools a project uses <span class="hs-id">req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses</span></h3>
+            <p>The bootstrap operation SHALL install, for each selected AI coding tool, the instructions that tool needs to drive the HTMLSpec workflow. Where a tool supports invocable commands, the operation SHALL install those as well as the instructions.</p>
+            <p>The instructions SHALL cover the project's lifecycle from an idea to an archived change, rather than a single stage of it. A contributor who has bootstrapped a project and lists what was installed SHALL find the stage they are at. Instructions covering only the final stage leave every earlier stage to be improvised, which is the case the project's own contract for artifact kinds exists to prevent.</p>
+            <p>A workflow SHALL be installed whether or not a command performs it. Archival is already agent-driven — the program checks a specification it does not produce — so a stage whose work is judgment is the ordinary case rather than the exception.</p>
+            <p>An installed workflow's instructions SHALL NOT name a command the program does not provide, and this SHALL be checked mechanically rather than by review. Naming an absent command sends an agent to an error, and it is the hazard that a rule limiting how many workflows are installed was attempting to avoid.</p>
+            <p>The set of supported tools SHALL be data rather than logic, so that supporting an additional tool is an entry in that set. The set of workflows SHALL likewise be data, so that covering an additional stage is an entry in that set together with its instructions.</p>
+            <p>The order of the workflows SHALL be the order the lifecycle moves through them, because instructions written into a shared file are presented in that order and a reader meets them as a document.</p>
+            <p>How a tool receives instructions SHALL be a property of the tool with one value per tool, rather than a combination of independent settings. A tool for which no instructions could be written is a state the program SHALL NOT be able to reach.</p>
+            <p>Instructions SHALL record the version of the program that generated them, so an installation predating the instructions it should carry is identifiable.</p>
+            <p>Every generated file's declared name SHALL be composed only of lowercase letters, digits, and hyphens, because a tool that reads it may reject any other character. This SHALL hold for each kind of file the operation writes, and SHALL be checked against the files produced rather than against the values they are derived from — a name is assembled at the moment of writing, so a fault introduced there is invisible to a check on the inputs.</p>
+            <p>A generated name SHALL NOT be the invocation a contributor types. The invocation is a property of a tool's command surface, it differs per tool, and it SHALL have one producer; a name field holding it states that fact a second time and states it where a stricter reader rejects it. The name SHALL instead identify the workflow<del>, and the same identity SHALL be used for every kind of file a workflow produces</del>, so that a workflow has one generated identity rather than one per file kind.</p>
+            <ins>
+              <p>No two files the operation writes for one tool SHALL declare the same name. A declared name is a registry key for the tool that loads it, so a workflow's identity SHALL be declared once within a tool rather than repeated in each kind of file the workflow produces — a second declaration presents one workflow as two. Where a kind of file does not need a name in order to be found, the operation SHALL NOT write one; a command whose invocation is determined by its file path is such a kind. The same name appearing in two different tools' files is not a repeat, because each tool's namespace is its own.</p>
+            </ins>
+            <article class="scenario" id="scenario-installing-for-a-tool-with-commands" data-change="unchanged">
+              <h4>Installing for a tool with commands</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions for a tool that supports invocable commands</dd>
+                <dt>Then</dt>
+                <dd>both the instructions and the commands are written where that tool reads them, one of each per workflow</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-installing-for-a-tool-without-commands" data-change="unchanged">
+              <h4>Installing for a tool without commands</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions for a tool that supports instructions only</dd>
+                <dt>Then</dt>
+                <dd>the instructions are written and no command files are created</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-selected-tool-receives-something" data-change="unchanged">
+              <h4>Every selected tool receives something</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation completes for any selected tool</dd>
+                <dt>Then</dt>
+                <dd>that tool has received instructions, because a selected tool that receives nothing is not a representable outcome</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-lifecycle-is-covered" data-change="unchanged">
+              <h4>The lifecycle is covered</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor lists the workflows installed by the bootstrap operation</dd>
+                <dt>Then</dt>
+                <dd>the stages from exploring an idea through to archiving a completed change are each named</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-workflow-with-no-command-behind-it" data-change="unchanged">
+              <h4>A workflow with no command behind it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a stage of the lifecycle that no command performs</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions</dd>
+                <dt>Then</dt>
+                <dd>that stage's instructions are installed, and they state that the work is the agent's</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-instructions-naming-an-absent-command" data-change="unchanged">
+              <h4>Instructions naming an absent command</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an installed workflow's instructions name an invocation the program does not provide</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks report it, rather than the invocation reaching a contributor</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-workflows-are-presented-in-lifecycle-order" data-change="unchanged">
+              <h4>Workflows are presented in lifecycle order</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>instructions for every workflow are written into one shared file</dd>
+                <dt>Then</dt>
+                <dd>they appear in the order the lifecycle moves through them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-generated-instructions-name-their-version" data-change="unchanged">
+              <h4>Generated instructions name their version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>instructions are installed</dd>
+                <dt>Then</dt>
+                <dd>they record the version of the program that generated them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-generated-name-is-loadable" data-change="unchanged">
+              <h4>Every generated name is loadable</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs for every supported tool</dd>
+                <dt>Then</dt>
+                <dd>every file it writes declares a name of lowercase letters, digits, and hyphens only</dd>
+              </dl>
+              <p data-field="note">Migration note: the delta restated this scenario unchanged, and this change kept its words, task 5.4 confirming the requirement's other scenarios intact. As this change built it, a generated command file declares no name (the design's <a href="design.html#hs-a-command-file-declares-no-name">A command file declares no name</a>), so not every file the operation writes declares one: what holds is that every name a written file declares is of lowercase letters, digits, and hyphens only. The check task 2.5 kept, <code>every_generated_name_is_loadable</code>, passes over a file that declares no name and expects 28 declared names, one per workflow per tool that receives skills, all of them in skill files, as <a href="evidence/failing-distinctness-check-2026-08-20.md"><code>evidence/failing-distinctness-check-2026-08-20.md</code></a> records.</p>
+            </article>
+            <article class="scenario" id="scenario-a-name-that-is-not-an-invocation" data-change="unchanged">
+              <h4>A name that is not an invocation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a command file is generated for a tool whose invocation carries a character outside that set</dd>
+                <dt>Then</dt>
+                <dd>the file's declared name identifies the workflow and does not carry the invocation</dd>
+              </dl>
+              <p data-field="note">Migration note: the delta restated this scenario unchanged, and this change kept its words, task 5.4 confirming the requirement's other scenarios intact. As this change built it, a generated command file declares no name at all, so it carries no invocation and has no declared name to identify the workflow: <a href="evidence/loading-after-omission-2026-08-20.md"><code>evidence/loading-after-omission-2026-08-20.md</code></a> records <code>name:</code> absent from the 14 regenerated command files, and the design's <a href="design.html#hs-a-command-file-declares-no-name">A command file declares no name</a> records the choice.</p>
+            </article>
+            <article class="scenario" id="scenario-one-identity-per-workflow" data-change="removed">
+              <h4>One identity per workflow</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a workflow produces both instructions and a command for one tool</dd>
+                <dt>Then</dt>
+                <dd>both declare the same name</dd>
+              </dl>
+              <p data-field="note">Migration note: the delta restated this requirement under <code>MODIFIED</code> and left this scenario out, and the accepted specification as the merge at commit <code>c864727</code> left it no longer held it, so this change withdrew it. Its text is the text it held before, as <a href="../2026-08-18-conform-generated-frontmatter-names/specification.html#scenario-one-identity-per-workflow">2026-08-18-conform-generated-frontmatter-names</a> added it. The delta states no reason; the proposal's <a href="proposal.html#hs-what-changes">What Changes</a> and the design's <a href="design.html#hs-the-scenario-is-withdrawn-not-reworded">The scenario is withdrawn, not reworded</a> state why.</p>
+            </article>
+            <article class="scenario" id="scenario-a-workflow-is-listed-once-per-tool" data-change="added">
+              <h4>A workflow is listed once per tool</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a workflow produces both instructions and a command for one tool</dd>
+                <dt>Then</dt>
+                <dd>the workflow's name is declared once across the two, so a contributor listing what is installed finds the workflow once rather than twice</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-repeated-name-is-caught-before-release" data-change="added">
+              <h4>A repeated name is caught before release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation would write the same name into two files one tool loads</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks report it, rather than a contributor meeting a doubled listing when their tool loads them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-malformed-name-is-caught-before-release" data-change="unchanged">
+              <h4>A malformed name is caught before release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a workflow is added whose identity carries a character outside that set</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks report it, rather than a contributor meeting it when their tool loads the file</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each evidence and verification unit below summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links, and the record is the authority.</p>
+          </aside>
+          <section class="evidence" id="evidence-duplicate-identity-2026-08-20" data-change="added" data-refs="req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses">
+            <h3>One identity, declared twice, in two files a tool loads <span class="hs-id">evidence-duplicate-identity-2026-08-20</span></h3>
+            <p>Observed on 2026-08-20 against <code>htmlspec 0.1.0</code> from <code>main</code> at <code>4972234</code>, the commit that merged <code>conform-generated-frontmatter-names</code>. A Pi session load lists both spellings for the same seven workflows, fourteen entries. A fresh <code>htmlspec init --tools claude,cursor,pi,codex</code> writes skill files and command files declaring the same <code>name:</code> for all 7 workflows under Claude Code, Cursor, and Pi, while Codex, skills-only, is unaffected: 21 command files declaring a name that duplicates a skill's, 14 of them checked into this repository's own <code>.claude/</code> and <code>.pi/</code>. The record traces the duplicate to that change's <code>write_commands</code> taking <code>workflow.directory</code>, quotes its scenario <em>One identity per workflow</em>, and records that all ten <code>.pi/prompts/opsx-*.md</code> omit <code>name:</code> and load, while <code>.claude/commands/opsx/*.md</code> carry <code>name: "OPSX: Apply"</code>, which registers as <code>/opsx:apply</code>. <a href="evidence/duplicate-identity-2026-08-20.md"><code>evidence/duplicate-identity-2026-08-20.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-failing-distinctness-check-2026-08-20" data-change="added" data-refs="req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses">
+            <h3>The distinctness check fails before the fix <span class="hs-id">evidence-failing-distinctness-check-2026-08-20</span></h3>
+            <p>Tasks 1.3 to 1.5: <code>no_tool_receives_a_name_twice</code>, run with <code>cargo test -p htmlspec-cli no_tool_receives_a_name_twice</code> against the tree before <code>write_commands</code> was changed, failed, naming for each repeat the file and the file that already declared the name: Claude Code, Cursor, and Pi each declare 7 names twice across 14 files, 21 repeats in all, and Codex, which receives 7 files, is absent from the output. On the same tree <code>every_generated_name_is_loadable</code> reported no malformed name, and the non-vacuity assertion the same commit added to it failed, 49 declared names against the 28 that remain once command files stop declaring one. <a href="evidence/failing-distinctness-check-2026-08-20.md"><code>evidence/failing-distinctness-check-2026-08-20.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-loading-after-omission-2026-08-20" data-change="added" data-refs="req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses">
+            <h3>Omitting the name does not change what a contributor types <span class="hs-id">evidence-loading-after-omission-2026-08-20</span></h3>
+            <p>Tasks 4.1 to 4.6, run against this repository after the <code>write_commands</code> change with <code>htmlspec 0.1.0</code> built from the tree. <code>htmlspec init --tools claude,codex,pi</code> modified 14 files, all of them command files, and no skill file, and the command files' frontmatter keeps <code>description</code>, <code>allowed-tools</code>, and <code>generatedBy</code> with <code>name:</code> absent. The closing message still prints <code>/htmlspec:new</code>, <code>$htmlspec-new</code>, and <code>/htmlspec-new</code>, <code>Tool::invocation</code> has one non-test caller (<code>commands.rs:1102</code>), 0 of 10 <code>.pi/prompts/opsx-*.md</code> carry <code>name:</code>, and <code>git diff --stat AGENTS.md</code> is empty. The record states that Cursor's command loader was not tested and that no loader was shown to reject a duplicate name. A section added on 2026-08-21 records a session load, after <code>c864727</code>, that reports the html-spec workflows once each rather than twice, with the seven <code>/htmlspec:*</code> commands still invocable. <a href="evidence/loading-after-omission-2026-08-20.md"><code>evidence/loading-after-omission-2026-08-20.md</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-repeated-name-is-caught-before-release" data-change="added" data-outcome="passed" data-refs="scenario-a-repeated-name-is-caught-before-release">
+            <h3><code>no_tool_receives_a_name_twice</code>, watched failing before the fix <span class="hs-id">verify-a-repeated-name-is-caught-before-release</span></h3>
+            <p data-field="method">As <a href="evidence/failing-distinctness-check-2026-08-20.md"><code>evidence/failing-distinctness-check-2026-08-20.md</code></a> records it, <code>cargo test -p htmlspec-cli no_tool_receives_a_name_twice</code> ran against the tree before <code>write_commands</code> was changed, which wrote one name into a skill file and a command file for every workflow of each tool receiving both. The test failed with "one tool would load the same name from two files", naming each repeated name, the file declaring it, and the file that already declared it, and counting 7 names declared twice across 14 files for each of Claude Code, Cursor, and Pi, with Codex absent.</p>
+          </section>
+          <section class="verification" id="verify-a-workflow-is-listed-once-per-tool" data-change="added" data-outcome="passed" data-refs="scenario-a-workflow-is-listed-once-per-tool">
+            <h3>The regeneration and the session load after the fix <span class="hs-id">verify-a-workflow-is-listed-once-per-tool</span></h3>
+            <p data-field="method">As <a href="evidence/loading-after-omission-2026-08-20.md"><code>evidence/loading-after-omission-2026-08-20.md</code></a> records it, <code>./target/debug/htmlspec init --tools claude,codex,pi</code> regenerated this repository's instructions after the <code>write_commands</code> change. <code>git status</code> reported 14 modified files, all of them command files under <code>.claude/commands/htmlspec/</code> and <code>.pi/prompts/</code>, with <code>name:</code> absent from their frontmatter, while no skill file changed and the 7 skills under <code>.claude/skills/</code> still declare their names. On 2026-08-21, after <code>c864727</code> merged and the profile was upgraded to it, a session load reported the html-spec workflows once each rather than twice.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Carry task progress into the listing</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Carry task progress into the listing</h1>
+        <p>This change made <em>The command surface reports what a project holds</em> require the enumeration of active changes to carry each change's completion as a count of its tasks in each state, derived from the same source as the operation that reports a change's completion, with a change that has no tasks document enumerated with its completion absent. It made <em>Archival assesses the merge and never performs it</em> require archival to report a change whose contract has not reached the accepted specifications as not synced, naming the operation that reports what remains as it is invoked, and to state that condition as a value in its structured payload.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Carry task progress into the listing</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-02-carry-task-progress-into-the-listing/specs/toolchain-packaging/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-the-command-surface-reports-what-a-project-holds" data-change="modified">
+            <h3>The command surface reports what a project holds <span class="hs-id">req-the-command-surface-reports-what-a-project-holds</span></h3>
+            <p>The command surface SHALL provide an operation that enumerates a project's active changes, and SHALL be able to enumerate its accepted specifications instead. The enumeration SHALL be available as a structured payload.</p>
+            <p>This is the operation that lets a workflow select what it acts on. A workflow that cannot enumerate a project's changes must have its subject named for it every time, and instructions written against such a surface omit the selection step rather than performing it.</p>
+            <ins>
+              <p><strong>Because it exists for selection, the enumeration of active changes SHALL carry how much of each change's work is complete.</strong> A list of names is not something a workflow or a contributor can select from on any basis other than order, and a selection made at the moment of archiving is made about a directory that is about to move and a contract that is about to be rewritten.</p>
+            </ins>
+            <ins>
+              <p>The completion carried SHALL be a count of the change's tasks in each state the contract defines, rather than a single fraction. A fraction cannot separate a change nobody has started from one whose every task is under way, nor a change whose outstanding tasks were abandoned from one whose outstanding tasks remain to be done; those are different situations and a selection is made between them.</p>
+            </ins>
+            <ins>
+              <p>The counts SHALL be derived from the same source as the operation that reports a change's completion, so that the enumeration, that operation, and archival cannot disagree about one change. A second traversal that recounted the same tasks would be a second answer to one question, and the disagreement would be invisible to a test written against either operation alone.</p>
+            </ins>
+            <ins>
+              <p>A task that declares no state SHALL be counted apart from the states the contract defines, and SHALL be counted as outstanding wherever outstanding work is reported. The document schema requires a state, so such a task is a document that does not satisfy it; the counts are read from projections rather than from validated documents, and reporting an undeclared task under a state it never declared would attribute to a document something it does not say. Counting it as outstanding is the reading the report about incomplete work already takes, and the two SHALL NOT differ.</p>
+            </ins>
+            <ins>
+              <p>A change whose tasks document is absent SHALL be enumerated with its completion absent, rather than reported as a count of zero. A zero fraction reads as a change with no work outstanding, which is the opposite of what an unwritten tasks document means.</p>
+            </ins>
+            <ins>
+              <p>The enumeration of accepted specifications is unaffected by the above, which governs changes only.</p>
+            </ins>
+            <ins>
+              <p>The order of the enumeration SHALL NOT depend on the completion it carries. A listing that reorders itself as work progresses cannot be selected from twice.</p>
+            </ins>
+            <article class="scenario" id="scenario-enumerating-active-changes" data-change="unchanged">
+              <h4>Enumerating active changes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>each active change is named, and archived changes are not among them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-enumerating-accepted-specifications" data-change="unchanged">
+              <h4>Enumerating accepted specifications</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a project's accepted specifications are enumerated</dd>
+                <dt>Then</dt>
+                <dd>each is named</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-structured-enumeration" data-change="unchanged">
+              <h4>A structured enumeration</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested</dd>
+                <dt>Then</dt>
+                <dd>the enumeration is emitted as a payload a workflow can select from</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-s-progress-is-visible-in-the-listing" data-change="added">
+              <h4>A change's progress is visible in the listing</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change some of whose tasks are done</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the change is named and how much of its work is complete is reported beside it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-changes-at-the-same-fraction-in-different-states" data-change="added">
+              <h4>Two changes at the same fraction in different states</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>one change whose tasks are all <code>todo</code> and another the same size whose tasks are all <code>in-progress</code></dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the two are distinguishable from the enumeration alone</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-outstanding-work-that-was-abandoned" data-change="added">
+              <h4>Outstanding work that was abandoned</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose remaining tasks are all <code>dropped</code></dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>it is distinguishable from a change whose remaining tasks are still to be done</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-task-that-declares-no-state" data-change="added">
+              <h4>A task that declares no state</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change one of whose tasks declares no state</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>that task is counted apart from the defined states, and the change does not read as though its work were resolved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-enumeration-and-the-completion-report-agree" data-change="added">
+              <h4>The enumeration and the completion report agree</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>any active change</dd>
+                <dt>When</dt>
+                <dd>its completion is read from the enumeration and from the operation that reports a change's completion</dd>
+                <dt>Then</dt>
+                <dd>the two report the same counts</dd>
+              </dl>
+              <p data-field="note">Migration note: as built, for a change whose tasks document is absent, the completion report gives a total of 0 while the enumeration omits the counts. <a href="evidence/the-listing-agrees-with-status-2026-09-01.md"><code>evidence/the-listing-agrees-with-status-2026-09-01.md</code></a> records that asymmetry as deliberate, saying the two "do not disagree about a count, they differ in what they are able to express", and the change was archived with this scenario as written.</p>
+            </article>
+            <article class="scenario" id="scenario-a-change-with-no-tasks-document" data-change="added">
+              <h4>A change with no tasks document</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an active change whose tasks document is absent</dd>
+                <dt>When</dt>
+                <dd>the project's changes are enumerated</dd>
+                <dt>Then</dt>
+                <dd>the change is named and its completion is reported as absent rather than as zero</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-order-does-not-follow-progress" data-change="added">
+              <h4>Order does not follow progress</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose changes are at differing stages of completion</dd>
+                <dt>When</dt>
+                <dd>the changes are enumerated twice, with work completed in between</dd>
+                <dt>Then</dt>
+                <dd>the order is unchanged</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-archival-assesses-the-merge-and-never-performs-it" data-change="modified">
+            <h3>Archival assesses the merge and never performs it <span class="hs-id">req-archival-assesses-the-merge-and-never-performs-it</span></h3>
+            <p>Archival SHALL determine whether the change's contract reached the accepted specifications, and SHALL do so by comparing requirement identifiers rather than by reading requirements for meaning.</p>
+            <p>Archival SHALL NOT edit an accepted specification, SHALL NOT propose the text of a merge, and SHALL NOT treat an absent identifier as an error. Whether an absent requirement was withdrawn deliberately or omitted by mistake is a judgment, and <code>artifact-kinds</code> reserves it for an agent.</p>
+            <ins>
+              <p><strong>Where the assessment finds the contract has not reached the accepted specifications, archival SHALL report that the change has not been synced and SHALL name the operation that reports what remains.</strong> The report SHALL name the operation as it is invoked, rather than describing it. The prior wording told a contributor to apply the change's contract at a time when no operation did so, and a report that names a step without naming the command behind it leaves the reader searching the command surface for a name they must guess.</p>
+            </ins>
+            <ins>
+              <p>Where archival asks whether to proceed over its findings, and the change has not been synced, <strong>the question SHALL say so and SHALL state that declining leaves the project unchanged.</strong> A question that asks only whether to archive anyway invites the answer that archives a change whose contract never reached the project's specifications; a contributor deciding that should be told what proceeding skips and that declining costs them nothing.</p>
+            </ins>
+            <ins>
+              <p>The structured payload SHALL state whether the change has not been synced, as a value rather than as something derivable from the reported identifiers. An agent driving archival cannot answer the question a contributor is asked, so the condition that question is about SHALL be readable without inference.</p>
+            </ins>
+            <ins>
+              <p>Archival SHALL NOT perform the merge it names, and the report SHALL NOT be taken as authority to. This is the same prohibition stated above, restated because naming an operation is where a reader would expect an offer to run it.</p>
+            </ins>
+            <ins>
+              <p>Where the assessment finds the contract has reached the accepted specifications, archival SHALL NOT report anything about syncing. A report that appears whether or not it applies is one a reader learns to pass over, and the occasion it mattered would be passed over with it.</p>
+            </ins>
+            <article class="scenario" id="scenario-the-assessment-is-a-comparison-of-identifiers" data-change="unchanged">
+              <h4>The assessment is a comparison of identifiers</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival assesses whether a merge occurred</dd>
+                <dt>Then</dt>
+                <dd>it compares the identifiers the change's specification states against those the accepted specifications hold, and reads neither for meaning</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archival-does-not-write-the-accepted-specifications" data-change="unchanged">
+              <h4>Archival does not write the accepted specifications</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival completes</dd>
+                <dt>Then</dt>
+                <dd>no accepted specification was modified by the program</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-contract-has-not-been-synced" data-change="added">
+              <h4>A change whose contract has not been synced</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change stating a requirement no accepted specification holds</dd>
+                <dt>When</dt>
+                <dd>archival reports its findings</dd>
+                <dt>Then</dt>
+                <dd>it reports that the change has not been synced and names the operation that reports what remains, as it is invoked</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-question-asked-about-an-unsynced-change" data-change="added">
+              <h4>The question asked about an unsynced change</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose contract has not reached the accepted specifications</dd>
+                <dt>When</dt>
+                <dd>archival asks whether to proceed over its findings</dd>
+                <dt>Then</dt>
+                <dd>the question states that the change has not been synced and that declining leaves the project unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-whose-contract-was-applied" data-change="added">
+              <h4>A change whose contract was applied</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change every one of whose stated requirements an accepted specification holds</dd>
+                <dt>When</dt>
+                <dd>archival reports its findings</dd>
+                <dt>Then</dt>
+                <dd>nothing about syncing is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-agent-reads-the-condition-rather-than-inferring-it" data-change="added">
+              <h4>An agent reads the condition rather than inferring it</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival emits its structured payload</dd>
+                <dt>Then</dt>
+                <dd>whether the change has not been synced is stated as a value in the payload</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each evidence and verification unit below summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links. The record is the authority.</p>
+          </aside>
+          <section class="evidence" id="evidence-what-the-listing-discards-2026-09-01" data-change="added" data-refs="req-the-command-surface-reports-what-a-project-holds">
+            <h3>What the listing discards <span class="hs-id">evidence-what-the-listing-discards-2026-09-01</span></h3>
+            <p>Task 1.1's baseline, recorded against <code>ee4301c</code>: <code>active_changes</code> returned <code>Vec&lt;String&gt;</code> after one <code>read_dir</code>, and <code>list</code> emitted those names under a label as <code>{ "changes": [names] }</code>, while <code>status</code> computed <code>{ total, open, openTasks }</code> and per-artifact presence for one change. The record states the cost as one <code>list</code> and then one <code>status</code> per name, and tabulates the tasks' cited line numbers against their positions at that commit. <a href="evidence/what-the-listing-discards-2026-09-01.md"><code>evidence/what-the-listing-discards-2026-09-01.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-one-counter-already-has-two-callers-2026-09-01" data-change="added" data-refs="req-the-command-surface-reports-what-a-project-holds">
+            <h3>One counter already has two callers <span class="hs-id">evidence-one-counter-already-has-two-callers-2026-09-01</span></h3>
+            <p>Task 1.2's record, against <code>ee4301c</code>: every call site of <code>total_tasks</code> and <code>open_tasks</code>, which are <code>status</code> and archival's <code>findings_for</code>; that one <code>status</code> invocation parsed a change's tasks twice; and the accepted requirement <em>The command surface reports a change's completion</em>, quoted with its scenario, as already obliging archival and the completion report to agree. <a href="evidence/one-counter-already-has-two-callers-2026-09-01.md"><code>evidence/one-counter-already-has-two-callers-2026-09-01.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-four-states-collapsed-into-one-2026-09-01" data-change="added" data-refs="req-the-command-surface-reports-what-a-project-holds">
+            <h3>Four states collapsed into one <span class="hs-id">evidence-four-states-collapsed-into-one-2026-09-01</span></h3>
+            <p>Task 1.3's record, against <code>ee4301c</code>: the schema's four required task states, the projection's <code>Option&lt;String&gt;</code> that admits a task declaring no state, <code>open_tasks</code> as a two-way partition of that distinction, and a table of four changes, A to D, whose fractions cannot separate the situations a contributor chooses between. <a href="evidence/four-states-collapsed-into-one-2026-09-01.md"><code>evidence/four-states-collapsed-into-one-2026-09-01.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-enumeration-exists-for-selection-2026-09-01" data-change="added" data-refs="req-the-command-surface-reports-what-a-project-holds">
+            <h3>The enumeration exists for selection <span class="hs-id">evidence-the-enumeration-exists-for-selection-2026-09-01</span></h3>
+            <p>Task 1.4's record, against <code>ee4301c</code>: the accepted text of <em>The command surface reports what a project holds</em>, whose second paragraph states its purpose as selection, the argument that its three scenarios are satisfied by names alone, and the callers that select from the enumeration: the shipped <code>archive</code> and <code>sync</code> instructions, and <code>archive</code> itself at <code>commands.rs:688</code>. <a href="evidence/the-enumeration-exists-for-selection-2026-09-01.md"><code>evidence/the-enumeration-exists-for-selection-2026-09-01.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-the-listing-agrees-with-status-2026-09-01" data-change="added" data-refs="req-the-command-surface-reports-what-a-project-holds">
+            <h3>The listing agrees with status, change by change <span class="hs-id">evidence-the-listing-agrees-with-status-2026-09-01</span></h3>
+            <p>Tasks 5.1 to 5.3's record: why the check ran against a project <code>htmlspec init</code> established rather than this repository, the human report and the per-change comparison of the listing against <code>status</code> for five changes, ending "all 5 changes agree", the readings of the all-<code>dropped</code> change <code>gamma</code> and the change <code>epsilon-no-tasks</code> with no tasks document, and the asymmetry that <code>status</code> reports <code>total=0</code> where the listing omits the counts. <a href="evidence/the-listing-agrees-with-status-2026-09-01.md"><code>evidence/the-listing-agrees-with-status-2026-09-01.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-prove-listing" data-change="added" data-refs="req-the-command-surface-reports-what-a-project-holds">
+            <h3>Task 5.1: the listing's fraction against status, one change at a time <span class="hs-id">evidence-prove-listing</span></h3>
+            <p>The script behind that comparison. It builds a project with <code>htmlspec init</code> holding five changes in chosen task states, one of them with no tasks document, then compares each change's entry in <code>list --json</code> with <code>status --json</code> by number and exits non-zero on any disagreement. It names its manifest as <code>Cargo.toml</code> and its project root as <code>/tmp/provedemo</code>. <a href="evidence/prove-listing.py"><code>evidence/prove-listing.py</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-archival-names-the-sync-it-checked-2026-09-01" data-change="added" data-refs="req-archival-assesses-the-merge-and-never-performs-it">
+            <h3>Archival names the sync it already checked <span class="hs-id">evidence-archival-names-the-sync-it-checked-2026-09-01</span></h3>
+            <p>The record of the work requested mid-implementation: that <code>findings_for</code> already computed the unmerged requirements from <code>merge_state</code>, the note and question archival gave before and after, the <code>needsSync</code> payload field, the output once the contract was applied, agreement with <code>htmlspec sync</code>, the two alternatives deliberately not built, and a table of the tests that pin the behaviour. <a href="evidence/archival-names-the-sync-it-checked-2026-09-01.md"><code>evidence/archival-names-the-sync-it-checked-2026-09-01.md</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-change-s-progress-is-visible-in-the-listing" data-change="added" data-outcome="passed" data-refs="scenario-a-change-s-progress-is-visible-in-the-listing">
+            <h3>Progress beside each change in the scratch run <span class="hs-id">verify-a-change-s-progress-is-visible-in-the-listing</span></h3>
+            <p data-field="method">The human report of <code>htmlspec list</code> over the scratch project, as <a href="evidence/the-listing-agrees-with-status-2026-09-01.md"><code>evidence/the-listing-agrees-with-status-2026-09-01.md</code></a> records it, names each change with its fraction and state beside it, among them <code>beta</code> at <code>1/3 in-progress</code> and <code>delta-with-a-long-name</code> at <code>1/4 in-progress</code>.</p>
+          </section>
+          <section class="verification" id="verify-outstanding-work-that-was-abandoned" data-change="added" data-outcome="passed" data-refs="scenario-outstanding-work-that-was-abandoned">
+            <h3>The all-dropped change in the scratch run <span class="hs-id">verify-outstanding-work-that-was-abandoned</span></h3>
+            <p data-field="method">In the same run, the change <code>gamma</code>, whose two tasks are both <code>dropped</code>, renders <code>0/2 done</code> and its payload carries <code>"dropped": 2</code>, while the changes with tasks still to be done read <code>in-progress</code>. The record states that <code>gamma</code> reads as complete, not as untouched. <a href="evidence/the-listing-agrees-with-status-2026-09-01.md"><code>evidence/the-listing-agrees-with-status-2026-09-01.md</code></a></p>
+          </section>
+          <section class="verification" id="verify-the-enumeration-and-the-completion-report-agree" data-change="added" data-outcome="partial" data-refs="scenario-the-enumeration-and-the-completion-report-agree">
+            <h3>The listing against status, change by change <span class="hs-id">verify-the-enumeration-and-the-completion-report-agree</span></h3>
+            <p data-field="method"><a href="evidence/prove-listing.py"><code>evidence/prove-listing.py</code></a> read, for each of the five changes, the listing's denominator against <code>status</code>'s <code>total</code>, and the listing's <code>done</code> plus <code>dropped</code> against <code>status</code>'s <code>total</code> minus <code>open</code>, and scored the change with no tasks document as agreeing where <code>status</code> reports <code>total=0</code> and the listing omits the counts. <a href="evidence/the-listing-agrees-with-status-2026-09-01.md"><code>evidence/the-listing-agrees-with-status-2026-09-01.md</code></a> records every change as agreeing.</p>
+            <p data-field="unchecked">That the two report the same counts for an active change whose tasks document is absent: for <code>epsilon-no-tasks</code> the completion report gives a total of 0 and the enumeration carries no counts, and the script scores that difference as agreement.</p>
+            <p data-field="unchecked">That the two report the same counts for an active change one of whose tasks declares no state: no change in the run holds such a task.</p>
+          </section>
+          <section class="verification" id="verify-a-change-with-no-tasks-document" data-change="added" data-outcome="passed" data-refs="scenario-a-change-with-no-tasks-document">
+            <h3>The change with no tasks document in the scratch run <span class="hs-id">verify-a-change-with-no-tasks-document</span></h3>
+            <p data-field="method">In the same run, <code>epsilon-no-tasks</code>, whose tasks document was deleted, is named in the human report with <code>no tasks</code> where the fraction would be, and its payload entry is <code>{ "name": "epsilon-no-tasks" }</code>, with <code>total</code> and <code>tasks</code> omitted. <a href="evidence/the-listing-agrees-with-status-2026-09-01.md"><code>evidence/the-listing-agrees-with-status-2026-09-01.md</code></a></p>
+          </section>
+          <section class="verification" id="verify-a-change-whose-contract-has-not-been-synced" data-change="added" data-outcome="passed" data-refs="scenario-a-change-whose-contract-has-not-been-synced">
+            <h3>The unsynced change's findings <span class="hs-id">verify-a-change-whose-contract-has-not-been-synced</span></h3>
+            <p data-field="method">The recorded check-mode output for a change, <code>unsynced-change</code>, stating a requirement no accepted specification held reports "This change has not been synced" and names <code>htmlspec sync --change unsynced-change</code> as the way to see what remains. <a href="evidence/archival-names-the-sync-it-checked-2026-09-01.md"><code>evidence/archival-names-the-sync-it-checked-2026-09-01.md</code></a></p>
+          </section>
+          <section class="verification" id="verify-a-change-whose-contract-was-applied" data-change="added" data-outcome="passed" data-refs="scenario-a-change-whose-contract-was-applied">
+            <h3>The same change once its contract was applied <span class="hs-id">verify-a-change-whose-contract-was-applied</span></h3>
+            <p data-field="method">The recorded output for the same change after its specification was copied into <code>specs/</code> reports its open task and the readiness line with no mention of syncing, and the record states that <code>needsSync</code> is <code>false</code> and <code>unmergedRequirements</code> is empty. <a href="evidence/archival-names-the-sync-it-checked-2026-09-01.md"><code>evidence/archival-names-the-sync-it-checked-2026-09-01.md</code></a></p>
+          </section>
+          <section class="verification" id="verify-an-agent-reads-the-condition-rather-than-inferring-it" data-change="added" data-outcome="passed" data-refs="scenario-an-agent-reads-the-condition-rather-than-inferring-it">
+            <h3>The needsSync field in the payload <span class="hs-id">verify-an-agent-reads-the-condition-rather-than-inferring-it</span></h3>
+            <p data-field="method">The recorded structured payload for the unsynced change is <code>{ "needsSync": true, "unmergedRequirements": ["req-example"], "moved": false }</code>, and the record states that <code>needsSync</code> is <code>false</code> once the contract was applied. <a href="evidence/archival-names-the-sync-it-checked-2026-09-01.md"><code>evidence/archival-names-the-sync-it-checked-2026-09-01.md</code></a></p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

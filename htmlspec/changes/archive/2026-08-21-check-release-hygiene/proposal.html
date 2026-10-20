@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Check release hygiene</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Check release hygiene</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Check release hygiene</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-21-check-release-hygiene/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>Seven changes are archived in this repository. <a href="evidence/unbumped-history-2026-08-21.md"><code>Cargo.toml</code> has read <code>version = "0.1.0"</code> for all seven, and <code>ls CHANGELOG*</code> finds nothing.</a></p>
+          <p><a href="evidence/unbumped-history-2026-08-21.md">Four of those changes altered output a contributor consumes</a>: the installed workflow count went from one to seven, the frontmatter of every generated command file changed twice, and <code>init</code> stopped creating a document and started bootstrapping a project. Someone holding <code>0.1.0</code> cannot tell which of those they have, and nothing in the repository records it.</p>
+          <p><a href="evidence/unbumped-history-2026-08-21.md"><code>scripts/check</code> has eight stages</a> — <code>format</code>, <code>lint</code>, <code>test</code>, <code>doctest</code>, <code>self-conformance</code>, <code>self-format</code>, <code>self-assets</code>, <code>prompt</code>. <strong>None reads the version and none looks for a changelog.</strong> So no check here has ever had an opinion about release hygiene, and the omission has been invisible for seven changes because nothing was watching.</p>
+          <p>This is a gap in <strong>this repository's suite</strong>, not in the program it ships. The program has its own version gate at <code>commands.rs:1281</code>, aimed at projects a contributor bootstraps with <code>htmlspec init</code>. <a href="evidence/unbumped-history-2026-08-21.md">It does not apply here</a>: this repository has no <code>spec.nix</code> and no <code>htmlspec/</code> directory, so there is nothing for that gate to read, and six of the seven archives were moved with <code>git mv</code>. Whether the shipped gate should be stronger is a separate question about the product.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li>
+              <p><strong>A new stage in <code>scripts/check</code>.</strong> The suite gains a stage that reports a change archived without a version advance and a version with no changelog entry. It joins the eight existing stages and runs the same way, in the same one command a contributor and CI both invoke.</p>
+            </li>
+            <li>
+              <p><strong>The stage is not called <code>lint</code>.</strong> <a href="evidence/unbumped-history-2026-08-21.md">That name is already <code>cargo clippy</code>.</a> A second stage called <code>lint</code> would make the suite's failure output ambiguous about which lint failed.</p>
+            </li>
+            <li>
+              <p><strong>A <code>CHANGELOG.md</code> at the repository root</strong>, with one entry per version and a heading that names the version so the stage can locate it. Written retroactively for the seven archived changes, because a check for entries that has none to find is untested.</p>
+            </li>
+            <li>
+              <p><strong>The version becomes something a check can compare.</strong> The stage needs a previous version to compare against. Recording each archived change's version where the stage can read it is part of this change, since without a previous value there is nothing to compare and the check is decorative.</p>
+            </li>
+            <li>
+              <p><strong>Files, not git history.</strong> The stage reads the working tree. <a href="evidence/unbumped-history-2026-08-21.md"><code>flake.nix:39</code> filters the build source and the derivation receives a snapshot with no <code>.git</code></a>, so <code>git log</code> and <code>git diff</code> are unavailable in the sandbox where CI runs. A check written against history would pass locally and fail in CI — the precise divergence <code>scripts/check</code> exists to prevent. The filter keeps <code>*.md</code> and <code>scripts/</code>, which is what makes a file-reading stage possible.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-non-goals">
+          <h2>Non-Goals</h2>
+          <ul>
+            <li>
+              <p><strong>Changing the <code>htmlspec</code> program.</strong> No new subcommand, no change to <code>archive_version_gate</code>, no change to any crate. This is the repository's own suite checking the repository. The earlier draft of this change proposed an <code>htmlspec lint</code> subcommand, which was the wrong scope: it would have shipped a feature to every consumer to solve a problem in one repository.</p>
+            </li>
+            <li>
+              <p><strong>Deciding the increment.</strong> Whether a change earned a patch, a minor, or a major stays judgment. The stage checks that the version moved and that a changelog entry exists. It does not read a diff and form an opinion about severity.</p>
+            </li>
+            <li>
+              <p><strong>Rewriting the seven archived changes.</strong> Their directories stay as they are. The changelog is written retroactively from what they record, which is additive; renaming them would edit history to satisfy a convention introduced afterward.</p>
+            </li>
+            <li>
+              <p><strong>Blocking on a missing entry mid-change.</strong> The stage's severity is settled in the design rather than asserted here, because a stage in <code>scripts/check</code> either passes or fails and there is no warning level in a shell suite. That constraint is the design's problem to solve.</p>
+            </li>
+            <li>
+              <p><strong>Checking anything else about releases.</strong> No tag checking, no crates.io publication check, no dependency audit. Two obligations, both named in the request.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,312 @@
+#!/usr/bin/env python3
+"""The guards a pull request must satisfy, as one script.
+
+Why this is separate from `scripts/check`
+-----------------------------------------
+`scripts/check` answers "is this revision healthy?" — a question about a tree of files,
+which is why `nix flake check` can answer it inside a sandbox that holds a filtered
+snapshot and no `.git` at all. The questions here are not about a tree. They are about
+a *proposal*: what it is titled, and what it changes relative to the branch it targets.
+Neither is visible in a snapshot, so neither can be a stage in that suite without
+breaking the property that makes the suite trustworthy — that CI and a contributor's
+machine run the identical thing.
+
+So this is a second script with a second suite, run by `.github/workflows/pr-guard.yml`
+against the pull-request event. It is still a script rather than inline workflow YAML,
+for the reason `scripts/check` gives: logic that lives only in a workflow file is logic
+nobody can run before pushing, and a gate a contributor cannot rehearse is a gate that
+teaches nothing until it fails.
+
+How it divides work with `scripts/check-release`
+------------------------------------------------
+`check-release` asks whether the *settled record* is coherent: every archived change
+records a version, versions are distinct, and each has a changelog heading. It reads
+files and never git, deliberately, because it runs where git is absent.
+
+This script asks the one question that requires git and therefore cannot live there:
+did *this change, in flight* write down what it did? `check-release` cannot notice a
+pull request that shipped a behavior change and touched nothing in `CHANGELOG.md`,
+because the fault is invisible in the tree — the changelog is well-formed either way.
+Comparing two refs is the only way to see it, and a workflow is the only place that
+has both.
+
+The two rules
+-------------
+1. **The title reads as this project's history reads.** The repository squash-merges,
+   so a pull request's title becomes a commit subject verbatim and is what someone
+   reads in `git log` years later. The existing history is imperative prose —
+   "Finish the archival, and fix the gate that never fired", "Pass a contributor's
+   arguments through the invocation" — not Conventional Commits, and this check
+   encodes the convention the project actually has rather than importing one it does
+   not.
+
+2. **A change records what it changed.** `CHANGELOG.md` must appear in the diff. The
+   `skip-changelog` label is the escape hatch, because some pull requests genuinely
+   change nothing a reader of the changelog would care about, and a gate with no
+   exit is a gate people learn to route around.
+
+What rule 1 cannot check
+------------------------
+Imperative mood is not mechanically decidable — "Bring", "Bed", and "Added" are not
+separable by suffix, and a part-of-speech tagger is not a dependency this project is
+going to grow for a title lint. So the check refuses a short list of openers that are
+unambiguously not imperative, and is silent about the rest. It catches the common
+miss ("Fixed the parser") and lets an unusual correct title through. A lint that
+guesses is worse than one with a stated blind spot.
+
+Usage:
+  scripts/check-pull-request --title TITLE [--base REF]
+  scripts/check-pull-request --title TITLE --changed FILE   (or - for stdin)
+  scripts/check-pull-request --title TITLE --labels-json '["skip-changelog"]'
+
+With no --changed, the changed files are derived from git as the three-dot diff
+against --base (default `origin/main`), which is the same set GitHub shows in the
+"Files changed" tab.
+
+Exit codes match `scripts/check-release`: 0 clean, 1 faults found, 2 the script could
+not ask the question.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+import sys
+
+# A squash-merged subject wider than this wraps or is truncated in `git log --oneline`,
+# in the GitHub commit list, and in most terminals. The longest subject in this
+# project's history is well inside it, so the limit constrains nothing that already
+# reads well.
+MAX_TITLE = 72
+
+# The floor, as a character count rather than a word count. A word count looked like
+# the natural rule and was wrong: "Archive distinguish-command-names-from-skill-names"
+# is two words and one of the most specific subjects in this project's history, while
+# "Dark mode" is two words and names an area rather than a change. Length separates
+# them; word count calls them equivalent.
+#
+# 16 sits just under the shortest subject the project has actually written
+# ("Add readme markdown", 19), so it refuses labels without second-guessing history.
+MIN_TITLE = 16
+MIN_WORDS = 2
+
+# The file that must appear in a pull request's diff, and the label that excuses it.
+CHANGELOG = "CHANGELOG.md"
+SKIP_LABEL = "skip-changelog"
+
+# Openers that are unambiguously reports rather than instructions. Deliberately short:
+# see "What rule 1 cannot check" above. Compared case-insensitively against the first
+# word only.
+NON_IMPERATIVE = {
+    "added", "adding", "adds",
+    "changed", "changes", "changing",
+    "created", "creates", "creating",
+    "fixed", "fixes", "fixing",
+    "implemented", "implements", "implementing",
+    "moved", "moves", "moving",
+    "removed", "removes", "removing",
+    "renamed", "renames", "renaming",
+    "updated", "updates", "updating",
+}
+
+# A Conventional Commits prefix: `feat:`, `fix(parser)!:`, and friends. Refused rather
+# than ignored, because a repository whose history is half prose and half type-prefixes
+# has no convention at all.
+CONVENTIONAL = re.compile(r"^[a-z]+(\([^)]*\))?!?:\s")
+
+# GitHub appends ` (#123)` to a squash subject itself. A title that already carries one
+# produces a subject with two.
+TRAILING_NUMBER = re.compile(r"\(#\d+\)\s*$")
+
+# Markers meaning "not ready", in any of the spellings people reach for.
+WIP = re.compile(r"^\s*(wip\b|\[wip\]|draft\b|\[draft\])", re.IGNORECASE)
+
+
+def title_faults(title: str) -> list[str]:
+    """Every way the title departs from the convention, so one run reports all of them.
+
+    Returns a list rather than raising on the first, for the reason `scripts/check`
+    keeps going after a failing stage: a contributor fixing three problems should
+    learn about all three in one run.
+    """
+    faults: list[str] = []
+    stripped = title.strip()
+
+    if not stripped:
+        faults.append("the title is empty. It becomes the squash commit's subject")
+        return faults
+
+    if WIP.match(stripped):
+        faults.append(
+            f"the title is marked as work in progress: {stripped!r}. Mark the pull "
+            f"request itself a draft instead, so the title is the one it merges with"
+        )
+
+    if CONVENTIONAL.match(stripped):
+        faults.append(
+            f"the title carries a Conventional Commits prefix: {stripped!r}. This "
+            f"project's history is imperative prose — see `git log --format=%s`"
+        )
+
+    if len(stripped) > MAX_TITLE:
+        faults.append(
+            f"the title is {len(stripped)} characters, over {MAX_TITLE}. It becomes a "
+            f"commit subject, which is read in one line or not at all"
+        )
+
+    words = stripped.split()
+    if len(words) < MIN_WORDS or len(stripped) < MIN_TITLE:
+        faults.append(
+            f"the title is {len(stripped)} character(s) in {len(words)} word(s), under "
+            f"{MIN_TITLE}. Say what the change does, not what area it touches"
+        )
+
+    first = words[0]
+    if not first[0].isalpha():
+        faults.append(
+            f"the title starts with {first[0]!r}. A commit subject opens with a word"
+        )
+    elif not first[0].isupper():
+        faults.append(
+            f"the title starts lowercase: {stripped!r}. A commit subject is a "
+            f"sentence, not a branch name"
+        )
+
+    if first.lower().strip(":,") in NON_IMPERATIVE:
+        faults.append(
+            f"the title opens with {first!r}, which reports rather than instructs. "
+            f"This project's subjects are imperative: 'Fix the gate', not 'Fixed the "
+            f"gate'"
+        )
+
+    if stripped.endswith("."):
+        faults.append("the title ends with a period. A commit subject is not a sentence")
+
+    if TRAILING_NUMBER.search(stripped):
+        faults.append(
+            f"the title already names a pull request number: {stripped!r}. GitHub "
+            f"appends one on squash, and the subject would carry two"
+        )
+
+    return faults
+
+
+def changelog_faults(changed: list[str], labels: list[str]) -> list[str]:
+    """Whether the change wrote down what it did.
+
+    An empty diff is a fault of its own kind: it means this script was handed nothing
+    to judge, and reporting "no changelog entry" would blame the pull request for the
+    script's missing input.
+    """
+    if SKIP_LABEL in labels:
+        return []
+    if not changed:
+        return [
+            "the pull request changes no files, or the diff could not be read. "
+            "Nothing here can be judged"
+        ]
+    if CHANGELOG not in changed:
+        return [
+            f"{CHANGELOG} is untouched. Record what this change does for someone "
+            f"reading the project a year from now, or label the pull request "
+            f"{SKIP_LABEL!r} to state that there is nothing to record"
+        ]
+    return []
+
+
+def changed_from_git(base: str) -> list[str] | None:
+    """The files this branch changes relative to where it left `base`.
+
+    Three-dot, so a base branch that moved ahead does not appear as this pull request's
+    work. That is the same set GitHub lists under "Files changed", which matters: a
+    contributor reading a fault should be able to see the file the fault is about.
+
+    Returns None when git cannot answer — an unfetched base ref is the usual cause, and
+    it is an environment problem rather than a finding about the pull request.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", f"{base}...HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    return [line for line in result.stdout.splitlines() if line.strip()]
+
+
+def read_changed(path: str) -> list[str]:
+    """One path per line, from a file or from stdin as `-`."""
+    text = sys.stdin.read() if path == "-" else open(path, encoding="utf-8").read()
+    return [line.strip() for line in text.splitlines() if line.strip()]
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="check a pull request's title and diff")
+    parser.add_argument("--title", required=True, help="the pull request's title")
+    parser.add_argument(
+        "--base",
+        default="origin/main",
+        help="the ref the pull request targets, used when --changed is absent",
+    )
+    parser.add_argument(
+        "--changed",
+        help="a file of changed paths, one per line, or - for stdin",
+    )
+    parser.add_argument(
+        "--labels-json",
+        default="[]",
+        help='the pull request labels as a JSON array of names, e.g. ["skip-changelog"]',
+    )
+    arguments = parser.parse_args()
+
+    try:
+        labels = json.loads(arguments.labels_json)
+        if not isinstance(labels, list) or not all(isinstance(name, str) for name in labels):
+            raise ValueError
+    except (json.JSONDecodeError, ValueError):
+        print(
+            f"--labels-json is not a JSON array of strings: {arguments.labels_json!r}",
+            file=sys.stderr,
+        )
+        return 2
+
+    if arguments.changed:
+        try:
+            changed = read_changed(arguments.changed)
+        except OSError as error:
+            print(f"cannot read --changed: {error}", file=sys.stderr)
+            return 2
+    else:
+        derived = changed_from_git(arguments.base)
+        if derived is None:
+            print(
+                f"cannot diff against {arguments.base}. Fetch it, or pass --changed "
+                f"with the file list",
+                file=sys.stderr,
+            )
+            return 2
+        changed = derived
+
+    faults = title_faults(arguments.title) + changelog_faults(changed, labels)
+
+    if faults:
+        print("pull request:", file=sys.stderr)
+        for fault in faults:
+            print(f"!!! {fault}", file=sys.stderr)
+        print(f"\n{len(faults)} fault(s) across {len(changed)} changed file(s)", file=sys.stderr)
+        return 1
+
+    excused = f", {SKIP_LABEL} label present" if SKIP_LABEL in labels else ""
+    print(f"  ok  the title reads as a commit subject: {arguments.title.strip()}")
+    print(f"  ok  {len(changed)} changed file(s) record the change{excused}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

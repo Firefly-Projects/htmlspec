@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Resolve a reference across its change</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Resolve a reference across its change</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Resolve a reference across its change</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-04-resolve-a-reference-across-its-change/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><strong>The tasks template gives advice the validator rejects.</strong> <code>assets/template-tasks.html:40</code> tells an author: "A task may reference the requirement it serves with <code>data-refs</code>, once that requirement exists in this change's specification." Following it exactly, in a scratch project, produces an error and exit status 1:</p>
+          <pre><code>error: refs/unresolved at task-example: this task references req-example, and no unit in the
+document declares that identifier.</code></pre>
+          <p>A requirement that only an accepted specification holds fails the same way (<a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a>, steps 1 and 2). The rule in <code>crates/htmlspec-validate/src/rules/refs.rs</code> resolves an identifier against the one document that makes the reference, and against nothing else.</p>
+          <p><strong>The contract disagrees with itself about this.</strong></p>
+          <ul>
+            <li>document-schema's "<a href="specification.html#req-cross-references-address-units-by-identifier">Cross-references address units by identifier</a>" says a reference "SHALL resolve to a unit that exists in the same document or in an accepted spec reachable from it". Nothing implements the second half, nothing defines "reachable", and the sentence says nothing about a change's own specification.</li>
+            <li>runbook-execution's "<a href="specification.html#req-a-record-carries-the-procedure-it-ran-and-the-obligations-it-attests-to">A record carries the procedure it ran and the obligations it attests to</a>" states the opposite as a universal rule: "This is forced rather than chosen. A reference addresses a unit within one document…". So does the help text of <code>htmlspec run</code> (<code>crates/htmlspec-cli/src/main.rs:237</code>), and so does the prose that <code>run</code> writes into every new record (<code>crates/htmlspec-cli/src/runs.rs</code>).</li>
+          </ul>
+          <p><strong>The workaround is a link that nothing checks.</strong> The migration's drafting brief says: "Never give a unit <code>data-refs</code> naming a unit in another document: references resolve within one document only, and it is an error." So its drafters used plain links. In the staged migration, 54 task units in 15 changes and 2 decision units link to a unit in another document, 68 links in all, and none of them carries <code>data-refs</code> (<a href="evidence/the-measurement-2026-09-30.md">step 3</a>). A link to another document projects into neither the model's references nor its links. <a href="evidence/the-measurement-2026-09-30.md">The measurement</a> shows a link to <code>specification.html#req-does-not-exist</code> accepted with exit status 0.</p>
+          <p><strong>Why now.</strong> This project's migration out of OpenSpec is staged and waiting. Without this change, those 56 units go into the migrated documents as links nobody checks, or the gap is recorded there as an open question. Either way the migrated project would carry the workaround and not the relationship.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong>A <code>data-refs</code> entry resolves in three places, in order.</strong> It is tried first in its own document. For one of a change's documents, it is tried next in that change's specification. Then it is tried in the project's accepted specifications. The first place that declares the identifier is the one the reference resolves in.</li>
+            <li><strong>"Reachable" gets a definition, from where a document sits.</strong> A document is loose (outside any project, or in a change's evidence), a change's document, a change's specification, an accepted specification, or a runbook's document. A change's documents, its specification, and an accepted specification reach beyond themselves. A loose document and a runbook's document do not. An archived change is still a change.</li>
+            <li><strong>A change's proposal and design reach what its tasks reach.</strong> Reach is decided by where a document sits, not by its kind.</li>
+            <li><strong>Every accepted specification is reachable, and an accepted specification reaches the others.</strong> A reference names a unit, not a capability, and a merge can split one change's units across two capabilities.</li>
+            <li><strong>A reference to a withdrawn unit is still an error, wherever the unit is found.</strong> The change's specification is tried before the accepted specifications. So a requirement the change withdraws is withdrawn for the change's own documents, even while the accepted specification still holds it.</li>
+            <li><strong>An identifier that two accepted specifications declare still resolves.</strong> <a href="evidence/the-measurement-2026-09-30.md">The staged migration holds two such identifiers today.</a></li>
+            <li><strong>Validating one document reads the documents it reaches, and reports only on the one named.</strong> The scenario "<a href="specification.html#scenario-validating-one-document">Validating one document</a>" says so.</li>
+            <li><strong>A reachable document that cannot be read is not treated as empty.</strong> A reference that resolves nowhere else is still reported, and the report names the unread document instead of claiming that no unit declares the identifier.</li>
+            <li><strong>The template's advice becomes true, and the prose that stated the old rule is corrected.</strong> The tasks template says where a task's reference can reach. The <code>run</code> help text and the record prose say that a runbook's documents resolve within themselves, which is still true.</li>
+            <li>
+              <p><strong>Unchanged:</strong></p>
+              <ul>
+                <li>A loose document, and so every conformance fixture, resolves within itself exactly as now.</li>
+                <li>A runbook's documents, including a run's record, resolve within themselves.</li>
+                <li>A fragment link, <code>href="#…"</code>, resolves only in its own document.</li>
+                <li>The <code>review/*</code> warnings still read one document.</li>
+                <li>No rule identifier, unit, field, attribute, or projection rule is added.</li>
+                <li>Every document that validates today still validates, because its own document is always tried first.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <section id="hs-new-capabilities">
+            <h3>New Capabilities</h3>
+            <p>None.</p>
+          </section>
+          <section id="hs-modified-capabilities">
+            <h3>Modified Capabilities</h3>
+            <ul>
+              <li><code>document-schema</code>: "<a href="specification.html#req-cross-references-address-units-by-identifier">Cross-references address units by identifier</a>" defines the places a reference can reach, their order, and what a fragment link, a withdrawn unit, and an identifier two accepted specifications declare each resolve to. It is modified rather than joined by a new requirement, because it already promises resolution beyond the document. A second requirement would leave two statements of one rule.</li>
+              <li><code>document-validation</code>: "<a href="specification.html#req-cross-references-must-resolve">Cross-references must resolve</a>" gains the validation side of the rule. Validation reads the documents a reference can reach and reports nothing about them. A reference that resolves nowhere is reported with the places that were searched, and an unreadable document is named as unread. "<a href="specification.html#req-the-contract-rules-apply-to-every-kind">The contract rules apply to every kind</a>" is modified too. Its scenario "<a href="specification.html#scenario-a-design-with-a-dangling-reference">A design with a dangling reference</a>" says "no unit in the document declares", which would become false, and the requirement gains one sentence: a kind does not decide what a reference reaches. Both are modified rather than added to, because each already states this rule and would otherwise contradict it.</li>
+              <li><code>runbook-execution</code>: in "<a href="specification.html#req-a-record-carries-the-procedure-it-ran-and-the-obligations-it-attests-to">A record carries the procedure it ran and the obligations it attests to</a>", one sentence changes. The reason a record copies its requirements is restated as a fact about a runbook's documents, not as a rule about every reference. Every other word is kept.</li>
+              <li><code>toolchain-packaging</code>: in "<a href="specification.html#req-a-single-command-exposes-validate-format-and-init">The command surface names its operations as OpenSpec names them</a>", only the scenario "<a href="specification.html#scenario-validating-one-document">Validating one document</a>" changes. One document is still validated and reported on, and the documents it reaches are read only for their identifiers. The rest of the requirement is restated verbatim. Changes 6 and 9 modify the same requirement after this one, so each of them carries the re-base task. This change lands first and needs none.</li>
+            </ul>
+          </section>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li>
+              <p><code>crates/htmlspec-validate/src/engine.rs</code>: <code>Subject</code> carries the document's placement and its resolution scope beside the store. <code>run</code> takes them, and so does every caller:</p>
+              <ul>
+                <li><code>validate_source</code> in the CLI;</li>
+                <li><code>conformance/tests/conformance.rs</code> and <code>conformance/tests/runs.rs</code>;</li>
+                <li><code>crates/htmlspec-validate/tests/template_conformance.rs</code>;</li>
+                <li>the <code>validate_file</code> example;</li>
+                <li>the unit tests in <code>engine.rs</code>, <code>output.rs</code>, and <code>rules/*</code>.</li>
+              </ul>
+              <p>A new module in the same crate holds the placement and scope types.</p>
+            </li>
+            <li><code>crates/htmlspec-validate/src/rules/refs.rs</code>: <code>references_resolve</code> resolves a <code>data-refs</code> entry through the scope, applies <code>REMOVED_TARGET</code> in the place that resolves it, and names the places searched in its message.</li>
+            <li><code>crates/htmlspec-cli/src/project.rs</code>: <code>ProjectRoot</code> derives a document's placement, positionally and on canonical paths, as <code>is_change_evidence</code> already does.</li>
+            <li>
+              <p><code>crates/htmlspec-cli/src/commands.rs</code>:</p>
+              <ul>
+                <li><code>validate_source</code> takes the document's path and derives both the store (<code>store_for</code>) and the scope from it.</li>
+                <li>What the other documents declare is read once per run.</li>
+                <li>"The accepted specifications" gets one definition, shared with <code>merge_state</code>.</li>
+              </ul>
+            </li>
+            <li><code>crates/htmlspec-cli/src/main.rs</code> and <code>crates/htmlspec-cli/src/runs.rs</code>: the help text and the record prose that state the one-document rule as universal.</li>
+            <li><code>assets/template-tasks.html</code> and its sha256 pin in <code>assets/vendor.lock.json</code>.</li>
+            <li><code>crates/htmlspec-assets/instructions/new.md</code>, section "The tasks". Installed copies are regenerated.</li>
+            <li>
+              <p>Tests:</p>
+              <ul>
+                <li>CLI tests in <code>crates/htmlspec-cli/tests/cli.rs</code>;</li>
+                <li>a project-level conformance suite, <code>conformance/tests/references.rs</code>, built the way <code>runs.rs</code> and <code>topology.rs</code> build theirs;</li>
+                <li>unit tests in <code>refs.rs</code> and <code>project.rs</code>.</li>
+              </ul>
+            </li>
+            <li>
+              <p><strong>Not in this change</strong>, and recorded so it is not assumed to follow:</p>
+              <ul>
+                <li><code>review/stale-reference</code> and <code>review/stale-verification</code> across documents. They still read one document. <a href="evidence/the-measurement-2026-09-30.md">Of the 68 staged links, 36 point at a unit marked <code>added</code> or <code>modified</code></a>, so reaching across would warn on most of the references this change makes possible.</li>
+                <li><code>review/unverified-requirement</code> being cleared by a verification in another document.</li>
+                <li>A reference to another change's documents, or from a change's tasks to its own design. <a href="evidence/the-measurement-2026-09-30.md">Each has 2 task units in the staged migration.</a></li>
+                <li>A check that no two accepted specifications declare one identifier.</li>
+                <li>Checking a plain link to another document, such as <code>href="specification.html#req-x"</code>.</li>
+                <li>A runbook's documents reaching the accepted specifications.</li>
+                <li>Converting the staged migration's 68 links into <code>data-refs</code>. That is the migration's work, and it follows this change.</li>
+                <li>What an archived change's reference means after a later change withdraws the accepted requirement it names. The design records this as a risk.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

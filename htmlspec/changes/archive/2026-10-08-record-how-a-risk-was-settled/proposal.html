@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Record how a risk was settled</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Record how a risk was settled</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Record how a risk was settled</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-08-record-how-a-risk-was-settled/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><strong>A risk the project accepts cannot be written as a risk unit without a mitigation it does not have.</strong> A risk is settled in one of two ways: the change holds it down, or the project bears it as it stands. The element contract has room for only the first. The schema's <code>risk</code> definition requires <code>mitigation</code>, and projection section 4.7 says "A risk missing either one is invalid".</p>
+          <p><a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a> measured what that costs:</p>
+          <ul>
+            <li><strong>The attribute an author reaches for does nothing.</strong> A risk with a statement and no mitigation fails <code>validate</code> with <code>schema/invalid</code>: "mitigation is a required property". Adding <code>data-response="accepted"</code> changes neither the diagnostic nor the model, because projection section 2.2 ignores an unknown <code>data-*</code> attribute.</li>
+            <li><strong>An accepted risk is valid only with a mitigation that denies being one.</strong> This repository's own release runbook does exactly that. <code>runbooks/release/specification.html</code> line 208 is a mitigation paragraph that begins "Not mitigated, and recorded rather than hidden.", and the model holds that sentence as the risk's mitigation.</li>
+            <li><strong>The archive's authors make the distinction all the time.</strong> Across the 24 archived designs, 15 risk entries are marked accepted, 21 mitigated, and 3 not mitigated. Eight of the 12 headed risks open with "Accepted". Five risks are accepted and name a partial measure at once, so "accepted" does not mean "has no mitigation".</li>
+            <li><strong>The migration's readers met the gap.</strong> The reader of <code>distinguish-a-requirement-from-an-example</code> found that a risk unit has a mitigation field and no value that says whether the risk was accepted. The reader of <code>pass-the-description-through</code> kept the distinction as prose because it "has no field". The reader of <code>migrate-an-openspec-project</code> wrote the workaround in as an instruction: "the mitigation field states 'Accepted, unmitigated' with its reason."</li>
+          </ul>
+          <p><strong>Why now.</strong> The project's migration out of OpenSpec is staged and waiting. Without this change, each accepted risk it carries is left as prose, recorded as an open question, or written with the workaround above. <a href="evidence/the-measurement-2026-09-30.md">The measurement</a> also bounds what this change unblocks there. Shape keeps most of the archive's risks as prose, because 88 of its 100 risk statements have no heading of their own. The missing value for a risk's response blocks 5 headed risks. The change is worth making anyway: the workaround sits in a document this project runs at every release, and three of the migration's readers met the gap independently.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong>A risk declares how it was settled</strong>, in a <code>data-response</code> attribute with the value <code>mitigated</code> or <code>accepted</code>. It projects into a <code>response</code> field that every risk in the model carries.</li>
+            <li><strong>A mitigated risk states its mitigation, as every risk does today.</strong> A <code>mitigated</code> risk with no <code>data-field="mitigation"</code> paragraph is invalid, under a new rule, <code>schema/missing-mitigation</code>.</li>
+            <li><strong>An accepted risk needs no mitigation.</strong> It may still carry one to state a partial measure, as five archived risks do. It needs no separate reason field. Its statement and its notes say why it is borne, which is where every accepted risk in the archive already says it.</li>
+            <li><strong>A risk that declares no response is <code>mitigated</code>.</strong> All 83 risk units in this repository's tracked HTML and all 11 in the staged migration carry a mitigation, so each keeps its meaning and its validity.</li>
+            <li><strong>Two values, not three.</strong> A risk that is partly held down is <code>mitigated</code>, and its mitigation paragraph says how far the measure reaches. The release runbook's "Partly held down and honestly not fully" already does this.</li>
+            <li><strong>The contract moves one minor version</strong>, because it gains an attribute, a field, and a rule.</li>
+            <li><strong>The template and the instructions teach it.</strong> The specification template's example risk declares <code>data-response="mitigated"</code> and names the alternative. Its sentence "A risk with no mitigation is a worry." stops being true, and goes. <code>new.md</code> says how a design records a risk's settlement.</li>
+            <li><strong>Unchanged:</strong> a risk's statement, references, and notes, every other unit, the change states, and the meaning of every document written before this change. A <code>data-response</code> on a unit other than a risk projects nowhere, as <code>data-state</code> on a decision does today.</li>
+          </ul>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> The 83 risk units in tracked HTML are the count of 2026-09-30. On 2026-10-08, before the build, task 1.2 recounted 87, every one with a mitigation, because changes earlier in this set had added four conformance fixtures. It recorded the design's 83 as stale and corrected it in the design's Migration Plan. This proposal was not edited (<a href="tasks.html#task-1-2">task 1.2</a>, and <a href="evidence/the-measurement-repeated-2026-10-08.md"><code>evidence/the-measurement-repeated-2026-10-08.md</code></a>, section 2).</p>
+          </aside>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <section id="hs-new-capabilities">
+            <h3>New Capabilities</h3>
+            <p>None.</p>
+          </section>
+          <section id="hs-modified-capabilities">
+            <h3>Modified Capabilities</h3>
+            <ul>
+              <li>
+                <p><code>document-schema</code>: a new requirement, "<a href="specification.html#req-a-risk-records-how-it-was-settled">A risk records how it was settled</a>". It is added rather than folded into an existing requirement, because no accepted requirement states a risk's parts today: its statement and its mitigation are required only by the schema and by projection section 4.7. Two requirements were read for a MODIFIED block, and neither needs one:</p>
+                <ul>
+                  <li>"<a href="../../../specs/document-schema/spec.html#req-semantic-units-are-identified-by-class">Semantic units are identified by class</a>" lists the seven class names and nothing about a unit's parts. The <code>risk</code> class does not change.</li>
+                  <li>"<a href="../../../specs/document-schema/spec.html#req-the-html-to-model-projection-is-published-as-a-normative-specification">The HTML-to-model projection is published as a normative specification</a>" lists the minimum the projection specification states. It names task completion state and unit change state, and already leaves out decision status and verification outcome, which project the same way. So it is not a catalogue of attributes, and projection section 2 is where the new one is listed. A MODIFIED block would also make this the third change to a requirement that changes 1 and 5 already modify.</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li><code>crates/htmlspec-schema/schema/document.schema.json</code>: the <code>risk</code> definition gains <code>response</code> (values <code>mitigated</code> and <code>accepted</code>, default <code>mitigated</code>, required as <code>change</code> is) and drops <code>mitigation</code> from <code>required</code>. <code>schemaVersion</code> gains the new version.</li>
+            <li><code>crates/htmlspec-schema/doc/projection.md</code>: section 2's table gains <code>data-response</code>, section 4.7 is rewritten, section 4.7.1 is added, and section 10.1 names the conditional rule. <code>CHANGELOG.md</code> records the minor bump, and <code>src/lib.rs</code> moves <code>CONTRACT_VERSION</code>.</li>
+            <li><code>crates/htmlspec-parse/src/model.rs</code> and <code>src/project.rs</code>: <code>Risk</code> gains <code>response</code>, filled from the attribute or from a default constant. A test ties the constant to the schema's default, as one does for <code>DEFAULT_CHANGE_STATE</code>.</li>
+            <li><code>crates/htmlspec-validate/src/rules/relations.rs</code>: <code>schema/missing-mitigation</code>, beside <code>schema/missing-reason</code>. <code>tests/schema_rust_split.rs</code> lists <code>mitigated</code> as a schema-owned literal.</li>
+            <li><code>crates/htmlspec-format/src/attributes.rs</code>: <code>data-response</code> joins the attributes that lead, after <code>data-outcome</code>.</li>
+            <li>
+              <p>Fixtures:</p>
+              <ul>
+                <li>a projection fixture for section 4.7.1, which <code>crates/htmlspec-parse/tests/mapping.rs</code> requires;</li>
+                <li>regenerated models for the <code>named-fields</code> and <code>single-field-repeated</code> projection fixtures;</li>
+                <li>valid and invalid conformance fixtures through <code>conformance/src/bin/generate_fixtures.rs</code>, and the rule in <code>known_rules()</code>.</li>
+              </ul>
+            </li>
+            <li><code>assets/template-specification.html</code>, its pin in <code>assets/vendor.lock.json</code>, and the contract version every template declares.</li>
+            <li><code>crates/htmlspec-assets/instructions/new.md</code>. Also the phrase "the risks accepted" in <code>apply.md</code>, <code>verify.md</code>, <code>archive.md</code>, and <code>ff.md</code>, which would now read as a filter on the new value. The installed copies are regenerated.</li>
+            <li>
+              <p><strong>Not in this change</strong>, and recorded so it is not assumed to follow:</p>
+              <ul>
+                <li>Rendering the response. The stylesheet shows a decision's status and a task's state as a heading badge, and a risk's response gets none here. See design decision 9.</li>
+                <li>Editing the release runbook. Its two risks could then state <code>accepted</code>, and drop the mitigation paragraph that denies being one. That edit is a later release of the runbook, which moves <code>runbooks/release/VERSION</code>. It is not part of this change.</li>
+                <li>Mapping the archive's "Accepted" and "Mitigated" onto <code>data-response</code> during migration. That is <code>migrate-into-the-extended-vocabulary</code>.</li>
+                <li>A value for a risk that later evidence retired, which the reader of <code>pass-the-description-through</code> noted. A later change that retires a risk modifies or removes the unit.</li>
+                <li>Rejecting a per-unit attribute on the wrong unit. Measured today, <code>data-state</code> and <code>data-outcome</code> on a decision are ignored silently. A rule for that covers all four per-unit attributes, and is its own change.</li>
+                <li>artifact-kinds' scenario "<a href="../../../specs/artifact-kinds/spec.html#scenario-a-design-that-marks-its-decisions">A design that marks its decisions</a>", which speaks of "the risks it accepted". It is true under either reading, so it is left as it is.</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

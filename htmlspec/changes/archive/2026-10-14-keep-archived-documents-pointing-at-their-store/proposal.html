@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Keep archived documents pointing at their store</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Keep archived documents pointing at their store</h1>
+        <p><code>htmlspec archive</code> moves a change one level deeper and leaves its documents pointing one level short, at a store and specifications that are not there, and validation accepts the result because it checks an asset reference by the address it names rather than by where its path leads. This change makes archival keep each document's references reaching what they reached, and makes validation check where a reference leads.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Keep archived documents pointing at their store</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>The first change this repository archived with <code>htmlspec archive</code> came out of it with every document broken. A change's documents reference the project's store and its accepted specifications by relative paths written for <code>htmlspec/changes/&lt;name&gt;/</code>. Archival renames the directory to <code>htmlspec/changes/archive/&lt;date&gt;-&lt;name&gt;/</code>, one level deeper, and rewrites nothing. So <code>../../assets/</code> now names <code>htmlspec/changes/assets/</code>, which does not exist. The archived documents opened with no stylesheet and none of their scripts, and a link to the accepted requirement led nowhere. The code review of pull request #57 found it, and 29 references were rewritten by hand.</p>
+          <p><code>htmlspec validate</code> said nothing, and that is the second defect. Validation finds the store above a document and looks up a reference's address and file name in it, ignoring the path in front of them. A reference whose path reaches a directory with no store is accepted as long as its address is stored somewhere above the document. Archival's fault produces exactly the references validation's fault accepts, so neither could be seen. <a href="evidence/the-two-defects-reproduced-2026-10-14.md"><code>evidence/the-two-defects-reproduced-2026-10-14.md</code></a> reproduces both in a scratch project with <code>htmlspec 0.29.1</code>: four archived documents referencing <code>../../assets/</code>, a store that does not exist, and validation exiting 0.</p>
+          <p>Both disagree with the contract. artifact-kinds' "Archival produces the specification and then updates the accepted contract" archives the change directory "intact, with all four of its documents preserved", and requires that "A reader SHALL be able to open an archived change and find the argument that motivated it". document-validation's "An asset reference must match the bytes it names" requires validation to "reject a document whose asset reference does not resolve to stored bytes", and a path that reaches no store resolves to nothing. Neither requirement says how a reference is resolved, or what archival does to a document's references, and the program filled both silences the wrong way.</p>
+        </section>
+        <section id="hs-what-working-looks-like">
+          <h2>What working looks like</h2>
+          <ol>
+            <li>In a scratch project, <code>htmlspec new change sample</code>, then <code>htmlspec archive sample</code>: every document in <code>htmlspec/changes/archive/&lt;date&gt;-sample/</code> references <code>../../../assets/</code>, and every relative link it carries still reaches the file it reached before the move.</li>
+            <li>The change's evidence is byte for byte what it was before archival, whatever references it carries.</li>
+            <li>A document whose asset reference's path reaches a directory that is not its store fails <code>htmlspec validate</code> with <code>asset/unresolved</code>, naming where the path leads and where the store is. A reference that reaches its store is accepted as before.</li>
+            <li>An archival interrupted at any point is still settled by the next run, as it is today: rolled back where the change did not move, and completed where it did, with the rewritten documents in place.</li>
+            <li><code>htmlspec validate htmlspec</code>, the fixtures, and the release runbook in this repository keep their verdicts. <a href="evidence/what-a-path-check-would-change-2026-10-14.md"><code>evidence/what-a-path-check-would-change-2026-10-14.md</code></a> measured that a path check changes the verdict on none of their 1143 accepted references.</li>
+          </ol>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <p><strong>Archival rewrites the relative references in the change's documents, and nothing else.</strong> Each reference that leads out of the change directory is rewritten to lead to the same file from the archive. A reference within the change, such as <code>evidence/…</code> or <code>tasks.html#…</code>, moves with the change and is left alone. Evidence is never rewritten, as artifact-kinds' "A change's evidence is kept in the change and is not one of its documents" requires. The rewrite is part of archival's existing transaction, so a refusal or an interruption leaves the change as it was.</p>
+          <p><strong>Validation checks where an asset reference's path leads, as well as the address it names.</strong> A reference whose path does not reach the store validation found for the document is reported as unresolved. The formatter is unchanged: deterministic-formatting's "Formatting preserves meaning" leaves a reference naming stored bytes as it was written, and this change does not make formatting move one.</p>
+          <p>Both requirements gain the rule they were silent on. Because validation can now reject a document that 0.29.1 accepted, this is release 0.30.0.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <p><strong>Fix only archival.</strong> Rejected. The next fault that leaves a reference one level short would again pass every check. Validation's blindness is why this one was found by a reader, not a check.</p>
+          <p><strong>Fix only validation.</strong> Rejected. Every archival would then end with a document that fails validation, and a contributor would repair it by hand, as #57 did.</p>
+          <p><strong>Have <code>htmlspec format</code> repair a misplaced reference.</strong> Rejected. "Formatting preserves meaning" leaves a reference that names stored bytes as written, and the formatter's own module calls re-pointing one "an explicit operation, never a side effect of tidying". Archival is the operation that knows a document moved.</p>
+          <p><strong>Archive changes at the same depth as active ones.</strong> Rejected. toolchain-packaging's "An archived change is named for its date and refuses to collide" and the project's layout put the archive inside <code>changes/</code>, and moving it is a change to the project's places, not to archival.</p>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <ul>
+            <li>No document already archived is rewritten. The one archive this repository's own <code>htmlspec archive</code> wrote was repaired by hand in #57.</li>
+            <li>The three hand-converted documents under <code>openspec/changes/archive/2026-08-14-separate-artifact-kinds/documents/</code>, whose references reach <code>openspec/assets/</code>, and the three records under <code>openspec/changes/archive/2026-09-11-migrate-an-openspec-project/evidence/</code>, whose references reach an <code>assets/</code> directory beside them, are not repaired. Neither directory exists, so validation now rejects all six. No check validates <code>openspec/</code>, the migration plan's follow-on change removes it, and the promoted project keeps them as evidence.</li>
+            <li>Absolute paths, URLs with a scheme, and fragments are not touched by either fix.</li>
+            <li>A change moved by hand rather than by <code>htmlspec archive</code> is not repaired by anything. Validation now reports its asset references.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

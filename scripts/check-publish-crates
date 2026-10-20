@@ -1,0 +1,457 @@
+#!/usr/bin/env python3
+"""The crate publisher's tests, against a stub index and a stub cargo.
+
+`scripts/publish-crates` is the one script in this repository that publishes something no one
+can take back, and it runs for real only at a release. So it is tested here, on every run of the
+suite, against two stand-ins:
+
+- a sparse index served on 127.0.0.1, which holds whichever versions a test gives it, can
+  answer HTTP 429, and records the headers of every request it receives;
+- a stub `cargo`, which records each crate it is asked to publish, adds it to what the index
+  holds, and can answer as crates.io answers a burst of new crates, with 429 and a time to try
+  again.
+
+Nothing here reaches a network or a registry: the index is a socket on the loopback interface,
+and the stub is a Python program written into a scratch directory. Its first line names this
+interpreter, so it runs inside the Nix sandbox, where `/usr/bin/env` does not exist.
+
+The cases are design decision 4's: a rerun that finds three of the six published publishes the
+other three; a 429 answered once is waited out; a wait longer than the budget stops the run and
+names what remains, and running it again finishes the set; and every request carries the fixed
+User-Agent and nothing else that could name a person or a machine.
+
+The review of the pull request added five: the budget counts the time publishing takes, not only
+the waiting; a crate refused with 429 is not built again; a time to try again that has passed is
+still waited for; words in the build's log are never read as crates.io's answer; and a publish
+that failed after its upload landed counts as published, because the registry holds it.
+"""
+
+from __future__ import annotations
+
+import http.server
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import unittest
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+PUBLISH = HERE / "publish-crates"
+
+# The publisher's own list, so the order the last test checks is the order it publishes in.
+sys.path.insert(0, str(HERE))
+from release_facts import CRATES  # noqa: E402
+
+VERSION = "9.8.7"
+# Spelled out rather than imported: this is what every request must carry, and a test that read it
+# from the code under test would pass whatever that code said.
+USER_AGENT = "htmlspec-release (https://github.com/Firefly-Projects/htmlspec)"
+PUBLIC = "https://github.com/Firefly-Projects/htmlspec"
+
+# The publisher's shortest wait after a 429, which the tests that wait one out spend.
+MINIMUM_WAIT_SECONDS = 10
+
+# The headers Python's urllib sends on its own beside the User-Agent. Anything else on a request
+# is something the publisher added, and the only thing it may add is the User-Agent.
+URLLIB_HEADERS = {"host", "user-agent", "accept-encoding", "connection"}
+
+# It writes to stderr, as cargo does, and answers each crate as plan.json says, one answer per
+# attempt: 429 with a time to try again, already published, a failed build, a failed build whose
+# log holds every word the publisher acts on, an upload that landed although cargo then failed,
+# and a publish that takes a while.
+STUB_CARGO = """#!{python}
+import json, os, sys, time, email.utils
+from pathlib import Path
+state = Path({state!r})
+args = sys.argv[1:]
+name = args[args.index("-p") + 1]
+calls = json.loads((state / "calls.json").read_text())
+calls.append({{"name": name, "args": args, "agent": os.environ.get("CARGO_HTTP_USER_AGENT")}})
+(state / "calls.json").write_text(json.dumps(calls))
+plan = json.loads((state / "plan.json").read_text())
+answer = plan.get(name, [])
+def say(line):
+    print(line, file=sys.stderr)
+def hold():
+    held = json.loads((state / "held.json").read_text())
+    held.append(name)
+    (state / "held.json").write_text(json.dumps(held))
+if answer:
+    kind = answer.pop(0)
+    (state / "plan.json").write_text(json.dumps(plan))
+    if kind.startswith("429:"):
+        after = email.utils.formatdate(time.time() + float(kind[4:]), usegmt=True)
+        say("error: failed to publish " + name + " v{version} to registry at https://crates.io")
+        say("")
+        say("Caused by:")
+        say("  the remote server responded with an error (status 429 Too Many Requests): You have "
+            "published too many new crates in a short period of time. Please try again after "
+            + after + ".")
+        sys.exit(101)
+    if kind == "exists":
+        say("error: crate " + name + "@{version} already exists on crates.io index")
+        sys.exit(101)
+    if kind == "fail":
+        say("error: failed to verify package tarball")
+        sys.exit(101)
+    if kind == "noisy-fail":
+        say("   Compiling " + name + " v{version}")
+        say("error: crate " + name + "@{version} already exists on crates.io index")
+        say("error[E0599]: the test `a_429_too_many_requests_is_retried` is already uploaded")
+        say("  = note: (status 429 Too Many Requests): Please try again after Mon, 01 Jan 2001 00:00:00 GMT")
+        say("error: could not compile `" + name + "` (lib) due to 2 previous errors")
+        say("error: failed to verify package tarball")
+        sys.exit(101)
+    if kind == "lost":
+        hold()
+        say("error: failed to publish " + name + " v{version} to registry at https://crates.io")
+        say("")
+        say("Caused by:")
+        say("  [28] Timeout was reached (Operation timed out after 30000 milliseconds)")
+        sys.exit(101)
+    if kind.startswith("slow:"):
+        time.sleep(float(kind[5:]))
+hold()
+say("   Uploaded " + name + " v{version}")
+"""
+
+
+class Index(http.server.BaseHTTPRequestHandler):
+    """A sparse index holding what `held.json` lists, answering 429 as `index-plan.json` says."""
+
+    state: Path
+
+    def do_GET(self):  # noqa: N802 - the name http.server calls
+        requests = json.loads((self.state / "requests.json").read_text())
+        requests.append({"path": self.path, "headers": dict(self.headers.items())})
+        (self.state / "requests.json").write_text(json.dumps(requests))
+
+        name = self.path.rstrip("/").rsplit("/", 1)[-1]
+        plan = json.loads((self.state / "index-plan.json").read_text())
+        if plan.get(name):
+            plan[name].pop(0)
+            (self.state / "index-plan.json").write_text(json.dumps(plan))
+            self.send_response(429)
+            self.send_header("Retry-After", "1")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        held = json.loads((self.state / "held.json").read_text())
+        if name not in held:
+            self.send_response(404)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        body = "".join(
+            json.dumps({"name": name, "vers": version, "deps": [], "cksum": "0" * 64}) + "\n"
+            for version in ("0.0.1", VERSION)
+        ).encode()
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+
+class Publisher(unittest.TestCase):
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        root = Path(self.scratch.name)
+        self.root = root / "workspace"
+        self.state = root / "state"
+        self.state.mkdir()
+        self.workspace(PUBLIC, CRATES)
+        for name, value in [
+            ("calls.json", []),
+            ("held.json", []),
+            ("plan.json", {}),
+            ("index-plan.json", {}),
+            ("requests.json", []),
+        ]:
+            (self.state / name).write_text(json.dumps(value))
+        self.cargo = root / "cargo"
+        self.cargo.write_text(
+            STUB_CARGO.format(python=sys.executable, state=str(self.state), version=VERSION)
+        )
+        self.cargo.chmod(0o755)
+
+        handler = type("Handler", (Index,), {"state": self.state})
+        self.server = http.server.HTTPServer(("127.0.0.1", 0), handler)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.index_url = f"http://127.0.0.1:{self.server.server_address[1]}"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.scratch.cleanup()
+
+    def workspace(self, repository, crates):
+        (self.root / "crates").mkdir(parents=True, exist_ok=True)
+        (self.root / "Cargo.toml").write_text(
+            "[workspace]\n"
+            'members = ["crates/*"]\n\n'
+            "[workspace.package]\n"
+            f'version = "{VERSION}"\n'
+            f'repository = "{repository}"\n'
+        )
+        for name in crates:
+            (self.root / "crates" / name).mkdir(exist_ok=True)
+            (self.root / "crates" / name / "Cargo.toml").write_text(
+                f'[package]\nname = "{name}"\nversion.workspace = true\n'
+            )
+
+    def hold(self, *names):
+        (self.state / "held.json").write_text(json.dumps(list(names)))
+
+    def plan(self, **answers):
+        (self.state / "plan.json").write_text(
+            json.dumps({name.replace("_", "-"): kinds for name, kinds in answers.items()})
+        )
+
+    def read(self, name):
+        return json.loads((self.state / name).read_text())
+
+    def run_publisher(self, *extra):
+        environment = {
+            key: value for key, value in os.environ.items() if not key.lower().endswith("_proxy")
+        }
+        started = time.monotonic()
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(PUBLISH),
+                "--root",
+                str(self.root),
+                "--index-url",
+                self.index_url,
+                "--cargo",
+                str(self.cargo),
+                *extra,
+            ],
+            capture_output=True,
+            text=True,
+            env=environment,
+            timeout=120,
+            check=False,
+        )
+        result.seconds = time.monotonic() - started
+        return result
+
+    def published(self):
+        return [call["name"] for call in self.read("calls.json")]
+
+    def test_a_rerun_that_finds_three_published_publishes_the_other_three(self):
+        self.hold("htmlspec-schema", "htmlspec-parse", "htmlspec-assets")
+        result = self.run_publisher()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.published(), ["htmlspec-format", "htmlspec-validate", "htmlspec-cli"]
+        )
+        for name in ("htmlspec-schema", "htmlspec-parse", "htmlspec-assets"):
+            self.assertIn(f"skip {name} {VERSION}", result.stdout)
+
+    def calls_for(self, name):
+        return [call["args"] for call in self.read("calls.json") if call["name"] == name]
+
+    def test_a_429_answered_once_is_waited_out_and_the_set_finishes(self):
+        self.plan(htmlspec_cli=["429:2"])
+        result = self.run_publisher()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.published(), [*CRATES, "htmlspec-cli"])
+        self.assertEqual(sorted(self.read("held.json")), sorted(CRATES))
+        self.assertIn("crates.io answered 429 for htmlspec-cli", result.stdout)
+        self.assertGreaterEqual(result.seconds, 1.0, "it did not wait for the time crates.io named")
+
+    def test_a_crate_refused_with_429_is_not_built_again(self):
+        self.plan(htmlspec_cli=["429:2"])
+        result = self.run_publisher()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.calls_for("htmlspec-cli"),
+            [
+                ["publish", "--locked", "-p", "htmlspec-cli"],
+                ["publish", "--locked", "--no-verify", "-p", "htmlspec-cli"],
+            ],
+        )
+        for name in CRATES[:5]:
+            self.assertEqual(self.calls_for(name), [["publish", "--locked", "-p", name]])
+
+    def test_the_budget_counts_the_time_publishing_takes(self):
+        # Two publishes of three seconds each against a budget of four: no wait is ever asked for,
+        # so a budget that counted waiting alone would publish all six.
+        self.plan(htmlspec_schema=["slow:3"], htmlspec_parse=["slow:3"])
+        result = self.run_publisher("--budget", "4")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("the budget is spent", result.stderr)
+        published = self.published()
+        self.assertEqual(published, list(CRATES[: len(published)]))
+        self.assertLessEqual(len(published), 2, "it began a publish after the budget was spent")
+        self.assertIn(f"crate(s) remain: {', '.join(CRATES[len(published):])}", result.stderr)
+
+    def test_a_time_to_try_again_that_has_passed_is_still_waited_for(self):
+        self.plan(htmlspec_cli=["429:-30"])
+        result = self.run_publisher("--budget", "5")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn(f"waiting {MINIMUM_WAIT_SECONDS}s would pass the budget", result.stderr)
+        self.assertIn("1 crate(s) remain: htmlspec-cli", result.stderr)
+        self.assertEqual(len(self.calls_for("htmlspec-cli")), 1, "it tried again at once")
+
+    def test_words_in_the_build_log_are_not_read_as_answers(self):
+        self.plan(htmlspec_format=["noisy-fail"])
+        result = self.run_publisher()
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("failed to verify package tarball", result.stderr)
+        self.assertIn("3 crate(s) remain: htmlspec-format, htmlspec-validate, htmlspec-cli", result.stderr)
+        self.assertEqual(len(self.calls_for("htmlspec-format")), 1)
+        self.assertNotIn("wait", result.stdout)
+
+    def test_a_publish_that_failed_after_its_upload_landed_counts_as_published(self):
+        self.plan(htmlspec_schema=["lost"])
+        result = self.run_publisher()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("cargo failed, and the index holds it", result.stdout)
+        self.assertEqual(self.published(), list(CRATES))
+
+    def test_a_wait_past_the_budget_stops_and_names_what_remains_and_a_rerun_finishes(self):
+        self.plan(htmlspec_cli=["429:3600"])
+        stopped = self.run_publisher()
+        self.assertEqual(stopped.returncode, 1, stopped.stderr)
+        self.assertIn("1 crate(s) remain: htmlspec-cli", stopped.stderr)
+        self.assertLess(stopped.seconds, 60, "it waited although the wait passed the budget")
+        self.assertEqual(sorted(self.read("held.json")), sorted(CRATES[:5]))
+
+        (self.state / "calls.json").write_text("[]")
+        finished = self.run_publisher()
+        self.assertEqual(finished.returncode, 0, finished.stderr)
+        self.assertEqual(self.published(), ["htmlspec-cli"])
+
+    def test_the_budget_given_bounds_the_wait(self):
+        self.plan(htmlspec_cli=["429:30"])
+        result = self.run_publisher("--budget", "5")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("the budget", result.stderr)
+        self.assertIn("htmlspec-cli", result.stderr)
+
+    def test_an_index_answering_429_is_waited_out(self):
+        (self.state / "index-plan.json").write_text(json.dumps({"htmlspec-schema": [429]}))
+        result = self.run_publisher()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("the index answered 429 for htmlspec-schema", result.stdout)
+        self.assertEqual(self.published(), list(CRATES))
+
+    def test_a_version_cargo_finds_already_published_counts_as_published(self):
+        self.plan(htmlspec_schema=["exists"])
+        result = self.run_publisher()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.published(), list(CRATES))
+
+    def test_any_other_failure_stops_and_names_what_remains(self):
+        self.plan(htmlspec_format=["fail"])
+        result = self.run_publisher()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("3 crate(s) remain: htmlspec-format, htmlspec-validate, htmlspec-cli", result.stderr)
+        self.assertEqual(self.published(), list(CRATES[:4]))
+
+    def test_every_request_carries_the_fixed_user_agent_and_nothing_else(self):
+        self.hold("htmlspec-schema")
+        (self.state / "index-plan.json").write_text(json.dumps({"htmlspec-parse": [429]}))
+        result = self.run_publisher()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        requests = self.read("requests.json")
+        self.assertGreaterEqual(len(requests), len(CRATES))
+        for request in requests:
+            headers = {key.lower(): value for key, value in request["headers"].items()}
+            self.assertEqual(headers.get("user-agent"), USER_AGENT, request)
+            self.assertLessEqual(set(headers), URLLIB_HEADERS, request)
+        for call in self.read("calls.json"):
+            self.assertEqual(call["agent"], USER_AGENT, call)
+            self.assertEqual(call["args"], ["publish", "--locked", "-p", call["name"]])
+
+
+    def test_a_workspace_naming_another_repository_publishes_nothing(self):
+        self.workspace("https://example.invalid/somewhere-else", CRATES)
+        result = self.run_publisher()
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("publish only from the public repository", result.stderr)
+        self.assertEqual(self.read("requests.json"), [])
+        self.assertEqual(self.published(), [])
+
+    def test_a_crate_the_list_does_not_name_stops_the_run_before_it_starts(self):
+        self.workspace(PUBLIC, [*CRATES, "htmlspec-extra"])
+        result = self.run_publisher()
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("htmlspec-extra", result.stderr)
+        self.assertEqual(self.read("requests.json"), [])
+
+    def test_the_order_publishes_each_crate_after_its_dependencies(self):
+        """Read from this repository's manifests, so a new internal dependency that the order
+        breaks fails here, rather than at a release when cargo cannot find it on crates.io.
+
+        Development dependencies count too: each carries its version pin, so the published
+        manifest names it, and it must already be on crates.io when the crate naming it arrives.
+        """
+        root = HERE.parent
+        position = {name: index for index, name in enumerate(CRATES)}
+        for name in CRATES:
+            text = (root / "crates" / name / "Cargo.toml").read_text(encoding="utf-8")
+            section = None
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("["):
+                    section = stripped
+                    continue
+                if section not in ("[dependencies]", "[build-dependencies]", "[dev-dependencies]"):
+                    continue
+                for other in CRATES:
+                    if stripped.startswith(f"{other} ") or stripped.startswith(f"{other}="):
+                        self.assertLess(
+                            position[other], position[name], f"{name} depends on {other}"
+                        )
+
+
+class BuildMatrix(unittest.TestCase):
+    """The release workflow's build matrix, which `release_facts.py matrix` prints for it.
+
+    Beside the publisher because both are facts of the release that only a release would
+    otherwise test. The entries are spelled out, as the User-Agent is above: they are the matrix
+    the workflow wrote out before it read this one.
+    """
+
+    ALL = [
+        {"target": "aarch64-apple-darwin", "runner": "macos-15"},
+        {"target": "x86_64-apple-darwin", "runner": "macos-15-intel"},
+        {"target": "x86_64-unknown-linux-musl", "runner": "ubuntu-24.04"},
+        {"target": "aarch64-unknown-linux-musl", "runner": "ubuntu-24.04-arm"},
+    ]
+
+    def facts(self, *args):
+        return subprocess.run([sys.executable, str(HERE / "release_facts.py"), *args],
+                              capture_output=True, text=True)
+
+    def test_a_run_with_the_macos_jobs_builds_all_four_targets(self):
+        result = self.facts("matrix")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {"include": self.ALL})
+        self.assertEqual(self.facts("targets").stdout.split(), [e["target"] for e in self.ALL])
+
+    def test_a_run_without_them_builds_the_two_linux_targets_and_nothing_on_macos(self):
+        result = self.facts("matrix", "--without-macos")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {"include": self.ALL[2:]})
+        self.assertEqual(self.facts("targets", "--without-macos").stdout.split(),
+                         ["x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl"])
+
+    def test_an_argument_it_does_not_know_is_a_usage_error(self):
+        for args in (["matrix", "--linux"], ["targets", "--without-macos", "extra"], ["runners"]):
+            self.assertEqual(self.facts(*args).returncode, 2, args)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

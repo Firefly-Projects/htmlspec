@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Keep archived documents pointing at their store: design</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Keep archived documents pointing at their store: design</h1>
+        <p>Archival re-expresses each relative reference in the change's documents so it reaches the same file from the archive, inside the transaction it already runs. Validation resolves an asset reference through its path from the document, not only by its address.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Keep archived documents pointing at their store: design</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-what-this-repairs">
+          <h2>What this repairs</h2>
+          <p><a href="evidence/the-two-defects-reproduced-2026-10-14.md"><code>evidence/the-two-defects-reproduced-2026-10-14.md</code></a> shows both defects. Archival renames the change directory and rewrites nothing, and validation looks up an asset reference's address and file name in the store above the document without asking where the path in front of them leads. Each decision below repairs one, and each is checked by a test that fails before it.</p>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-a-reference-reaches-the-same-file-after-the-move" data-change="added" data-status="accepted">
+            <h3>1. A reference reaches the same file after the move</h3>
+            <p>Archival rewrites a relative reference in one of the change's documents exactly when it would otherwise reach a different file from the archive. The reference is resolved lexically against the change's directory before the move, and re-expressed relative to the archived directory: a target outside the change keeps its location, and a target inside the change moves with it.</p>
+            <p data-field="rationale">This is the rule artifact-kinds' "Archival produces the specification and then updates the accepted contract" asks for when it archives the directory "intact, with all four of its documents preserved" and has a reader open the archived change: a document whose stylesheet and links resolve to nothing is preserved as bytes and lost as a page. The contract is silent on references, and this change states it.</p>
+            <p data-field="rationale">Resolved lexically, as a browser resolves a relative URL and as validation's <code>store_for</code> walks a path, rather than through the filesystem. So the outcome does not depend on whether a target exists: a reference that was broken before archival is still broken after it, at the same target, and no correct reference is made wrong.</p>
+            <p data-field="rationale">The two places a reference is related between are resolved through the filesystem first, and only they are. A change named on the command line as <code>/tmp/…</code> and an archive found from a working directory the system reports as <code>/private/tmp/…</code> are one place spelled two ways, and relating the spellings would write a reference that climbs to the root. The suite's scratch projects sit under such a link on macOS.</p>
+            <p data-field="rationale">Only a relative path is a candidate. A value with a scheme (<code>https:</code>, <code>mailto:</code>, <code>data:</code>), an absolute path, a bare fragment, and an empty value are left alone, and a query or a fragment is carried through unchanged after the rewritten path.</p>
+          </section>
+          <section class="decision" id="decision-the-change-s-documents-and-no-other-file" data-change="added" data-status="accepted">
+            <h3>2. The change's documents, and no other file</h3>
+            <p>The rewrite reads the HTML files directly within the change directory, which document-schema's "Cross-references address units by identifier" calls the change's documents, and the values of the attributes through which an element loads an asset, <code>REFERENCING_ATTRIBUTES</code>, and through which a reader follows a link, <code>a href</code> and <code>area href</code>.</p>
+            <p data-field="rationale">Evidence is never read for rewriting. artifact-kinds' "A change's evidence is kept in the change and is not one of its documents" says "No operation of the program SHALL rewrite a file beneath a change's evidence", and an evidence record that carries relative references is a record of where things were.</p>
+            <p data-field="rationale">The values are found by the formatter's tag scanner, which reads a document's tags as the parser builds them, so text that quotes <code>href="…"</code> is never rewritten. Only the value's bytes change, and everything around them is copied through, so a canonical document stays canonical.</p>
+          </section>
+          <section class="decision" id="decision-the-rewrite-is-staged-and-journaled-like-the-inventory" data-change="added" data-status="accepted">
+            <h3>3. The rewrite is staged and journaled like the inventory</h3>
+            <p>Each rewritten document is written into the change directory as a staged copy, <code>.&lt;name&gt;.archiving</code>, journaled with its digest beside the inventory and the recorded version. After the rename, which is the commit point, each staged copy replaces its document inside the archive. The journal records each replacement, and is cleared only when all are in place.</p>
+            <p data-field="rationale">Archival is atomic with respect to the project (toolchain-packaging's "Archival produces the specification and updates the accepted contract"). A document rewritten in place before the move could not be put back on a refusal without keeping its original, and one rewritten after the move could not be told apart from an edit if an interruption came between. A staged copy is a file the transaction creates, so a rollback removes it as it removes the inventory, and the original is never touched until the change has moved.</p>
+            <p data-field="rationale">Recovery of a change that moved now also finishes the replacements an interruption left: a staged copy still in the archive, holding the digest the journal names, replaces its document. The journal's format becomes <code>htmlspec-archive-journal/v2</code>, which adds the replacements. A v1 journal, written by an earlier program, is still read, and has none. An earlier program refuses a v2 journal rather than completing it without the replacements.</p>
+            <p data-field="rationale">Before the move, recovery removes a staged copy whatever it holds, and asks about its digest only after the move. The code review of pull request #58 found that a staged copy is written by opening it and then writing it, so a run killed part-way leaves part of the rewrite, and recovery refused that as somebody's edit: the contributor had to delete a file archival owns, on the word of a report that misdescribed it. Nothing but archival writes a <code>.&lt;name&gt;.archiving</code> file, and before the move it is derived from a document still in place and untouched, so removing it loses nothing. After the move it is about to be published, and every copy was written whole before the move could happen, so a digest that disagrees there is an edit, and is refused. Writing each copy through a temporary file and a rename was considered and not taken: it moves the partial write to the temporary file, which recovery and the leftover check would then have to know by a second name, and it protects a file that, before the move, is safe to remove.</p>
+            <p data-field="rationale">A change that already holds a staged copy is refused, as one holding a staged inventory is: it is what an interrupted archival leaves, and overwriting it would publish a document nobody compared.</p>
+          </section>
+          <section class="decision" id="decision-validation-resolves-a-reference-through-its-path" data-change="added" data-status="accepted">
+            <h3>4. Validation resolves a reference through its path</h3>
+            <p>The store validation finds for a document is seen from the document's directory. An addressed reference resolves only where its path, followed from that directory as a browser follows a relative URL, names the store's <code>assets/</code> directory. One whose path reaches another directory is reported as <code>asset/unresolved</code>, naming where it leads and where the store is.</p>
+            <p data-field="rationale">document-validation's "An asset reference must match the bytes it names" rejects "a document whose asset reference does not resolve to stored bytes". A path that reaches a directory holding no store resolves to nothing in a browser, whatever its last two components name, so it is unresolved, the diagnostic the requirement keeps for "a reference naming bytes the project does not store". A distinct diagnostic was considered and rejected: the repair is the one <code>asset/unresolved</code> already asks for, and the requirement keeps two diagnostics because there are two causes.</p>
+            <p data-field="rationale">"Leads to the store" means the directory the reference names, from the document, is the store's directory. The document's directory and the store's are each made absolute, against the working directory where the command line gave them relative, and the reference's directory part is followed from the document's, with every <code>.</code> and <code>..</code> resolved lexically. The two are then compared component by component. So <code>../../../htmlspec/assets/</code>, which climbs out of <code>htmlspec/</code> and back in, reaches the store from <code>htmlspec/changes/&lt;name&gt;/</code> as <code>../../assets/</code> does. The code review of pull request #58 found the first version of this check comparing the two paths as text, relative to the document, which reported that reference as leading elsewhere although a browser loads the store's bytes through it.</p>
+            <p data-field="rationale">The filesystem is never asked. The review asked whether, where both directories exist, their identity on disk should decide, as <code>new document</code> decides whether a destination is the project's <code>htmlspec/</code>. Rejected: a reference spelled <code>../../ASSETS/</code> loads the store on a filesystem that ignores case, as macOS's does by default, and nothing on a Linux machine running the project's checks, and a link into the store works only where the link exists. A verdict that followed the filesystem would pass a document on a contributor's machine and fail it in continuous integration. <code>new document</code> asks the other question, where to write a file on this machine, which only the filesystem can answer. The engine stays free of the filesystem: the command line hands the rule the store <code>store_for</code> found, seen from the document's directory, and the check is path arithmetic on the two.</p>
+            <p data-field="rationale">The path is asked about before the address. A path that misses the store says nothing about what the store holds, so a reference whose path and address are both wrong is reported for its path, and its address is asked about once the path reaches the store.</p>
+            <p data-field="rationale">The formatter's store is not seen from anywhere, so formatting resolves as before, by address. deterministic-formatting's "Formatting preserves meaning" leaves a reference that names stored bytes as written, and a misplaced reference does name them.</p>
+          </section>
+          <section class="decision" id="decision-two-requirements-state-what-they-were-silent-on" data-change="added" data-status="accepted">
+            <h3>5. Two requirements state what they were silent on</h3>
+            <p>toolchain-packaging's "Archival produces the specification and updates the accepted contract" gains the rewrite, because it is an obligation on the program's archival operation. document-validation's "An asset reference must match the bytes it names" gains the path.</p>
+            <p data-field="rationale">artifact-kinds' archival requirement states the agent's sequence and stays as it is: its step 4, "archived intact", is what the rewrite serves, and the program's part of it belongs beside the atomicity the command surface already promises.</p>
+          </section>
+          <section class="decision" id="decision-release-0-30-0" data-change="added" data-status="accepted">
+            <h3>6. Release 0.30.0</h3>
+            <p>A minor increment, from 0.29.1 to 0.30.0. The document contract stays at 0.7.0.</p>
+            <p data-field="rationale">Validation can now reject a document that 0.29.1 accepted, which is a change a project validating in continuous integration can see. <a href="evidence/what-a-path-check-would-change-2026-10-14.md"><code>evidence/what-a-path-check-would-change-2026-10-14.md</code></a> measured that it rejects nothing this repository validates. The schema and the projection do not change, so no document has to declare a new contract version.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <section class="risk" id="risk-a-reference-in-an-attribute-the-rewrite-does-not-read" data-change="added" data-response="accepted">
+            <h3>A reference in an attribute the rewrite does not read</h3>
+            <p>A relative URL in an attribute outside the loading and hyperlink sets, such as <code>cite</code>, is left as it was and points one level short after archival. The change bears this. The sets are the ones the asset rules and a reader act on, and a stylesheet or a script, the references that break a page, are all in them.</p>
+          </section>
+          <section class="risk" id="risk-an-earlier-program-meets-a-v2-journal" data-change="added" data-response="accepted">
+            <h3>An earlier program meets a v2 journal</h3>
+            <p>An archival interrupted under this program, and settled by an earlier one, is refused, because the earlier program does not read v2. The change bears this: the refusal names the journal and the change, and completing without the replacements would publish documents pointing one level short.</p>
+          </section>
+          <section class="risk" id="risk-a-path-through-a-symbolic-link" data-change="added">
+            <h3>A path through a symbolic link</h3>
+            <p>Validation follows a reference's path lexically, so a reference through a link that does reach the store on disk, or one spelled in another case on a filesystem that ignores case, is reported as reaching another directory.</p>
+            <p data-field="mitigation">The walk that finds the store, <code>store_for</code>, is lexical too, so the two agree on every path that does not pass through a link, which is every path the program writes. A document reached through a link was already given the store above its spelled path. The verdict is the same on every machine, which is decision 4's reason for not asking the filesystem, and a test pins the case-insensitive spelling as rejected.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

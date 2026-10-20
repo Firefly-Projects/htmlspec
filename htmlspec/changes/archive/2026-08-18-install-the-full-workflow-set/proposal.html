@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Install the full workflow set</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Install the full workflow set</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Install the full workflow set</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-18-install-the-full-workflow-set/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><code>htmlspec init</code> installs one workflow. A contributor who bootstraps a project, opens their agent, and types <code>/htmlspec</code> sees a single entry:</p>
+          <pre><code>/htmlspec:archive    Archive an html-spec change — produce its specification artifact…</code></pre>
+          <p>That is the last step of the lifecycle and the only one offered. Everything before it — deciding what to build, writing the proposal, carrying it into a design, working the tasks, checking the result against what was promised — is unattributed. A contributor either reads <code>AGENTS.md</code> and drives the CLI by hand, or asks their agent to improvise a workflow the project has opinions about but never states.</p>
+          <p>The comparison is direct, because the arrangement being imitated is installed in this very repository. OpenSpec's <code>init</code> installs ten:</p>
+          <pre><code>/opsx:ff          Create a change and generate all artifacts needed for implementation in one go
+/opsx:new         Start a new change using the experimental artifact workflow
+/opsx:sync        Sync delta specs from a change to main specs
+/opsx:apply       Implement tasks from an OpenSpec change
+/opsx:verify      Verify implementation matches change artifacts before archiving
+/opsx:archive     Archive a completed change in the experimental workflow
+/opsx:explore     Enter explore mode - think through ideas, investigate problems, clarify requirements
+/opsx:onboard     Guided onboarding - walk through a complete OpenSpec workflow cycle with narration
+/opsx:continue    Continue working on a change - create the next artifact
+/opsx:bulk-archive  Archive multiple completed changes at once</code></pre>
+          <p>The gap is not that htmlspec has fewer commands. It is that htmlspec has <em>the same lifecycle</em> and describes one seventh of it. <a href="evidence/lifecycle-walkthrough-2026-08-18.md"><code>htmlspec new change</code> already writes a proposal, a design, and a tasks document</a>. The artifact-kinds change established what each of those four kinds carries and what it must not, and the accepted contract states those obligations at length. None of that reaches an agent, because the only instruction file installed is the one about archival.</p>
+          <p><strong>The rule that produced this is recorded, and it is narrower than the behavior it produced.</strong> <code>crates/htmlspec-assets/src/instructions.rs:8-11</code> says:</p>
+          <blockquote>
+            <p>One workflow ships here — <code>archive</code> — because archival is the one operation the program already gates. The rest of the lifecycle is named as a non-goal: installing an instruction file for a command that does nothing would tell an agent to run something that is not there.</p>
+          </blockquote>
+          <p>The stated hazard is real: a skill that says to run <code>htmlspec propose</code> would send an agent to a clap error. But the conclusion drawn from it is wrong, and <code>archive</code> is the counterexample sitting in the same table. Archival ships <strong>no</strong> extractor command — the instruction file opens by saying so, in bold, and then spends 196 lines telling an agent how to do the work with its own judgment. <code>htmlspec archive</code> only checks the result. So a workflow does not need a command that performs it. It needs to not <em>name</em> a command that does not exist.</p>
+          <p>That distinction is the whole change. Six more workflows can be written under the rule as stated, provided each one names only commands the program actually has.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li>
+              <p><strong><code>init</code> installs seven workflows instead of one.</strong> The lifecycle, in the order a change moves through it:</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Workflow</th>
+                    <th>What it is</th>
+                    <th>CLI behind it</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>explore</code></td>
+                    <td>Think through an idea before committing to a change. A stance, not a sequence.</td>
+                    <td>none — reads only</td>
+                  </tr>
+                  <tr>
+                    <td><code>new</code></td>
+                    <td>Start a change: write its proposal, then its design, then its tasks.</td>
+                    <td><code>htmlspec new change</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>continue</code></td>
+                    <td>Produce the next artifact the change is missing.</td>
+                    <td><code>htmlspec new document</code>, <code>validate</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>ff</code></td>
+                    <td>Create a change and carry it through every artifact in one pass.</td>
+                    <td><code>htmlspec new change</code>, <code>validate</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>apply</code></td>
+                    <td>Work the tasks, settling each task's state as it goes.</td>
+                    <td><code>htmlspec validate</code>, <code>format</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>verify</code></td>
+                    <td>Check the implementation against the change's own artifacts before archival.</td>
+                    <td><code>htmlspec validate</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>archive</code></td>
+                    <td>Produce the specification, advance the version, merge, archive.</td>
+                    <td><code>htmlspec archive</code></td>
+                  </tr>
+                </tbody>
+              </table>
+              <p><code>archive</code> is unchanged. Its instruction file is the model the six new ones follow.</p>
+            </li>
+            <li>
+              <p><strong>Every workflow is agent-driven, and each says so.</strong> Four of the seven have no command that performs them, which is the same footing <code>archive</code> has always been on. Each instruction file names only commands the program has, and a test holds that: the existing <code>no_body_names_a_withdrawn_command</code> test generalizes into one that extracts every <code>htmlspec …</code> invocation from every body and checks it against the CLI's own command tree. That is a stronger guarantee than the rule the code comment currently states by hand, and it is what makes adding a seventh workflow safe.</p>
+            </li>
+            <li>
+              <p><strong>The closing message names the workflow to start with, not the one to finish with.</strong> <code>init</code> currently ends by printing the archival invocation, because archival was the only thing installed. With a lifecycle installed, the command a contributor needs on a first run is the one that begins it. <a href="evidence/seven-workflow-install-2026-08-18.md">The message names the entry point per tool spelling, and the existing per-spelling grouping is kept</a>.</p>
+            </li>
+            <li>
+              <p><strong>The instruction bodies draw on the accepted contract rather than restating it loosely.</strong> The four artifact kinds, what each carries, and what each must not carry are already stated in <a href="../../../specs/artifact-kinds/spec.html"><code>openspec/specs/artifact-kinds</code></a>. The <code>new</code>, <code>continue</code>, and <code>ff</code> bodies are written against that, so an agent producing a proposal is told the same things the validator will check — including the ones that are errors rather than advice, like a requirement in a proposal or a task in a specification.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-non-goals">
+          <h2>Non-Goals</h2>
+          <ul>
+            <li>
+              <p><strong><code>onboard</code> and <code>bulk-archive</code> are not included.</strong> <code>onboard</code> narrates a full cycle, and narrating a lifecycle whose bodies are being written for the first time in this change would pin wording that has not been exercised yet. <code>bulk-archive</code> answers a pressure that arrives with many concurrent changes; this project has archived four, one at a time. Both remain table entries a later change can add, which is the shape the tool table was built for.</p>
+            </li>
+            <li>
+              <p><strong><code>sync</code> does not become a standalone workflow.</strong> Applying a change's contract into the accepted specifications is step 5 of <code>archive</code>, and the archival body already carries the partial-update guidance that makes it safe. Splitting it out would put that guidance in two places, and the one that drifted would be the one someone read.</p>
+            </li>
+            <li>
+              <p><strong>No new CLI commands.</strong> Nothing in this change adds a subcommand, a flag, or an output mode. The seven workflows are instruction files over the command surface that exists.</p>
+            </li>
+            <li>
+              <p><strong>The tool table does not change.</strong> Five targets, the same detection, the same three deliveries. Seven workflows times five tools is a loop count, not a new case: <code>write_skills</code> and <code>write_commands</code> already iterate <code>WORKFLOWS</code>.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

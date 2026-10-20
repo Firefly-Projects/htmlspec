@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Keep evidence out of document discovery</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Keep evidence out of document discovery</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Keep evidence out of document discovery</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-29-keep-evidence-out-of-document-discovery/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-re-measure-before-changing-anything">1. Re-measure before changing anything</a></li>
+          <li><a href="#hs-2-tests-first">2. Tests first</a></li>
+          <li><a href="#hs-3-the-definition-and-the-walk">3. The definition and the walk</a></li>
+          <li><a href="#hs-4-the-instructions">4. The instructions</a></li>
+          <li><a href="#hs-5-prove-it">5. Prove it</a></li>
+          <li><a href="#hs-6-release">6. Release</a></li>
+          <li><a href="#hs-7-review">7. Review</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-re-measure-before-changing-anything">
+          <h2>1. Re-measure before changing anything</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 In a scratch project built with <code>htmlspec init --tools none</code>, copy the three HTML evidence files from <code>2026-09-11-migrate-an-openspec-project/evidence/</code> into one change's <code>evidence/</code>.</h3>
+              <p>Run <code>validate</code>, <code>format --check</code>, and <code>format</code>. Record each exit status, every diagnostic naming an evidence file, and whether <code>format</code> changed any evidence bytes, compared with <code>cmp</code>. The proposal rests on the 2026-09-09 measurement, so this reproduces it against HEAD</p>
+              <p data-field="deviation">Migration note: the measurement copied all seven of this repository's HTML records into the change's <code>evidence/</code>, not only the three from <code>2026-09-11-migrate-an-openspec-project</code>. The four documents converted by hand in August went into <code>evidence/converted/</code>, to exercise nesting. <code>validate</code> exited 1 with 14 errors, two on each of the seven, <code>format --check</code> exited 1, and <code>format</code> rewrote all seven, as <a href="evidence/evidence-read-as-documents-2026-09-29.md"><code>evidence/evidence-read-as-documents-2026-09-29.md</code></a> records.</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 In the same scratch project, record the exit status of <code>htmlspec migrate promote --check</code> over a staged tree that holds the same evidence, to confirm that promotion refuses on HEAD for this reason and no other</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-tests-first">
+          <h2>2. Tests first</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done" data-refs="scenario-validating-a-project-that-holds-html-evidence scenario-outside-a-project-every-file-is-a-document">
+              <h3>2.1 Add CLI tests for the toolchain-packaging scenarios: <a href="specification.html#scenario-validating-a-project-that-holds-html-evidence">validating a project that holds HTML evidence</a>, <code>format</code> leaving evidence byte-identical and <code>format --check</code> passing, naming an evidence file, naming the evidence directory, and <a href="specification.html#scenario-outside-a-project-every-file-is-a-document">outside a project every file being a document</a>.</h3>
+              <p>Check that the first two fail on HEAD and the last three pass on HEAD</p>
+              <p data-field="note">Migration note: section 3 of <a href="evidence/what-the-implementation-revealed-2026-09-29.md"><code>evidence/what-the-implementation-revealed-2026-09-29.md</code></a> records that the outside-a-project test first failed on HEAD, a fault in the test and not in the behaviour, and that its record was given a dangling unit reference, which fails wherever the file sits. No record shows the other four tests run on HEAD. Mutation 3 in <a href="evidence/mutation-testing-2026-09-29.md"><code>evidence/mutation-testing-2026-09-29.md</code></a>, which puts back the walk as it was on HEAD, is caught by the first two.</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Add CLI tests for the artifact-kinds scenarios not covered by 2.1: evidence nested below <code>evidence/</code>, a capability at <code>htmlspec/specs/evidence/spec.html</code> that is still validated (and is reported when invalid), and an archived change's evidence.</h3>
+              <p>Check which of these fail on HEAD, and record which do</p>
+              <p data-field="note">Migration note: nothing this change carries records which of these tests failed on HEAD. Mutation 3 in <a href="evidence/mutation-testing-2026-09-29.md"><code>evidence/mutation-testing-2026-09-29.md</code></a>, which puts back the walk as it was on HEAD, is caught by the nested and the archived-change tests.</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done" data-refs="scenario-carried-evidence-in-the-destination-format-does-not-gate-promotion">
+              <h3>2.3 Add a promotion test for "<a href="specification.html#scenario-carried-evidence-in-the-destination-format-does-not-gate-promotion">Carried evidence in the destination format does not gate promotion</a>": a staged project with non-conforming HTML evidence promotes, and the file arrives byte-identical.</h3>
+              <p>Check that it fails on HEAD</p>
+              <p data-field="note">Migration note: nothing this change carries records a run of this test on HEAD. Mutation 3 in <a href="evidence/mutation-testing-2026-09-29.md"><code>evidence/mutation-testing-2026-09-29.md</code></a>, which puts back the walk as it was on HEAD, is caught by it.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-the-definition-and-the-walk">
+          <h2>3. The definition and the walk</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Add the evidence location to <code>ProjectRoot</code> as a private constant and a method answering whether a directory is a change's evidence directory.</h3>
+              <p>Compare on canonical paths. Unit-test it for an active change's and an archived change's evidence, <code>changes/archive/evidence</code>, <code>specs/evidence</code>, a nested <code>evidence/evidence</code>, and a project reached through a symbolic link</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Make <code>discover::documents</code> resolve the project from its root and skip, during the walk, every child directory the method identifies.</h3>
+              <p>The root must never be skipped. Unit-test that a root inside evidence is walked in full, and check that the tests from 2.1 through 2.3 pass</p>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Check that no caller of <code>discover::documents</code> filters evidence on its own, and that the doc comments on <code>documents</code>, <code>subject</code>, and <code>conformance</code> state the new behavior</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-the-instructions">
+          <h2>4. The instructions</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done" data-refs="req-a-change-s-evidence-is-kept-in-the-change-and-is-not-one-of-its-documents">
+              <h3>4.1 In <code>crates/htmlspec-assets/instructions/migrate.md</code>, make the <code>evidence/**</code> row cite artifact-kinds' "<a href="specification.html#req-a-change-s-evidence-is-kept-in-the-change-and-is-not-one-of-its-documents">A change's evidence is kept in the change and is not one of its documents</a>" and say that carried HTML evidence does not gate promotion.</h3>
+              <p>Regenerate the installed copies with <code>./target/debug/htmlspec init --tools claude,codex,pi</code>, remove the stray <code>htmlspec/</code> and <code>spec.nix</code>, and check that <code>scripts/check-installed</code> passes</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-prove-it">
+          <h2>5. Prove it</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Repeat 1.1 and 1.2 against the built change and record the results.</h3>
+              <p>The expected result is that every command succeeds and the evidence bytes are unchanged</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Mutation-test the change.</h3>
+              <p>Replace the positional test with a name-only test, exempt nothing (root included), and skip nothing, and check that a test catches each mutation</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Run <code>cargo test --workspace --all-targets</code>, then <code>scripts/check</code>, with every stage green</h3>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Record what the implementation revealed</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-release">
+          <h2>6. Release</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Run the release runbook at <code>runbooks/release/tasks.html</code>, and report whether it worked as written</h3>
+              <ul>
+                <li>
+                  <p><strong>It worked as written, in its order.</strong> Step 1 moved the workspace to <code>0.18.0</code> and relocked seven workspace members offline, and nothing else. Step 2 ran from <code>./target/debug/htmlspec</code> rebuilt at 0.18.0. A bare <code>htmlspec</code> still resolves to an older profile binary, as the last two releases recorded. It regenerated the installed files and created the stray <code>htmlspec/</code> and <code>spec.nix</code> the runbook warns about, which were removed. Step 3 wrote the entry. Step 4 passes for the declared version, and <code>scripts/check</code> is green at 13 of 13</p>
+                </li>
+                <li>
+                  <p><strong>The gap recorded twice before is still open</strong>: the runbook does not say that archival here also needs a hand-written <code>runbooks.json</code> beside <code>VERSION</code>. Task 6.3 writes both</p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Choose the increment and state the reasoning, and flag it for confirmation</h3>
+              <ul>
+                <li>
+                  <p><strong>0.18.0, confirmed by the contributor.</strong> Two requirements are added and the observable behavior of <code>validate</code>, <code>format</code>, and promotion changes inside a project, which is what 0.17.0 was a minor increment for. The document schema is untouched, so the contract stays at <code>0.2.0</code></p>
+                </li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Check that <code>scripts/check-release</code> passes after archival writes <code>VERSION</code> and the archive's <code>runbooks.json</code></h3>
+              <ul>
+                <li>
+                  <p><strong>Passes</strong>: 24 archived changes record a version, 18 versions are in the changelog, and the declared <code>0.18.0</code> has an entry. <code>VERSION</code> reads <code>0.18.0</code>. <code>runbooks.json</code> is byte-identical to the previous archive's, because the release runbook is unchanged at <code>0.1.0</code>. Its two recorded digests equal <code>shasum -a 256</code> of <code>specification.html</code> and <code>tasks.html</code>, and its changelog equals <code>runbooks/release/CHANGELOG.md</code> byte for byte</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-review">
+          <h2>7. Review</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Resolve what a review of the pull request found, and record what was and was not taken</h3>
+              <ul>
+                <li>
+                  <p><strong>Taken: <code>format</code> rewrote a named record.</strong> The two new requirements contradicted each other. artifact-kinds said no operation rewrites evidence, while toolchain-packaging said a named path is operated on as named, and the code followed the second. <a href="evidence/what-the-implementation-revealed-2026-09-29.md">Reproduced: <code>format htmlspec/changes/measure-evidence/evidence</code> rewrote all seven records.</a> The contributor chose "never write evidence". toolchain-packaging now says a named path is <em>checked</em> as named, and that <code>format</code>'s writing mode refuses a record: it names it, writes nothing, and exits as an operation that could not run. artifact-kinds' sentence now covers a named record explicitly. It is covered by <code>formatting_a_named_record_is_refused_and_writes_nothing</code> and by <a href="evidence/mutation-testing-2026-09-29.md">mutations 7 and 8</a></p>
+                </li>
+                <li>
+                  <p><strong>Not taken: an asset store beneath evidence counts as the project's.</strong> This is true, and it is the case the design lists as a non-goal. No evidence holds a store, and nothing in the <code>migrate</code> instructions tells anyone to carry one there. Left for a change whose subject is a store inside a record</p>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

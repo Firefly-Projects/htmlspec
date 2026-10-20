@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Conform generated frontmatter names</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Conform generated frontmatter names</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Conform generated frontmatter names</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-18-conform-generated-frontmatter-names/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-the-check-before-the-fix">1. The check, before the fix</a></li>
+          <li><a href="#hs-2-separate-the-name-from-the-invocation">2. Separate the name from the invocation</a></li>
+          <li><a href="#hs-3-nothing-a-contributor-types-has-changed">3. Nothing a contributor types has changed</a></li>
+          <li><a href="#hs-4-prove-a-renamed-field-does-not-break-loading">4. Prove a renamed field does not break loading</a></li>
+          <li><a href="#hs-5-the-contract">5. The contract</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-the-check-before-the-fix">
+          <h2>1. The check, before the fix</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Add a test in <code>crates/htmlspec-cli/src/install.rs</code> that installs for every tool in <code>TOOLS</code> into a scratch directory, reads every skill and command file written, extracts the <code>name:</code> value, and asserts it matches lowercase letters, digits, and hyphens only.</h3>
+              <p>Read the produced files rather than the table: the malformed value is assembled by a format string at write time, so a check on <code>workflow.name</code> and <code>workflow.directory</code> — both already conforming — cannot see it</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Make the failure name the file, the offending value, and the character that failed.</h3>
+              <p>Across 35 generated files, "a name is malformed" is not actionable</p>
+              <p data-field="note">Migration note: the figure 35 is carried as the author wrote it. At commit <code>4972234</code> an install for all five tools writes 49 files that declare a name, and the test this task shapes reads those 49. 35 is the count for the three tools this repository selects, <code>claude,codex,pi</code>, as <a href="evidence/loading-after-rename-2026-08-19.md"><code>evidence/loading-after-rename-2026-08-19.md</code></a> records. <a href="evidence/failing-name-check-2026-08-19.md"><code>evidence/failing-name-check-2026-08-19.md</code></a> gives 35 as its total while its per-tool rows sum to 50.</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Run the test and <strong>watch it fail</strong> on the 21 command files three tools currently receive, each carrying <code>/htmlspec:…</code>, <code>$htmlspec-…</code>, or <code>/htmlspec-…</code>.</h3>
+              <p>A check that has never failed proves nothing, and this is the only naturally occurring failing case</p>
+              <p data-field="note">Migration note: the record of this run, <a href="evidence/failing-name-check-2026-08-19.md"><code>evidence/failing-name-check-2026-08-19.md</code></a>, shows the 21 failing files carrying <code>/htmlspec:…</code> for Claude Code and <code>/htmlspec-…</code> for Cursor and Pi. None carried <code>$htmlspec-…</code>: that is Codex's invocation, and Codex receives skills only, so no command file was written for it.</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Record the failure output as evidence, including the count of failing files per tool.</h3>
+              <p><a href="evidence/failing-name-check-2026-08-19.md">That count</a> is what shows the check reads every file rather than the first one</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-separate-the-name-from-the-invocation">
+          <h2>2. Separate the name from the invocation</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Change <code>write_commands</code> in <code>install.rs</code> to use <code>workflow.directory</code> for the <code>name:</code> field instead of <code>tool.invocation(workflow.name)</code>, so a command file and its skill file declare one identity.</h3>
+              <p><code>workflow.name</code> is rejected for this: a flat command directory already needs the <code>htmlspec-</code> prefix on the <em>file</em> name to avoid colliding with another tool's unrelated <code>apply.md</code>, and a bare <code>apply</code> in the name field reintroduces that ambiguity</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Leave the rest of the command frontmatter as it is — description, allowed-tools, and <code>generatedBy</code> are unaffected</h3>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Record in a comment why the invocation is not the name, and where the invocation does belong.</h3>
+              <p>The next reader will see a name field that no longer matches what they type and will be tempted to put it back</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Confirm <code>Tool::invocation</code> now has exactly one non-test caller, <code>report_next_command</code>.</h3>
+              <p>That single-producer property is the decision, not a side effect of it</p>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done">
+              <h3>2.5 Re-run the test from task 1 and confirm it passes</h3>
+              <p data-field="note">Migration note: no record this change carries states this result. Only the message of commit <code>4972234</code> does, in saying that the full suite is green at 322 tests.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-nothing-a-contributor-types-has-changed">
+          <h2>3. Nothing a contributor types has changed</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Confirm the command <strong>file names</strong> are untouched: <code>.claude/commands/htmlspec/apply.md</code> and <code>.cursor/commands/htmlspec-apply.md</code> are what determine the invocation, and this change must not move them</h3>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Confirm <code>report_next_command</code> <a href="evidence/loading-after-rename-2026-08-19.md">still prints</a> <code>/htmlspec:new</code>, <code>$htmlspec-new</code>, <code>/htmlspec-new</code>, and the AGENTS.md sentence, grouped per distinct spelling.</h3>
+              <p>The closing message is the one place that teaches the spelling and it must be unchanged</p>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Run the full suite and confirm no existing test regressed.</h3>
+              <p><code>every_invocation_names_its_workflow</code> in <code>tools.rs</code> in particular must still pass — it tests <code>Tool::invocation</code> itself, which this change does not alter</p>
+              <p data-field="note">Migration note: no record this change carries states this result. Only the message of commit <code>4972234</code> does, in saying that the full suite is green at 322 tests.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-prove-a-renamed-field-does-not-break-loading">
+          <h2>4. Prove a renamed field does not break loading</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Regenerate this repository's own instructions with <code>htmlspec init --tools claude,codex,pi</code>, as the previous change did, and confirm the 21 command files now declare <code>htmlspec-*-change</code> names</h3>
+              <p data-field="deviation">— <a href="evidence/loading-after-rename-2026-08-19.md"><strong>14</strong> here, not 21</a>: this repository selects <code>claude,codex,pi</code> and Codex is skills-only. 21 is the all-tools figure, confirmed separately by the new test</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Confirm the seven <code>/htmlspec:*</code> commands still load and are still invocable by their old spelling.</h3>
+              <p>This is the risk that would make the change wrong rather than merely different, and it must be <a href="evidence/loading-after-rename-2026-08-19.md">checked by loading</a> rather than by reasoning: if a loader derived the command name from the <code>name:</code> field, the spelling would change</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Record the result as evidence, including the vendored <code>opsx</code> comparison — <code>name: "OPSX: Apply"</code> registers as <code>/opsx:apply</code>, which is neither the name nor derivable from it, so the file path is what determines the command.</h3>
+              <p>That comparison is the reason to expect this to hold, and <a href="evidence/loading-after-rename-2026-08-19.md">the load is the proof</a></p>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 Confirm the AGENTS.md region is <a href="evidence/loading-after-rename-2026-08-19.md">untouched by the regeneration</a>, since it carries no frontmatter and this change does not reach it</h3>
+            </li>
+          </ul>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> <a href="evidence/loading-after-rename-2026-08-19.md"><code>evidence/loading-after-rename-2026-08-19.md</code></a>, the record of tasks 4.1 to 4.4, shows that the invocations did not move. It does not show that a command file declaring the same name as its skill file, as task 2.1 made it, was harmless. 2026-08-21-distinguish-command-names-from-skill-names later called that shared name a regression this change introduced, made command files declare no name, and <a href="../2026-08-21-distinguish-command-names-from-skill-names/specification.html#scenario-one-identity-per-workflow">withdrew the scenario <em>One identity per workflow</em></a> that this change added.</p>
+          </aside>
+        </section>
+        <section id="hs-5-the-contract">
+          <h2>5. The contract</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Apply the modified requirement from the delta to <a href="../../../specs/project-bootstrap/spec.html"><code>openspec/specs/project-bootstrap/spec.md</code></a> as a partial update, leaving every requirement and scenario the change does not name intact</h3>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Confirm the requirement keeps its nine existing paragraphs and eight scenarios, and gains the two paragraphs and four scenarios about generated names — the applied requirement is textually identical to the delta's, and the diff to <code>openspec/specs/</code> is 20 insertions and 0 deletions.</h3>
+              <p data-field="deviation">The requirement had <strong>eight</strong> paragraphs, not nine, so it now carries ten and twelve scenarios</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Confirm no other accepted requirement is touched.</h3>
+              <p>This change modifies one requirement in one capability</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

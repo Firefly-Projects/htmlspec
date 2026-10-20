@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Record how a risk was settled</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Record how a risk was settled</h1>
+        <p>This change adds one requirement to document-schema, "A risk records how it was settled": a risk declares in a <code>data-response</code> attribute whether the change mitigated it or accepted it, a risk that declares no response is <code>mitigated</code>, and only a <code>mitigated</code> risk must state a mitigation. It modifies no accepted requirement, because none stated a risk's parts, which only the schema and projection section 4.7 required.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Record how a risk was settled</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-08-record-how-a-risk-was-settled/specs/document-schema/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-document-schema">document-schema</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-document-schema">
+          <h2>document-schema</h2>
+          <section class="requirement" id="req-a-risk-records-how-it-was-settled" data-change="added">
+            <h3>A risk records how it was settled <span class="hs-id">req-a-risk-records-how-it-was-settled</span></h3>
+            <p>A risk unit SHALL contain a heading and one statement of how the change can fail. <strong>It SHALL declare how the risk was settled</strong>, in a <code>data-response</code> attribute with one of the values <code>mitigated</code> or <code>accepted</code>. A risk with no <code>data-response</code> attribute SHALL be interpreted as <code>mitigated</code>.</p>
+            <p>A <code>mitigated</code> risk is one the change holds down. It SHALL state what holds it down, in a paragraph marked <code>data-field="mitigation"</code>. Where the mitigation does not reach all the way, that paragraph SHALL say how far it reaches. The extent SHALL NOT be a value of its own.</p>
+            <p>An <code>accepted</code> risk is one the change bears as it stands. It SHALL NOT be required to state a mitigation. It MAY carry a <code>mitigation</code> paragraph, which then states the part of the risk that something does hold down. It SHALL NOT be required to state its reason in a field of its own, because its statement and its notes are where an author says why a risk is borne.</p>
+            <p>The reason is that a risk is settled in one of two ways, and only one of them has a mitigation to state. A contract that required a mitigation of every risk left the author of an accepted risk two choices: invent a mitigation, or write a mitigation paragraph that denies being one. Either choice puts a false statement in the risk's mitigation.</p>
+            <p>The default is <code>mitigated</code> because every risk written before this attribute existed had to state a mitigation. Each such risk keeps both its meaning and its validity.</p>
+            <p>The response SHALL be stated separately from the unit's change state. The change state says what a change does to the risk, and the response says how the risk is answered. Neither SHALL be inferred from the other. The response SHALL NOT be inferred from whether a mitigation paragraph is present, because an accepted risk may carry one.</p>
+            <p>The response SHALL project into the risk's <code>response</code> field, which every risk in the model carries, including a risk whose markup declares none. A <code>data-response</code> attribute on a unit other than a risk SHALL project nowhere, as a <code>data-state</code> attribute does on a unit other than a task.</p>
+            <p>The following SHALL make a document invalid:</p>
+            <ul>
+              <li>
+                <p>a risk whose response is <code>mitigated</code>, declared or by default, with no <code>mitigation</code> paragraph;</p>
+              </li>
+              <li>
+                <p>a <code>data-response</code> value other than <code>mitigated</code> or <code>accepted</code>.</p>
+              </li>
+            </ul>
+            <article class="scenario" id="scenario-a-mitigated-risk" data-change="added">
+              <h4>A mitigated risk</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a risk carries <code>data-response="mitigated"</code>, a statement, and a <code>data-field="mitigation"</code> paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, and the risk's response is <code>mitigated</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-risk-written-before-the-response-attribute-existed" data-change="added">
+              <h4>A risk written before the response attribute existed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a risk carries a statement and a mitigation paragraph, and no <code>data-response</code> attribute</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, and the risk's response is <code>mitigated</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-mitigated-risk-with-no-mitigation" data-change="added">
+              <h4>A mitigated risk with no mitigation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a risk whose response is <code>mitigated</code>, declared or by default, carries no mitigation paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, and the report names <code>data-response="accepted"</code> as the declaration for a risk the change bears</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-accepted-risk-with-no-mitigation" data-change="added">
+              <h4>An accepted risk with no mitigation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a risk carries <code>data-response="accepted"</code> and a statement, and no mitigation paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, its response is <code>accepted</code>, and it has no mitigation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-accepted-risk-that-names-a-partial-measure" data-change="added">
+              <h4>An accepted risk that names a partial measure</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a risk carries <code>data-response="accepted"</code>, a statement, and a mitigation paragraph</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, its response is <code>accepted</code>, and its mitigation projects as it would on a mitigated risk</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-risk-that-is-partly-held-down" data-change="added">
+              <h4>A risk that is partly held down</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a risk carries <code>data-response="partial"</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because how far a mitigation reaches is stated in its paragraph and not in the response</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-response-on-another-unit" data-change="added">
+              <h4>A response on another unit</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a decision carries <code>data-response="accepted"</code></dd>
+                <dt>Then</dt>
+                <dd>the attribute projects nowhere, and the decision means what it would mean without it</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Every evidence and verification unit in this section and the next was written when this document was migrated. Each summarizes a record carried unchanged in this change's <code>evidence/</code>, as project-migration's "Evidence crosses unchanged" requires, and links it, and the record is the authority. One record bears on no requirement this specification states, and has no unit: <a href="evidence/the-runbook-ran-2026-10-08.md"><code>evidence/the-runbook-ran-2026-10-08.md</code></a> records the release.</p>
+          </aside>
+          <section class="evidence" id="evidence-the-measurement-2026-09-30" data-change="added" data-refs="req-a-risk-records-how-it-was-settled">
+            <h3>How a risk is settled today, measured against HEAD <span class="hs-id">evidence-the-measurement-2026-09-30</span></h3>
+            <p>Measured on 2026-09-30 with <code>htmlspec 0.18.0</code>, before this change (<a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a>). The release runbook's two risks were the repository's only risk units outside the fixtures, the template, and archived changes, and one held a mitigation paragraph whose first sentence says the risk is not mitigated. A risk with a statement and no mitigation failed <code>validate</code> with <code>schema/invalid</code>, "mitigation" is a required property, and adding the attribute, then named <code>data-disposition</code>, changed neither the diagnostic nor the model, so the only valid accepted risk was a mitigation that says it is not one. A per-unit attribute on the wrong unit was ignored silently. All 83 projected risks in tracked HTML and all 11 in the staged migration carried a mitigation. The 24 archived designs held 88 risk entries, 15 marked accepted, 21 mitigated, and 3 not mitigated, and 12 headed risks, and five risks were accepted and named a partial measure. Three migration readers met the gap, and shape kept 93 of the 100 risk statements out of units, while the missing value blocked 5.</p>
+          </section>
+          <section class="evidence" id="evidence-the-measurement-repeated-2026-10-08" data-change="added" data-refs="req-a-risk-records-how-it-was-settled">
+            <h3>The measurement repeated against HEAD <span class="hs-id">evidence-the-measurement-repeated-2026-10-08</span></h3>
+            <p>Measured on 2026-10-08 with <code>htmlspec 0.24.0</code>, before any edit (<a href="evidence/the-measurement-repeated-2026-10-08.md"><code>evidence/the-measurement-repeated-2026-10-08.md</code></a>). The five variants, with the attribute spelled <code>data-response</code> and added to variant E's decision, gave the results of 2026-09-30: A and B exited 1 with one <code>schema/invalid</code> and byte-identical payloads and models, C and D exited 0 with byte-identical models and no <code>response</code>, and E's decision projected nothing from <code>data-state</code>, <code>data-outcome</code>, or <code>data-response</code>. 127 tracked HTML files held 87 projected risks, and the staged migration's 116 files the same 11, all 98 with a mitigation. The contract was <code>0.4.0</code> at HEAD, and this change, built third in a stack of four, moves it from <code>0.6.0</code> to <code>0.7.0</code>.</p>
+          </section>
+          <section class="evidence" id="evidence-the-change-measured-2026-10-08" data-change="added" data-refs="req-a-risk-records-how-it-was-settled">
+            <h3>The measurement against the built change <span class="hs-id">evidence-the-change-measured-2026-10-08</span></h3>
+            <p>Measured on 2026-10-08 against the built change, with HEAD's run as the other side of every comparison (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>). Variant A exited 1 with <code>schema/missing-mitigation</code> alone; B exited 0 with <code>"response": "accepted"</code> and no mitigation; C exited 0 with <code>accepted</code> and its mitigation; D exited 0 with <code>mitigated</code>; and E's decision model was byte-identical to HEAD's. Each risk's model was HEAD's with <code>response</code> added and nothing else changed. Joined by path and identifier, the 87 tracked and 11 staged risks that existed at HEAD projected <code>"response": "mitigated"</code>, each with the mitigation it had, and <code>validate --json</code> gave byte-identical payloads on HEAD and on the change for <code>runbooks/</code>, <code>fixtures/dogfood/</code>, and the staged migration's <code>htmlspec/</code>. The eight risks this change adds in five fixtures each project the response they were written to pin.</p>
+          </section>
+          <section class="evidence" id="evidence-mutation-testing-2026-10-08" data-change="added" data-refs="req-a-risk-records-how-it-was-settled">
+            <h3>Mutation testing <span class="hs-id">evidence-mutation-testing-2026-10-08</span></h3>
+            <p>Run on 2026-10-08 over the schema, parse, validate, format, conformance, and assets suites (<a href="evidence/mutation-testing-2026-10-08.md"><code>evidence/mutation-testing-2026-10-08.md</code></a>). Seven mutations, each applied alone, were each caught by at least one test this change added, 7 of 7: a default of <code>accepted</code>, a rule that skips a risk with no attribute, a rule that also fires for <code>accepted</code>, a projection that ignores <code>data-response</code>, a projection that drops an accepted risk's mitigation, a <code>status_named</code> stem that matches nothing, and <code>data-response</code> left out of <code>LEADING</code>. <code>every_conditional_rule_finds_its_state</code> did not catch the stem mutation, because it checked its own stems rather than the rule's, and the record leaves that gap for review.</p>
+          </section>
+          <section class="evidence" id="evidence-what-the-implementation-revealed-2026-10-08" data-change="added" data-refs="req-a-risk-records-how-it-was-settled">
+            <h3>What the implementation revealed <span class="hs-id">evidence-what-the-implementation-revealed-2026-10-08</span></h3>
+            <p>Recorded on 2026-10-08 (<a href="evidence/what-the-implementation-revealed-2026-10-08.md"><code>evidence/what-the-implementation-revealed-2026-10-08.md</code></a>). The default fit every risk counted: all 87 risks in tracked HTML and all 11 in the staged migration carry a mitigation and project <code>mitigated</code>. One, the risk the migration drafted, fits the default's validity and not its author's meaning, because its author calls it accepted. Variant A, which failed on HEAD with <code>schema/invalid</code>, fails on the change with <code>schema/missing-mitigation</code> alone. Built beside the design, the rule reads <code>accepted</code> from the schema as well as <code>mitigated</code>, the fixture generator freezes the template's whole risk element, and a fifth projection test holds a response to trimming and lets an unrecognized one survive.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-risk-written-before-the-response-attribute-existed" data-change="added" data-outcome="passed" data-refs="scenario-a-risk-written-before-the-response-attribute-existed">
+            <h3>A risk that declares no response, on the built change <span class="hs-id">verify-a-risk-written-before-the-response-attribute-existed</span></h3>
+            <p data-field="method">Variant D, a risk with a statement and the mitigation paragraph "Not mitigated, and recorded rather than hidden." and no <code>data-response</code>, was validated in a scratch project built by the changed <code>init</code> and projected with <code>project-model</code> rebuilt against the changed <code>crates/htmlspec-parse</code>. Every risk that existed at HEAD, 87 in tracked HTML and 11 in the staged migration, was projected on the change and joined to HEAD's by path and identifier, and <code>validate --json</code> was compared on HEAD and on the change for <code>runbooks/</code>, <code>fixtures/dogfood/</code>, and the staged migration's <code>htmlspec/</code>.</p>
+            <p>Variant D exited 0 and projected <code>"response": "mitigated"</code>. All 98 risks projected <code>"response": "mitigated"</code>, each with the mitigation it had, and the three trees gave byte-identical payloads, with 0 errors (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, sections 1 and 2).</p>
+          </section>
+          <section class="verification" id="verify-a-mitigated-risk-with-no-mitigation" data-change="added" data-outcome="partial" data-refs="scenario-a-mitigated-risk-with-no-mitigation">
+            <h3>A risk mitigated by default with no mitigation, on the built change <span class="hs-id">verify-a-mitigated-risk-with-no-mitigation</span></h3>
+            <p data-field="method">Variant A, a risk with a statement and nothing else, declaring no response, was validated in the same scratch project.</p>
+            <p>It exited 1 with <code>schema/missing-mitigation</code> alone, at the risk, and the message reads, in part, "if this change bears the risk as it stands, declare data-response="accepted" and say in its statement why it is borne" (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, section 1).</p>
+            <p data-field="unchecked">a risk whose response is <code>mitigated</code>, declared, carries no mitigation paragraph</p>
+          </section>
+          <section class="verification" id="verify-an-accepted-risk-with-no-mitigation" data-change="added" data-outcome="passed" data-refs="scenario-an-accepted-risk-with-no-mitigation">
+            <h3>An accepted risk with no mitigation, on the built change <span class="hs-id">verify-an-accepted-risk-with-no-mitigation</span></h3>
+            <p data-field="method">Variant B, a risk carrying <code>data-response="accepted"</code> and a statement and no mitigation paragraph, was validated and projected the same way.</p>
+            <p>It exited 0, and its risk projected <code>"response": "accepted"</code> and no <code>mitigation</code> (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, section 1).</p>
+          </section>
+          <section class="verification" id="verify-an-accepted-risk-that-names-a-partial-measure" data-change="added" data-outcome="passed" data-refs="scenario-an-accepted-risk-that-names-a-partial-measure">
+            <h3>An accepted risk with a mitigation, on the built change <span class="hs-id">verify-an-accepted-risk-that-names-a-partial-measure</span></h3>
+            <p data-field="method">Variant C, variant B with the mitigation paragraph "Not mitigated, and recorded rather than hidden.", was validated and projected the same way, and its model compared key by key with HEAD's. On HEAD its model was byte-identical to variant D's, the same risk without the attribute.</p>
+            <p>It exited 0, with <code>"response": "accepted"</code> and the workaround sentence as its <code>mitigation</code>. Every key HEAD projected had the same value, and <code>response</code> was the only key added, as for variant D, which projected <code>mitigated</code> (<a href="evidence/the-change-measured-2026-10-08.md"><code>evidence/the-change-measured-2026-10-08.md</code></a>, section 1; HEAD's models in <a href="evidence/the-measurement-repeated-2026-10-08.md"><code>evidence/the-measurement-repeated-2026-10-08.md</code></a>, section 1).</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

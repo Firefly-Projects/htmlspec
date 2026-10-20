@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Publish releases through their own runbook: tasks</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Publish releases through their own runbook: tasks</h1>
+        <p>The work that gives each release a publishing runbook of its own: the runbook's specification and steps, a rehearsal of what can run without the public services, and release 0.34.0. No release is published by these tasks.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Publish releases through their own runbook: tasks</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-before">1. Before the runbook</a></li>
+          <li><a href="#hs-the-publish-runbook">2. The publish runbook</a></li>
+          <li><a href="#hs-the-rehearsal">3. The rehearsal</a></li>
+          <li><a href="#hs-the-release">4. The release</a></li>
+          <li><a href="#hs-review-and-archival">5. Review and archival</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-before">
+          <h2>1. Before the runbook</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Confirm what the steps depend on. <span class="hs-id">task-1-1</span></h3>
+              <p>On this repository's <code>main</code>: <code>publish/export</code> offers <code>--dry-run</code>, <code>--bootstrap</code>, and <code>--push</code>, refuses to push without the private review its revision requires, and states its definition of a dirty tree; <code>.githooks/pre-push</code> refuses a push to the public repository; <code>scripts/publish-crates</code> and <code>.github/workflows/release.yml</code> exist. Where any differs from the design, settle the design before writing the runbook (design decisions 3, 5, and 6).</p>
+              <p data-field="note">Each holds on <code>main</code> at <code>ca99317</code>, recorded in <code>evidence/what-the-steps-depend-on-2026-10-20.md</code>. Decision 6 holds as written. Decision 2 named the export's commands differently from the export as built in four places, and was amended: the review is the default local run rather than <code>--dry-run</code>, <code>--bootstrap</code> and <code>--push</code> each need <code>--reviewed TREE</code>, the first run reviews the whole export only after the bootstrap, and a sign-off or a read reaches the export only once committed at <code>SOURCE</code>.</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Record the accounts as they are. <span class="hs-id">task-1-2</span></h3>
+              <p>Read, without writing anything: <code>gh repo view</code> for both public repositories, <code>gh api repos/Firefly-Projects/htmlspec/rulesets/25362895</code>, and <code>gh secret list --repo Firefly-Projects/htmlspec</code>. Record what each reports in this change's evidence. No request carries personal information.</p>
+              <p data-field="note">Recorded in <code>evidence/what-the-steps-depend-on-2026-10-20.md</code>: both repositories public and empty, the ruleset active on the default branch with its three rules and no bypass, and both secrets set.</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Make a read survive the squash merge that lands it. <span class="hs-id">task-1-3</span></h3>
+              <p>Added during implementation: step 2 lands its reads through a pull request, and a read recorded by commit is orphaned by that pull request's squash merge, as the reads were at #64 and at #67. <code>publish/READINESS.md</code> records each read by the content it read, <code>publish/export</code> compares content, and <code>publish/test</code> gains tests that fail on the export as it was (design decision 10).</p>
+              <p data-field="note"><code>test_a_read_survives_the_squash_merge_that_lands_it</code>, run with the read recorded by commit as the old record asked, failed on the old export with <q>a commit this repository does not hold</q>. Three more tests cover a row that still names a commit, content this repository does not hold, and a change to a file the allowlist excludes. <code>publish/test</code> runs 41 tests, all passing. The 24 rows recorded at <code>99c0fe4</code> were converted to the content each covered.</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Run the release workflow's macOS jobs only where they are needed. <span class="hs-id">task-1-4</span></h3>
+              <p>Added on 2026-10-20 at the contributor's decision (design decision 9). The two macOS builds and the formula job run in <code>Firefly-Projects/htmlspec</code>, and in this repository only on a pull request labelled <code>release-check</code>. Every job after them handles their absence, and on a public tag nothing publishes unless all four builds and the formula passed. Checked with actionlint, and with a table of which jobs run where, in this change's evidence.</p>
+              <p data-field="note">The matrix comes from <code>python3 scripts/release_facts.py matrix</code>, which gains <code>--without-macos</code>, and <code>scripts/check-publish-crates</code> gains three tests of it. The table is in <code>evidence/which-jobs-run-where-2026-10-20.md</code>.</p>
+            </li>
+            <li class="task" id="task-1-5" data-change="added" data-state="todo">
+              <h3>1.5 The contributor creates the label <code>release-check</code> in this repository. <span class="hs-id">task-1-5</span></h3>
+              <p>Added on 2026-10-20 with task 1.4. Creating a label is a write to GitHub, so it is the contributor's, and no agent working this change makes it: <code>gh label create release-check --description "Run the release workflow's macOS jobs on this pull request"</code>, from a clone of this repository. Until it exists, no pull request here can run the macOS jobs. Nothing in the public repository needs it.</p>
+              <p data-field="note">Still open at archival, on 2026-10-20: <code>gh label list --search release-check</code> found no such label in this repository. The change is archived with it open, because nothing in the change waits on it, and the 0.34.0 changelog entry tells the contributor it remains theirs.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-the-publish-runbook">
+          <h2>2. The publish runbook</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done" data-refs="req-a-runbook-records-what-its-history-taught">
+              <h3>2.1 Write the runbook's specification. <span class="hs-id">task-2-1</span></h3>
+              <p><code>htmlspec/runbooks/publish/specification.html</code>: what the runbook is for, the six requirements of design decision 7 with their scenarios, the toolchain declaration for preflight, and the risks. Every unit declares <code>unchanged</code>.</p>
+              <p data-field="deviation">More than the task asked. Beside the six requirements, their scenarios, the declaration, and the design's three risks, the specification carries three decisions: the tag is made on GitHub, the export is reviewed before it is public, and the first run's steps say so. It also carries two evidence units and three verifications, the shape the release runbook's specification has. The verification of the steps against the public services is <code>not-run</code> until the first publication.</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done" data-refs="req-the-canonical-procedure-carries-no-completion-state">
+              <h3>2.2 Write the runbook's steps. <span class="hs-id">task-2-2</span></h3>
+              <p><code>htmlspec/runbooks/publish/tasks.html</code>: the nine steps of design decision 2, one task unit each and every one <code>todo</code>, with the prose inputs and the tap token's expiry stated before them.</p>
+              <p data-field="note">The steps are decision 2's as amended on 2026-10-20, with the commands each one runs. Step 4 adds a check that the public merge commit's tree is the reviewed tree. Step 7 sets the release's User-Agent for <code>cargo owner</code>. Step 8 runs each channel's binary by its full path.</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done" data-refs="req-a-runbook-carries-an-independently-checked-release-version">
+              <h3>2.3 Give the runbook its release version. <span class="hs-id">task-2-3</span></h3>
+              <p><code>VERSION</code> holding 0.1.0, and a <code>CHANGELOG.md</code> whose <code>## 0.1.0</code> heading names the 0.34.0 project release that publishes it.</p>
+              <p data-field="note">The heading is <code>## 0.1.0</code>, and its first line names the 0.34.0 release, as the release runbook's entries name theirs.</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Check the runbook without running it. <span class="hs-id">task-2-4</span></h3>
+              <p>Both documents validate under default and strict strictness and are canonical, <code>htmlspec list --runbooks</code> lists <code>publish</code> beside <code>release</code>, <code>htmlspec preflight publish</code> reports it ready inside the development shell, and <code>htmlspec run publish --check</code> reports no runs and writes nothing.</p>
+              <p data-field="note">Each held on 2026-10-20. Both documents had 0 errors and 0 warnings under default and strict strictness, and both were canonical. <code>list --runbooks</code> printed <code>publish</code> and <code>release</code>. Inside <code>nix develop</code>, preflight reported <q>ready: publish can start here</q>, with <code>cargo</code> and <code>rustc</code> resolving to the pinned <code>rust-minimal-1.90.0</code>. Outside it, preflight reported <q>not ready</q> and wrote nothing. <code>run publish --check</code> reported <q>publish has no runs on record</q>, and the runbook's directory held only its four files afterwards.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-the-rehearsal">
+          <h2>3. The rehearsal</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Rehearse steps 1, 2, and 4 against a local target. <span class="hs-id">task-3-1</span></h3>
+              <p>With <code>publish-a-public-tree</code>'s tooling and a bare repository under the session scratchpad as the target: take <code>SOURCE</code>, run the private review, and push the export there. Nothing reaches GitHub. Record what each step reported in this change's evidence.</p>
+              <p data-field="deviation">The target was a bare repository under this worktree's git-ignored <code>target/</code> directory, because the agent's worktree guard refuses a git-running tool aimed outside the worktree. The export's scratch repositories were in the session scratchpad. Step 1 stopped on every candidate whose release was not archived and merged, so steps 2 and 4 exported this branch's <code>08bede9</code> as a stand-in for <code>SOURCE</code>. The deliveries exported a throwaway ref with a sign-off that says it is not the contributor's, deleted afterwards. The first run's bootstrap was rehearsed between the two reviews. The suite was the real one in every run but the wrong-tree refusal's. The record is <code>evidence/the-rehearsal-2026-10-20.md</code>.</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Print the commands of steps 3, 5, and 7 for a reading. <span class="hs-id">task-3-2</span></h3>
+              <p>Each command as the runbook states it, with this release's values, read against GitHub's documentation of the ruleset and refs endpoints and cargo's documentation of <code>cargo owner</code>, without running it. Record the reading in this change's evidence.</p>
+              <p data-field="note">Recorded in <code>evidence/the-live-commands-read-2026-10-20.md</code>. The ruleset update accepts a body holding <code>enforcement</code> alone. The refs endpoint takes <code>refs/tags/v0.34.0</code> and <code>MERGE</code>, and <code>gh api</code> sends it as a <code>POST</code>. A team is added as <code>github:org:team</code>, only by a member of the team, and it cannot change the owners. The documentation does not say whether a ref made through the API starts a <code>push</code> workflow, so step 5's check stays.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-the-release">
+          <h2>4. The release</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done" data-refs="req-the-project-records-what-changed-in-each-version-it-ships">
+              <h3>4.1 Advance the release to 0.34.0. <span class="hs-id">task-4-1</span></h3>
+              <p><code>scripts/set-version 0.34.0</code>, as the release runbook's 0.3.0 says, and a <code>CHANGELOG.md</code> entry that names the publish runbook and says the program is unchanged. <code>spec.nix</code> waits for archival (design decision 8).</p>
+              <p data-field="note">The script wrote the version and five pins and relocked offline. The binary, rebuilt at 0.34.0, regenerated the installed files with <code>htmlspec init --tools claude,codex,pi</code> from the root. It reported extending the project and leaving <code>spec.nix</code> as it was. Against the listing saved before, the only paths it added were the 45 installed files under <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code>, each changed in its <code>generatedBy</code> line alone. No path was new. The entry also names the read by content and the release workflow's macOS jobs. <code>scripts/check-release</code> passed, with the declared 0.34.0 entry and five pins at <code>=0.34.0</code>.</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Run <code>scripts/check</code> in full. <span class="hs-id">task-4-2</span></h3>
+              <p>Every stage, with the new runbook read by the <code>self-runbooks</code> stages.</p>
+              <p data-field="note">On 2026-10-20, with the pinned toolchain first on the path: <q>all 14 checks passed</q>, at <code>08bede9</code> and again on the tree that settled tasks 3.1 and 3.2. The <code>self-runbooks</code> stages validated four runbook documents, and <code>publish-crates</code> ran 19 tests, the matrix's three among them. The suite also passed four times inside the exported tree during the rehearsal. <code>publish/test</code> ran 41 tests, all passing, and actionlint reported no error in any workflow.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-review-and-archival">
+          <h2>5. Review and archival</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Take the code review, and settle each finding. <span class="hs-id">task-5-1</span></h3>
+              <p data-field="note">The review of #69 at <code>d3ac207</code> verified seven findings, reproducing five, and each is settled. The export's refusal named twenty files while the content it said to record covered every one, and it now names each (design decision 11). A label other than <code>release-check</code> started a run whose skipped checks hid an earlier run's failures, and every label now starts what a push does (decision 9, amended). A delivery took its sign-off from any commit, and <code>--push</code> and <code>--bootstrap</code> now export only a commit <code>refs/remotes/origin/main</code> holds (decision 11). No test covered a read of a single allowlisted file, and <code>test_a_single_allowlisted_file_changed_since_its_read_stops_the_export</code> now does. The pre-push hook matched seven spellings of the public repository's address and let three more through, and it now compares the repository an address names (decision 11). Three passages in the workflow's comment, the design, and the evidence gave the gating more reasons than it needs, and each now gives its one reason: in a private repository a macOS minute costs as much as ten Linux minutes. The design and the runbook's specification said a tag made through the API starts the release workflow, which is unconfirmed, and the workflow and the changelog said every job runs on a public pull request, which four do not. Each now says what holds. <code>publish/test</code> runs 45 tests, all passing, and each new test failed with the defect it covers put back.</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done" data-refs="req-archival-checks-the-versions-of-runbooks-it-publishes">
+              <h3>5.2 Archive the change with <code>htmlspec archive</code>, after its predecessor. <span class="hs-id">task-5-2</span></h3>
+              <p>Only once <code>ship-through-four-channels</code> is archived. Raise <code>spec.nix</code> to 0.34.0. The specification adds no accepted requirement, and archival publishes the <code>publish</code> runbook at 0.1.0.</p>
+              <p data-field="note">Archived on 2026-10-20, after <code>ship-through-four-channels</code>, with <code>spec.nix</code> at 0.34.0. The specification adds no requirement, and it modifies two of toolchain-packaging's, because design decisions 9, 10, and 11 changed what they describe. "The public repository receives only reviewed exports of the private one" gains the delivery from <code>main</code> alone, the read by content, every changed file named, and the hook under any spelling, with two scenarios added and two modified. "A release reaches every channel from one tag" gains that a release publishes only when every target built and the formula passed, with one scenario added. Archival published the <code>publish</code> runbook at 0.1.0.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

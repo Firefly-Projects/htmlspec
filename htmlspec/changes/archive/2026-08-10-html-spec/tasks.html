@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>html-spec</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>html-spec</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>html-spec</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-10-html-spec/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-foundation-and-de-risking-spikes">1. Foundation and de-risking spikes</a></li>
+          <li><a href="#hs-2-vocabulary-and-projection-draft">2. Vocabulary and projection draft</a></li>
+          <li><a href="#hs-3-dogfood-the-draft-contract">3. Dogfood the draft contract</a></li>
+          <li><a href="#hs-4-parse-project-validate">4. Parse, project, validate</a></li>
+          <li><a href="#hs-5-canonical-formatter">5. Canonical formatter</a></li>
+          <li><a href="#hs-6-template-visual-system-and-runtime">6. Template, visual system, and runtime</a></li>
+          <li><a href="#hs-7-cli">7. CLI</a></li>
+          <li><a href="#hs-8-conformance-suite-and-checks">8. Conformance suite and checks</a></li>
+          <li><a href="#hs-9-final-self-conformance">9. Final self-conformance</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-foundation-and-de-risking-spikes">
+          <h2>1. Foundation and de-risking spikes</h2>
+          <p>Ordered first because the design's two riskiest assumptions — that <code>typify</code> can generate usable types from the contract, and that fatal parse errors are workable in practice — must be settled before rules are written on top of them.</p>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Create the Nix flake with <code>rust-overlay</code> and <code>crane</code>: pinned Rust toolchain, a <code>packages.default</code> building the workspace, a <code>devShells.default</code>, and a <code>checks.default</code> that runs <code>cargo test</code> and <code>cargo clippy -- -D warnings</code>.</h3>
+              <p>Verify <code>nix build</code> and <code>nix develop</code> succeed on a clean checkout.</p>
+              <p data-field="note">Migration note: no record this change carries holds the result of the verification this task asks for.</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Create the Cargo workspace with the six crates from design — <code>htmlspec-schema</code>, <code>htmlspec-parse</code>, <code>htmlspec-format</code>, <code>htmlspec-validate</code>, <code>htmlspec-assets</code>, <code>htmlspec-cli</code> — each compiling as an empty stub, with a workspace-level <code>[workspace.dependencies]</code> block for shared pins.</h3>
+              <p>Pin <code>html5ever</code> to an exact version, and take <code>jsonschema</code> with <code>default-features = false</code> so the validator cannot reach the network.</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 <strong>Spike:</strong> author a minimal JSON Schema covering only the <code>requirement</code> unit and generate Rust types from it with <code>typify</code> in a build script.</h3>
+              <p>Confirm the generated types are usable (constructible, matchable, serde round-trip), and record which schema constraints do not survive generation. Write the outcome to <a href="evidence/typify-spike.md"><code>openspec/changes/html-spec/evidence/typify-spike.md</code></a>.</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Decide and record the schema-generation approach based on 1.3: generated types, or hand-written types plus an agreement test.</h3>
+              <p>If falling back, write the agreement test now so the schema-as-source-of-truth property is preserved by validation. Record that generated types are a convenience and the runtime validator is the enforcement layer.</p>
+              <p data-field="note">Migration note: the decision is recorded at <a href="evidence/schema-generation-decision.md"><code>evidence/schema-generation-decision.md</code></a>. It keeps the generated types, so the agreement test for the fallback was not written.</p>
+            </li>
+            <li class="task" id="task-1-5" data-change="added" data-state="done">
+              <h3>1.5 <strong>Spike:</strong> parse HTML samples with the pinned <code>html5ever</code> and enumerate every recovered parse error, including for benign input.</h3>
+              <p>Establish this project's own stable diagnostic codes and map the pinned parser messages onto them. Where one message covers two distinct faults, distinguish them by parser state or permit neither. Write the enumeration to <a href="evidence/parse-errors.md"><code>openspec/changes/html-spec/evidence/parse-errors.md</code></a> with a justification and a fixture reference per entry.</p>
+              <p data-field="note">Migration note: the enumeration in that record marks six of its sixteen codes “(no fixture yet)”. The record explains that the design requires one fixture per permitted recovery and that no recovery is permitted, so no code is short of a required fixture, and it leaves the remaining fixtures to group 8 (“Gaps, stated rather than hidden”).</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-vocabulary-and-projection-draft">
+          <h2>2. Vocabulary and projection draft</h2>
+          <p>The smallest plausible contract, drafted before anything hardens around it. This group produces documents to write against in group 3, not a finished contract.</p>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Draft the smallest plausible vocabulary as JSON Schema: the seven semantic units, required structure, nesting, identifier prefix patterns, and enumerated values for <code>data-change</code>, decision status, and task state.</h3>
+              <p>Keep to the conservative subset agreed in 1.4. Treat this draft as provisional.</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Draft the normative HTML-to-model projection specification: which elements and attributes create a unit, how nesting becomes fields, which content preserves whitespace, how links and reference attributes become references, how figures and captions project, and which presentational markup is discarded.</h3>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Wire schema-to-types generation into <code>htmlspec-schema</code> per the 1.4 decision, and expose both the schema and the projection specification as published, readable assets rather than build inputs only.</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-dogfood-the-draft-contract">
+          <h2>3. Dogfood the draft contract</h2>
+          <p>The change's biggest risk is the closed vocabulary, so it gets tested here rather than at the end. Hand-authoring comes before the parser, formatter, and validator harden around the draft.</p>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Hand-author a simple feature proposal as an HTMLSpec document, without tooling.</h3>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Hand-author a complex change document exercising cross-references, risks, tasks, and evidence together, using this change's own artifacts as source material.</h3>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Hand-author a technical investigation document exercising Mermaid, Vega-Lite, code excerpts, and conclusions, using <code>README.html</code> and the foundation-change explainer as source material.</h3>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 Record every place the draft vocabulary or projection could not represent the content cleanly, at <a href="evidence/vocabulary-dogfood.md"><code>openspec/changes/html-spec/evidence/vocabulary-dogfood.md</code></a>.</h3>
+            </li>
+            <li class="task" id="task-3-5" data-change="added" data-state="done">
+              <h3>3.5 Revise the vocabulary and the projection specification from those findings.</h3>
+              <p>Changing the contract here is expected and cheap. A schema version makes a later migration identifiable, never inexpensive.</p>
+            </li>
+            <li class="task" id="task-3-6" data-change="added" data-state="done">
+              <h3>3.6 Write the test asserting the schema/Rust split is respected: every schema-expressible rule is expressed in the schema and not duplicated in Rust rule code.</h3>
+            </li>
+            <li class="task" id="task-3-7" data-change="added" data-state="done">
+              <h3>3.7 Document the identifier prefix table and change-state semantics in the schema's own descriptions, and cross-reference the projection specification from the schema so neither reads as the whole contract.</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-parse-project-validate">
+          <h2>4. Parse, project, validate</h2>
+          <p>Implements the parseability and rule requirements in <a href="specification.html#hs-document-validation"><code>specs/document-validation/spec.md</code></a>, against the vocabulary that survived group 3.</p>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Implement HTML parsing in <code>htmlspec-parse</code> with the pinned <code>html5ever</code> and <code>kuchikiki</code>, collecting recovered parse errors rather than discarding them.</h3>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Apply the 1.5 enumeration: map each pinned parser message onto this project's stable diagnostic code, and treat any recovery outside the enumeration as fatal, short-circuiting further analysis and reporting that evaluation was curtailed.</h3>
+              <p>Add a test that fails when the parser version changes without review of the enumeration.</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Implement the document model projection exactly as the projection specification states, and the projection into the JSON shape the schema validates against.</h3>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 Implement document metadata extraction: schema version, subject, and lifecycle status.</h3>
+            </li>
+            <li class="task" id="task-4-5" data-change="added" data-state="done">
+              <h3>4.5 Add mapping fixtures pairing HTML inputs with expected projected models, covering every rule in the projection specification.</h3>
+            </li>
+            <li class="task" id="task-4-6" data-change="added" data-state="done">
+              <h3>4.6 Build the rule engine: namespaced stable rule identifiers (<code>schema/*</code>, <code>refs/*</code>, <code>safety/*</code>, <code>viz/*</code>, <code>a11y/*</code>, <code>review/*</code>), a severity model where <code>safety/*</code> cannot be downgraded, single-pass accumulation of all diagnostics, and a strict mode promoting warnings to errors.</h3>
+              <p data-field="deviation">Migration note: strict mode was built to promote every warning except those in <code>review/*</code>, which stay warnings, so that a strict run imposes no phase gate. <a href="evidence/browser-verification.md"><code>evidence/browser-verification.md</code></a> records this as a fix, under “Two defects this task's setup also exposed”, and <a href="evidence/self-conformance.md"><code>evidence/self-conformance.md</code></a> restates it in its finding 2.</p>
+            </li>
+            <li class="task" id="task-4-7" data-change="added" data-state="done">
+              <h3>4.7 Implement <code>schema/*</code>: validate the projected document against the JSON Schema with the <code>jsonschema</code> crate and map its errors onto document locations and identifiers.</h3>
+              <p>The runtime validator is the enforcement layer, so rules that vanish in type generation — <code>minItems</code>, <code>const</code> — must be exercised by fixtures here.</p>
+            </li>
+            <li class="task" id="task-4-8" data-change="added" data-state="done">
+              <h3>4.8 Implement the relational rules Rust owns: document-wide identifier uniqueness, identifier prefix matching unit type, requirements having at least one scenario, scenarios not appearing outside requirements, decisions marked superseded naming a successor, dropped tasks stating a reason.</h3>
+            </li>
+            <li class="task" id="task-4-9" data-change="added" data-state="done">
+              <h3>4.9 Implement <code>refs/*</code>: every fragment link and every unit cross-reference resolves, and no reference targets a requirement marked <code>removed</code>.</h3>
+            </li>
+            <li class="task" id="task-4-10" data-change="added" data-state="done">
+              <h3>4.10 Implement <code>review/*</code>: report a dependent unit as needing review when the unit it references changes materially.</h3>
+              <p>These are warnings that never gate work, and reconciliation clears them.</p>
+              <p data-field="deviation">Migration note: as built, a unit changes materially when it declares <code>data-change</code> <code>added</code> or <code>modified</code>, so every unit referencing it is reported, and the report clears when that unit's state returns to <code>unchanged</code>, rather than when the dependents are reconciled. A second rule, <code>review/stale-verification</code>, reports a verification that records an outcome against such a unit. The module documentation and code of <code>crates/htmlspec-validate/src/rules/review.rs</code> at commit <code>6956324</code> show both. No document of this change states them.</p>
+            </li>
+            <li class="task" id="task-4-11" data-change="added" data-state="done">
+              <h3>4.11 Implement <code>safety/*</code> network rules: reject remote scripts, stylesheets, fonts, images, and iframes; reject prefetch, preconnect, and beacon-style constructs; reject remote data URLs in chart specifications with a rule of our own, because Vega-Lite permits them.</h3>
+              <p>Accept relative references into the project's shared assets.</p>
+            </li>
+            <li class="task" id="task-4-12" data-change="added" data-state="done">
+              <h3>4.12 Implement <code>safety/*</code> executable-content rules: a code element's children contain text and comment nodes only, with no element descendant, and any executable script not belonging to the pinned runtime is rejected.</h3>
+              <p>Add fixtures for an empty example and for text split by a comment, both of which must pass.</p>
+            </li>
+            <li class="task" id="task-4-13" data-change="added" data-state="done">
+              <h3>4.13 Implement <code>a11y/*</code>: semantic content must be present in the served markup, and every figure must carry a caption plus visible source or textual description.</h3>
+            </li>
+            <li class="task" id="task-4-14" data-change="added" data-state="done">
+              <h3>4.14 Implement <code>viz/*</code>: preprocess Vega-Lite's vendored schema so its definition names load, then validate embedded specifications against it.</h3>
+              <p>For Mermaid, validate non-emptiness and a recognized leading diagram keyword, and emit the shallow-validation limitation as a documented diagnostic note.</p>
+              <p data-field="note">Migration note: <a href="evidence/vega-lite-schema.md"><code>evidence/vega-lite-schema.md</code></a> records this task's measurements, and that the vendoring of tasks 6.1 and 6.2 was pulled forward into it, because the rule cannot be written without the schema.</p>
+            </li>
+            <li class="task" id="task-4-15" data-change="added" data-state="done">
+              <h3>4.15 Implement diagnostics output in both human-readable and structured machine-readable forms, each carrying rule identifier, severity, location, and offending identifier where applicable.</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-canonical-formatter">
+          <h2>5. Canonical formatter</h2>
+          <p>Implements <a href="specification.html#hs-deterministic-formatting"><code>specs/deterministic-formatting/spec.md</code></a>.</p>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Implement the canonical serializer in <code>htmlspec-format</code>: fixed attribute order, prescribed quoting, one escaping form per character, deterministic block indentation and line breaking.</h3>
+              <p>Text is never rewrapped.</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Preserve whitespace-sensitive content (<code>pre</code>, <code>code</code>, <code>textarea</code>) byte-for-byte, including internal indentation.</h3>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Enforce file-level normalization: UTF-8, single prescribed line ending, exactly one trailing newline, no trailing whitespace.</h3>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Implement check mode — determine whether a document is canonical without writing to it.</h3>
+            </li>
+            <li class="task" id="task-5-5" data-change="added" data-state="done">
+              <h3>5.5 Define behavior for formatting an invalid document: canonicalize without altering meaning, or refuse with a reason.</h3>
+              <p>Never silently repair.</p>
+            </li>
+            <li class="task" id="task-5-6" data-change="added" data-state="done">
+              <h3>5.6 Add a <code>proptest</code> generator over the schema vocabulary and assert <code>format(format(x)) == format(x)</code> plus semantic preservation (units, identifiers, order, attribute values all survive).</h3>
+            </li>
+            <li class="task" id="task-5-7" data-change="added" data-state="done">
+              <h3>5.7 Add no-churn tests: editing one unit, and inserting a unit between two others, each leave every line outside the affected unit untouched by the formatter.</h3>
+            </li>
+            <li class="task" id="task-5-8" data-change="added" data-state="done">
+              <h3>5.8 Measure diff minimality as a separate property from formatter churn, and record the result at <a href="evidence/diff-locality.md"><code>openspec/changes/html-spec/evidence/diff-locality.md</code></a>.</h3>
+              <p>Preserved line breaks mean a one-line paragraph still diffs whole, and that cost belongs to the line structure.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-template-visual-system-and-runtime">
+          <h2>6. Template, visual system, and runtime</h2>
+          <p>Implements <a href="specification.html#hs-document-template"><code>specs/document-template/spec.md</code></a>.</p>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Vendor and commit the pinned visualization libraries — Mermaid and Vega-Lite (with Vega and Vega-Embed as required) — plus Vega-Lite's JSON Schema.</h3>
+              <p>Resolve the exact versions here (design Open Questions).</p>
+              <p data-field="note">Migration note: <a href="evidence/vega-lite-schema.md"><code>evidence/vega-lite-schema.md</code></a> records that this task's vendoring, and task 6.2's, was pulled forward into task 4.14, and records the versions resolved there.</p>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Create the asset lockfile recording each vendored library's version, source URL, and content hash, and a Nix-driven check that re-fetches from the pinned source and verifies the committed bytes match.</h3>
+              <p data-field="note">Migration note: <a href="evidence/vega-lite-schema.md"><code>evidence/vega-lite-schema.md</code></a> records that this task's work was pulled forward into task 4.14, with task 6.1's, and that the <code>assetProvenance</code> check ran clean for all five files.</p>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Write the shared stylesheet: flat editorial layout, serif body text, high density, muted color, narrow-width reflow, and change states distinguishable without relying on hue.</h3>
+            </li>
+            <li class="task" id="task-6-4" data-change="added" data-state="done">
+              <h3>6.4 Write the print stylesheet: navigation chrome and interactive controls omitted, no clipped content or diagrams, external references identifiable on paper.</h3>
+              <p>Settle the typographic specifics here (design Open Questions).</p>
+              <p data-field="note">Migration note: <a href="evidence/browser-verification.md"><code>evidence/browser-verification.md</code></a> records the specifics settled, 2cm margins with no fixed page size and link targets as inline parentheticals, and that the stylesheet was reviewed by reading rather than by printing.</p>
+            </li>
+            <li class="task" id="task-6-5" data-change="added" data-state="done">
+              <h3>6.5 Write the document template: declared schema version, subject, and visible lifecycle status; stable section ordering; navigation that resolves without JavaScript.</h3>
+            </li>
+            <li class="task" id="task-6-6" data-change="added" data-state="done">
+              <h3>6.6 Write the progressive-enhancement script in vanilla JavaScript — render figures, collapse their sources, wire navigation state — with the figure's caption-plus-visible-source markup as the default state rather than a <code>&lt;noscript&gt;</code> branch.</h3>
+              <p>Set and enforce the byte budget in the check suite (design Open Questions).</p>
+              <p data-field="note">Migration note: no record this change carries states the budget. The source sets it as <code>SCRIPT_BUDGET = 8192</code> in <code>crates/htmlspec-assets/src/lib.rs</code> at commit <code>6956324</code>.</p>
+            </li>
+            <li class="task" id="task-6-7" data-change="added" data-state="done">
+              <h3>6.7 Render every figure into a sibling element and never over its source.</h3>
+              <p>A renderer that replaces the source block destroys it whenever a rendered DOM is saved, so the source must survive a save of the live page. Add a test that saves a rendered document and asserts the diagram source is still present.</p>
+            </li>
+            <li class="task" id="task-6-8" data-change="added" data-state="done">
+              <h3>6.8 Embed the template, stylesheets, script, and vendored assets in <code>htmlspec-assets</code> for use by <code>init</code>.</h3>
+            </li>
+            <li class="task" id="task-6-9" data-change="added" data-state="done">
+              <h3>6.9 Verify the offline and no-JavaScript guarantees by hand in a real browser with networking disabled and scripting disabled, and record the results in <a href="evidence/browser-verification.md"><code>openspec/changes/html-spec/evidence/browser-verification.md</code></a>.</h3>
+              <p data-field="deviation">Migration note: the recorded verification did not disable networking. It verified the offline guarantee from a local HTTP server's access log and by opening the document over <code>file://</code> with that server stopped, and read what the renderers drew from the live DOM with a probe script, because screen capture was unavailable; scripting was disabled in a separate Firefox profile. Beyond its words, the run found that the template never loaded the vendored libraries and fixed it with a test, and fixed two validator defects. <a href="evidence/browser-verification.md"><code>evidence/browser-verification.md</code></a> records all of it.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-cli">
+          <h2>7. CLI</h2>
+          <p>Implements <a href="specification.html#hs-toolchain-packaging"><code>specs/toolchain-packaging/spec.md</code></a>.</p>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Implement the <code>htmlspec</code> binary with <code>clap</code>: <code>validate</code>, <code>format</code>, and <code>init</code> subcommands, discoverable help covering every subcommand and option, and a clear error listing available subcommands on an unknown one.</h3>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done">
+              <h3>7.2 Implement <code>validate</code>: whole-project by default, single-file when given a path, with a strict flag.</h3>
+            </li>
+            <li class="task" id="task-7-3" data-change="added" data-state="done">
+              <h3>7.3 Implement <code>format</code> with default write mode and a non-writing check mode.</h3>
+            </li>
+            <li class="task" id="task-7-4" data-change="added" data-state="done">
+              <h3>7.4 Implement <code>init</code>: create a conforming document that validates immediately, establishing the shared assets when they are not already present.</h3>
+              <p data-field="deviation">Migration note: as built, <code>init</code> established the assets in the new document's own directory unless <code>--assets</code> named a project root, so documents in different directories each received their own copy rather than sharing one. At archival this change's own converted document carried such a copy, eight files in <code>documents/assets/</code>. Shown in <code>crates/htmlspec-cli/src/main.rs</code> and <code>crates/htmlspec-cli/src/commands.rs</code> at commit <code>6956324</code>, and in that commit's tree.</p>
+            </li>
+            <li class="task" id="task-7-5" data-change="added" data-state="done">
+              <h3>7.5 Implement the exit-code contract: zero on success, a designated code for document violations, and a distinct code for operational failures such as an unreadable file or invalid invocation.</h3>
+            </li>
+            <li class="task" id="task-7-6" data-change="added" data-state="done">
+              <h3>7.6 Implement output routing: structured payload alone on stdout when structured output is requested, all progress and run-level messages on stderr; human-readable terminal output by default.</h3>
+            </li>
+            <li class="task" id="task-7-7" data-change="added" data-state="done">
+              <h3>7.7 Implement version reporting that identifies the revision the binary was built from.</h3>
+            </li>
+            <li class="task" id="task-7-8" data-change="added" data-state="done">
+              <h3>7.8 Add CLI integration tests covering each exit code path and asserting that structured stdout parses cleanly with progress output present.</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-8-conformance-suite-and-checks">
+          <h2>8. Conformance suite and checks</h2>
+          <p>Implements the conformance requirements in <a href="specification.html#hs-document-schema"><code>specs/document-schema/spec.md</code></a>.</p>
+          <ul>
+            <li class="task" id="task-8-1" data-change="added" data-state="done">
+              <h3>8.1 Build the conformance fixture harness at the workspace root, driving fixtures through the crates' public APIs only, so the suite tests the contract rather than internals.</h3>
+            </li>
+            <li class="task" id="task-8-2" data-change="added" data-state="done">
+              <h3>8.2 Author valid and invalid fixtures for every rule.</h3>
+              <p>Each invalid fixture declares the rule identifier it violates, and the harness asserts that exact rule is reported.</p>
+            </li>
+            <li class="task" id="task-8-3" data-change="added" data-state="done">
+              <h3>8.3 Add the coverage test that fails when any rule lacks both a valid and an invalid fixture, and when any projection rule lacks a mapping fixture.</h3>
+            </li>
+            <li class="task" id="task-8-4" data-change="added" data-state="done">
+              <h3>8.4 Run every fixture through the formatter twice and assert byte-identical output.</h3>
+            </li>
+            <li class="task" id="task-8-5" data-change="added" data-state="done">
+              <h3>8.5 Expose the full suite — conformance, unit tests, formatting check, asset lockfile verification, enhancement-script byte budget — as one command, and make the flake check and CI invoke that same command rather than a separate step list.</h3>
+            </li>
+            <li class="task" id="task-8-6" data-change="added" data-state="done">
+              <h3>8.6 Package the binary as a standalone artifact and verify it runs on a machine with no source checkout and no Nix at runtime.</h3>
+              <p data-field="note">Migration note: no record this change carries holds the result of the verification this task asks for.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-9-final-self-conformance">
+          <h2>9. Final self-conformance</h2>
+          <p>Group 3 tested the vocabulary by hand before the tooling hardened. This group tests the finished toolchain end to end.</p>
+          <ul>
+            <li class="task" id="task-9-1" data-change="added" data-state="done">
+              <h3>9.1 Convert a real specification — one of this change's own capability specs — into a conforming HTMLSpec document using <code>init</code> and the toolchain.</h3>
+              <p data-field="note">Migration note: the document this task produced is carried at <a href="evidence/documents/deterministic-formatting.html"><code>evidence/documents/deterministic-formatting.html</code></a>, which <a href="evidence/self-conformance.md"><code>evidence/self-conformance.md</code></a> names at its path before archival, <code>openspec/changes/html-spec/documents/deterministic-formatting.html</code>. It is carried as it stood at migration, not as archived: commit <code>86c33f4</code> rewrote its asset references, and commit <code>9c3a3c7</code> replaced its status declaration with a kind.</p>
+            </li>
+            <li class="task" id="task-9-2" data-change="added" data-state="done">
+              <h3>9.2 Re-run the three group 3 documents through the finished toolchain, and confirm the contract still represents them after every revision made since.</h3>
+            </li>
+            <li class="task" id="task-9-3" data-change="added" data-state="done">
+              <h3>9.3 Review those documents in a browser and fix what the contract gets wrong: missing vocabulary, rules that are too strict, diagnostics that fail to explain themselves.</h3>
+              <p>Record findings and resulting contract changes in <a href="evidence/self-conformance.md"><code>openspec/changes/html-spec/evidence/self-conformance.md</code></a>.</p>
+            </li>
+            <li class="task" id="task-9-4" data-change="added" data-state="done">
+              <h3>9.4 Update the README: narrow the "Project status" list to the remaining items (agent command lifecycle, OpenSpec migration, single-file export) and document how to build and run the toolchain.</h3>
+            </li>
+            <li class="task" id="task-9-5" data-change="added" data-state="done">
+              <h3>9.5 Run <code>openspec validate html-spec --strict</code> and check that the change's own artifacts are coherent before archiving.</h3>
+              <p data-field="note">Migration note: no record this change carries holds the result of this run.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

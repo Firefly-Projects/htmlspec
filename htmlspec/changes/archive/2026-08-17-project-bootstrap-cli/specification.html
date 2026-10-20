@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Project bootstrap CLI</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Project bootstrap CLI</h1>
+        <p>This change made a project, rather than one document, the subject of the bootstrap subcommand: a declared root holding one asset store, found from any directory beneath it, whose declared version archival requires to advance (<em>A project has a declared root holding one asset store</em>, <em>Commands resolve the project from any directory beneath it</em>, <em>A project declares its name, version, and expected toolchain</em>, <em>Archival requires the project version to advance</em>). Bootstrapping installs agent instructions for the tools selected, interactively or by argument, repeatably, inside a marked region of a shared file, and ends by naming the command to run next (<em>Bootstrapping installs agent instructions for the tools a project uses</em>, <em>Tool selection is offered interactively and available without a terminal</em>, <em>Bootstrapping is repeatable without loss</em>, <em>Instructions installed in a shared file are confined to a marked region</em>, <em>Bootstrapping ends by naming the command to run next</em>). Creating documents and changes became a subcommand of its own, a declined or interrupted operation exits with a status of its own, structured output suppresses prompts, and an ascending asset reference with no store above it is reported (<em>A single command exposes validate, format, bootstrap, and create</em>, <em>A declined or interrupted operation is distinguishable from a failure</em>, <em>Exit codes distinguish outcomes</em>, <em>Output is available in human and machine forms</em>, <em>An asset reference must match the bytes it names</em>).</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Project bootstrap CLI</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-17-project-bootstrap-cli/specs/document-validation/spec.md</code><br><code>openspec/changes/archive/2026-08-17-project-bootstrap-cli/specs/project-bootstrap/spec.md</code><br><code>openspec/changes/archive/2026-08-17-project-bootstrap-cli/specs/toolchain-packaging/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-project-bootstrap">project-bootstrap</a></li>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-document-validation">document-validation</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-project-bootstrap">
+          <h2>project-bootstrap</h2>
+          <section class="requirement" id="req-a-project-has-a-declared-root-holding-one-asset-store" data-change="added">
+            <h3>A project has a declared root holding one asset store <span class="hs-id">req-a-project-has-a-declared-root-holding-one-asset-store</span></h3>
+            <p>An HTMLSpec project SHALL be identified by a directory containing an <code>htmlspec/</code> directory. That directory SHALL hold the project's accepted specifications, its active changes, and its archive, each in its own place.</p>
+            <p>A project SHALL hold exactly one asset store, in its root, and every document in the project SHALL reference that store rather than a store of its own. A project storing one copy of its runtime is the whole point of the duplicate-detection rule the contract already states; a tool that gave each change its own copy would be reporting a defect it created itself.</p>
+            <article class="scenario" id="scenario-bootstrapping-an-empty-repository" data-change="added">
+              <h4>Bootstrapping an empty repository</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor bootstraps a project in a directory with no project in it</dd>
+                <dt>Then</dt>
+                <dd>the project root is created with places for accepted specifications, active changes, and the archive, and one asset store is established in it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-changes-share-one-store" data-change="added">
+              <h4>Two changes share one store</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a bootstrapped project</dd>
+                <dt>When</dt>
+                <dd>two changes are created in it</dd>
+                <dt>Then</dt>
+                <dd>the project holds one copy of the runtime assets, and each change's documents reference it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-documents-reference-the-store-without-a-network" data-change="added">
+              <h4>Documents reference the store without a network</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document created in a bootstrapped project is opened from the filesystem</dd>
+                <dt>Then</dt>
+                <dd>it renders with no network access, because its asset references resolve to the project's store</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-project-declares-its-name-version-and-expected-toolchain" data-change="added">
+            <h3>A project declares its name, version, and expected toolchain <span class="hs-id">req-a-project-declares-its-name-version-and-expected-toolchain</span></h3>
+            <p>The bootstrap operation SHALL write a project declaration at the project root recording the project's name, its version, and a pinned reference to the program the project expects.</p>
+            <p>The declaration SHALL be expressed in the same language the project's build already uses, so that the pinned program reference is a build input rather than a value a bespoke parser must interpret. A second configuration language for three fields is surface the project does not need.</p>
+            <p>At least one command SHALL depend on the declaration. A declaration no command reads states nothing that can be wrong, so nothing reports it when it is, and it drifts from the project it describes without any signal.</p>
+            <p>The declaration SHALL NOT carry authoring rules or project context. Those have no consumer, and a field nothing reads is the case the preceding paragraph excludes.</p>
+            <article class="scenario" id="scenario-bootstrapping-writes-the-declaration" data-change="added">
+              <h4>Bootstrapping writes the declaration</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor bootstraps a project</dd>
+                <dt>Then</dt>
+                <dd>a declaration is written at the project root recording the project's name, its version, and the program it expects</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-declaration-is-not-overwritten" data-change="added">
+              <h4>The declaration is not overwritten</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose declaration a contributor has edited</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs again</dd>
+                <dt>Then</dt>
+                <dd>the declaration is left as it was</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-pinned-program-is-a-build-input" data-change="added">
+              <h4>The pinned program is a build input</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the project's build reads the declaration</dd>
+                <dt>Then</dt>
+                <dd>the pinned program reference resolves as a build input, with no separate parser</dd>
+              </dl>
+              <p data-field="note">Migration note: as built, <code>init</code> writes the pinned program reference as <code>htmlspec = null;</code>, which pins no program, and no command reads it. <a href="evidence/testing-state-2026-08-17.md"><code>evidence/testing-state-2026-08-17.md</code></a>, section 6, item 4, records the pin as deferred deliberately, so this change's words are kept. The program reads the declaration with its own parser of a strict subset of Nix rather than through Nix, which <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("The packaged artifact") records as needed for archival to run with no Nix present; <a href="tasks.html#task-8-2">task 8.2</a> states it as its deviation.</p>
+            </article>
+          </section>
+          <section class="requirement" id="req-archival-requires-the-project-version-to-advance" data-change="added">
+            <h3>Archival requires the project version to advance <span class="hs-id">req-archival-requires-the-project-version-to-advance</span></h3>
+            <p>Archival SHALL compare the project's declared version against the last archived version, and SHALL refuse unless the declared version is ordered after it. The accepted contract SHALL therefore carry a version history rather than a sequence of undated merges.</p>
+            <p>The comparison SHALL be an ordering rather than a test for difference. A declared version ordered before the last archived one SHALL be refused, and SHALL be reported distinctly from a version that has not moved, because the two have different causes: one is work not yet done, and the other is a version that went backwards.</p>
+            <p>The declared version SHALL therefore be a value the program can order. A version it cannot parse into an ordering SHALL be reported rather than accepted, because a gate that cannot compare its inputs is not a gate.</p>
+            <p>The bootstrap operation SHALL write an initial version that is ordered before every version a project can later declare, so that a project always has a version on record and the comparison is total. Archival SHALL NOT treat an absent previous version as grounds to pass. A project's first archival SHALL advance past the initial version exactly as a later one advances past its predecessor, because a rule with an exception that applies once per project is a rule exercised once per project.</p>
+            <p>Archival SHALL NOT modify the declaration. Advancing the version SHALL be the contributor's or the agent's act, and the program's part SHALL be the comparison alone.</p>
+            <p>That division is the one archival already uses: an agent produces the change's specification and the program validates it, because the judgment is judgment and the checking is exact. Deciding what a version increment signifies, and by how much, is judgment. Whether one version is ordered after another is not. A command whose stated job is checking SHALL NOT write to the project it checks.</p>
+            <p data-field="note">Migration note: as built, archival took the last archived version from the archive directory's name, where task 9.1 placed it, and no archived change's directory name carries a version, this change's own included, so the gate compared every declared version against <code>0.0.0</code> (<code>last_archived_version</code> and <code>archived_version</code> in <code>crates/htmlspec-cli/src/commands.rs</code> at <code>d88ca93</code>). <a href="../2026-08-30-finish-the-archival/specification.html#req-archival-requires-the-project-version-to-advance">2026-08-30-finish-the-archival</a> fixed this defect: there the last archived version is read from the version each archived change records.</p>
+            <article class="scenario" id="scenario-archiving-without-advancing-the-version" data-change="added">
+              <h4>Archiving without advancing the version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor archives a change while the declared version equals the last archived version</dd>
+                <dt>Then</dt>
+                <dd>archival does not complete, and the reason names the version that must advance</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archiving-with-an-advanced-version" data-change="added">
+              <h4>Archiving with an advanced version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor archives a change whose declared version is ordered after the last archived version</dd>
+                <dt>Then</dt>
+                <dd>the version gate permits archival to proceed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archiving-with-a-version-that-went-backwards" data-change="added">
+              <h4>Archiving with a version that went backwards</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor archives a change whose declared version is ordered before the last archived version</dd>
+                <dt>Then</dt>
+                <dd>archival does not complete, and the report distinguishes this from a version that has not moved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-version-the-program-cannot-order" data-change="added">
+              <h4>A version the program cannot order</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the declared version cannot be parsed into an ordering</dd>
+                <dt>Then</dt>
+                <dd>archival does not complete, and the report names the version it could not read</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-project-s-first-archival" data-change="added">
+              <h4>A project's first archival</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a freshly bootstrapped project that has archived nothing, whose declared version is still the initial one</dd>
+                <dt>When</dt>
+                <dd>a contributor archives its first change without advancing the version</dd>
+                <dt>Then</dt>
+                <dd>archival is refused on the same grounds as any later archival, because the initial version is already on record</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-program-does-not-advance-the-version-itself" data-change="added">
+              <h4>The program does not advance the version itself</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival runs</dd>
+                <dt>Then</dt>
+                <dd>the declaration is unchanged on disk, whether archival completed or refused</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archiving-with-no-declaration" data-change="added">
+              <h4>Archiving with no declaration</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival runs in a project with no declaration</dd>
+                <dt>Then</dt>
+                <dd>it reports the absent declaration and names the operation that creates one</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-commands-resolve-the-project-from-any-directory-beneath-it" data-change="added">
+            <h3>Commands resolve the project from any directory beneath it <span class="hs-id">req-commands-resolve-the-project-from-any-directory-beneath-it</span></h3>
+            <p>Every command whose subject is a project SHALL locate the project by searching the current directory and its ancestors, and SHALL operate on the project found rather than on the directory it was invoked in.</p>
+            <p>The search SHALL NOT ascend past the enclosing repository. A command run inside one repository SHALL NOT resolve to a project outside it, because writing into a neighboring project is worse than reporting that no project was found.</p>
+            <p>A command that requires a project and finds none SHALL say so, SHALL name the operation that would create one, and SHALL exit with the status for an operation that could not run.</p>
+            <article class="scenario" id="scenario-running-from-a-subdirectory" data-change="added">
+              <h4>Running from a subdirectory</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a bootstrapped project</dd>
+                <dt>When</dt>
+                <dd>a contributor runs a project-wide command from a directory inside it</dd>
+                <dt>Then</dt>
+                <dd>the command operates on the whole project</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-search-stops-at-the-repository-boundary" data-change="added">
+              <h4>The search stops at the repository boundary</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a repository with no project in it, nested inside a directory that contains an unrelated project</dd>
+                <dt>When</dt>
+                <dd>a contributor runs a project-wide command inside the repository</dd>
+                <dt>Then</dt>
+                <dd>the command reports that no project was found rather than resolving to the unrelated one</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-project-found" data-change="added">
+              <h4>No project found</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a project-wide command runs where no project exists</dd>
+                <dt>Then</dt>
+                <dd>it reports that no project was found, names the operation that creates one, and exits with the status for an operational failure</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-checking-a-project-s-assets" data-change="added">
+              <h4>Checking a project's assets</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the asset-topology command runs anywhere in a project</dd>
+                <dt>Then</dt>
+                <dd>it checks every asset the project stores, wherever in the project they are stored</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses" data-change="added">
+            <h3>Bootstrapping installs agent instructions for the tools a project uses <span class="hs-id">req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses</span></h3>
+            <p>The bootstrap operation SHALL install, for each selected AI coding tool, the instructions that tool needs to drive the HTMLSpec workflow. Where a tool supports invocable commands, the operation SHALL install those as well as the instructions.</p>
+            <p>The set of supported tools SHALL be data rather than logic, so that supporting an additional tool is an entry in that set.</p>
+            <p>How a tool receives instructions SHALL be a property of the tool with one value per tool, rather than a combination of independent settings. A tool for which no instructions could be written is a state the program SHALL NOT be able to reach.</p>
+            <p>Instructions SHALL record the version of the program that generated them, so an installation predating the instructions it should carry is identifiable.</p>
+            <article class="scenario" id="scenario-installing-for-a-tool-with-commands" data-change="added">
+              <h4>Installing for a tool with commands</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions for a tool that supports invocable commands</dd>
+                <dt>Then</dt>
+                <dd>both the instructions and the commands are written where that tool reads them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-installing-for-a-tool-without-commands" data-change="added">
+              <h4>Installing for a tool without commands</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions for a tool that supports instructions only</dd>
+                <dt>Then</dt>
+                <dd>the instructions are written and no command files are created</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-selected-tool-receives-something" data-change="added">
+              <h4>Every selected tool receives something</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation completes for any selected tool</dd>
+                <dt>Then</dt>
+                <dd>that tool has received instructions, because a selected tool that receives nothing is not a representable outcome</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-generated-instructions-name-their-version" data-change="added">
+              <h4>Generated instructions name their version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>instructions are installed</dd>
+                <dt>Then</dt>
+                <dd>they record the version of the program that generated them</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-tool-selection-is-offered-interactively-and-available-without-a-terminal" data-change="added">
+            <h3>Tool selection is offered interactively and available without a terminal <span class="hs-id">req-tool-selection-is-offered-interactively-and-available-without-a-terminal</span></h3>
+            <p>The bootstrap operation SHALL detect which supported tools a project already shows evidence of, and SHALL offer the supported tools for selection with the detected ones already chosen.</p>
+            <p>Where nothing is detected, the operation SHALL offer every supported tool already chosen. An absent detection means a project nobody has configured, which is where a default matters most and where detection has least to say. A prompt that offers nothing there teaches that the prompt is decorative.</p>
+            <p>The operation SHALL accept the selection as an argument instead, including forms meaning every supported tool and no tool at all. When a selection is given as an argument, the operation SHALL NOT prompt, because the question has already been answered.</p>
+            <p>An interactive selection of no tools SHALL be refused, and the operation SHALL ask again rather than proceed. The refusal SHALL name the argument that means no tool, so that a contributor who intends it has somewhere to go.</p>
+            <p>The argument form SHALL continue to succeed. The asymmetry is the requirement: the argument is an answer to the question, and an empty confirmation at a prompt is usually a contributor who did not read the question. The prompt appears on a first run in a fresh repository, which is where fewest contributors know what the list decides. A bootstrap that installs nothing while reporting that the project is ready has answered a question nobody asked.</p>
+            <p>The operation SHALL NOT prompt when it is not running against a terminal, and SHALL NOT prompt when structured output is requested. In either case it SHALL proceed using the detected tools. A bootstrap that blocked waiting for a keypress inside an automated job would never complete.</p>
+            <p>Detection SHALL recognize a tool by any of several paths, so that a tool which has renamed its directory is still recognized by its former one.</p>
+            <article class="scenario" id="scenario-interactive-selection-preselects-detected-tools" data-change="added">
+              <h4>Interactive selection preselects detected tools</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project containing the configuration directories of two supported tools</dd>
+                <dt>When</dt>
+                <dd>a contributor bootstraps the project in a terminal with no selection argument</dd>
+                <dt>Then</dt>
+                <dd>the supported tools are offered for selection with those two already chosen</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-selection-given-as-an-argument" data-change="added">
+              <h4>Selection given as an argument</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation is given a selection argument</dd>
+                <dt>Then</dt>
+                <dd>it installs for exactly those tools and does not prompt</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-nothing-detected-offers-everything" data-change="added">
+              <h4>Nothing detected offers everything</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a fresh repository showing evidence of no supported tool</dd>
+                <dt>When</dt>
+                <dd>a contributor bootstraps it in a terminal with no selection argument</dd>
+                <dt>Then</dt>
+                <dd>every supported tool is offered already chosen, because detection has nothing to narrow the offer with</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-tool-and-no-tool" data-change="added">
+              <h4>Every tool and no tool</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the selection argument names every supported tool, or names none</dd>
+                <dt>Then</dt>
+                <dd>the operation installs for all of them, or for none of them, and succeeds either way</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-empty-interactive-selection-is-refused" data-change="added">
+              <h4>An empty interactive selection is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor confirms a selection of no tools at the prompt</dd>
+                <dt>Then</dt>
+                <dd>the operation does not proceed, it asks again, and the refusal names the argument that means no tool</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-argument-form-still-means-no-tool" data-change="added">
+              <h4>The argument form still means no tool</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the selection argument names no tool</dd>
+                <dt>Then</dt>
+                <dd>the operation succeeds and installs nothing, because an argument is an answer and an empty confirmation is not</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-terminal-available" data-change="added">
+              <h4>No terminal available</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs with its input not connected to a terminal and no selection argument</dd>
+                <dt>Then</dt>
+                <dd>it proceeds without prompting, using the tools it detected, and does not block</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-structured-output-requested" data-change="added">
+              <h4>Structured output requested</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs with structured output requested</dd>
+                <dt>Then</dt>
+                <dd>it does not prompt, and standard output contains nothing but the structured payload</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unknown-tool-named" data-change="added">
+              <h4>An unknown tool named</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the selection argument names a tool that is not supported</dd>
+                <dt>Then</dt>
+                <dd>the operation reports the error, lists the supported tools, and writes nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-renamed-tool-directory-is-recognized" data-change="added">
+              <h4>A renamed tool directory is recognized</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project containing a supported tool's former configuration directory</dd>
+                <dt>When</dt>
+                <dd>detection runs</dd>
+                <dt>Then</dt>
+                <dd>that tool is detected</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-bootstrapping-is-repeatable-without-loss" data-change="added">
+            <h3>Bootstrapping is repeatable without loss <span class="hs-id">req-bootstrapping-is-repeatable-without-loss</span></h3>
+            <p>The bootstrap operation SHALL be safe to run on a project it has already established. On such a run it SHALL refresh the instructions for the selected tools, and SHALL leave the project's accepted specifications, active changes, and archive unchanged.</p>
+            <p>The operation SHALL NOT overwrite a project's configuration once it exists. The operation SHALL NOT delete a file it did not write.</p>
+            <p>Where the asset store is already present, the operation SHALL verify it against the pinned runtime and report a discrepancy rather than silently replacing it. Bytes that differ from the pin are a fact the contributor needs, and overwriting them would hide it.</p>
+            <article class="scenario" id="scenario-re-running-on-an-established-project" data-change="added">
+              <h4>Re-running on an established project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs on a project it already established</dd>
+                <dt>Then</dt>
+                <dd>the instructions for the selected tools are refreshed and the project's specifications, changes, and archive are unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-existing-configuration-survives" data-change="added">
+              <h4>Existing configuration survives</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose configuration has been edited</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs again</dd>
+                <dt>Then</dt>
+                <dd>the configuration is left as it was</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-existing-store-is-verified-rather-than-replaced" data-change="added">
+              <h4>An existing store is verified rather than replaced</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose stored assets differ from the pinned runtime</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs again</dd>
+                <dt>Then</dt>
+                <dd>the discrepancy is reported and the stored bytes are not silently replaced</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-nothing-unowned-is-removed" data-change="added">
+              <h4>Nothing unowned is removed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs on a project containing instructions for tools it does not manage</dd>
+                <dt>Then</dt>
+                <dd>those files are left in place</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-instructions-installed-in-a-shared-file-are-confined-to-a-marked-region" data-change="added">
+            <h3>Instructions installed in a shared file are confined to a marked region <span class="hs-id">req-instructions-installed-in-a-shared-file-are-confined-to-a-marked-region</span></h3>
+            <p>Where a tool reads its instructions from a file the contributor also writes, the bootstrap operation SHALL confine what it writes to a region marked at both ends, and on a repeated run SHALL rewrite only that region.</p>
+            <p>Where the region is absent, the operation SHALL add it. Where the file's markers are incomplete, the operation SHALL report that and write nothing to that file, because a region whose end cannot be located cannot be replaced without risking the contributor's own text.</p>
+            <article class="scenario" id="scenario-first-installation-into-a-shared-file" data-change="added">
+              <h4>First installation into a shared file</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project with a shared instructions file containing the contributor's own content</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs into it</dd>
+                <dt>Then</dt>
+                <dd>a marked region is added and the existing content is preserved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-repeated-installation-into-a-shared-file" data-change="added">
+              <h4>Repeated installation into a shared file</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs into a shared file that already has its marked region</dd>
+                <dt>Then</dt>
+                <dd>only the content within the region changes, and the file does not grow</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-incomplete-markers" data-change="added">
+              <h4>Incomplete markers</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a shared instructions file whose region is opened but not closed</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs</dd>
+                <dt>Then</dt>
+                <dd>it reports the incomplete region and writes nothing to that file</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-bootstrapping-ends-by-naming-the-command-to-run-next" data-change="added">
+            <h3>Bootstrapping ends by naming the command to run next <span class="hs-id">req-bootstrapping-ends-by-naming-the-command-to-run-next</span></h3>
+            <p>On success, the bootstrap operation SHALL state what was installed, where, and the literal command to invoke next for the tools that were selected.</p>
+            <p>Where the selected tools invoke the workflow by different spellings, the operation SHALL state each spelling and the tools it applies to. A single canonical form that no selected tool answers to would teach a command that does not work.</p>
+            <article class="scenario" id="scenario-naming-the-next-command" data-change="added">
+              <h4>Naming the next command</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation succeeds for a single tool</dd>
+                <dt>Then</dt>
+                <dd>the output states the literal command that tool answers to</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-tools-with-different-spellings" data-change="added">
+              <h4>Tools with different spellings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation succeeds for tools that invoke the workflow differently</dd>
+                <dt>Then</dt>
+                <dd>each spelling is stated with the tools it applies to</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-tools-selected" data-change="added">
+              <h4>No tools selected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation succeeds having installed for no tools</dd>
+                <dt>Then</dt>
+                <dd>it reports the project was established and does not name a command no tool answers to</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-declined-or-interrupted-operation-is-distinguishable-from-a-failure" data-change="added">
+            <h3>A declined or interrupted operation is distinguishable from a failure <span class="hs-id">req-a-declined-or-interrupted-operation-is-distinguishable-from-a-failure</span></h3>
+            <p>Where a contributor declines a prompt or interrupts the operation, the program SHALL exit with a status distinct from both success and from a failure to perform the operation. A job that cannot tell a person's refusal from a broken tool cannot report either one correctly.</p>
+            <p>An interrupted prompt SHALL restore the terminal before the program exits.</p>
+            <article class="scenario" id="scenario-declining-at-a-prompt" data-change="added">
+              <h4>Declining at a prompt</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor declines a prompt the bootstrap operation presents</dd>
+                <dt>Then</dt>
+                <dd>the program makes no further change and exits with the status for a cancelled operation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-cancellation-is-not-an-operational-failure" data-change="added">
+              <h4>Cancellation is not an operational failure</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor cancels the operation</dd>
+                <dt>Then</dt>
+                <dd>the exit status differs from the one used when an operation could not run</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-terminal-is-restored" data-change="added">
+              <h4>The terminal is restored</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor interrupts an interactive prompt</dd>
+                <dt>Then</dt>
+                <dd>the terminal is left usable</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-a-single-command-exposes-validate-format-and-init" data-change="modified">
+            <h3>A single command exposes validate, format, bootstrap, and create <span class="hs-id">req-a-single-command-exposes-validate-format-and-init</span></h3>
+            <p data-field="renamed-from">A single command exposes validate, format, and init</p>
+            <p data-field="note">The requirement's subject changed rather than its topic. <code>init</code> used to create one document, and its subject is now the project, so a requirement naming <code>init</code> alongside <code>validate</code> and <code>format</code> no longer describes the command surface. The rename is stated rather than implied, because a MODIFIED block cannot find a header that moved.</p>
+            <p>The project SHALL provide one command-line program offering, at minimum, a subcommand to validate documents, a subcommand to format documents, <del>and a subcommand to initialize a new document or project</del><ins>a subcommand to bootstrap a project, and a subcommand to create documents</ins>. Each subcommand SHALL be usable without configuration in a conforming project.</p>
+            <ins>
+              <p>The bootstrap subcommand's subject SHALL be a project and it SHALL require no arguments, because the operation a contributor needs first is the one that establishes the project they are standing in. The creation subcommand's subject SHALL be a document or a change.</p>
+            </ins>
+            <ins>
+              <p>These SHALL be distinct subcommands. One subcommand meaning both "establish this project" and "write this file" would leave a contributor unable to ask for either without also specifying which they meant.</p>
+            </ins>
+            <p><del>Initialization</del><ins>Creation</ins> SHALL take the artifact kind of the document to create, and SHALL produce a document already shaped for that kind. A <code>proposal</code> SHALL be initialized as a page of prose with no unit scaffolding at all, and a <code>specification</code> SHALL be initialized with the units its kind expects.</p>
+            <p>The asymmetry is the requirement. A proposal that arrived full of empty requirement scaffolding would push its author toward stating a contract at the stage meant for arguing about one, and the emptiest possible starting point is the correct one for a document whose structure is the author's to choose.</p>
+            <p><del>Initialization</del><ins>Creation</ins> SHALL be able to create a whole change — the directory and its documents — rather than one document at a time, because a change is a directory of kinded documents.<ins> A change created in a project SHALL be placed where that project keeps its active changes, and the resolved location SHALL be reported.</ins></p>
+            <ins>
+              <p>Documents SHALL be created referencing the project's asset store rather than establishing one of their own.</p>
+            </ins>
+            <article class="scenario" id="scenario-validating-a-project" data-change="unchanged">
+              <h4>Validating a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand in a project with no arguments</dd>
+                <dt>Then</dt>
+                <dd>every document in the project is validated and the results are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-validating-one-document" data-change="unchanged">
+              <h4>Validating one document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand against a single file path</dd>
+                <dt>Then</dt>
+                <dd>only that document is validated</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-bootstrapping-with-no-arguments" data-change="added">
+              <h4>Bootstrapping with no arguments</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the bootstrap subcommand with no arguments</dd>
+                <dt>Then</dt>
+                <dd>it establishes a project in the current repository rather than reporting a missing argument</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-proposal" data-change="added">
+              <h4>Creating a proposal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document of the proposal kind</dd>
+                <dt>Then</dt>
+                <dd>it opens as a readable page of prose, with no semantic unit scaffolding to fill in</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-specification" data-change="added">
+              <h4>Creating a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document of the specification kind</dd>
+                <dt>Then</dt>
+                <dd>it arrives with the units that kind expects, because its shape is not the author's to invent</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-change" data-change="added">
+              <h4>Creating a change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a new change in a project</dd>
+                <dt>Then</dt>
+                <dd>its directory is created where the project keeps active changes, holding the documents that stage needs, each declaring its kind and each valid immediately, and its location is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-created-document-uses-the-project-s-store" data-change="added">
+              <h4>A created document uses the project's store</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document in a project</dd>
+                <dt>Then</dt>
+                <dd>it references the project's existing asset store and no second store is established</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-change-outside-a-project" data-change="added">
+              <h4>Creating a change outside a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a change where no project exists</dd>
+                <dt>Then</dt>
+                <dd>the program reports that no project was found and names the bootstrap subcommand</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unknown-subcommand" data-change="unchanged">
+              <h4>Unknown subcommand</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes a subcommand that does not exist</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error, lists the available subcommands, and exits with a failure status</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-withdrawn-spelling-names-its-replacement" data-change="added">
+              <h4>A withdrawn spelling names its replacement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes the bootstrap subcommand with the arguments creation formerly took</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error and names the subcommand that now performs it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-proposal" data-change="modified">
+              <h4>Initializing a proposal</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd><ins>that initialization formerly created one document and its subject is now the project</ins></dd>
+                <dt>When</dt>
+                <dd>a contributor <del>initializes a document of the proposal kind</del><ins>names a document path on the bootstrap subcommand</ins></dd>
+                <dt>Then</dt>
+                <dd><del>it opens as a readable page of prose, with no semantic unit scaffolding to fill in</del><ins>the program refuses, states that the subject is the project, and names the creation subcommand that writes one document</ins></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-specification" data-change="modified">
+              <h4>Initializing a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor <del>initializes a document of the specification kind</del><ins>names a document path on the bootstrap subcommand for any artifact kind</ins></dd>
+                <dt>Then</dt>
+                <dd><del>it arrives with the units that kind expects, because its shape is not the author's to invent</del><ins>the refusal is the same regardless of kind, because the subject changed rather than the kind vocabulary</ins></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-change" data-change="modified">
+              <h4>Initializing a change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor <del>initializes a new change</del><ins>names a path on the bootstrap subcommand intending to create a change</ins></dd>
+                <dt>Then</dt>
+                <dd><del>its directory is created with the documents that stage needs, each declaring its kind and each valid immediately</del><ins>the program refuses and names the creation subcommand for a change, so a contributor who used the withdrawn spelling is not left guessing</ins></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-discoverable-help" data-change="unchanged">
+              <h4>Discoverable help</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests help</dd>
+                <dt>Then</dt>
+                <dd>every subcommand and option is documented in the output</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-exit-codes-distinguish-outcomes" data-change="modified">
+            <h3>Exit codes distinguish outcomes <span class="hs-id">req-exit-codes-distinguish-outcomes</span></h3>
+            <p>The program SHALL exit zero when the requested operation succeeds, and nonzero when it does not. A document that fails validation SHALL be distinguishable by exit code from a failure to run the operation at all, such as an unreadable file or an invalid invocation.</p>
+            <ins>
+              <p>An operation a contributor declined or interrupted SHALL be distinguishable by exit code from both success and a failure to run. It is neither: nothing went wrong, and nothing was done.</p>
+            </ins>
+            <article class="scenario" id="scenario-clean-validation" data-change="unchanged">
+              <h4>Clean validation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>validation finds no errors</dd>
+                <dt>Then</dt>
+                <dd>the program exits zero</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-validation-failure" data-change="unchanged">
+              <h4>Validation failure</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>validation finds at least one error</dd>
+                <dt>Then</dt>
+                <dd>the program exits nonzero with the code designated for document violations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-operational-failure" data-change="unchanged">
+              <h4>Operational failure</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specified file does not exist</dd>
+                <dt>Then</dt>
+                <dd>the program exits nonzero with a code distinct from that used for document violations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-cancelled-operation" data-change="added">
+              <h4>Cancelled operation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor declines or interrupts an interactive operation</dd>
+                <dt>Then</dt>
+                <dd>the program exits with a code distinct from success, from document violations, and from operational failure</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-continuous-integration-gate" data-change="unchanged">
+              <h4>Continuous integration gate</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a continuous integration job that runs validation</dd>
+                <dt>When</dt>
+                <dd>any document in the project is invalid</dd>
+                <dt>Then</dt>
+                <dd>the job fails</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-output-is-available-in-human-and-machine-forms" data-change="modified">
+            <h3>Output is available in human and machine forms <span class="hs-id">req-output-is-available-in-human-and-machine-forms</span></h3>
+            <p>The program SHALL produce human-readable output by default and structured machine-readable output on request. Structured output SHALL be written to standard output, and SHALL contain nothing but the structured payload so it can be consumed directly.</p>
+            <ins>
+              <p>Requesting structured output SHALL suppress every interactive prompt. A prompt writes to the stream the payload is promised to occupy alone, so the two cannot both be honored.</p>
+            </ins>
+            <article class="scenario" id="scenario-agent-consumes-structured-output" data-change="unchanged">
+              <h4>Agent consumes structured output</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent runs validation requesting structured output</dd>
+                <dt>Then</dt>
+                <dd>standard output contains only a well-formed structured payload of diagnostics</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-progress-does-not-corrupt-structured-output" data-change="unchanged">
+              <h4>Progress does not corrupt structured output</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>structured output is requested</dd>
+                <dt>Then</dt>
+                <dd>progress messages, warnings, and errors about the run itself go to standard error, leaving standard output parseable</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-structured-output-suppresses-prompts" data-change="added">
+              <h4>Structured output suppresses prompts</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an operation that would prompt is run with structured output requested</dd>
+                <dt>Then</dt>
+                <dd>it does not prompt, and standard output contains only the payload</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-default-output-is-for-people" data-change="unchanged">
+              <h4>Default output is for people</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs validation without requesting structured output</dd>
+                <dt>Then</dt>
+                <dd>the output is formatted for reading in a terminal</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-document-validation">
+          <h2>document-validation</h2>
+          <section class="requirement" id="req-an-asset-reference-must-match-the-bytes-it-names" data-change="modified">
+            <h3>An asset reference must match the bytes it names <span class="hs-id">req-an-asset-reference-must-match-the-bytes-it-names</span></h3>
+            <p>Validation SHALL reject a document whose asset reference does not resolve to stored bytes whose hash equals the hash named by that reference. A reference naming bytes the project does not store SHALL be reported as unresolved. A reference resolving to bytes whose hash differs from the name SHALL be reported as a mismatch, and the two SHALL be distinguishable diagnostics because they have different causes.</p>
+            <p>This rule SHALL apply only to a document validated within a project that has an asset store. A document validated outside such a project SHALL NOT have its asset references resolved, and SHALL NOT be rejected for naming bytes that no store holds. The rule states a relationship between a document and the bytes beside it, and where there are no bytes there is no relationship to violate.</p>
+            <ins>
+              <p>Where a document's asset reference ascends out of the document's own directory, and no asset store is found in any directory above it, validation SHALL report that reference. Such a reference asserts that a store sits above the document, and the absence of one contradicts the reference rather than placing the document outside the rule's scope.</p>
+            </ins>
+            <ins>
+              <p>A reference that does not ascend SHALL remain unreported when no store is found. This is what keeps a document whose references are symbolic — a conformance fixture, or a document written to be read rather than rendered — outside the rule, and the distinction is exact: a fixture's references name a store beside the document that has never existed, while an ascending reference names a store the document was generated against.</p>
+            </ins>
+            <p>A document SHALL NOT be able to exempt itself. The scope SHALL be determined by whether a store is present<ins> and by the shape of the reference</ins>, never by a declaration inside the document, because a rule a document can switch off protects nothing.<ins> Reference shape is not such a declaration: it is written by whatever generated the document, and changing it to silence the rule breaks the reference it describes.</ins></p>
+            <p>This rule SHALL be an error rather than a warning, and SHALL NOT be reducible to a warning. A document that renders against bytes other than the ones it names is misreporting its own provenance.</p>
+            <article class="scenario" id="scenario-reference-matches-stored-bytes" data-change="unchanged">
+              <h4>Reference matches stored bytes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>every asset reference in a document names the hash of the bytes stored at its location</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-document-validated-with-no-store-present" data-change="unchanged">
+              <h4>Document validated with no store present</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document that is not part of a project with an asset store, such as a conformance fixture whose references are symbolic</dd>
+                <dt>When</dt>
+                <dd>it is validated</dd>
+                <dt>Then</dt>
+                <dd>its asset references are not resolved, and their targets being absent is not a violation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-ascending-reference-with-no-store-above-it" data-change="added">
+              <h4>An ascending reference with no store above it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document whose asset references ascend out of its own directory, such as a change directory copied away from the project that holds its store</dd>
+                <dt>When</dt>
+                <dd>it is validated</dd>
+                <dt>Then</dt>
+                <dd>validation reports the ascending references, because each one names a store that is not there</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-strict-validation-does-not-accept-dead-ascending-references" data-change="added">
+              <h4>Strict validation does not accept dead ascending references</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document carrying only ascending asset references and no store in any directory above it</dd>
+                <dt>When</dt>
+                <dd>it is validated in strict mode</dd>
+                <dt>Then</dt>
+                <dd>validation does not report the document as accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-cannot-exempt-itself" data-change="unchanged">
+              <h4>A document cannot exempt itself</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document declares that its asset references are not to be resolved, by any marker it carries</dd>
+                <dt>Then</dt>
+                <dd>the declaration has no effect, and a document inside a project with a store is checked regardless</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reference-to-bytes-the-project-does-not-store" data-change="modified">
+              <h4>Reference to bytes the project does not store</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document references an asset hash that no stored asset matches</dd>
+                <dt>Then</dt>
+                <dd>validation fails<del>, reports the document, the reference, and that the bytes are absent</del><ins> and reports the reference as unresolved</ins></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-stored-bytes-do-not-match-the-name" data-change="unchanged">
+              <h4>Stored bytes do not match the name</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an asset location whose contents were replaced with different bytes</dd>
+                <dt>When</dt>
+                <dd>a document referencing that location is validated</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports a mismatch rather than an absent asset</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-stale-reference-cannot-pass" data-change="unchanged">
+              <h4>Stale reference cannot pass</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document authored against one revision of a stylesheet</dd>
+                <dt>When</dt>
+                <dd>it is stored beside a different revision of that stylesheet</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the reference and the bytes disagree</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-mismatch-cannot-be-downgraded" data-change="unchanged">
+              <h4>Mismatch cannot be downgraded</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests that asset mismatches be treated as warnings</dd>
+                <dt>Then</dt>
+                <dd>the violation is still reported as an error</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each evidence unit below, and each verification unit after it, summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links, and the record is the authority. Where a record gives a test only by its name and its passing, the verification says that the test was read at the commit the record names, and what it asserts.</p>
+          </aside>
+          <section class="evidence" id="evidence-asset-footprint" data-change="added" data-refs="req-a-project-has-a-declared-root-holding-one-asset-store req-a-single-command-exposes-validate-format-and-init req-commands-resolve-the-project-from-any-directory-beneath-it req-an-asset-reference-must-match-the-bytes-it-names">
+            <h3>Asset footprint, before and after <span class="hs-id">evidence-asset-footprint</span></h3>
+            <p>Measured 2026-08-14 with <code>du -sh</code> in fresh repositories. Before the change, each change established its own store, and two changes held 6.0 MB each. After it, a project holding four changes measured 6.1 MB in all and no change held a store of its own; the record tabulates 6.0 MB against 6.0 MB for one change, 12 MB against 6.0 MB for two, and 24 MB against 6.1 MB for four. <code>htmlspec assets</code> had reported <code>no asset store under .</code> and exited 0 with 12 MB duplicated two directories down, and after descending it reported 8 duplicated assets, pinned by <code>the_asset_check_reports_duplication_between_two_stores</code>. The record adds that the cross-store comparison needed a second function, <code>topology::duplicates_across</code>, and that its first version reported this repository's conformance fixtures, 49 of which carry a store apiece, as duplicated until it was confined to a resolved project, which <code>scripts/check</code> caught. A change copied out of its project now reports 21 errors under <code>validate --strict</code>, where it reported 0 and was accepted. <a href="evidence/asset-footprint.md"><code>evidence/asset-footprint.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-current-cli-behavior" data-change="added" data-refs="req-a-single-command-exposes-validate-format-and-init req-a-project-has-a-declared-root-holding-one-asset-store req-commands-resolve-the-project-from-any-directory-beneath-it req-exit-codes-distinguish-outcomes req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses">
+            <h3>Current CLI behavior in a fresh repository <span class="hs-id">evidence-current-cli-behavior</span></h3>
+            <p>Measured 2026-08-14 against <code>target/debug/htmlspec</code> built from <code>9c3a3c7</code>, before this change, with every transcript verbatim. No command established a project: <code>htmlspec init</code> failed for want of a <code>&lt;PATH&gt;</code> argument and exited 2, and <code>htmlspec init . --change</code> was refused because <code>.</code> already exists. Two changes created with <code>init --change</code> each held a 6.0 MB store of the same eight addresses, and <code>htmlspec assets</code> reported <code>no asset store under .</code> and exited 0. The record's exit-code survey finds no code meaning that the contributor declined. Its reading of <code>openspec@1.7.0</code> counts 35 entries in OpenSpec's tool table, of which this change ports five, and finds OpenSpec's delivery decided across four predicates that can represent a tool receiving nothing. <a href="evidence/current-cli-behavior.md"><code>evidence/current-cli-behavior.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-first-run" data-change="added" data-refs="req-a-project-has-a-declared-root-holding-one-asset-store req-a-project-declares-its-name-version-and-expected-toolchain req-archival-requires-the-project-version-to-advance req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses req-tool-selection-is-offered-interactively-and-available-without-a-terminal req-bootstrapping-is-repeatable-without-loss req-bootstrapping-ends-by-naming-the-command-to-run-next req-a-declined-or-interrupted-operation-is-distinguishable-from-a-failure req-a-single-command-exposes-validate-format-and-init req-exit-codes-distinguish-outcomes">
+            <h3>The first-run experience, after the change <span class="hs-id">evidence-first-run</span></h3>
+            <p>Recorded 2026-08-14 from <code>target/debug/htmlspec</code> in an empty repository, verbatim. <code>htmlspec init --tools claude</code> created the project structure, established 8 shared assets in <code>htmlspec/assets</code>, declared the project at version <code>0.0.0</code> in <code>spec.nix</code>, wrote 2 files for Claude Code, and named <code>/htmlspec:archive</code>; <code>htmlspec new change add-dark-mode</code> created three documents under <code>htmlspec/changes/add-dark-mode</code>, and <code>htmlspec validate</code> then reported 0 errors. Driven through a pseudo-terminal, the selection offered Claude Code and Pi as detected and pre-checked, and Escape exited 3 with nothing written. With Claude Code and Codex selected, the closing message printed one labelled line per spelling, and Codex received skills and no command file. With no terminal attached, <code>init</code> completed without blocking. <code>htmlspec init doc.html</code> exited 2, naming <code>htmlspec new document proposal doc.html</code>; a hand-edited version in <code>spec.nix</code> survived a re-run; and the packaged binary, run with no source checkout and no Nix present, refused archival at <code>0.0.0</code>. The record was made before the tasks of group 14, and its prompt still reads that an empty selection is fine; <a href="evidence/openspec-divergence.md"><code>evidence/openspec-divergence.md</code></a> is the later account of the refusal. <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-openspec-divergence" data-change="added" data-refs="req-tool-selection-is-offered-interactively-and-available-without-a-terminal">
+            <h3>Where htmlspec diverges from OpenSpec's bootstrap, and why <span class="hs-id">evidence-openspec-divergence</span></h3>
+            <p>Measured 2026-08-17 against <code>openspec</code> 1.7.0, and against <code>htmlspec</code> built from <code>prompt-selection-guards</code>, the branch that added this change's group 14 (pull request 3, <code>77054b9</code>). Both programs preselect detected tools, and the record retracts an earlier claim that OpenSpec never preselects, which came from testing it only in an empty repository. Where nothing is detected, OpenSpec opens 34 unchecked rows and htmlspec checks every row, a divergence the record calls defensible at 5 tools and contingent on the table staying small. OpenSpec's refusal of an empty confirmation was adopted, with a message naming <code>htmlspec init --tools none</code>, which still succeeds. With no terminal and nothing detected, OpenSpec errors and htmlspec advises and proceeds, which the record keeps. The distinction between configured and detected tools is deferred, because <code>Tool::detected</code> tests only that a path exists. <a href="evidence/openspec-divergence.md"><code>evidence/openspec-divergence.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-relocation-and-orphans" data-change="added" data-refs="req-an-asset-reference-must-match-the-bytes-it-names req-a-project-has-a-declared-root-holding-one-asset-store req-a-project-declares-its-name-version-and-expected-toolchain">
+            <h3>Relocation, and the orphaned-reference gap <span class="hs-id">evidence-relocation-and-orphans</span></h3>
+            <p>Measured 2026-08-14 against <code>target/debug/htmlspec</code> built from <code>9c3a3c7</code>, before this change. A whole project copied and renamed still resolved 7 of its 7 relative asset references. One change copied out of its project missed every reference, and <code>htmlspec validate . --strict</code> accepted its three documents, twenty-one dead asset references between them, with zero diagnostics. Across the conformance fixtures, 0 of 341 asset references contain <code>../</code>, while a generated document's do; the record gives ascent as the signal that separates the two, and rejects requiring a store unconditionally and keying the rule on <code>spec.nix</code>. It also records that <code>htmlspec --version</code> reports <code>0.1.0 (9c3a3c79b1fe-dirty)</code> while no project records which binary it expects. <a href="evidence/relocation-and-orphans.md"><code>evidence/relocation-and-orphans.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-testing-state-2026-08-17" data-change="added" data-refs="req-archival-requires-the-project-version-to-advance req-tool-selection-is-offered-interactively-and-available-without-a-terminal req-a-declined-or-interrupted-operation-is-distinguishable-from-a-failure req-exit-codes-distinguish-outcomes req-a-project-declares-its-name-version-and-expected-toolchain">
+            <h3>Where testing stands, and what is untested <span class="hs-id">evidence-testing-state-2026-08-17</span></h3>
+            <p>Measured 2026-08-17 against <code>main</code> at <code>d88ca93</code>: <code>cargo test --workspace</code> passed 300 tests in 14 binaries, none failing and none ignored, and six integration tests in <code>crates/htmlspec-cli/tests/archive.rs</code> cover the refusal paths of the version gate. No test reached the prompt itself. Driven through a pseudo-terminal in a fresh repository, it opened with five unchecked boxes and Enter confirmed an empty selection, and no test read exit code 3 from a real process. The record traces a report from Pi to two causes, nothing detected and Pi's trust gate, and finds htmlspec's paths correct. Among its open decisions it records that <code>init</code> writes <code>htmlspec = null</code> in <code>spec.nix</code> and that no command reads the pin, deferred deliberately. <a href="evidence/testing-state-2026-08-17.md"><code>evidence/testing-state-2026-08-17.md</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-first-run-bootstrapping-an-empty-repository" data-change="added" data-outcome="partial" data-refs="scenario-bootstrapping-an-empty-repository">
+            <h3>The first run: bootstrapping an empty repository <span class="hs-id">verify-first-run-bootstrapping-an-empty-repository</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("The whole sequence"): <code>git init &amp;&amp; htmlspec init --tools claude</code> in an empty repository, run from <code>target/debug/htmlspec</code>. The output reports that the program created the project structure and established 8 shared assets in <code>htmlspec/assets</code>.</p>
+            <p data-field="unchecked">That the project root is created with places for accepted specifications, active changes, and the archive: the record shows the program reporting the project structure created, and does not list its directories.</p>
+          </section>
+          <section class="verification" id="verify-first-run-bootstrapping-writes-the-declaration" data-change="added" data-outcome="partial" data-refs="scenario-bootstrapping-writes-the-declaration">
+            <h3>The first run: the declaration written <span class="hs-id">verify-first-run-bootstrapping-writes-the-declaration</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("The whole sequence"): in the same run, the output reports <code>spec.nix</code>, at the project root, declaring the project at version <code>0.0.0</code>.</p>
+            <p data-field="unchecked">That the declaration records the project's name: the record shows only its version.</p>
+            <p data-field="unchecked">That it records the program the project expects: the record shows only its version.</p>
+          </section>
+          <section class="verification" id="verify-first-run-naming-the-next-command" data-change="added" data-outcome="passed" data-refs="scenario-naming-the-next-command">
+            <h3>The first run: the next command named <span class="hs-id">verify-first-run-naming-the-next-command</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("The whole sequence"): with Claude Code the only tool selected, the output ends by naming <code>/htmlspec:archive</code> as the command to archive the work.</p>
+          </section>
+          <section class="verification" id="verify-first-run-creating-a-change" data-change="added" data-outcome="passed" data-refs="scenario-creating-a-change">
+            <h3>The first run: a change created <span class="hs-id">verify-first-run-creating-a-change</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("The whole sequence"): in the bootstrapped project, <code>htmlspec new change add-dark-mode</code> reported creating a proposal, a design, and a tasks document under <code>htmlspec/changes/add-dark-mode</code>, and the change's own path, and <code>htmlspec validate</code> then reported 3 documents with 0 errors. Validation rejects a document that declares no kind, which I read at <code>d88ca93</code> in <code>a_missing_required_property_is_rejected</code>, <code>crates/htmlspec-validate/src/rules/schema.rs</code>, so the 0 errors cover each document's declared kind.</p>
+          </section>
+          <section class="verification" id="verify-first-run-interactive-selection" data-change="added" data-outcome="passed" data-refs="scenario-interactive-selection-preselects-detected-tools">
+            <h3>The first run: detected tools preselected <span class="hs-id">verify-first-run-interactive-selection</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("The interactive selection"): driven through a pseudo-terminal in a directory containing <code>.claude/</code> and <code>.pi/</code>, with no selection argument, the prompt listed the five supported tools with Claude Code and Pi marked detected and pre-checked.</p>
+          </section>
+          <section class="verification" id="verify-first-run-declining-at-the-prompt" data-change="added" data-outcome="partial" data-refs="scenario-declining-at-a-prompt">
+            <h3>The first run: declining at the prompt <span class="hs-id">verify-first-run-declining-at-the-prompt</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("The interactive selection"): Escape at the same prompt printed <code>cancelled; nothing was written</code> and exited 3, which the record identifies as the new <code>Outcome::Cancelled</code>, and <code>ls htmlspec</code> then reported no such directory.</p>
+            <p data-field="unchecked">That the program makes no further change: the record's probe looks only for the <code>htmlspec</code> directory, and does not look for <code>spec.nix</code> or any tool's instructions.</p>
+          </section>
+          <section class="verification" id="verify-first-run-cancelled-operation" data-change="added" data-outcome="partial" data-refs="scenario-cancelled-operation">
+            <h3>The first run: the cancelled operation's exit code <span class="hs-id">verify-first-run-cancelled-operation</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("The interactive selection"): the operation declined at the prompt exited 3.</p>
+            <p data-field="unchecked">That the code is distinct from document violations and from operational failure: the record reads only the code the cancelled operation exited with.</p>
+            <p data-field="unchecked">That the program exits with that code when a contributor interrupts an interactive operation: the record declines at the prompt with Escape, and does not interrupt it.</p>
+          </section>
+          <section class="verification" id="verify-first-run-tools-with-different-spellings" data-change="added" data-outcome="passed" data-refs="scenario-tools-with-different-spellings">
+            <h3>The first run: one line per spelling <span class="hs-id">verify-first-run-tools-with-different-spellings</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("Per-tool command spellings"): with Claude Code and Codex both selected, the closing message printed <code>/htmlspec:archive</code> labelled Claude Code and <code>$htmlspec-archive</code> labelled Codex.</p>
+          </section>
+          <section class="verification" id="verify-first-run-no-terminal-available" data-change="added" data-outcome="passed" data-refs="scenario-no-terminal-available">
+            <h3>The first run: no terminal attached <span class="hs-id">verify-first-run-no-terminal-available</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("Non-interactive behavior"): <code>htmlspec init</code>, run with no terminal attached and no selection argument, reported <code>detected: Claude Code</code> and completed without blocking. The record names the test that asserts it against a wall clock, <code>init_does_not_block_when_no_terminal_is_attached</code>, which I read at <code>d88ca93</code> in <code>crates/htmlspec-cli/tests/cli.rs</code>: with <code>.claude/</code> present, it runs <code>init</code> with no <code>--tools</code> and no terminal, and asserts success within 30 seconds, <code>detected: Claude Code</code> on standard error, and the archive skill written under <code>.claude/skills/</code>.</p>
+          </section>
+          <section class="verification" id="verify-first-run-the-withdrawn-spelling" data-change="added" data-outcome="passed" data-refs="scenario-a-withdrawn-spelling-names-its-replacement scenario-initializing-a-proposal">
+            <h3>The first run: the withdrawn spelling <span class="hs-id">verify-first-run-the-withdrawn-spelling</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("The withdrawn spelling"): <code>htmlspec init doc.html</code> exited 2 with a message that <code>init</code> no longer takes a path, because its subject is the project and not a document, naming <code>htmlspec new document proposal doc.html</code> to create one document, <code>htmlspec new change &lt;name&gt;</code> to create a change, and <code>htmlspec init</code> with no arguments to set up the project.</p>
+          </section>
+          <section class="verification" id="verify-first-run-re-running-is-safe" data-change="added" data-outcome="partial" data-refs="scenario-the-declaration-is-not-overwritten scenario-existing-configuration-survives">
+            <h3>The first run: an edited declaration re-run <span class="hs-id">verify-first-run-re-running-is-safe</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/first-run.md"><code>evidence/first-run.md</code></a> ("Re-running is safe"): with the version in <code>spec.nix</code> edited by hand from <code>0.0.0</code> to <code>0.2.0</code>, <code>htmlspec init --tools claude</code> ran again and reported the project ready, and <code>grep version spec.nix</code> then read <code>version = "0.2.0";</code>.</p>
+            <p data-field="unchecked">That the declaration is left as it was in every line but its edited version, the one line the record reads back.</p>
+          </section>
+          <section class="verification" id="verify-asset-footprint-one-store-for-four-changes" data-change="added" data-outcome="partial" data-refs="scenario-two-changes-share-one-store scenario-a-created-document-uses-the-project-s-store">
+            <h3>The asset footprint: one store for four changes <span class="hs-id">verify-asset-footprint-one-store-for-four-changes</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/asset-footprint.md"><code>evidence/asset-footprint.md</code></a> ("After"), measured 2026-08-14 with <code>du -sh</code>: after <code>htmlspec init --tools claude</code> and four runs of <code>htmlspec new change</code>, <code>htmlspec/</code> measured 6.1 MB in all and <code>ls htmlspec/changes/*/assets</code> found no store in any change.</p>
+            <p data-field="unchecked">That each change's documents reference the project's store, and that a created document references the project's existing asset store: the record measures where the bytes are and does not read any document's references.</p>
+          </section>
+          <section class="verification" id="verify-asset-footprint-checking-a-project-s-assets" data-change="added" data-outcome="partial" data-refs="scenario-checking-a-project-s-assets">
+            <h3>The asset footprint: the check that now sees the duplication <span class="hs-id">verify-asset-footprint-checking-a-project-s-assets</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/asset-footprint.md"><code>evidence/asset-footprint.md</code></a> ("The check that could not see it"): in a project holding two per-change stores, <code>htmlspec assets</code> reported <code>asset/duplicate</code> naming locations in <code>changes/a/assets</code> and <code>changes/b/assets</code>, and 8 duplicated assets, where the command before the change reported none. The record names the test that pins it, <code>the_asset_check_reports_duplication_between_two_stores</code>, and no commit; I read it at <code>d88ca93</code>, where <a href="evidence/testing-state-2026-08-17.md"><code>evidence/testing-state-2026-08-17.md</code></a> records every test passing, in <code>crates/htmlspec-cli/tests/cli.rs</code>: in a project bootstrapped with <code>init --tools none</code>, holding the same bytes in a store under each of two changes, <code>assets</code> given the project's root exits with the code for document violations and names both changes' stores.</p>
+            <p data-field="unchecked">That the command checks every asset the project stores when it runs anywhere in the project: the record shows one run, from one directory, and the test passes the command the project's root.</p>
+          </section>
+          <section class="verification" id="verify-asset-footprint-an-orphaned-change" data-change="added" data-outcome="passed" data-refs="scenario-an-ascending-reference-with-no-store-above-it scenario-strict-validation-does-not-accept-dead-ascending-references">
+            <h3>The asset footprint: an orphaned change <span class="hs-id">verify-asset-footprint-an-orphaned-change</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/asset-footprint.md"><code>evidence/asset-footprint.md</code></a> ("The property given up"): a change copied out of its project, whose references still climb three levels for a store that is not there, reported <code>3 document(s): 21 error(s), 0 warning(s)</code> under <code>htmlspec validate . --strict</code>, where the same orphan had reported 0 errors and been accepted, and the record attributes the closing of that gap to the ascending-reference rule.</p>
+          </section>
+          <section class="verification" id="verify-openspec-divergence-no-terminal-nothing-detected" data-change="added" data-outcome="passed" data-refs="scenario-no-terminal-available">
+            <h3>The divergence record: no terminal and nothing detected <span class="hs-id">verify-openspec-divergence-no-terminal-nothing-detected</span></h3>
+            <p data-field="method">Recorded in <a href="evidence/openspec-divergence.md"><code>evidence/openspec-divergence.md</code></a> (section 4), against <code>htmlspec</code> built from <code>prompt-selection-guards</code>, the branch that added group 14: <code>htmlspec init &lt; /dev/null</code>, with no selection argument and nothing detected, reported that no AI coding tool directories were detected, so no instructions were installed, and went on to report the project ready.</p>
+          </section>
+          <section class="verification" id="verify-testing-state-a-version-that-has-not-moved" data-change="added" data-outcome="partial" data-refs="scenario-archiving-without-advancing-the-version">
+            <h3>The testing record: a version that has not moved <span class="hs-id">verify-testing-state-a-version-that-has-not-moved</span></h3>
+            <p data-field="method"><a href="evidence/testing-state-2026-08-17.md"><code>evidence/testing-state-2026-08-17.md</code></a> (section 2) names <code>the_version_gate_refuses_a_version_that_has_not_moved</code> among the 300 tests passing at <code>d88ca93</code>. I read the test at <code>d88ca93</code> in <code>crates/htmlspec-cli/tests/archive.rs</code>: in a bootstrapped project with nothing archived and the declared version still <code>0.0.0</code>, <code>htmlspec archive</code> exits 2 with a message containing <code>still 0.0.0</code>.</p>
+            <p data-field="unchecked">That archival does not complete while the declared version equals the last archived version of a project that has archived a change: the test archives nothing first, so the last archived version it compares against is the initial one.</p>
+          </section>
+          <section class="verification" id="verify-testing-state-a-project-s-first-archival" data-change="added" data-outcome="partial" data-refs="scenario-a-project-s-first-archival">
+            <h3>The testing record: a project's first archival <span class="hs-id">verify-testing-state-a-project-s-first-archival</span></h3>
+            <p data-field="method"><a href="evidence/testing-state-2026-08-17.md"><code>evidence/testing-state-2026-08-17.md</code></a> (section 2) names <code>a_projects_first_archival_is_an_ordinary_comparison</code> among the 300 tests passing at <code>d88ca93</code>. I read the test at <code>d88ca93</code> in <code>crates/htmlspec-cli/tests/archive.rs</code>: with the archive directory empty and the declared version still <code>0.0.0</code>, <code>htmlspec archive</code> exits 2 with a message containing <code>still 0.0.0</code>.</p>
+            <p data-field="unchecked">That archival is refused on the same grounds as any later archival: the test refuses no later archival to compare against.</p>
+          </section>
+          <section class="verification" id="verify-testing-state-an-advanced-version" data-change="added" data-outcome="partial" data-refs="scenario-archiving-with-an-advanced-version">
+            <h3>The testing record: an advanced version <span class="hs-id">verify-testing-state-an-advanced-version</span></h3>
+            <p data-field="method"><a href="evidence/testing-state-2026-08-17.md"><code>evidence/testing-state-2026-08-17.md</code></a> (section 2) names <code>a_projects_first_archival_is_an_ordinary_comparison</code> among the 300 tests passing at <code>d88ca93</code>. I read the test at <code>d88ca93</code> in <code>crates/htmlspec-cli/tests/archive.rs</code>: once the declared version is advanced past <code>0.0.0</code>, with nothing archived, <code>htmlspec archive</code> exits 0.</p>
+            <p data-field="unchecked">That the version gate permits archival to proceed when the declared version is ordered after the last archived version of a project that has archived a change: the test archives nothing first, so the last archived version it advances past is the initial one.</p>
+          </section>
+          <section class="verification" id="verify-testing-state-a-version-that-went-backwards" data-change="added" data-outcome="passed" data-refs="scenario-archiving-with-a-version-that-went-backwards">
+            <h3>The testing record: a version that went backwards <span class="hs-id">verify-testing-state-a-version-that-went-backwards</span></h3>
+            <p data-field="method"><a href="evidence/testing-state-2026-08-17.md"><code>evidence/testing-state-2026-08-17.md</code></a> (section 2) names <code>the_version_gate_refuses_a_version_that_went_backwards</code> among the 300 tests passing at <code>d88ca93</code>. I read the test at <code>d88ca93</code> in <code>crates/htmlspec-cli/tests/archive.rs</code>: with an archive directory named <code>2026-08-14-0.9.0-something-earlier</code>, which supplies the last archived version through the directory name, and the declared version <code>0.1.0</code>, <code>htmlspec archive</code> exits 2 with a message containing <code>ordered *before*</code> and <code>0.9.0</code>, where the unmoved version's message contains <code>still</code>.</p>
+          </section>
+          <section class="verification" id="verify-testing-state-an-unorderable-version" data-change="added" data-outcome="partial" data-refs="scenario-a-version-the-program-cannot-order">
+            <h3>The testing record: a version that cannot be ordered <span class="hs-id">verify-testing-state-an-unorderable-version</span></h3>
+            <p data-field="method"><a href="evidence/testing-state-2026-08-17.md"><code>evidence/testing-state-2026-08-17.md</code></a> (section 2) names <code>the_version_gate_refuses_an_unorderable_version</code> among the 300 tests passing at <code>d88ca93</code>. I read the test at <code>d88ca93</code> in <code>crates/htmlspec-cli/tests/archive.rs</code>: with the declared version replaced by <code>tuesday</code>, <code>htmlspec archive</code> exits 2 with a message containing <code>cannot be ordered</code>.</p>
+            <p data-field="unchecked">That the report names the version it could not read: the test does not look for <code>tuesday</code> in the message.</p>
+          </section>
+          <section class="verification" id="verify-testing-state-an-absent-declaration" data-change="added" data-outcome="partial" data-refs="scenario-archiving-with-no-declaration">
+            <h3>The testing record: an absent declaration <span class="hs-id">verify-testing-state-an-absent-declaration</span></h3>
+            <p data-field="method"><a href="evidence/testing-state-2026-08-17.md"><code>evidence/testing-state-2026-08-17.md</code></a> (section 2) names <code>the_version_gate_refuses_an_absent_declaration</code> among the 300 tests passing at <code>d88ca93</code>. I read the test at <code>d88ca93</code> in <code>crates/htmlspec-cli/tests/archive.rs</code>: with <code>spec.nix</code> removed, <code>htmlspec archive</code> exits 2 with a message containing <code>htmlspec init</code>.</p>
+            <p data-field="unchecked">That it reports the absent declaration: the test checks only that the message names the operation that creates one.</p>
+          </section>
+          <section class="verification" id="verify-testing-state-the-declaration-is-not-written" data-change="added" data-outcome="passed" data-refs="scenario-the-program-does-not-advance-the-version-itself">
+            <h3>The testing record: the declaration left unwritten <span class="hs-id">verify-testing-state-the-declaration-is-not-written</span></h3>
+            <p data-field="method"><a href="evidence/testing-state-2026-08-17.md"><code>evidence/testing-state-2026-08-17.md</code></a> (section 2) names <code>the_archive_check_does_not_write_the_declaration</code> among the 300 tests passing at <code>d88ca93</code>. I read the test at <code>d88ca93</code> in <code>crates/htmlspec-cli/tests/archive.rs</code>: <code>spec.nix</code> reads the same after a refused archival as before it, and, once the version is advanced, the same after a successful archival as before it.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

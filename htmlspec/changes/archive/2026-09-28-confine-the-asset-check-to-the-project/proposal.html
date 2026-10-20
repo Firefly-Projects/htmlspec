@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Confine the asset check to the project</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Confine the asset check to the project</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Confine the asset check to the project</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-28-confine-the-asset-check-to-the-project/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><strong>A repository cannot hold an html-spec project and anything else that stores assets.</strong> The duplicate-asset check takes a project as its subject, and today "the project" means every asset store beneath the repository root. document-validation's "<a href="specification.html#req-a-project-must-not-store-one-asset-s-bytes-more-than-once">A project must not store one asset's bytes more than once</a>" says the rule is evaluated where a project is in view. It never says where a project ends, and the program answers "at the repository root".</p>
+          <p>That answer is wrong for the ordinary case, and this repository is the measured instance. It keeps two kinds of store that are not a project's store:</p>
+          <ul>
+            <li><code>assets/</code>, the toolchain's own source copy of the runtime, which the build embeds and <code>init</code> copies from;</li>
+            <li>four stores inside conformance fixtures, which carry their own bytes <strong>deliberately</strong>, because each fixture is a project of its own.</li>
+          </ul>
+          <p>With no <code>htmlspec/</code> directory, <code>htmlspec assets .</code> <a href="evidence/the-measurement-2026-09-27.md">checks each store on its own and passes</a>. <strong>Create one, even empty, and the repository resolves as a project.</strong> The check then compares all five stores against the new one. <a href="../2026-09-18-establish-a-runbook/evidence/the-location-is-blocked-2026-09-17.md"><code>2026-09-18-establish-a-runbook/evidence/the-location-is-blocked-2026-09-17.md</code></a> measured it: one <code>mkdir</code> gives one duplicate, and <code>htmlspec init</code> gives nine. On 2026-09-26 the paused migration of this repository measured nine again in a copy of HEAD. That is the <code>self-assets</code> stage of <code>scripts/check</code>, so the suite turns red.</p>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> The sentence "The check then compares all five stores against the new one." was later corrected by this change's own measurement. Of the nine duplicates <code>htmlspec init</code> produced, eight were the toolchain's source copy in <code>./assets/</code> against the project's <code>./htmlspec/assets/</code>, and one was between two conformance fixtures, with no project store involved: "The ninth shows the comparison is wider than that: once a project resolves, every store is compared with every other, including two stores neither of which is the project's." That is section 1.1 of <a href="evidence/the-measurement-2026-09-27.md"><code>evidence/the-measurement-2026-09-27.md</code></a>, and the first finding of <a href="evidence/what-the-implementation-revealed-2026-09-27.md"><code>evidence/what-the-implementation-revealed-2026-09-27.md</code></a>.</p>
+          </aside>
+          <p>The comment above <code>one_project</code> in <code>crates/htmlspec-cli/src/commands.rs</code> already states that comparing across the fixtures' stores "reported the fixture suite as duplicated, which is the check misreading its own subject". The fix it made was to stop comparing when no project is in view. It did not decide what to compare when one is.</p>
+          <p><strong>This blocks two things the project wants.</strong> The release runbook cannot live at <code>htmlspec/runbooks/release/</code>, which is where the program keeps runbooks, and the migration of this repository cannot be promoted into its own root. Every adopter whose repository keeps fixtures, vendored copies, or a second tool's assets meets the same wall the first time they run <code>htmlspec init</code>.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What Changes</h2>
+          <ul>
+            <li><strong>A project's stores are the ones inside its own <code>htmlspec/</code> directory.</strong> The duplicate check compares bytes across those stores and no others. A store elsewhere in the repository belongs to something else: a fixture, a toolchain's source copy, or another project. It is not the project's second copy.</li>
+            <li><strong>Stores outside the project are still checked, each on its own,</strong> exactly as every store is checked today when no project is in view. A store that duplicates bytes <em>within itself</em> is reported wherever it lives.</li>
+            <li><strong><a href="evidence/the-measurement-2026-09-27.md">The report says which stores it treated as the project's and which it did not.</a></strong> A contributor whose duplicate is no longer reported can see why, instead of wondering whether the check ran.</li>
+            <li><strong>Promotion's topology check and <code>htmlspec assets</code> <a href="evidence/what-the-implementation-revealed-2026-09-27.md">make the same comparison from one source</a>,</strong> so a staged project and a promoted one are judged the same way.</li>
+            <li><strong>Unchanged:</strong> a project whose own tree holds two copies of the runtime <a href="evidence/the-measurement-2026-09-27.md">still fails</a>. That is the case "<a href="specification.html#scenario-a-copy-per-document-is-rejected">A copy per document is rejected</a>" names, and every such copy is inside <code>htmlspec/</code>.</li>
+          </ul>
+        </section>
+        <section id="hs-capabilities">
+          <h2>Capabilities</h2>
+          <section id="hs-new-capabilities">
+            <h3>New Capabilities</h3>
+            <p>None.</p>
+          </section>
+          <section id="hs-modified-capabilities">
+            <h3>Modified Capabilities</h3>
+            <ul>
+              <li><code>document-validation</code>: "<a href="specification.html#req-a-project-must-not-store-one-asset-s-bytes-more-than-once">A project must not store one asset's bytes more than once</a>" states where a project's stores are, so that the comparison has a subject that stops at the project.</li>
+            </ul>
+          </section>
+        </section>
+        <section id="hs-impact">
+          <h2>Impact</h2>
+          <ul>
+            <li><code>crates/htmlspec-cli/src/commands.rs</code>: <code>assets</code> partitions the discovered stores into the project's and the others. It compares across the first set only, and checks each of the second set on its own. The promotion check calls the same partition.</li>
+            <li><code>crates/htmlspec-cli/src/discover.rs</code>: no change to discovery. The partition is a question about a store's path relative to the resolved project.</li>
+            <li>CLI tests for a project beside a fixture store, a project beside a toolchain source store, and a project holding two stores inside itself.</li>
+            <li><code>scripts/check</code>: the <code>self-assets</code> stage keeps running <code>htmlspec assets .</code>, and its comment ("Run against the repository root, which is the project this suite judges") is corrected.</li>
+            <li>
+              <p><strong>Not in this change</strong>, and recorded so it is not assumed to follow:</p>
+              <ul>
+                <li>The release runbook still tells each run to remove <code>htmlspec/</code> and <code>spec.nix</code>. That step exists for other reasons too: <code>init</code> declares a project at <code>0.0.0</code>.</li>
+                <li><code>scripts/check-release</code> still reads <code>openspec/</code>.</li>
+                <li><code>crates/htmlspec-cli/tests/migrate.rs</code> still uses this repository's <code>openspec/</code> as a fixture.</li>
+              </ul>
+              <p>Making this repository an html-spec project is its own change. <a href="evidence/the-runbook-ran-2026-09-27.md">This one removes the obstacle that belongs to the product.</a></p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

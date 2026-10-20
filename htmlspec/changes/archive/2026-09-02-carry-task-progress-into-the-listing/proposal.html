@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Carry task progress into the listing</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Carry task progress into the listing</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Carry task progress into the listing</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-02-carry-task-progress-into-the-listing/proposal.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><a href="evidence/what-the-listing-discards-2026-09-01.md"><code>htmlspec list</code> prints names</a>. That is all it prints:</p>
+          <pre><code>carry-task-progress-into-the-listing
+distinguish-a-requirement-from-an-example
+migrate-an-openspec-project
+sync-a-change-into-the-accepted-contract</code></pre>
+          <p><a href="evidence/the-enumeration-exists-for-selection-2026-09-01.md">The accepted requirement that put it there says why it exists</a>: "This is the operation that
+          lets a workflow select what it acts on. A workflow that cannot enumerate a project's changes
+          must have its subject named for it every time." The enumeration was built for selection, and
+          then given nothing to select on.</p>
+          <p><strong>A list of names cannot answer the question anyone actually asks it.</strong> "Which change were we
+          working on?" is not answered by four names sorted alphabetically. Neither is "which of these
+          is nearly done", "which has been abandoned", or "which is ready to archive". Every one of
+          those is a question about state, the project already computes the state, and the enumeration
+          throws it away. An agent given the payload above has to run <code>status</code> once per change to
+          recover what the enumeration could have carried in one call — and an agent that does not think
+          to do that selects on name order, which is to say on nothing.</p>
+          <p><strong>The data exists and is already computed by the same functions.</strong> <code>status</code> reports, for one
+          change, which artifacts are present and <code>{ total, open, openTasks }</code> from <code>total_tasks</code> and
+          <code>open_tasks</code> (<code>crates/htmlspec-cli/src/commands.rs:1148</code> and <code>:1269</code>). <a href="evidence/one-counter-already-has-two-callers-2026-09-01.md">Archival derives its
+          incomplete-work finding from the identical functions</a>, and the accepted contract requires that:
+          "Archival SHALL derive its report about incomplete work from this same operation, so that a
+          contributor who checks a change before archiving it and the archival that follows cannot
+          disagree about what the change holds." So the numbers are not new work to compute. They are
+          work already done, for one change at a time, that the enumeration does not ask for.</p>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> The two positions cited above, <code>:1148</code> and <code>:1269</code>, had moved to <code>:1293</code> and <code>:1414</code> by <code>ee4301c</code>, when this change's evidence was recorded. <a href="evidence/what-the-listing-discards-2026-09-01.md"><code>evidence/what-the-listing-discards-2026-09-01.md</code></a> tabulates each position the tasks cite, these two among them, against where it stood then, and says the cited positions were correct when the tasks were written.</p>
+          </aside>
+          <p><strong>Who is blocked and on what.</strong> Every workflow that selects a change, which is most of them.
+          <code>archive</code> with no argument offers the list — the accepted contract says the enumeration is
+          what makes that possible — and it offers bare names, so a contributor picking from it is
+          picking blind at the moment they are about to move a directory and rewrite a contract. Agents
+          running <code>continue</code> or <code>apply</code> have the same problem one step earlier: they must choose a change
+          to resume, and the enumeration gives them no basis to choose.</p>
+          <p><strong>What working looks like the first time you see it.</strong> A contributor runs <code>htmlspec list</code> and
+          sees each active change with how much of its work is done and what state that work is in:</p>
+          <pre><code>carry-task-progress-into-the-listing        0/24  todo
+distinguish-a-requirement-from-an-example  17/31  in-progress
+migrate-an-openspec-project                 0/58  todo
+sync-a-change-into-the-accepted-contract    0/27  todo</code></pre>
+          <p>They can now answer "which were we working on" by reading. An agent asking for the structured
+          payload gets the same counts as fields, plus what <code>status</code> already reports about artifacts, and
+          selects without a second call per change.</p>
+          <p><strong>"m out of n" is the smaller half of this.</strong> A count of done-over-total is the number a
+          contributor reads, and on its own it is ambiguous in a way the schema is not. <a href="evidence/four-states-collapsed-into-one-2026-09-01.md">The task state
+          enum is <code>todo</code>, <code>in-progress</code>, <code>done</code>, <code>dropped</code></a> — four states, and <code>open_tasks</code> collapses
+          three of them into one by filtering for "not done and not dropped". A change reading <code>0/24</code> is
+          therefore either untouched or entirely in progress, and those are different situations. A
+          change reading <code>20/24</code> with the remaining four dropped is finished; the same fraction with four
+          <code>todo</code> is not. So the enumeration carries the state breakdown, not only the fraction, and the
+          fraction is what the human report renders from it.</p>
+          <p><strong>The fault to avoid is the one the project has already been bitten by.</strong> Version 0.6.0's entry
+          records a gate that never fired because it recomputed, from a convention it invented, a fact the
+          project recorded elsewhere: "the convention read and the convention written have one author and
+          cannot drift" was the repair. Counting tasks a second time inside <code>list</code> would be that fault
+          reintroduced, and it would be invisible in the same way — a listing that says <code>17/31</code> while
+          <code>status</code> says <code>18/31</code> for the same change is wrong in a way no test written against either one
+          alone would catch. There must be one counter, and the enumeration must call it.</p>
+          <p><strong>What this change does not do.</strong> It does not change what <code>status</code> reports, and it does not
+          merge the two operations — <code>list</code> answers "what is here", <code>status</code> answers "what is in this
+          one", and the accepted contract names them separately. It does not add a task state, sort the
+          listing by progress, or filter it; the enumeration stays in name order, because a stable order
+          is what makes a list a thing you can select from twice.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

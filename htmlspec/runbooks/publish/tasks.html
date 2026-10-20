@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Publishing html-spec</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Publishing html-spec</h1>
+        <p>The nine steps that publish a release after its change is archived and merged: from this repository's <code>main</code>, through a reviewed export, to the public repository, its tag, and the four channels the tag publishes to. Read the specification beside this document first. It states why no step pushes a ref from this repository, why the first run switches the public repository's protection off for one push and must see it on again, and why each channel is installed rather than assumed.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Publishing html-spec</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-what-this-consumes">What this procedure consumes</a></li>
+          <li><a href="#hs-tasks">Tasks</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-what-this-consumes">
+          <h2>What this procedure consumes</h2>
+          <p>None of these is a step somebody performs, so none is a task unit. A runbook has no notion of an input, so they are prose, as the release runbook's are.</p>
+          <ul>
+            <li><strong>A release whose change is archived and merged</strong> into this repository's <code>main</code>, with <code>X.Y.Z</code> its version. The release runbook prepared it inside the change.</li>
+            <li><code>cargo</code> and <code>rustc</code> from the development shell <code>flake.nix</code> pins, which the specification declares for preflight. The export runs <code>scripts/check</code> inside the exported tree.</li>
+            <li><code>git</code>, with this clone's hooks installed by <code>scripts/install-hooks</code>, so <code>git config core.hooksPath</code> prints <code>.githooks</code>, and <code>python3</code>, standard library only, for <code>publish/export</code>.</li>
+            <li><code>gh</code>, signed in as an account that may change the public repository's rulesets and create its refs, and that may merge its pull requests.</li>
+            <li><code>nix</code> and <code>brew</code>, for step 8, and a crates.io login as <code>smurphy8</code>, the crates' owner, for step 7 on the first release.</li>
+            <li><strong>HOMEBREW_TAP_TOKEN expires around 2027-01-16.</strong> A release after that date fails at the tap job, after the crates are published. Renew the token first, or renew it when the tap job fails and run the job again.</li>
+          </ul>
+          <p>A run starts with <code>htmlspec preflight publish</code>, inside <code>nix develop</code>, and then <code>htmlspec run publish --as vX.Y.Z</code>, which writes the run's record beneath <code>htmlspec/runbooks/publish/runs/</code>. The record is untracked until step 9 commits it, and the export counts only tracked changes as a dirty tree, so the record never stops the export.</p>
+        </section>
+        <section id="hs-tasks">
+          <h2>Tasks</h2>
+          <p>Each step is one unit of work, so a state change is a change to one unit rather than to a list. These nine stay <code>todo</code> in this document, because this is the canonical procedure and nobody works it: a run copies the document and advances the states in the copy. <code>SOURCE</code> is the private commit being published, <code>TREE</code> the exported tree a person reviewed, <code>MERGE</code> the public commit that merged it, and <code>vX.Y.Z</code> the release's tag.</p>
+          <ul>
+            <li class="task" id="task-start-from-the-archived-release" data-change="unchanged" data-state="todo">
+              <h3>Start from the archived release <span class="hs-id">task-start-from-the-archived-release</span></h3>
+              <p data-field="note">Run <code>git fetch origin</code>, and record <code>SOURCE</code> as what <code>git rev-parse origin/main</code> prints. Confirm that the archive records the version: <code>git grep -l -E '^X\.Y\.Z$' SOURCE -- 'htmlspec/changes/archive/*/VERSION'</code> prints the release's archived change, and <code>git show SOURCE:Cargo.toml</code> declares <code>version = "X.Y.Z"</code>. Stop if either does not. <code>git status --porcelain --untracked-files=no</code> prints nothing, because the export refuses a tracked change.</p>
+            </li>
+            <li class="task" id="task-review-the-export" data-change="unchanged" data-state="todo">
+              <h3>Review the exact export privately <span class="hs-id">task-review-the-export</span></h3>
+              <p data-field="note">Run <code>publish/export --ref SOURCE</code>, the export's local review. It builds the export commit in a scratch repository and keeps it, runs the suite inside the exported tree, changes nothing public, and prints <code>tree:</code> followed by <code>TREE</code>, with the command that shows what would be published. Read the whole diff that command shows, not only its <code>--stat</code>. Record <code>TREE</code>. Where the export refuses files added or changed since their read, read each file it names against <code>publish/READINESS.md</code>'s list, and record each path's read at the content the refusal names, with the reader and the date. Where <code>READINESS.md</code> at <code>SOURCE</code> carries no sign-off, the contributor signs it after reading it and the diff. Either lands through a pull request into <code>main</code>, with the <code>skip-changelog</code> label, and then the run takes step 1 again, because the export reads the readiness record at <code>SOURCE</code>. <code>publish/</code> never crosses, so the new <code>SOURCE</code> exports the same <code>TREE</code>. On the first run the public repository is empty, and this review shows the bootstrap commit alone: <code>README.md</code> and <code>LICENSE</code>.</p>
+            </li>
+            <li class="task" id="task-bootstrap-the-public-repository" data-change="unchanged" data-state="todo">
+              <h3>First run only: bootstrap the public repository <span class="hs-id">task-bootstrap-the-public-repository</span></h3>
+              <p data-field="note">Only while <code>gh repo view Firefly-Projects/htmlspec --json isEmpty --jq .isEmpty</code> prints <code>true</code>. Otherwise mark this step dropped, with the reason that the public repository already has its <code>main</code>. In order: <code>gh api -X PUT repos/Firefly-Projects/htmlspec/rulesets/25362895 -f enforcement=disabled</code>; <code>publish/export --ref SOURCE --bootstrap --reviewed TREE</code>, with step 2's tree; <code>gh api -X PUT repos/Firefly-Projects/htmlspec/rulesets/25362895 -f enforcement=active</code>, at once, whatever the bootstrap reported. Then <code>gh api repos/Firefly-Projects/htmlspec/rulesets/25362895 --jq .enforcement</code> must print <code>active</code>. Stop the run if it prints anything else. The ruleset is off for the one push and no longer.</p>
+            </li>
+            <li class="task" id="task-push-the-export-and-merge-it" data-change="unchanged" data-state="todo">
+              <h3>Push the export and merge it <span class="hs-id">task-push-the-export-and-merge-it</span></h3>
+              <p data-field="note">On the first run, review again first. <code>publish/export --ref SOURCE</code> now builds the whole export on the bootstrapped <code>main</code>, so read its diff and take its <code>TREE</code>. On a later run, step 2's tree is this one. Run <code>publish/export --ref SOURCE --push --reviewed TREE</code>, which opens a pull request on <code>Firefly-Projects/htmlspec</code> and prints its address. Wait for its checks to pass, which in the public repository include all four builds and the formula whenever the export changes what the builds read, and merge it as a squash. Record <code>MERGE</code>, the output of <code>gh pr view NUMBER --repo Firefly-Projects/htmlspec --json mergeCommit --jq .mergeCommit.oid</code>. <code>gh api repos/Firefly-Projects/htmlspec/commits/MERGE --jq .commit.tree.sha</code> must print <code>TREE</code>, because what was merged is exactly what was reviewed.</p>
+            </li>
+            <li class="task" id="task-tag-the-merge-commit" data-change="unchanged" data-state="todo">
+              <h3>Tag the public merge commit through the API <span class="hs-id">task-tag-the-merge-commit</span></h3>
+              <p data-field="note">Run <code>gh api repos/Firefly-Projects/htmlspec/git/refs -f ref=refs/tags/vX.Y.Z -f sha=MERGE</code>. Within a few minutes, <code>gh run list --repo Firefly-Projects/htmlspec --workflow release.yml</code> must show a run for <code>vX.Y.Z</code>. Stop the run if none appears, and decide between deleting and recreating the tag and starting the workflow by hand. Never push a tag from this repository, whatever happens here. A private tag, where a contributor wants one, is named <code>private/vX.Y.Z</code>.</p>
+            </li>
+            <li class="task" id="task-watch-the-release-workflow" data-change="unchanged" data-state="todo">
+              <h3>Watch the release workflow to its end <span class="hs-id">task-watch-the-release-workflow</span></h3>
+              <p data-field="note">Run <code>gh run watch RUN --repo Firefly-Projects/htmlspec --exit-status</code>. If the crates job stops partway, run it again with <code>gh run rerun RUN --repo Firefly-Projects/htmlspec --failed</code>: <code>scripts/publish-crates</code> skips each crate already published and waits out the rate limit. If the tap job fails because <code>HOMEBREW_TAP_TOKEN</code> expired, renew it with <code>gh secret set HOMEBREW_TAP_TOKEN --repo Firefly-Projects/htmlspec</code> and run the job again. Record the run's address and each job's result.</p>
+            </li>
+            <li class="task" id="task-add-the-co-owner" data-change="unchanged" data-state="todo">
+              <h3>First release only: add the co-owner <span class="hs-id">task-add-the-co-owner</span></h3>
+              <p data-field="note">Only on the release that first published the crates. Otherwise mark this step dropped, with the reason that the team already owns them. Signed in to crates.io as <code>smurphy8</code>, a member of the team, and with <code>CARGO_HTTP_USER_AGENT</code> set to what <code>python3 scripts/release_facts.py user-agent</code> prints, so no request names a person or a machine, run <code>cargo owner --add github:Firefly-Projects:firefly-developers CRATE</code> for each of <code>htmlspec-schema</code>, <code>htmlspec-parse</code>, <code>htmlspec-assets</code>, <code>htmlspec-format</code>, <code>htmlspec-validate</code>, and <code>htmlspec-cli</code>. Then <code>cargo owner --list CRATE</code> names the team for each of the six.</p>
+            </li>
+            <li class="task" id="task-check-each-channel" data-change="unchanged" data-state="todo">
+              <h3>Check each channel <span class="hs-id">task-check-each-channel</span></h3>
+              <p data-field="note">Each must print <code>htmlspec X.Y.Z</code> and its revision, and the record holds what each printed. Run each binary by its full path, so a copy installed another way earlier on the path cannot answer instead. The flake: <code>nix run github:Firefly-Projects/htmlspec/vX.Y.Z -- --version</code>. Homebrew: <code>brew install Firefly-Projects/tap/htmlspec</code>, then <code>"$(brew --prefix)/bin/htmlspec" --version</code>. crates.io: <code>cargo install --locked htmlspec-cli --root SCRATCH</code>, then <code>SCRATCH/bin/htmlspec --version</code>. The release: <code>gh release download vX.Y.Z --repo Firefly-Projects/htmlspec --pattern 'htmlspec-X.Y.Z-TARGET.tar.gz' --pattern SHA256SUMS --dir SCRATCH</code>, for this machine's target; check the tarball against <code>SHA256SUMS</code> with <code>shasum -a 256 --check --ignore-missing SHA256SUMS</code>, from <code>SCRATCH</code>, then unpack it and run its binary. <code>SCRATCH</code> is an empty directory made for the step.</p>
+            </li>
+            <li class="task" id="task-land-the-record" data-change="unchanged" data-state="todo">
+              <h3>Land the record <span class="hs-id">task-land-the-record</span></h3>
+              <p data-field="note">Commit the run's record beneath <code>htmlspec/runbooks/publish/runs/</code> on a branch of this repository, and merge it through a pull request with the <code>skip-changelog</code> label, its title checked with <code>scripts/check-pull-request</code>. It crosses to the public repository with the next export, once a person has read it, because every file it adds under <code>htmlspec/</code> is a file changed since that path's read.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

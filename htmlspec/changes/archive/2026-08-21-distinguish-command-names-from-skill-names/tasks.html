@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Distinguish command names from skill names</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Distinguish command names from skill names</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Distinguish command names from skill names</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-21-distinguish-command-names-from-skill-names/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-the-check-before-the-fix">1. The check, before the fix</a></li>
+          <li><a href="#hs-2-stop-writing-the-name">2. Stop writing the name</a></li>
+          <li><a href="#hs-3-nothing-a-contributor-types-has-changed">3. Nothing a contributor types has changed</a></li>
+          <li><a href="#hs-4-prove-the-omission-does-not-break-loading">4. Prove the omission does not break loading</a></li>
+          <li><a href="#hs-5-the-contract">5. The contract</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-the-check-before-the-fix">
+          <h2>1. The check, before the fix</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Add a test in <code>crates/htmlspec-cli/src/install.rs</code> that installs for every tool in <code>TOOLS</code>, collects the <code>name:</code> value from every skill and command file that tool receives, and asserts no value appears twice within one tool.</h3>
+              <p>Scope it per tool: two tools declaring <code>htmlspec-apply-change</code> is correct, since each tool's namespace is its own</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Make the failure name the tool, the repeated value, and both file paths.</h3>
+              <p>"A name is duplicated" across 21 files is not actionable</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Run it and <strong>watch it fail</strong> on the 21 command files that Claude Code, Cursor, and Pi currently receive — 7 each.</h3>
+              <p><a href="evidence/failing-distinctness-check-2026-08-20.md">This is the naturally occurring failing case</a> and the only chance to see the check work</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 <a href="evidence/failing-distinctness-check-2026-08-20.md">Record the failure output as evidence, with the per-tool count</a>.</h3>
+              <p>Confirm Codex does not appear: it is <code>SkillsOnly</code>, so it has no second file to collide with</p>
+            </li>
+            <li class="task" id="task-1-5" data-change="added" data-state="done">
+              <h3>1.5 Confirm <code>every_generated_name_is_loadable</code> passes throughout.</h3>
+              <p>Both duplicates are well-formed, so the character check is blind to this fault — that is the reason a second check exists rather than an extension of the first</p>
+              <p data-field="deviation">Migration note: confirmed for its character assertion only. On the tree before the fix, <code>every_generated_name_is_loadable</code> reported no malformed name, and the non-vacuity assertion the same commit added to it failed, 49 declared names against the 28 expected, so the check did not pass throughout. <a href="evidence/failing-distinctness-check-2026-08-20.md"><code>evidence/failing-distinctness-check-2026-08-20.md</code></a> records this as a qualification.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-stop-writing-the-name">
+          <h2>2. Stop writing the name</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Change <code>write_commands</code> in <code>install.rs</code> to omit <code>name:</code> from the generated frontmatter, <a href="evidence/loading-after-omission-2026-08-20.md">keeping <code>description</code>, <code>allowed-tools</code>, and <code>generatedBy</code></a>.</h3>
+              <p><code>generatedBy</code> is required by an accepted requirement about recording the generating version and must not be dropped along with the name</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Replace the comment added by the previous change.</h3>
+              <p>It currently explains why the name is <code>workflow.directory</code> rather than the invocation; it must now explain why there is no name field at all, and record that the file path determines the invocation</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Confirm <code>workflow.directory</code> still has a caller in <code>write_skills</code>, so the field is not left dead</h3>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Re-run the test from task 1 and confirm it passes</h3>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done">
+              <h3>2.5 Run the full suite.</h3>
+              <p><code>every_generated_name_is_loadable</code> must still pass — it now reads only skill files' names for the three tools that changed, and it must not have become vacuous. Confirm it still finds 7 names per tool rather than 0</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-nothing-a-contributor-types-has-changed">
+          <h2>3. Nothing a contributor types has changed</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Confirm the command <strong>file names</strong> are untouched: <code>.claude/commands/htmlspec/apply.md</code>, <code>.cursor/commands/htmlspec-apply.md</code>, <code>.pi/prompts/htmlspec-apply.md</code></h3>
+              <p data-field="note">Migration note: <a href="evidence/loading-after-omission-2026-08-20.md"><code>evidence/loading-after-omission-2026-08-20.md</code></a> records the regeneration modifying the Claude Code and Pi command files in place under these names. No record this change carries states the result for the Cursor file name: the message of commit <code>c864727</code>, which says that nothing a contributor types changed, is the only record of it.</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Confirm <code>report_next_command</code> <a href="evidence/loading-after-omission-2026-08-20.md">still prints <code>/htmlspec:new</code>, <code>$htmlspec-new</code>, <code>/htmlspec-new</code></a>, and the AGENTS.md sentence, grouped per distinct spelling</h3>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Confirm <a href="evidence/loading-after-omission-2026-08-20.md"><code>Tool::invocation</code> still has exactly one non-test caller</a>.</h3>
+              <p>This change does not alter that function, and <code>every_invocation_names_its_workflow</code> in <code>tools.rs</code> must still pass</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-prove-the-omission-does-not-break-loading">
+          <h2>4. Prove the omission does not break loading</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Regenerate this repository's instructions with <code>htmlspec init --tools claude,codex,pi</code> and confirm the 14 command files no longer carry <code>name:</code>.</h3>
+              <p><a href="evidence/loading-after-omission-2026-08-20.md">14 here, not 21</a>: this repository selects <code>claude,codex,pi</code> and Codex is skills-only</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Confirm the seven <code>/htmlspec:*</code> commands still load and are still invocable.</h3>
+              <p>This must be checked by loading rather than by reasoning — it is the risk that would make the change wrong rather than merely different. <a href="evidence/loading-after-omission-2026-08-20.md"><strong>Closed by a session load on 2026-08-21</strong></a>, after the merge of #6 and the profile upgrade to <code>c864727</code>. The commands load and remain invocable, so omitting <code>name:</code> from a command file does not change what a contributor types</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Confirm a session load now lists seven html-spec entries rather than fourteen.</h3>
+              <p>That count is the symptom this change exists to remove, and it is the only direct check that it worked. <a href="evidence/loading-after-omission-2026-08-20.md"><strong>Closed by a session load on 2026-08-21.</strong></a> The doubled listing is gone. This is the observation the <code>opsx</code> comparison could only argue for</p>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 <a href="evidence/loading-after-omission-2026-08-20.md">Record the result as evidence</a>, including the <code>opsx</code> comparison: ten <code>.pi/prompts/opsx-*.md</code> omit <code>name:</code> and load, which is the reason to expect this to hold</h3>
+            </li>
+            <li class="task" id="task-4-5" data-change="added" data-state="done">
+              <h3>4.5 Note <a href="evidence/loading-after-omission-2026-08-20.md">in the evidence</a> that Cursor's command loader was <strong>not</strong> tested, since this repository does not select Cursor.</h3>
+              <p>The design records this as an accepted risk and it must not be reported as verified</p>
+            </li>
+            <li class="task" id="task-4-6" data-change="added" data-state="done">
+              <h3>4.6 Confirm <a href="evidence/loading-after-omission-2026-08-20.md">the AGENTS.md region is untouched by the regeneration</a></h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-the-contract">
+          <h2>5. The contract</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Withdraw the <a href="specification.html#scenario-one-identity-per-workflow"><code>#### Scenario: One identity per workflow</code></a> scenario from <a href="../../../specs/project-bootstrap/spec.html"><code>openspec/specs/project-bootstrap/spec.md</code></a>.</h3>
+              <p>This is a deliberate removal, the first in this capability, and it must touch nothing else</p>
+              <p data-field="note">Migration note: no record this change carries states this task's result. The messages of commits <code>c864727</code> and <code>3b1ca92</code> are the only record of it.</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Add a scenario requiring that no two files a tool receives declare the same name</h3>
+              <p data-field="deviation">Migration note: two scenarios were added, not one: <em>A workflow is listed once per tool</em> and <em>A repeated name is caught before release</em>. This change's delta, <a href="specification.html"><code>specs/project-bootstrap/spec.md</code></a>, states both, and the message of commit <code>c864727</code> records the withdrawn scenario "replaced by two".</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Amend the requirement's prose: it keeps the claim that a workflow has one generated identity, and drops the sentence asserting that identity is written into every file kind</h3>
+              <p data-field="deviation">Migration note: the amended prose also gained a paragraph these words do not ask for, "No two files the operation writes for one tool SHALL declare the same name…", which the change's specification states in <a href="specification.html#req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses"><em>Bootstrapping installs agent instructions for the tools a project uses</em></a>. Apart from the specification, the messages of commits <code>c864727</code> and <code>3b1ca92</code> are the only record of this task.</p>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Confirm the requirement's other paragraphs and scenarios are intact, and that no other accepted requirement is touched.</h3>
+              <p>The counts stated when this task was written were wrong: the requirement had <strong>ten</strong> paragraphs and <strong>twelve</strong> scenarios, so it now carries eleven and thirteen. The diff is 9 insertions and 3 deletions, and the applied requirement is textually identical to the delta's</p>
+              <p data-field="note">Migration note: no record this change carries states this task's result. The messages of commits <code>c864727</code> and <code>3b1ca92</code> are the only record of it.</p>
+            </li>
+            <li class="task" id="task-5-5" data-change="added" data-state="done">
+              <h3>5.5 Run <code>openspec validate --all</code> and confirm all seven capabilities pass</h3>
+              <p data-field="note">Migration note: no record this change carries states this task's result. The messages of commits <code>c864727</code> and <code>3b1ca92</code> are the only record of it.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

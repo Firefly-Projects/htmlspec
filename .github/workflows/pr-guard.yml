@@ -1,0 +1,64 @@
+# The guards on a proposal, as opposed to the guards on a revision.
+#
+# `check.yml` answers "is this tree healthy?" by running `scripts/check` — the same
+# script a contributor runs locally, which is why it can run in a Nix sandbox holding a
+# filtered snapshot and no `.git`. This workflow answers a different question, about the
+# pull request itself: is it titled the way this project's history is titled, and does
+# it record what it changed? Neither fact is in the tree, so neither can be a stage in
+# that suite without breaking the property that makes the suite trustworthy.
+#
+# It contains no rules. It reads the event, hands the facts to `scripts/check-pull-request`,
+# and reports what that script says — for the same reason `check.yml` contains no list of
+# checks. A rule that lives only in workflow YAML is a rule nobody can rehearse before
+# pushing, and a gate a contributor cannot run is a gate that teaches nothing until it
+# fails.
+#
+# To change what a pull request must satisfy, change `scripts/check-pull-request`.
+
+name: pr-guard
+
+on:
+  pull_request:
+    # `edited` and the label events matter here in a way they do not for `check.yml`:
+    # the inputs are the title and the labels, so a run that fired only on new commits
+    # would leave a corrected title judged by its old text and a `skip-changelog` label
+    # unable to take effect without an empty push.
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only. This workflow decides; it never writes to the pull request.
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The full history, because the check is a diff against the base branch and a
+          # shallow clone has no merge base to diff from. `check.yml` can afford
+          # depth 1; this cannot.
+          fetch-depth: 0
+
+      # The event's facts reach the script as environment variables, never as `${{ }}`
+      # interpolated into the shell. A pull request title is attacker-controlled text —
+      # anyone who can open a pull request chooses it — and interpolation would splice it
+      # into the script the runner executes. As an environment variable it is a value,
+      # and a title containing a backtick or a semicolon is just a title that fails the
+      # lint.
+      - name: Check the title and the diff
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "+refs/heads/$PR_BASE:refs/remotes/origin/$PR_BASE"
+          scripts/check-pull-request \
+            --title "$PR_TITLE" \
+            --base "origin/$PR_BASE" \
+            --labels-json "$PR_LABELS"

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Catch a template's placeholder prose</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Catch a template's placeholder prose</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Catch a template's placeholder prose</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-15-catch-a-templates-placeholder-prose/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>Four templates, four masthead paragraphs, one per artifact kind:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Template</th>
+                <th>The paragraph it writes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>template-proposal.html</code></td>
+                <td>"Replace this paragraph with the case for the change. …"</td>
+              </tr>
+              <tr>
+                <td><code>template-design.html</code></td>
+                <td>"Replace this paragraph with what this design settles. …"</td>
+              </tr>
+              <tr>
+                <td><code>template-tasks.html</code></td>
+                <td>"Replace this paragraph with what this work delivers. …"</td>
+              </tr>
+              <tr>
+                <td><code>template-specification.html</code></td>
+                <td>"Replace this paragraph with what this document is for. …"</td>
+              </tr>
+            </tbody>
+          </table>
+          <p><a href="evidence/the-gap-measured-2026-09-13.md">Each is exactly one <code>&lt;p&gt;</code></a> inside <code>&lt;header class="hs-masthead"&gt;</code>, and the projection specification section 9.1.1 projects <code>summary</code> from every <code>p</code> in the document's header. So the text this change reads is already in the model, addressable, and normalized — nothing here parses HTML that the projection does not already parse.</p>
+          <p>Two existing facts shape the approach:</p>
+          <ul>
+            <li><code>htmlspec_assets::example_identifiers()</code> reads example identifiers out of the templates by scanning for <code>id="…"</code>, computed once in a <code>OnceLock</code>. The discipline is stated in its own doc comment: a <code>const</code> array of the current identifiers "would be a second statement of a fact the templates already make", and <code>project-bootstrap</code> names that shape as the one that produced a gate comparing against a value no project ever had.</li>
+            <li><code>review/example-content</code> is a <strong>warning</strong>, and <code>strict</code> mode never promotes a <code>review/*</code> rule. Archival escalates it to a refusal through <code>example_content_in</code>, which archival and the comparison operation share.</li>
+          </ul>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals</strong></p>
+          <ul>
+            <li>A document whose summary is its template's placeholder is reported, for every artifact kind.</li>
+            <li>Archival refuses one, on the same path that already refuses an example identifier.</li>
+            <li>The placeholder text is derived from the templates, so rewording a template does not need a second edit.</li>
+          </ul>
+          <p><strong>Non-Goals</strong></p>
+          <ul>
+            <li>Judging whether a real summary is a <em>good</em> one. That is reading, and <code>artifact-kinds</code> reserves it for an agent.</li>
+            <li>Reporting an absent summary. A different fact, and whatever governs it already governs it.</li>
+            <li>Tightening <code>every_fixture_reports_exactly_the_rules_it_declares</code>, which the proposal records as a separate finding.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-the-comparison-is-whole-summary-equality-not-a-substring-search" data-change="added" data-status="accepted">
+            <h3>The comparison is whole-summary equality, not a substring search <span class="hs-id">decision-the-comparison-is-whole-summary-equality-not-a-substring-search</span></h3>
+            <p data-field="rationale"><strong>This is the decision the whole change turns on.</strong> A substring search for "Replace this paragraph" would fire on a document whose author wrote <em>"Unlike the template's 'Replace this paragraph' text, this summary states the actual argument"</em> — a correct summary reported as a placeholder.</p>
+            <p data-field="rationale">Worse, it would fire on this project's own explainers and on any document discussing the rule. A rule that fires on documents about itself is the shape that teaches an agent to ignore it, which is the failure the pointer rule's deletion test was added to prevent one release ago.</p>
+            <p>So the comparison normalizes whitespace and compares the <strong>whole</strong> projected summary against the whole placeholder. A summary that <em>is</em> the placeholder is reported. A summary that merely contains it is the author's and is not.</p>
+            <p data-field="rationale">The cost, accepted: a document whose summary is the placeholder plus one sentence of the author's own is not reported. That is a half-edited masthead, and it is the same trade the identifier rule already makes in the other direction — it reports a half-replaced unit because the identifier survives, and here the text is what survives, so the boundary falls elsewhere. Reporting both halves of both cases needs a rule that guesses at intent, and this project does not write those.</p>
+          </section>
+          <section id="hs-the-placeholder-text-is-read-out-of-the-templates-not-listed-beside-them">
+            <h3>The placeholder text is read out of the templates, not listed beside them</h3>
+            <p><code>example_placeholders()</code> scans each template's <code>&lt;header class="hs-masthead"&gt;</code> for its <code>&lt;p&gt;</code> text, normalized the way the projection normalizes it, and caches the set in a <code>OnceLock</code> — the same shape <code>example_identifiers()</code> already has, for the same stated reason.</p>
+            <p>A <code>const</code> array of the four sentences would be a second statement of a fact the templates already make. The scenario <a href="specification.html#scenario-a-template-that-rewords-its-placeholder">"A template that rewords its placeholder"</a> exists to pin that: rewording a template must not need a second edit, because the edit nobody remembers is the one that goes stale.</p>
+            <p><strong>The normalization has to match the projection's</strong>, or the comparison fails on whitespace the model never carried. That is one shared helper rather than two, since two would drift and the drift would be invisible — a rule that silently stops matching is worse than one that never matched.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> Two parts of this decision were built otherwise, and the tasks record both. The scan finds the masthead paragraph by the first <code>header</code> element rather than by <code>class="hs-masthead"</code>, because the first header is what projection section 9.1.1 reads, and a test asserts that the two are the same element in every template (<a href="tasks.html#task-3-1">task 3.1's notes</a>). The normalization is two implementations rather than one shared helper: <code>htmlspec-parse</code> depends on <code>htmlspec-assets</code>, and the projection's <code>normalized_text</code> is private, so the scan carries its own, and the two are pinned against each other by a test instead (<a href="tasks.html#task-3-3">task 3.3</a> and <a href="tasks.html#task-3-4">task 3.4</a>; mutation 2b in <a href="evidence/mutation-testing-2026-09-13.md"><code>evidence/mutation-testing-2026-09-13.md</code></a> shows that test failing when the two disagree). The second item under Risks / Trade-offs names the same shared helper.</p>
+            </aside>
+          </section>
+          <section id="hs-reported-at-the-document-not-at-a-unit">
+            <h3>Reported at the document, not at a unit</h3>
+            <p><code>Location::unit(id)</code> is what the identifier case uses, and a summary has no identifier. So the summary diagnostic is located at the document, which <code>Location::document()</code> already provides and which the schema rule already uses.</p>
+            <p>The message names the summary rather than a unit, and says what to do: state what the document is for. A contributor reading "this document still carries the identifier a template writes" for a paragraph with no identifier would be looking for a unit that does not exist.</p>
+          </section>
+          <section id="hs-severity-is-unchanged-and-the-reason-is-unchanged">
+            <h3>Severity is unchanged, and the reason is unchanged</h3>
+            <p>A warning at validation and a refusal at archival. The requirement already states why, and the reason applies here verbatim: creation writes the template, and the contract requires that result to be valid, so an error at creation would report a defect the program itself introduced.</p>
+            <p><code>htmlspec new document</code> writes a placeholder summary every time. An error would make every freshly created document invalid, which contradicts <code>document-template</code>'s requirement that creation produce a valid document.</p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>A rule that fires on documents about itself</strong> → whole-summary equality rather than a substring search. This is the risk that shaped the main decision rather than one mitigated after the fact.</li>
+            <li><strong>The normalization drifts from the projection's</strong> → one shared helper, and a test comparing the scanned placeholder against the projected summary of a freshly created document. If those two disagree, the rule silently stops matching, so the test asserts they agree rather than asserting the rule fires.</li>
+            <li><strong>A half-edited masthead is not reported</strong> → accepted and stated above. Detecting it needs a rule that guesses at intent.</li>
+            <li><strong>50 fixtures carry the placeholder</strong> → none breaks, <a href="evidence/mutation-testing-2026-09-13.md">verified rather than assumed</a>: <code>valid-minimal</code> already reports <code>review/example-content</code> seven times with an empty declared rule list and passes. The suite asserts declared rules are present and does not assert others are absent.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p>Additive. The rule reports a case nothing reported before, at warning severity, so no existing document becomes invalid and no fixture's <code>valid</code> field changes. Archival gains a refusal on a condition that has never been intentionally archived.</p>
+          <p>One fixture is added, pinning a document whose units are replaced and whose summary is not — the case this change exists for, which is also the case no existing fixture covers.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

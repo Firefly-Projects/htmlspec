@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>project-bootstrap</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>project-bootstrap</h1>
+        <p>This specification states what identifies an HTMLSpec project and what the bootstrap operation establishes in it: a project root holding the project's accepted specifications, active changes, archive, and runbooks, each in its own place, and exactly one asset store that every document references (<em>A project has a declared root holding one asset store</em>), and a declaration of the project's name, its version, and the program it expects, which at least one command depends on (<em>A project declares its name, version, and expected toolchain</em>). Every command whose subject is a project finds it from any directory beneath it, without searching past the enclosing repository (<em>Commands resolve the project from any directory beneath it</em>).</p>
+        <p>It states what bootstrapping installs and how it behaves: instructions for each selected AI coding tool, covering the lifecycle from an idea to an archived change (<em>Bootstrapping installs agent instructions for the tools a project uses</em>); a selection of tools offered with the detected ones already chosen, or given as an argument, and no prompt without a terminal (<em>Tool selection is offered interactively and available without a terminal</em>); a run that is safe on a project it has already established (<em>Bootstrapping is repeatable without loss</em>), and that writes into a file the contributor also writes only within a region marked at both ends (<em>Instructions installed in a shared file are confined to a marked region</em>); on success, a statement of what was installed, where, and the literal command that begins the lifecycle (<em>Bootstrapping ends by naming the command to run next</em>); and an exit status that tells a declined or interrupted operation from a failure (<em>A declined or interrupted operation is distinguishable from a failure</em>).</p>
+        <p>It also states archival's version checks. Archival refuses unless the declared version is ordered after the version the last archived change recorded, and does not modify the declaration (<em>Archival requires the project version to advance</em>). Archival compares each runbook it publishes against that runbook's most recent published snapshot (<em>Archival checks the versions of runbooks it publishes</em>), and the release suite checks published runbook version history (<em>The release suite checks published runbook version history</em>).</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>project-bootstrap</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/specs/project-bootstrap/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. The source's Purpose was OpenSpec's unwritten placeholder.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-requirements">Requirements</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-requirements">
+          <h2>Requirements</h2>
+          <section class="requirement" id="req-a-project-has-a-declared-root-holding-one-asset-store" data-change="unchanged">
+            <h3>A project has a declared root holding one asset store <span class="hs-id">req-a-project-has-a-declared-root-holding-one-asset-store</span></h3>
+            <p>An HTMLSpec project SHALL be identified by a directory containing an <code>htmlspec/</code> directory. That directory SHALL hold the project's accepted specifications, its active changes, its archive, and <strong>its runbooks</strong>, each in its own place.</p>
+            <p><strong>The runbooks are a fourth place rather than a quiet extension of the first three.</strong> A procedure that is run repeatedly is not a change and does not archive, so it cannot live in <code>changes/</code> without being destroyed by the operation that ends a change. <code>runbook-authority</code> states what a runbook is and what it holds; this requirement states only that the project's root has a place for one.</p>
+            <p><strong>This sentence is not declared closed, and the difference from the artifact-kind vocabulary is the argument for saying so.</strong> The set of kinds states that it is <code>CLOSED</code> and carries a guard test whose failure message calls adding one "a decision with a compatibility cost". This sentence has neither, and <code>project-migration</code> already established that the layout beneath the project root is only partly specified. So a fifth place is a modification with a stated reason rather than a closed set being reopened, and a later change adding one owes the same reason rather than a new argument about whether it may.</p>
+            <p>A project SHALL hold exactly one asset store, in its root, and every document in the project SHALL reference that store rather than a store of its own. A project storing one copy of its runtime is the whole point of the duplicate-detection rule the contract already states; a tool that gave each change its own copy would be reporting a defect it created itself.</p>
+            <p><strong>A runbook's documents are documents of the project and are covered by that sentence without exception.</strong> A runbook is a directory beneath the project root holding documents, which is the same shape a change is, and a store of its own there would be the measured 6-MB-per-change defect arriving at a new location.</p>
+            <article class="scenario" id="scenario-bootstrapping-an-empty-repository" data-change="unchanged">
+              <h4>Bootstrapping an empty repository</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor bootstraps a project in a directory with no project in it</dd>
+                <dt>Then</dt>
+                <dd>the project root is created with places for accepted specifications, active changes, the archive, and runbooks, and one asset store is established in it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-changes-share-one-store" data-change="unchanged">
+              <h4>Two changes share one store</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a bootstrapped project</dd>
+                <dt>When</dt>
+                <dd>two changes are created in it</dd>
+                <dt>Then</dt>
+                <dd>the project holds one copy of the runtime assets, and each change's documents reference it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-shares-the-same-store" data-change="unchanged">
+              <h4>A runbook shares the same store</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a bootstrapped project holding a change and a runbook</dd>
+                <dt>When</dt>
+                <dd>the project's asset topology is checked</dd>
+                <dt>Then</dt>
+                <dd>one store is found, because a runbook references the project's store rather than holding one</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-documents-reference-the-store-without-a-network" data-change="unchanged">
+              <h4>Documents reference the store without a network</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document created in a bootstrapped project is opened from the filesystem</dd>
+                <dt>Then</dt>
+                <dd>it renders with no network access, because its asset references resolve to the project's store</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-project-declares-its-name-version-and-expected-toolchain" data-change="unchanged">
+            <h3>A project declares its name, version, and expected toolchain <span class="hs-id">req-a-project-declares-its-name-version-and-expected-toolchain</span></h3>
+            <p>The bootstrap operation SHALL write a project declaration at the project root recording the project's name, its version, and a pinned reference to the program the project expects.</p>
+            <p>The declaration SHALL be expressed in the same language the project's build already uses, so that the pinned program reference is a build input rather than a value a bespoke parser must interpret. A second configuration language for three fields is surface the project does not need.</p>
+            <p>At least one command SHALL depend on the declaration. A declaration no command reads states nothing that can be wrong, so nothing reports it when it is, and it drifts from the project it describes without any signal.</p>
+            <p>The declaration SHALL NOT carry authoring rules or project context. Those have no consumer, and a field nothing reads is the case the preceding paragraph excludes.</p>
+            <article class="scenario" id="scenario-bootstrapping-writes-the-declaration" data-change="unchanged">
+              <h4>Bootstrapping writes the declaration</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor bootstraps a project</dd>
+                <dt>Then</dt>
+                <dd>a declaration is written at the project root recording the project's name, its version, and the program it expects</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-declaration-is-not-overwritten" data-change="unchanged">
+              <h4>The declaration is not overwritten</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose declaration a contributor has edited</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs again</dd>
+                <dt>Then</dt>
+                <dd>the declaration is left as it was</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-pinned-program-is-a-build-input" data-change="unchanged">
+              <h4>The pinned program is a build input</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the project's build reads the declaration</dd>
+                <dt>Then</dt>
+                <dd>the pinned program reference resolves as a build input, with no separate parser</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-archival-requires-the-project-version-to-advance" data-change="unchanged">
+            <h3>Archival requires the project version to advance <span class="hs-id">req-archival-requires-the-project-version-to-advance</span></h3>
+            <p>Archival SHALL compare the project's declared version against the last archived version, and SHALL refuse unless the declared version is ordered after it. The accepted contract SHALL therefore carry a version history rather than a sequence of undated merges.</p>
+            <p>The comparison SHALL be an ordering rather than a test for difference. A declared version ordered before the last archived one SHALL be refused, and SHALL be reported distinctly from a version that has not moved, because the two have different causes: one is work not yet done, and the other is a version that went backwards.</p>
+            <p>The declared version SHALL therefore be a value the program can order. A version it cannot parse into an ordering SHALL be reported rather than accepted, because a gate that cannot compare its inputs is not a gate.</p>
+            <p>The last archived version SHALL be read from the version each archived change records, in the form <code>toolchain-packaging</code> requires. It SHALL NOT be derived from an archive directory's name. A directory name is a display string that is shortened and renamed, and a gate derived from one depends on a convention nothing enforces — which is how this gate came to compare against a value no project ever had.</p>
+            <p>The bootstrap operation SHALL write an initial version that is ordered before every version a project can later declare, so that a project always has a version on record and the comparison is total. Archival SHALL NOT treat an absent previous version as grounds to pass. A project's first archival SHALL advance past the initial version exactly as a later one advances past its predecessor, because a rule with an exception that applies once per project is a rule exercised once per project.</p>
+            <p>Archival SHALL NOT modify the declaration. Advancing the version SHALL be the contributor's or the agent's act, and the program's part SHALL be the comparison alone.</p>
+            <p>That division is the one archival already uses: an agent produces the change's specification and the program validates it, because the judgment is judgment and the checking is exact. Deciding what a version increment signifies, and by how much, is judgment. Whether one version is ordered after another is not.</p>
+            <p>This reservation SHALL be stated on the act rather than on the command. A command SHALL NOT perform an act the project reserves for judgment, whatever else that command also does. A command SHALL NOT be restricted from an act that requires no judgment because of what its name suggests it does. The earlier form of this obligation — that a command whose stated job is checking does not write to the project it checks — generalised a reservation about the declaration into a prohibition on every write, and that generalisation is what left archival as an operation the program declined to complete.</p>
+            <article class="scenario" id="scenario-archiving-without-advancing-the-version" data-change="unchanged">
+              <h4>Archiving without advancing the version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor archives a change while the declared version equals the last archived version</dd>
+                <dt>Then</dt>
+                <dd>archival does not complete, and the reason names the version that must advance</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archiving-with-an-advanced-version" data-change="unchanged">
+              <h4>Archiving with an advanced version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor archives a change whose declared version is ordered after the last archived version</dd>
+                <dt>Then</dt>
+                <dd>the version gate permits archival to proceed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archiving-with-a-version-that-went-backwards" data-change="unchanged">
+              <h4>Archiving with a version that went backwards</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor archives a change whose declared version is ordered before the last archived version</dd>
+                <dt>Then</dt>
+                <dd>archival does not complete, and the report distinguishes this from a version that has not moved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-version-the-program-cannot-order" data-change="unchanged">
+              <h4>A version the program cannot order</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the declared version cannot be parsed into an ordering</dd>
+                <dt>Then</dt>
+                <dd>archival does not complete, and the report names the version it could not read</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-project-s-first-archival" data-change="unchanged">
+              <h4>A project's first archival</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a freshly bootstrapped project that has archived nothing, whose declared version is still the initial one</dd>
+                <dt>When</dt>
+                <dd>a contributor archives its first change without advancing the version</dd>
+                <dt>Then</dt>
+                <dd>archival is refused on the same grounds as any later archival, because the initial version is already on record</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-program-does-not-advance-the-version-itself" data-change="unchanged">
+              <h4>The program does not advance the version itself</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival runs</dd>
+                <dt>Then</dt>
+                <dd>the declaration is unchanged on disk, whether archival completed or refused</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archiving-with-no-declaration" data-change="unchanged">
+              <h4>Archiving with no declaration</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival runs in a project with no declaration</dd>
+                <dt>Then</dt>
+                <dd>it reports the absent declaration and names the operation that creates one</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-last-archived-version-comes-from-the-recorded-version" data-change="unchanged">
+              <h4>The last archived version comes from the recorded version</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an archive whose directory names carry no version</dd>
+                <dt>When</dt>
+                <dd>archival determines the last archived version</dd>
+                <dt>Then</dt>
+                <dd>it reads the version each archived change recorded, and the gate compares against it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-gate-that-cannot-be-satisfied-by-renaming" data-change="unchanged">
+              <h4>A gate that cannot be satisfied by renaming</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an archived change's directory is renamed</dd>
+                <dt>Then</dt>
+                <dd>the version the gate reads is unchanged, because the version is a record rather than part of the name</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archival-that-writes-without-advancing-the-version" data-change="unchanged">
+              <h4>Archival that writes without advancing the version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival completes and moves the change into the archive</dd>
+                <dt>Then</dt>
+                <dd>the declaration is unchanged, because advancing the version is the contributor's act and archival's part is the comparison alone</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-commands-resolve-the-project-from-any-directory-beneath-it" data-change="unchanged">
+            <h3>Commands resolve the project from any directory beneath it <span class="hs-id">req-commands-resolve-the-project-from-any-directory-beneath-it</span></h3>
+            <p>Every command whose subject is a project SHALL locate the project by searching the current directory and its ancestors, and SHALL operate on the project found rather than on the directory it was invoked in.</p>
+            <p>The search SHALL NOT ascend past the enclosing repository. A command run inside one repository SHALL NOT resolve to a project outside it, because writing into a neighboring project is worse than reporting that no project was found.</p>
+            <p>A command that requires a project and finds none SHALL say so, SHALL name the operation that would create one, and SHALL exit with the status for an operation that could not run.</p>
+            <article class="scenario" id="scenario-running-from-a-subdirectory" data-change="unchanged">
+              <h4>Running from a subdirectory</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a bootstrapped project</dd>
+                <dt>When</dt>
+                <dd>a contributor runs a project-wide command from a directory inside it</dd>
+                <dt>Then</dt>
+                <dd>the command operates on the whole project</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-search-stops-at-the-repository-boundary" data-change="unchanged">
+              <h4>The search stops at the repository boundary</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a repository with no project in it, nested inside a directory that contains an unrelated project</dd>
+                <dt>When</dt>
+                <dd>a contributor runs a project-wide command inside the repository</dd>
+                <dt>Then</dt>
+                <dd>the command reports that no project was found rather than resolving to the unrelated one</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-project-found" data-change="unchanged">
+              <h4>No project found</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a project-wide command runs where no project exists</dd>
+                <dt>Then</dt>
+                <dd>it reports that no project was found, names the operation that creates one, and exits with the status for an operational failure</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-checking-a-project-s-assets" data-change="unchanged">
+              <h4>Checking a project's assets</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the asset-topology command runs anywhere in a project</dd>
+                <dt>Then</dt>
+                <dd>it checks every asset the project stores, wherever in the project they are stored</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses" data-change="unchanged">
+            <h3>Bootstrapping installs agent instructions for the tools a project uses <span class="hs-id">req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses</span></h3>
+            <p>The bootstrap operation SHALL install, for each selected AI coding tool, the instructions that tool needs to drive the HTMLSpec workflow. Where a tool supports invocable commands, the operation SHALL install those as well as the instructions.</p>
+            <p>The instructions SHALL cover the project's lifecycle from an idea to an archived change, rather than a single stage of it. A contributor who has bootstrapped a project and lists what was installed SHALL find the stage they are at. Instructions covering only the final stage leave every earlier stage to be improvised, which is the case the project's own contract for artifact kinds exists to prevent.</p>
+            <p>A workflow SHALL be installed whether or not a command performs it. Archival is already agent-driven — the program checks a specification it does not produce — so a stage whose work is judgment is the ordinary case rather than the exception.</p>
+            <p>An installed workflow's instructions SHALL NOT name a command the program does not provide, and this SHALL be checked mechanically rather than by review. Naming an absent command sends an agent to an error, and it is the hazard that a rule limiting how many workflows are installed was attempting to avoid.</p>
+            <p>The set of supported tools SHALL be data rather than logic, so that supporting an additional tool is an entry in that set. The set of workflows SHALL likewise be data, so that covering an additional stage is an entry in that set together with its instructions.</p>
+            <p>The order of the workflows SHALL be the order the lifecycle moves through them, because instructions written into a shared file are presented in that order and a reader meets them as a document.</p>
+            <p>How a tool receives instructions SHALL be a property of the tool with one value per tool, rather than a combination of independent settings. A tool for which no instructions could be written is a state the program SHALL NOT be able to reach.</p>
+            <p>Instructions SHALL record the version of the program that generated them, so an installation predating the instructions it should carry is identifiable.</p>
+            <p>Where a workflow is reached through an invocation, whatever a contributor types after that invocation SHALL reach the agent that performs the workflow. An invocation surface that accepts text and discards it makes the workflow ask for what it was already given, which is the failure a contributor experiences as being asked twice. This obligation reaches the kinds of file a tool invokes and SHALL NOT reach a kind that carries no invocation, because there is no argument to pass where there is nothing to type.</p>
+            <p>What a workflow takes SHALL be declared alongside the workflow, and SHALL be a property of that workflow rather than one description shared by all of them. Workflows differ in their input — one begins from a description of work that does not exist, another acts on a change already present — so a shared declaration describes none of them accurately.</p>
+            <p>An absent argument SHALL reach the agent as absent rather than as an error, and a workflow SHALL remain invocable with no argument at all. Where nothing was typed, the workflow's own guidance on a missing input applies; a surface that rejected a bare invocation would remove the behavior that is correct when a contributor has genuinely described nothing. An agent SHALL be able to distinguish an argument that was not supplied from one that was lost in delivery, because an agent that suspects the latter asks again for what it was sent.</p>
+            <p>An argument's declaration and its delivery SHALL both be checked against the files the operation produces, rather than against the values they derive from. Each is assembled when a file is written, so a check over the inputs passes while a writer that omitted one ships.</p>
+            <p>Every generated file's declared name SHALL be composed only of lowercase letters, digits, and hyphens, because a tool that reads it may reject any other character. This SHALL hold for each kind of file the operation writes, and SHALL be checked against the files produced rather than against the values they are derived from — a name is assembled at the moment of writing, so a fault introduced there is invisible to a check on the inputs.</p>
+            <p>A generated name SHALL NOT be the invocation a contributor types. The invocation is a property of a tool's command surface, it differs per tool, and it SHALL have one producer; a name field holding it states that fact a second time and states it where a stricter reader rejects it. The name SHALL instead identify the workflow, so that a workflow has one generated identity rather than one per file kind.</p>
+            <p>No two files the operation writes for one tool SHALL declare the same name. A declared name is a registry key for the tool that loads it, so a workflow's identity SHALL be declared once within a tool rather than repeated in each kind of file the workflow produces — a second declaration presents one workflow as two. Where a kind of file does not need a name in order to be found, the operation SHALL NOT write one; a command whose invocation is determined by its file path is such a kind. The same name appearing in two different tools' files is not a repeat, because each tool's namespace is its own.</p>
+            <article class="scenario" id="scenario-installing-for-a-tool-with-commands" data-change="unchanged">
+              <h4>Installing for a tool with commands</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions for a tool that supports invocable commands</dd>
+                <dt>Then</dt>
+                <dd>both the instructions and the commands are written where that tool reads them, one of each per workflow</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-installing-for-a-tool-without-commands" data-change="unchanged">
+              <h4>Installing for a tool without commands</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions for a tool that supports instructions only</dd>
+                <dt>Then</dt>
+                <dd>the instructions are written and no command files are created</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-selected-tool-receives-something" data-change="unchanged">
+              <h4>Every selected tool receives something</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation completes for any selected tool</dd>
+                <dt>Then</dt>
+                <dd>that tool has received instructions, because a selected tool that receives nothing is not a representable outcome</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-lifecycle-is-covered" data-change="unchanged">
+              <h4>The lifecycle is covered</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor lists the workflows installed by the bootstrap operation</dd>
+                <dt>Then</dt>
+                <dd>the stages from exploring an idea through to archiving a completed change are each named</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-workflow-with-no-command-behind-it" data-change="unchanged">
+              <h4>A workflow with no command behind it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a stage of the lifecycle that no command performs</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs instructions</dd>
+                <dt>Then</dt>
+                <dd>that stage's instructions are installed, and they state that the work is the agent's</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-instructions-naming-an-absent-command" data-change="unchanged">
+              <h4>Instructions naming an absent command</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an installed workflow's instructions name an invocation the program does not provide</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks report it, rather than the invocation reaching a contributor</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-workflows-are-presented-in-lifecycle-order" data-change="unchanged">
+              <h4>Workflows are presented in lifecycle order</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>instructions for every workflow are written into one shared file</dd>
+                <dt>Then</dt>
+                <dd>they appear in the order the lifecycle moves through them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-generated-instructions-name-their-version" data-change="unchanged">
+              <h4>Generated instructions name their version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>instructions are installed</dd>
+                <dt>Then</dt>
+                <dd>they record the version of the program that generated them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-invocation-carrying-a-description" data-change="unchanged">
+              <h4>An invocation carrying a description</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes a workflow and types a description of the work after it</dd>
+                <dt>Then</dt>
+                <dd>that description reaches the agent, which acts on it rather than asking what the work is</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-invocation-carrying-nothing" data-change="unchanged">
+              <h4>An invocation carrying nothing</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes a workflow and types nothing after it</dd>
+                <dt>Then</dt>
+                <dd>the workflow runs, the agent observes that no input was supplied, and its guidance for a missing input applies</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-workflow-declares-what-it-takes" data-change="unchanged">
+              <h4>A workflow declares what it takes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs a workflow whose input differs from another's</dd>
+                <dt>Then</dt>
+                <dd>the file it writes declares that workflow's own input rather than a description shared across workflows</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-delivery-kind-with-no-invocation" data-change="unchanged">
+              <h4>A delivery kind with no invocation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>instructions are written into a shared file that no contributor invokes</dd>
+                <dt>Then</dt>
+                <dd>no argument is declared, because there is no invocation to carry one</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-dropped-argument-is-caught-before-release" data-change="unchanged">
+              <h4>A dropped argument is caught before release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operation would write a file that declares an argument its body never consumes, or consumes one it never declares</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks report it against the produced file, rather than a contributor's description being discarded at invocation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-generated-name-is-loadable" data-change="unchanged">
+              <h4>Every generated name is loadable</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs for every supported tool</dd>
+                <dt>Then</dt>
+                <dd>every file it writes declares a name of lowercase letters, digits, and hyphens only</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-name-that-is-not-an-invocation" data-change="unchanged">
+              <h4>A name that is not an invocation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a command file is generated for a tool whose invocation carries a character outside that set</dd>
+                <dt>Then</dt>
+                <dd>the file's declared name identifies the workflow and does not carry the invocation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-workflow-is-listed-once-per-tool" data-change="unchanged">
+              <h4>A workflow is listed once per tool</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a workflow produces both instructions and a command for one tool</dd>
+                <dt>Then</dt>
+                <dd>the workflow's name is declared once across the two, so a contributor listing what is installed finds the workflow once rather than twice</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-repeated-name-is-caught-before-release" data-change="unchanged">
+              <h4>A repeated name is caught before release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation would write the same name into two files one tool loads</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks report it, rather than a contributor meeting a doubled listing when their tool loads them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-malformed-name-is-caught-before-release" data-change="unchanged">
+              <h4>A malformed name is caught before release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a workflow is added whose identity carries a character outside that set</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks report it, rather than a contributor meeting it when their tool loads the file</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-tool-selection-is-offered-interactively-and-available-without-a-terminal" data-change="unchanged">
+            <h3>Tool selection is offered interactively and available without a terminal <span class="hs-id">req-tool-selection-is-offered-interactively-and-available-without-a-terminal</span></h3>
+            <p>The bootstrap operation SHALL detect which supported tools a project already shows evidence of, and SHALL offer the supported tools for selection with the detected ones already chosen.</p>
+            <p>Where nothing is detected, the operation SHALL offer every supported tool already chosen. An absent detection means a project nobody has configured, which is where a default matters most and where detection has least to say. A prompt that offers nothing there teaches that the prompt is decorative.</p>
+            <p>The operation SHALL accept the selection as an argument instead, including forms meaning every supported tool and no tool at all. When a selection is given as an argument, the operation SHALL NOT prompt, because the question has already been answered.</p>
+            <p>An interactive selection of no tools SHALL be refused, and the operation SHALL ask again rather than proceed. The refusal SHALL name the argument that means no tool, so that a contributor who intends it has somewhere to go.</p>
+            <p>The argument form SHALL continue to succeed. The asymmetry is the requirement: the argument is an answer to the question, and an empty confirmation at a prompt is usually a contributor who did not read the question. The prompt appears on a first run in a fresh repository, which is where fewest contributors know what the list decides. A bootstrap that installs nothing while reporting that the project is ready has answered a question nobody asked.</p>
+            <p>The operation SHALL NOT prompt when it is not running against a terminal, and SHALL NOT prompt when structured output is requested. In either case it SHALL proceed using the detected tools. A bootstrap that blocked waiting for a keypress inside an automated job would never complete.</p>
+            <p>Detection SHALL recognize a tool by any of several paths, so that a tool which has renamed its directory is still recognized by its former one.</p>
+            <article class="scenario" id="scenario-interactive-selection-preselects-detected-tools" data-change="unchanged">
+              <h4>Interactive selection preselects detected tools</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project containing the configuration directories of two supported tools</dd>
+                <dt>When</dt>
+                <dd>a contributor bootstraps the project in a terminal with no selection argument</dd>
+                <dt>Then</dt>
+                <dd>the supported tools are offered for selection with those two already chosen</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-selection-given-as-an-argument" data-change="unchanged">
+              <h4>Selection given as an argument</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation is given a selection argument</dd>
+                <dt>Then</dt>
+                <dd>it installs for exactly those tools and does not prompt</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-nothing-detected-offers-everything" data-change="unchanged">
+              <h4>Nothing detected offers everything</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a fresh repository showing evidence of no supported tool</dd>
+                <dt>When</dt>
+                <dd>a contributor bootstraps it in a terminal with no selection argument</dd>
+                <dt>Then</dt>
+                <dd>every supported tool is offered already chosen, because detection has nothing to narrow the offer with</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-tool-and-no-tool" data-change="unchanged">
+              <h4>Every tool and no tool</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the selection argument names every supported tool, or names none</dd>
+                <dt>Then</dt>
+                <dd>the operation installs for all of them, or for none of them, and succeeds either way</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-empty-interactive-selection-is-refused" data-change="unchanged">
+              <h4>An empty interactive selection is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor confirms a selection of no tools at the prompt</dd>
+                <dt>Then</dt>
+                <dd>the operation does not proceed, it asks again, and the refusal names the argument that means no tool</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-argument-form-still-means-no-tool" data-change="unchanged">
+              <h4>The argument form still means no tool</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the selection argument names no tool</dd>
+                <dt>Then</dt>
+                <dd>the operation succeeds and installs nothing, because an argument is an answer and an empty confirmation is not</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-terminal-available" data-change="unchanged">
+              <h4>No terminal available</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs with its input not connected to a terminal and no selection argument</dd>
+                <dt>Then</dt>
+                <dd>it proceeds without prompting, using the tools it detected, and does not block</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-structured-output-requested" data-change="unchanged">
+              <h4>Structured output requested</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs with structured output requested</dd>
+                <dt>Then</dt>
+                <dd>it does not prompt, and standard output contains nothing but the structured payload</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unknown-tool-named" data-change="unchanged">
+              <h4>An unknown tool named</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the selection argument names a tool that is not supported</dd>
+                <dt>Then</dt>
+                <dd>the operation reports the error, lists the supported tools, and writes nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-renamed-tool-directory-is-recognized" data-change="unchanged">
+              <h4>A renamed tool directory is recognized</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project containing a supported tool's former configuration directory</dd>
+                <dt>When</dt>
+                <dd>detection runs</dd>
+                <dt>Then</dt>
+                <dd>that tool is detected</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-bootstrapping-is-repeatable-without-loss" data-change="unchanged">
+            <h3>Bootstrapping is repeatable without loss <span class="hs-id">req-bootstrapping-is-repeatable-without-loss</span></h3>
+            <p>The bootstrap operation SHALL be safe to run on a project it has already established. On such a run it SHALL refresh the instructions for the selected tools, and SHALL leave the project's accepted specifications, active changes, archive, <strong>and runbooks</strong> unchanged.</p>
+            <p><strong>A runbook is named in that list rather than left to be inferred from it.</strong> A runbook is content a contributor wrote, so the reason the first three are protected applies to it unchanged, and a list that named three of four places would leave the fourth's protection resting on a reading.</p>
+            <p>The operation SHALL NOT overwrite a project's configuration once it exists. The operation SHALL NOT delete a file it did not write.</p>
+            <p>Where the asset store is already present, the operation SHALL verify it against the pinned runtime and report a discrepancy rather than silently replacing it. Bytes that differ from the pin are a fact the contributor needs, and overwriting them would hide it.</p>
+            <article class="scenario" id="scenario-re-running-on-an-established-project" data-change="unchanged">
+              <h4>Re-running on an established project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs on a project it already established</dd>
+                <dt>Then</dt>
+                <dd>the instructions for the selected tools are refreshed and the project's specifications, changes, archive, and runbooks are unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-survives-a-repeated-bootstrap" data-change="unchanged">
+              <h4>A runbook survives a repeated bootstrap</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project holding a runbook a contributor wrote</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs again</dd>
+                <dt>Then</dt>
+                <dd>the runbook's documents are as they were</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-existing-configuration-survives" data-change="unchanged">
+              <h4>Existing configuration survives</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose configuration has been edited</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs again</dd>
+                <dt>Then</dt>
+                <dd>the configuration is left as it was</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-existing-store-is-verified-rather-than-replaced" data-change="unchanged">
+              <h4>An existing store is verified rather than replaced</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose stored assets differ from the pinned runtime</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs again</dd>
+                <dt>Then</dt>
+                <dd>the discrepancy is reported and the stored bytes are not silently replaced</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-nothing-unowned-is-removed" data-change="unchanged">
+              <h4>Nothing unowned is removed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs on a project containing instructions for tools it does not manage</dd>
+                <dt>Then</dt>
+                <dd>those files are left in place</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-instructions-installed-in-a-shared-file-are-confined-to-a-marked-region" data-change="unchanged">
+            <h3>Instructions installed in a shared file are confined to a marked region <span class="hs-id">req-instructions-installed-in-a-shared-file-are-confined-to-a-marked-region</span></h3>
+            <p>Where a tool reads its instructions from a file the contributor also writes, the bootstrap operation SHALL confine what it writes to a region marked at both ends, and on a repeated run SHALL rewrite only that region.</p>
+            <p>Where the region is absent, the operation SHALL add it. Where the file's markers are incomplete, the operation SHALL report that and write nothing to that file, because a region whose end cannot be located cannot be replaced without risking the contributor's own text.</p>
+            <article class="scenario" id="scenario-first-installation-into-a-shared-file" data-change="unchanged">
+              <h4>First installation into a shared file</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project with a shared instructions file containing the contributor's own content</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs into it</dd>
+                <dt>Then</dt>
+                <dd>a marked region is added and the existing content is preserved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-repeated-installation-into-a-shared-file" data-change="unchanged">
+              <h4>Repeated installation into a shared file</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation installs into a shared file that already has its marked region</dd>
+                <dt>Then</dt>
+                <dd>only the content within the region changes, and the file does not grow</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-incomplete-markers" data-change="unchanged">
+              <h4>Incomplete markers</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a shared instructions file whose region is opened but not closed</dd>
+                <dt>When</dt>
+                <dd>the bootstrap operation runs</dd>
+                <dt>Then</dt>
+                <dd>it reports the incomplete region and writes nothing to that file</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-bootstrapping-ends-by-naming-the-command-to-run-next" data-change="unchanged">
+            <h3>Bootstrapping ends by naming the command to run next <span class="hs-id">req-bootstrapping-ends-by-naming-the-command-to-run-next</span></h3>
+            <p>On success, the bootstrap operation SHALL state what was installed, where, and the literal command to invoke next for the tools that were selected.</p>
+            <p>The command named SHALL be the one that begins the lifecycle. A bootstrap is a first run, and naming the stage a contributor reaches last describes work they have not started.</p>
+            <p>Which workflow begins the lifecycle SHALL be a property of the workflow set rather than a value fixed at the point the message is produced, so that the message follows the set when the set changes.</p>
+            <p>Where the selected tools invoke the workflow by different spellings, the operation SHALL state each spelling and the tools it applies to. A single canonical form that no selected tool answers to would teach a command that does not work.</p>
+            <article class="scenario" id="scenario-naming-the-next-command" data-change="unchanged">
+              <h4>Naming the next command</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation succeeds for a single tool</dd>
+                <dt>Then</dt>
+                <dd>the output states the literal command that tool answers to for the workflow that begins the lifecycle</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-tools-with-different-spellings" data-change="unchanged">
+              <h4>Tools with different spellings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation succeeds for tools that invoke the workflow differently</dd>
+                <dt>Then</dt>
+                <dd>each spelling is stated with the tools it applies to</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-named-command-is-the-entry-point" data-change="unchanged">
+              <h4>The named command is the entry point</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation succeeds</dd>
+                <dt>Then</dt>
+                <dd>the workflow it names is the one that begins the lifecycle, not the one that ends it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-tools-selected" data-change="unchanged">
+              <h4>No tools selected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the bootstrap operation succeeds having installed for no tools</dd>
+                <dt>Then</dt>
+                <dd>it reports the project was established and does not name a command no tool answers to</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-declined-or-interrupted-operation-is-distinguishable-from-a-failure" data-change="unchanged">
+            <h3>A declined or interrupted operation is distinguishable from a failure <span class="hs-id">req-a-declined-or-interrupted-operation-is-distinguishable-from-a-failure</span></h3>
+            <p>Where a contributor declines a prompt or interrupts the operation, the program SHALL exit with a status distinct from both success and from a failure to perform the operation. A job that cannot tell a person's refusal from a broken tool cannot report either one correctly.</p>
+            <p>An interrupted prompt SHALL restore the terminal before the program exits.</p>
+            <article class="scenario" id="scenario-declining-at-a-prompt" data-change="unchanged">
+              <h4>Declining at a prompt</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor declines a prompt the bootstrap operation presents</dd>
+                <dt>Then</dt>
+                <dd>the program makes no further change and exits with the status for a cancelled operation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-cancellation-is-not-an-operational-failure" data-change="unchanged">
+              <h4>Cancellation is not an operational failure</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor cancels the operation</dd>
+                <dt>Then</dt>
+                <dd>the exit status differs from the one used when an operation could not run</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-terminal-is-restored" data-change="unchanged">
+              <h4>The terminal is restored</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor interrupts an interactive prompt</dd>
+                <dt>Then</dt>
+                <dd>the terminal is left usable</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-archival-checks-the-versions-of-runbooks-it-publishes" data-change="unchanged">
+            <h3>Archival checks the versions of runbooks it publishes <span class="hs-id">req-archival-checks-the-versions-of-runbooks-it-publishes</span></h3>
+            <p>In addition to checking the project's declared version, archival SHALL compare each runbook's declared version and canonical specification and procedure against its most recent published snapshot. Snapshots SHALL be ordered by recorded project versions, not archive-directory names, and SHALL carry the runbook version and content fingerprints in a form readable without Git.</p>
+            <p>For a runbook with no prior snapshot, publication SHALL require a version greater than <code>0.0.0</code>. Changed canonical documents SHALL require a strictly greater runbook version. An unchanged runbook SHALL be allowed to retain its version or advance it with a matching changelog entry. A downgrade, reusing a version for different canonical content, or a missing version or changelog heading SHALL refuse archival. A malformed existing snapshot SHALL be reported, not treated as an absent predecessor. Adding or editing a run record SHALL NOT require a version increment.</p>
+            <p>Publication SHALL record snapshots in the same archival transaction as the change and project version. A refusal, cancellation, or failed publication SHALL leave the runbook, previous archive, and active change unchanged. Readiness-only archival SHALL apply the same comparison and write nothing. Archival SHALL NOT choose a version increment or write changelog prose for the author.</p>
+            <p>Runbook identity for this comparison SHALL be its directory name, as already required by <code>runbook-authority</code>. A renamed runbook SHALL begin a new publication lineage; former snapshots SHALL remain under the former name. A deleted runbook SHALL not cause deletion of its snapshots. An absent source archive on a receiving machine SHALL NOT prevent preflight or running a carried release; these operations do not publish a release.</p>
+            <article class="scenario" id="scenario-a-changed-procedure-without-a-version-increment" data-change="unchanged">
+              <h4>A changed procedure without a version increment</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a published runbook whose procedure has changed</dd>
+                <dt>When</dt>
+                <dd>archival sees the same runbook version as the last snapshot</dd>
+                <dt>Then</dt>
+                <dd>archival refuses before moving the change or recording any version</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-version-advances" data-change="unchanged">
+              <h4>A version advances</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a changed runbook declares a greater version and its changelog names that version</dd>
+                <dt>Then</dt>
+                <dd>the runbook version gate permits publication and the completed archive records its new snapshot</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-only-a-run-record-changes" data-change="unchanged">
+              <h4>Only a run record changes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's canonical documents are unchanged and a new run record exists</dd>
+                <dt>Then</dt>
+                <dd>archival does not require that runbook's version to advance</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-first-independent-runbook-release" data-change="unchanged">
+              <h4>The first independent runbook release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an existing runbook gains its first checked version and has no earlier snapshot</dd>
+                <dt>Then</dt>
+                <dd>archival requires a version above <code>0.0.0</code> and records the adoption without fabricating older releases</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-archive-directory-is-renamed" data-change="unchanged">
+              <h4>An archive directory is renamed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival selects the latest snapshot after an archive directory was renamed</dd>
+                <dt>Then</dt>
+                <dd>the recorded project versions still determine the same predecessor</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-malformed-prior-snapshot" data-change="unchanged">
+              <h4>A malformed prior snapshot</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's previous snapshot cannot be parsed</dd>
+                <dt>Then</dt>
+                <dd>archival reports the defective record and does not accept the runbook as a first release</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-readiness-only-archival" data-change="unchanged">
+              <h4>Readiness-only archival</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival is asked to check a changed unversioned runbook without performing</dd>
+                <dt>Then</dt>
+                <dd>it reports the same refusal as publication and leaves all files unchanged</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-release-suite-checks-published-runbook-version-history" data-change="unchanged">
+            <h3>The release suite checks published runbook version history <span class="hs-id">req-the-release-suite-checks-published-runbook-version-history</span></h3>
+            <p>The repository release suite SHALL check that every published runbook snapshot has a parseable version and fingerprints, that changed canonical content advances its version, and that each published version has a changelog heading in the published snapshot. Repeated snapshots of an unchanged runbook at one version SHALL count as the same release. Distinct releases for that runbook SHALL have increasing versions, and a lower version SHALL be rejected even when content is unchanged.</p>
+            <p>The suite SHALL also check that each current runbook has a valid version and corresponding changelog heading. It SHALL NOT require unarchived edits to have advanced their version yet. Archives predating adoption of runbook publication snapshots SHALL remain valid without invented history. Once snapshots are introduced, each later archive SHALL explicitly record its runbook inventory, including an empty inventory, so a missing inventory cannot masquerade as old history.</p>
+            <article class="scenario" id="scenario-a-published-version-is-reused-for-changed-content" data-change="unchanged">
+              <h4>A published version is reused for changed content</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release suite reads two successive snapshots of one runbook with different content and the same version</dd>
+                <dt>Then</dt>
+                <dd>it fails and names the runbook and conflicting archives</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-work-in-progress-has-not-chosen-its-next-version" data-change="unchanged">
+              <h4>Work in progress has not chosen its next version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>canonical documents differ from the last snapshot while their current version still has its changelog heading</dd>
+                <dt>Then</dt>
+                <dd>release hygiene passes and the archival readiness check reports the pending version increment</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-inventory-disappears-after-adoption" data-change="unchanged">
+              <h4>An inventory disappears after adoption</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an archive at or after the first recorded adoption release lacks its runbook inventory</dd>
+                <dt>Then</dt>
+                <dd>the release suite reports the missing publication record rather than applying the legacy exemption</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

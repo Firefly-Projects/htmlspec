@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Separate artifact kinds</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Separate artifact kinds</h1>
+        <p>This change replaced the lifecycle status a document declared with a declared artifact kind, one of a closed set of four, and made a change a directory of kinded documents (<em>A document declares its identity and provenance</em>, <em>A change is a directory of kinded documents</em>). It separated each kind's intended content, which guides an author, from its enforced structure, which alone decides validity: the proposal and the design are unconstrained, a task unit in a specification and a tasks document with no task unit are errors, a specification requirement that no verification names is reported as a warning, and the contract rules apply to every kind (<em>Intended content is guidance and enforced structure is validity</em>, <em>A proposal argues value and the tool does not shape it</em>, <em>A design reasons in whatever form the reasoning takes</em>, <em>A tasks document carries the workable items</em>, <em>A specification states the settled contract as built</em>, <em>A specification must not carry task units</em>, <em>A tasks document must carry at least one task</em>, <em>A specification requirement without verification is reported as incomplete</em>, <em>The contract rules apply to every kind</em>). It had initialization take a kind and create a whole change, and made archival an agent's production of the change's specification, which validation checks before the agent applies its contract to the accepted specifications (<em>A single command exposes validate, format, and init</em>, <em>Every synthesis and every contract update is agent-driven</em>, <em>Archival produces the specification and then updates the accepted contract</em>, <em>Archival produces the specification and updates the accepted contract</em>).</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Separate artifact kinds</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-14-separate-artifact-kinds/specs/artifact-kinds/spec.md</code><br><code>openspec/changes/archive/2026-08-14-separate-artifact-kinds/specs/document-template/spec.md</code><br><code>openspec/changes/archive/2026-08-14-separate-artifact-kinds/specs/document-validation/spec.md</code><br><code>openspec/changes/archive/2026-08-14-separate-artifact-kinds/specs/toolchain-packaging/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-artifact-kinds">artifact-kinds</a></li>
+          <li><a href="#hs-document-template">document-template</a></li>
+          <li><a href="#hs-document-validation">document-validation</a></li>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-artifact-kinds">
+          <h2>artifact-kinds</h2>
+          <section class="requirement" id="req-a-change-is-a-directory-of-kinded-documents" data-change="added">
+            <h3>A change is a directory of kinded documents <span class="hs-id">req-a-change-is-a-directory-of-kinded-documents</span></h3>
+            <p>A change SHALL be represented as a directory of separate documents rather than as one document carrying every stage. Each document SHALL declare which artifact it is, and the set of kinds SHALL be closed: <code>proposal</code>, <code>design</code>, <code>tasks</code>, and <code>specification</code>.</p>
+            <p>The separation is the point rather than a filing convention. Each kind has a different job and a different degree of formality, and a single document carrying all of them cannot hold a proposal to a looser standard than a specification.</p>
+            <p>A change SHALL NOT be required to have every kind present. A change may be proposed before it is designed, and designed before its tasks exist.</p>
+            <article class="scenario" id="scenario-a-change-with-four-documents" data-change="added">
+              <h4>A change with four documents</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor reads a change directory</dd>
+                <dt>Then</dt>
+                <dd>the proposal, the design, the tasks, and the specification are separate documents, each declaring its kind</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-that-has-only-been-proposed" data-change="added">
+              <h4>A change that has only been proposed</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose design does not exist yet</dd>
+                <dt>When</dt>
+                <dd>the change is validated</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds, because a missing later stage is a change in progress rather than a defect</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-kind-outside-the-vocabulary" data-change="added">
+              <h4>A kind outside the vocabulary</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document declares a kind that is not one of the four</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because the set of kinds is closed</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-intended-content-is-guidance-and-enforced-structure-is-validity" data-change="added">
+            <h3>Intended content is guidance and enforced structure is validity <span class="hs-id">req-intended-content-is-guidance-and-enforced-structure-is-validity</span></h3>
+            <p>Each artifact kind SHALL have an <em>intended content</em> and an <em>enforced structure</em>, and the two SHALL be distinguishable by a reader. Intended content directs an author or an agent writing the document. Enforced structure is what validation checks, and it is the only thing that decides validity.</p>
+            <p>The canonical mapping SHALL be:</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Kind</th>
+                  <th>Intended content</th>
+                  <th>Enforced structure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <p><code>proposal</code></p>
+                  </td>
+                  <td>
+                    <p>Value, need, scope, alternatives</p>
+                  </td>
+                  <td>
+                    <p>None</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p><code>design</code></p>
+                  </td>
+                  <td>
+                    <p>Architecture and technical reasoning</p>
+                  </td>
+                  <td>
+                    <p>None</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p><code>tasks</code></p>
+                  </td>
+                  <td>
+                    <p>Workable implementation items</p>
+                  </td>
+                  <td>
+                    <p>At least one task unit</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p><code>specification</code></p>
+                  </td>
+                  <td>
+                    <p>Requirements, scenarios, evidence, verification</p>
+                  </td>
+                  <td>
+                    <p>No task units; a requirement with no verification is warned</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p>Where a kind's enforced structure is <code>None</code>, a document of that kind SHALL NOT be invalid for carrying any unit, nor for carrying none. For those kinds, "belongs" in the intended-content column is authoring guidance and never a validity boundary.</p>
+            <p>A unit's appearance in a kind SHALL NOT be prohibited unless this specification names that combination. The only named prohibition is a task unit in a <code>specification</code>.</p>
+            <article class="scenario" id="scenario-guidance-departed-from" data-change="added">
+              <h4>Guidance departed from</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal or a design carries a unit outside its intended content</dd>
+                <dt>Then</dt>
+                <dd>the document is valid, because intended content is guidance rather than a validity boundary</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-enforced-rules" data-change="added">
+              <h4>The enforced rules</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a tasks document or a specification is validated</dd>
+                <dt>Then</dt>
+                <dd>its enforced structure is checked, because later stages and tools consume those two kinds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unnamed-combination" data-change="added">
+              <h4>An unnamed combination</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document carries a unit whose combination with its kind this specification does not name</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about it</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-proposal-argues-value-and-the-tool-does-not-shape-it" data-change="added">
+            <h3>A proposal argues value and the tool does not shape it <span class="hs-id">req-a-proposal-argues-value-and-the-tool-does-not-shape-it</span></h3>
+            <p>A <code>proposal</code> document SHALL be free to use any structure its author finds effective. Its job is to argue value and need, and validation SHALL NOT require any semantic unit in it.</p>
+            <p>Validation SHALL NOT report a proposal for carrying any unit either. An author who finds it clearest to state a prospective requirement while arguing for it SHALL be able to, in prose or as a unit, with no diagnostic.</p>
+            <p>The distinction is between permitted and authoritative. A requirement unit in a proposal SHALL be valid, and it SHALL NOT be treated as part of the contract: the contract is what a <code>specification</code> states. A consumer determining the project's obligations SHALL read specifications and SHALL NOT read a proposal's units as binding. This is what "requirements do not belong in a proposal" means, and it is a statement about authority rather than about validity.</p>
+            <p>Prose SHALL be sufficient. A document of headings, paragraphs, figures, and tables SHALL be a conforming proposal with no unit markup at all.</p>
+            <p>The contract rules that apply to every document — parseable markup, resolvable references, no remote or executable content — SHALL still apply. Freedom of structure is not freedom to ship a document that will not open or render offline.</p>
+            <article class="scenario" id="scenario-a-proposal-of-pure-prose" data-change="added">
+              <h4>A proposal of pure prose</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal contains only headings, paragraphs, and a diagram</dd>
+                <dt>Then</dt>
+                <dd>it is valid, because arguing a case does not require semantic units</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-proposal-that-states-a-draft-requirement" data-change="added">
+              <h4>A proposal that states a draft requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal carries a requirement unit while arguing for it</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about the unit, because the tool does not shape a proposal</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-proposal-carrying-figures" data-change="added">
+              <h4>A proposal carrying figures</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal presents a comparison as a chart and a data flow as a diagram</dd>
+                <dt>Then</dt>
+                <dd>it is valid, because a proposal's freedom of form includes its visualizations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-proposal-that-will-not-open" data-change="added">
+              <h4>A proposal that will not open</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal loads a remote script</dd>
+                <dt>Then</dt>
+                <dd>it is invalid, because the rules that keep every document readable offline are not relaxed by kind</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-design-reasons-in-whatever-form-the-reasoning-takes" data-change="added">
+            <h3>A design reasons in whatever form the reasoning takes <span class="hs-id">req-a-design-reasons-in-whatever-form-the-reasoning-takes</span></h3>
+            <p>A <code>design</code> document SHALL move a proposal's argument into architecture and technical consideration, and SHALL be free to structure that however the reasoning requires.</p>
+            <p>Validation SHALL NOT require any semantic unit in a design, and SHALL NOT report a design for carrying any unit. Architectural reasoning is continuous — the connections between considerations carry as much as the considerations do — and a tool that pushed an author to fragment it into addressable units would destroy the thing being written.</p>
+            <p>A design that records its decisions and risks as units SHALL be valid, and so SHALL a design that reasons the same ground in prose and marks nothing. Which of those an author chooses SHALL be their judgment rather than the tool's.</p>
+            <article class="scenario" id="scenario-a-design-of-prose-alone" data-change="added">
+              <h4>A design of prose alone</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design argues an approach in continuous prose and marks no units</dd>
+                <dt>Then</dt>
+                <dd>it is valid, because a design is not required to fragment its reasoning</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-design-that-marks-its-decisions" data-change="added">
+              <h4>A design that marks its decisions</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design records the decisions it reached and the risks it accepted as units</dd>
+                <dt>Then</dt>
+                <dd>it is valid, and each is individually addressable</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-design-that-reaches-into-a-later-stage" data-change="added">
+              <h4>A design that reaches into a later stage</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design carries a task unit or a requirement unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about it, because designing is where the shape of the work becomes clear</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-tasks-document-carries-the-workable-items" data-change="added">
+            <h3>A tasks document carries the workable items <span class="hs-id">req-a-tasks-document-carries-the-workable-items</span></h3>
+            <p>A <code>tasks</code> document SHALL carry at least one task unit. This is a <strong>completeness</strong> rule rather than a placement rule — it constrains what the document must contain rather than which units are permitted in it — and a tasks document carrying other units alongside its tasks SHALL NOT be reported for them.</p>
+            <p>A task SHALL be individually addressable, so that a state change is a change to one unit rather than to a list.</p>
+            <article class="scenario" id="scenario-tasks-with-states" data-change="added">
+              <h4>Tasks with states</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a tasks document lists items with their states</dd>
+                <dt>Then</dt>
+                <dd>it is valid, and each task is individually addressable</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tasks-document-with-no-tasks" data-change="added">
+              <h4>A tasks document with no tasks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a tasks document carries no task unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports it, because the document enumerates no work</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tasks-document-carries-the-workable-items-a-tasks-document-carrying-other-units" data-change="added">
+              <h4>A tasks document carrying other units</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a tasks document carries its tasks and also a decision unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about the decision, because the rule is completeness rather than placement</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-specification-states-the-settled-contract-as-built" data-change="added">
+            <h3>A specification states the settled contract as built <span class="hs-id">req-a-specification-states-the-settled-contract-as-built</span></h3>
+            <p>A <code>specification</code> document SHALL carry requirement, scenario, evidence, and verification units. These four are retrospective: evidence and verification can only be recorded after building, and a requirement reaches its final wording once the built shape is known.</p>
+            <p>A specification SHALL be the artifact that survives its change. It SHALL describe what the change established rather than what it intended, so a reader of the accepted contract reads what was built.</p>
+            <p>A specification SHALL NOT carry task units, and validation SHALL report one that does as an error. A task that is done is history, and the specification records the obligation the task satisfied rather than the work that satisfied it. This SHALL be the <strong>only</strong> placement rule in the vocabulary, and it is an error because a specification is read by tools and by later changes as the statement of the contract.</p>
+            <p data-field="note">Migration note: what was built does not require a specification to carry those four units. Validation enforces, for a specification, the enforced structure <em>Intended content is guidance and enforced structure is validity</em> gives the kind: a task unit is an error, and a requirement that no verification names is a warning. A specification carrying no evidence or verification unit is therefore valid, and nothing reports the missing units beyond that warning. The change's own documents chose this: its proposal says that exactly three downstream rules apply and that no other unit-and-kind combination is prohibited or reported, and <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §2 lists the rules as built, none of which reports a missing unit. The delta's words are kept as this change archived them. It is still so at <code>139b206</code>.</p>
+            <article class="scenario" id="scenario-a-specification-with-traced-verification" data-change="added">
+              <h4>A specification with traced verification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specification states a requirement, its scenarios, and the verification that checked them</dd>
+                <dt>Then</dt>
+                <dd>it is valid, and a consumer can trace the requirement to the evidence for it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-specification-carrying-tasks" data-change="added">
+              <h4>A specification carrying tasks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specification carries task units</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the specification records obligations rather than the work that satisfied them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-contract-read-without-the-change" data-change="added">
+              <h4>The contract read without the change</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an archived change</dd>
+                <dt>When</dt>
+                <dd>a reader consults only its specification</dd>
+                <dt>Then</dt>
+                <dd>they can determine the obligations the change established without reading its proposal, design, or tasks</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-every-synthesis-and-every-contract-update-is-agent-driven" data-change="added">
+            <h3>Every synthesis and every contract update is agent-driven <span class="hs-id">req-every-synthesis-and-every-contract-update-is-agent-driven</span></h3>
+            <p>Four operations move content between artifacts, and each SHALL be performed by an agent following stated rules and guides rather than by a program that parses one artifact and emits another:</p>
+            <ol>
+              <li>
+                <p>Creating a <strong>design</strong>, using the proposal.</p>
+              </li>
+              <li>
+                <p>Creating <strong>tasks</strong>, using the proposal and the design.</p>
+              </li>
+              <li>
+                <p>Producing the change's <strong>specification</strong>, from the completed change.</p>
+              </li>
+              <li>
+                <p><strong>Updating the project's accepted specifications</strong>, from that specification.</p>
+              </li>
+            </ol>
+            <p>The first three are <strong>synthesis</strong>: they produce a new artifact from artifacts that remain intact and separate. A design does not absorb its proposal — it is informed by it, and both survive as their own documents. Calling these merges would misdescribe the four-document model, in which no stage is folded into another.</p>
+            <p>The fourth is a <strong>merge</strong>, and it is the only one. It applies a change's contract into the project's accepted specifications, which already exist and hold content this change did not touch.</p>
+            <p>The reason all four need an agent follows from the freedom the upstream kinds are given. A proposal and a design may be structured any way their authors chose, so there is no grammar to parse. Each operation is an act of reading: deciding what a paragraph obliges, which existing requirement a new scenario belongs under, and what to leave alone. A parser cannot do that, and one written to try produces artifacts that satisfy every check while misrepresenting their source.</p>
+            <p>The merge SHALL apply partial updates rather than replacing wholesale. Adding one scenario to an existing requirement SHALL be expressible without restating the requirement, and content the merge does not mention SHALL be preserved.</p>
+            <p>The project SHALL supply the rules and guides that direct these merges, as instructions rather than as code. What the project SHALL implement in code is the <strong>checking</strong>: validation reads the merged artifact and reports what is wrong with it. That division is the whole arrangement — judgment where judgment is needed, mechanical checking where a rule is exact.</p>
+            <article class="scenario" id="scenario-synthesis-leaves-its-sources-intact" data-change="added">
+              <h4>Synthesis leaves its sources intact</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an agent creates a design using a change's proposal</dd>
+                <dt>Then</dt>
+                <dd>the proposal survives unchanged as its own document, because a design is informed by a proposal rather than absorbing it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-merging-a-scenario-into-an-existing-requirement" data-change="added">
+              <h4>Merging a scenario into an existing requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a merge adds one scenario to a requirement that already has three</dd>
+                <dt>Then</dt>
+                <dd>the three existing scenarios are preserved without being restated, and the requirement's wording is unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-content-the-merge-does-not-mention" data-change="added">
+              <h4>Content the merge does not mention</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a merge names two of a capability's requirements</dd>
+                <dt>Then</dt>
+                <dd>every other requirement in that capability survives untouched</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-merge-that-cannot-be-derived-by-rule" data-change="added">
+              <h4>A merge that cannot be derived by rule</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design paragraph implies an obligation that it does not state outright</dd>
+                <dt>Then</dt>
+                <dd>an agent decides how to state it, because no rule locates an obligation in prose whose structure was the author's choice</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-tool-checks-rather-than-merges" data-change="added">
+              <h4>The tool checks rather than merges</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a merged artifact is produced</dd>
+                <dt>Then</dt>
+                <dd>validation reports what is wrong with it, and the merge itself was not performed by a parser</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-archival-produces-the-specification-and-then-updates-the-accepted-contract" data-change="added">
+            <h3>Archival produces the specification and then updates the accepted contract <span class="hs-id">req-archival-produces-the-specification-and-then-updates-the-accepted-contract</span></h3>
+            <p>Two documents are in play at archival and there SHALL be exactly two: the <strong>change's specification artifact</strong>, which lives in the change directory, and the <strong>project's accepted specifications</strong>, which live outside it and hold the contract for the whole project. The change's specification and its "as-built specification" SHALL be the same file. A change directory SHALL hold at most one specification artifact.</p>
+            <p>Archival SHALL proceed in this order:</p>
+            <ol>
+              <li>
+                <p>The agent creates the change's specification artifact, or updates it if the change already has one, from that change's proposal, design, and tasks.</p>
+              </li>
+              <li>
+                <p>Validation checks it. Archival SHALL NOT proceed past this point while it reports an error.</p>
+              </li>
+              <li>
+                <p>The agent applies that specification's contract changes to the project's accepted specifications.</p>
+              </li>
+              <li>
+                <p>The change directory is archived intact, with all four of its documents preserved.</p>
+              </li>
+            </ol>
+            <figure data-migration="drawn">
+              <figcaption>The order archival proceeds in, as "Archival produces the specification and then updates the accepted contract" states it: validation of the change's specification gates the step that applies its contract, and while validation reports an error the agent reconciles the diagnostics it reports. Drawn when this document was migrated, from the text beside it.</figcaption>
+              <details>
+                <summary>Diagram source</summary>
+                <pre class="mermaid">flowchart TD
+  S1["Step 1: the agent creates or updates the change's specification artifact"]
+  S2{"Step 2: validation checks it"}
+  R["The agent reconciles the diagnostics it reports"]
+  S3["Step 3: the agent applies its contract changes to the accepted specifications"]
+  S4["Step 4: the change directory is archived intact"]
+  S1 --&gt; S2
+  S2 --&gt;|reports an error| R
+  R --&gt; S2
+  S2 --&gt;|no error| S3
+  S3 --&gt; S4</pre>
+              </details>
+            </figure>
+            <p>The change's documents SHALL survive archival. A reader SHALL be able to open an archived change and find the argument that motivated it, the reasoning that shaped it, the work that delivered it, and the contract it established — which is the whole reason for keeping the stages separate.</p>
+            <p>The specification SHALL be produced by an agent following stated instructions rather than by a deterministic extractor.</p>
+            <p>The reason is that the mapping is judgment rather than transformation, and the freedom the upstream kinds are given is what makes it so. A proposal and a design may be structured any way their authors chose, so no rule can locate the obligation inside them. Deciding which paragraph states one, what its identifier is, and which scenarios express it is reading rather than parsing. An extractor that guessed would emit documents that satisfy every check and misrepresent their source, which is worse than producing nothing.</p>
+            <p>The produced specification SHALL be validated, and the agent SHALL reconcile the diagnostics it reports. This is the division the process depends on: the agent supplies the judgment, and validation checks the artifact.</p>
+            <p>Production SHALL be idempotent in effect. Running it twice against an unchanged change SHALL NOT alter the specification's meaning.</p>
+            <article class="scenario" id="scenario-archival-produces-the-specification" data-change="added">
+              <h4>Archival produces the specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change with completed tasks is archived</dd>
+                <dt>Then</dt>
+                <dd>its specification artifact is created or updated from its other documents, and validated before archival proceeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-accepted-contract-is-updated-after-validation" data-change="added">
+              <h4>The accepted contract is updated after validation</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification validates</dd>
+                <dt>When</dt>
+                <dd>archival continues</dd>
+                <dt>Then</dt>
+                <dd>the agent applies that specification's contract changes to the project's accepted specifications</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-change-survives-archival" data-change="added">
+              <h4>The change survives archival</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reader opens an archived change</dd>
+                <dt>Then</dt>
+                <dd>its proposal, design, tasks, and specification are all present, so the argument and the reasoning are recoverable alongside the contract</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-one-specification-per-change" data-change="added">
+              <h4>One specification per change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change directory is read</dd>
+                <dt>Then</dt>
+                <dd>it holds at most one specification artifact, which is also its as-built record</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-produced-specification-does-not-validate" data-change="added">
+              <h4>The produced specification does not validate</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the produced specification reports an error</dd>
+                <dt>Then</dt>
+                <dd>the agent reconciles it, so an invalid specification is never the archival's output</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-production-is-not-a-parser" data-change="added">
+              <h4>Production is not a parser</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design paragraph implies an obligation that it does not state outright</dd>
+                <dt>Then</dt>
+                <dd>the agent decides how to state it as a requirement, rather than a rule extracting text mechanically</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-producing-twice" data-change="added">
+              <h4>Producing twice</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose artifacts have not changed</dd>
+                <dt>When</dt>
+                <dd>the specification is produced a second time</dd>
+                <dt>Then</dt>
+                <dd>its meaning is unchanged</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-document-template">
+          <h2>document-template</h2>
+          <section class="requirement" id="req-a-document-declares-its-identity-and-provenance" data-change="modified">
+            <h3>A document declares its identity and provenance <span class="hs-id">req-a-document-declares-its-identity-and-provenance</span></h3>
+            <p>Every document SHALL declare, in machine-readable form, the schema version it conforms to, the change or spec it represents, and <del>its lifecycle status</del><ins><strong>which artifact kind it is</strong></ins>. A reviewer SHALL be able to see this information on the page without reading source.</p>
+            <ins>
+              <p>The declared kind replaces the per-document lifecycle status. A stage — exploring, proposed, accepted, implementing, verified, archived — is a property of a <em>change</em> as it moves, not of each file in it: a proposal is a proposal for its whole life, and a specification does not become a proposal again. Declaring a stage per document therefore recorded the wrong thing about the wrong subject, and nothing in validation ever read it.</p>
+            </ins>
+            <ins>
+              <p>A document SHALL NOT declare a lifecycle status. Where a reviewer needs to know how far a change has progressed, the presence of its documents reports it: a change with a specification has been built, and a change with only a proposal has not.</p>
+            </ins>
+            <article class="scenario" id="scenario-schema-version-present" data-change="unchanged">
+              <h4>Schema version present</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a consumer reads a document</dd>
+                <dt>Then</dt>
+                <dd>it can determine which version of the element contract the document targets before parsing its content</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-kind-visible-to-a-reviewer" data-change="added">
+              <h4>Kind visible to a reviewer</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer opens a document</dd>
+                <dt>Then</dt>
+                <dd>the page shows which artifact it is, so a proposal under discussion is not mistaken for an accepted specification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-kind-readable-without-parsing-content" data-change="added">
+              <h4>Kind readable without parsing content</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a consumer reads a document's metadata</dd>
+                <dt>Then</dt>
+                <dd>it can determine the artifact kind before reading the body, so it knows which units to expect</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-missing-schema-version" data-change="unchanged">
+              <h4>Missing schema version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document omits its schema version</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-missing-kind" data-change="added">
+              <h4>Missing kind</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document declares no artifact kind</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because nothing determines which units belong in it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-declaring-a-lifecycle-status" data-change="added">
+              <h4>A document declaring a lifecycle status</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document declares a lifecycle status</dd>
+                <dt>Then</dt>
+                <dd>validation reports it, because a stage describes a change rather than one of its documents</dd>
+              </dl>
+              <p data-field="note">Migration note: what was built does not report this. A document declaring <code>htmlspec-status</code> draws no diagnostic about it: at <code>9c3a3c7</code>, the commit that landed this change, no rule, projection clause, test, or fixture reads that declaration, and no task in this change adds such a report. No later change has fixed it, and it is still in the product at <code>139b206</code>, where a specification declaring <code>htmlspec-status</code> validates with no diagnostic about the declaration.</p>
+            </article>
+            <article class="scenario" id="scenario-status-visible-to-a-reviewer" data-change="removed">
+              <h4>Status visible to a reviewer</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer opens a document representing a proposal under review</dd>
+                <dt>Then</dt>
+                <dd>the page shows its status, so an unapproved proposal is not mistaken for accepted specification</dd>
+              </dl>
+              <p data-field="note">Migration note: this change's delta restated this requirement and left this scenario out, and the merge withdrew it: the accepted specification at the commit that applied this change's contract no longer holds it. The text is the scenario as <a href="../2026-08-10-html-spec/specification.html">2026-08-10-html-spec</a> stated it. The source states no reason.</p>
+            </article>
+          </section>
+        </section>
+        <section id="hs-document-validation">
+          <h2>document-validation</h2>
+          <section class="requirement" id="req-a-specification-must-not-carry-task-units" data-change="added">
+            <h3>A specification must not carry task units <span class="hs-id">req-a-specification-must-not-carry-task-units</span></h3>
+            <p>Validation SHALL reject a <code>specification</code> document carrying a task unit. The report SHALL name the task and say that a specification records the obligation a task satisfied rather than the work that satisfied it.</p>
+            <p>This SHALL be the <strong>only</strong> placement rule in the vocabulary. No other combination of unit and kind SHALL be prohibited, and validation SHALL report nothing about any other. In particular, a requirement unit in a <code>proposal</code>, a task unit in a <code>design</code>, and a decision unit in a <code>tasks</code> document SHALL all be accepted without diagnostic.</p>
+            <p>The rule is an error because a specification is read by tools and by later changes as the statement of the contract, and a task appearing there would offer work as though it were an obligation.</p>
+            <article class="scenario" id="scenario-a-task-in-a-specification" data-change="added">
+              <h4>A task in a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specification carries a task unit</dd>
+                <dt>Then</dt>
+                <dd>validation fails and names the unit</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-in-a-proposal" data-change="added">
+              <h4>A requirement in a proposal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal carries a requirement unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about it, and the document is accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-task-in-a-design" data-change="added">
+              <h4>A task in a design</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design carries a task unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about it, and the document is accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-prose-in-any-kind" data-change="added">
+              <h4>Prose in any kind</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document of any kind carries headings, paragraphs, and figures with no unit markup</dd>
+                <dt>Then</dt>
+                <dd>no placement diagnostic is reported, because prose belongs everywhere</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-tasks-document-must-carry-at-least-one-task" data-change="added">
+            <h3>A tasks document must carry at least one task <span class="hs-id">req-a-tasks-document-must-carry-at-least-one-task</span></h3>
+            <p>Validation SHALL reject a <code>tasks</code> document carrying no task unit. The stage exists to enumerate work, and a tasks document that enumerates none records nothing.</p>
+            <p>This is a <strong>completeness</strong> rule and not a placement rule. It constrains what the document must contain rather than which units are permitted in it, so a tasks document carrying other units alongside its tasks SHALL NOT be reported for them.</p>
+            <article class="scenario" id="scenario-an-empty-tasks-document" data-change="added">
+              <h4>An empty tasks document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a tasks document carries no task unit</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tasks-document-must-carry-at-least-one-task-a-tasks-document-carrying-other-units" data-change="added">
+              <h4>A tasks document carrying other units</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a tasks document carries its tasks and also a decision unit</dd>
+                <dt>Then</dt>
+                <dd>validation reports nothing about the decision, because the rule constrains what must be present rather than what is permitted</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-specification-requirement-without-verification-is-reported-as-incomplete" data-change="added">
+            <h3>A specification requirement without verification is reported as incomplete <span class="hs-id">req-a-specification-requirement-without-verification-is-reported-as-incomplete</span></h3>
+            <p>Validation SHALL report a requirement in a <code>specification</code> document that no verification names. A specification is an as-built record, and a requirement with nothing attesting to it records an intention rather than a result.</p>
+            <p>This SHALL be <strong>advisory</strong> — a warning, never an error. Verification arrives as work completes, so a specification in progress legitimately has requirements not yet verified, and a rule that failed the document would gate the work that produces the verification.</p>
+            <p>A requirement that a verification names SHALL NOT be reported. This rule SHALL apply only to the <code>specification</code> kind: a requirement unit appearing in any other kind SHALL NOT be checked for verification, because it is not part of the contract there.</p>
+            <article class="scenario" id="scenario-a-requirement-with-no-verification" data-change="added">
+              <h4>A requirement with no verification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a specification states a requirement that no verification names</dd>
+                <dt>Then</dt>
+                <dd>validation reports a warning, and the document is still accepted</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-fully-verified-specification" data-change="added">
+              <h4>A fully verified specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>every requirement in a specification is named by a verification</dd>
+                <dt>Then</dt>
+                <dd>nothing is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-verification-is-not-a-gate" data-change="added">
+              <h4>Verification is not a gate</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor validates a specification whose verification is not yet recorded</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds, because recording verification is the work in progress rather than a violation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unverified-requirement-in-a-proposal" data-change="added">
+              <h4>An unverified requirement in a proposal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal carries a requirement unit that no verification names</dd>
+                <dt>Then</dt>
+                <dd>nothing is reported, because a proposal's units are not part of the contract</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-contract-rules-apply-to-every-kind" data-change="added">
+            <h3>The contract rules apply to every kind <span class="hs-id">req-the-contract-rules-apply-to-every-kind</span></h3>
+            <p>The rules that make a document readable, parseable, and offline SHALL apply to all four kinds without relaxation. Freedom of structure at the proposal and design kinds SHALL NOT extend to markup that cannot be parsed unambiguously, a reference that resolves to nothing, a remote or executable dependency, or an asset reference that disagrees with the bytes beside it.</p>
+            <p>A kind decides how much <em>shape</em> validation requires. It SHALL NOT decide whether a document opens.</p>
+            <article class="scenario" id="scenario-a-proposal-with-a-remote-script" data-change="added">
+              <h4>A proposal with a remote script</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal loads a script from outside the project</dd>
+                <dt>Then</dt>
+                <dd>validation fails, exactly as it does for any other kind</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-design-with-a-dangling-reference" data-change="added">
+              <h4>A design with a dangling reference</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design references an identifier that no unit in the document declares</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because a pointer to nothing is a defect at every stage</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-proposal-that-needs-error-recovery" data-change="added">
+              <h4>A proposal that needs error recovery</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal's markup requires the parser to recover</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because a document with more than one reading has no determinate content whatever its kind</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-a-single-command-exposes-validate-format-and-init" data-change="modified">
+            <h3>A single command exposes validate, format, and init <span class="hs-id">req-a-single-command-exposes-validate-format-and-init</span></h3>
+            <p>The project SHALL provide one command-line program offering, at minimum, a subcommand to validate documents, a subcommand to format documents, and a subcommand to initialize a new document or project. Each subcommand SHALL be usable without configuration in a conforming project.</p>
+            <ins>
+              <p>Initialization SHALL take the artifact kind of the document to create, and SHALL produce a document already shaped for that kind. A <code>proposal</code> SHALL be initialized as a page of prose with no unit scaffolding at all, and a <code>specification</code> SHALL be initialized with the units its kind expects.</p>
+            </ins>
+            <ins>
+              <p>The asymmetry is the requirement. A proposal that arrived full of empty requirement scaffolding would push its author toward stating a contract at the stage meant for arguing about one, and the emptiest possible starting point is the correct one for a document whose structure is the author's to choose.</p>
+            </ins>
+            <ins>
+              <p>Initialization SHALL be able to create a whole change — the directory and its documents — rather than one document at a time, because a change is a directory of kinded documents.</p>
+            </ins>
+            <article class="scenario" id="scenario-validating-a-project" data-change="unchanged">
+              <h4>Validating a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand in a project with no arguments</dd>
+                <dt>Then</dt>
+                <dd>every document in the project is validated and the results are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-validating-one-document" data-change="unchanged">
+              <h4>Validating one document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand against a single file path</dd>
+                <dt>Then</dt>
+                <dd>only that document is validated</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-proposal" data-change="added">
+              <h4>Initializing a proposal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor initializes a document of the proposal kind</dd>
+                <dt>Then</dt>
+                <dd>it opens as a readable page of prose, with no semantic unit scaffolding to fill in</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-specification" data-change="added">
+              <h4>Initializing a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor initializes a document of the specification kind</dd>
+                <dt>Then</dt>
+                <dd>it arrives with the units that kind expects, because its shape is not the author's to invent</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-change" data-change="added">
+              <h4>Initializing a change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor initializes a new change</dd>
+                <dt>Then</dt>
+                <dd>its directory is created with the documents that stage needs, each declaring its kind and each valid immediately</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unknown-subcommand" data-change="unchanged">
+              <h4>Unknown subcommand</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes a subcommand that does not exist</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error, lists the available subcommands, and exits with a failure status</dd>
+              </dl>
+              <p data-field="note">Migration note: this change's delta restated this requirement and left this scenario out, and the author's merge kept it: the accepted specification at the commit that applied this change's contract still holds it, so it is stated unchanged.</p>
+            </article>
+            <article class="scenario" id="scenario-discoverable-help" data-change="unchanged">
+              <h4>Discoverable help</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests help</dd>
+                <dt>Then</dt>
+                <dd>every subcommand and option is documented in the output</dd>
+              </dl>
+              <p data-field="note">Migration note: this change's delta restated this requirement and left this scenario out, and the author's merge kept it: the accepted specification at the commit that applied this change's contract still holds it, so it is stated unchanged.</p>
+            </article>
+          </section>
+          <section class="requirement" id="req-archival-produces-the-specification-and-updates-the-accepted-contract" data-change="added">
+            <h3>Archival produces the specification and updates the accepted contract <span class="hs-id">req-archival-produces-the-specification-and-updates-the-accepted-contract</span></h3>
+            <p>The command surface SHALL provide an archival operation that produces a change's specification artifact from its proposal, design, and tasks, validates it, and then applies its contract changes to the project's accepted specifications.</p>
+            <p>There SHALL be one specification artifact per change, and it SHALL be the same file as that change's as-built record. The project's accepted specifications SHALL be a separate destination outside the change directory.</p>
+            <p>The production SHALL be performed by an agent following stated instructions rather than by a deterministic extractor in the program. The program's part SHALL be the checking: it validates the produced document and reports what is wrong with it. That division is deliberate — the judgment of what a design's prose obliges is not derivable by rule, while whether the result conforms is exactly what a validator determines.</p>
+            <p>The project SHALL NOT ship a command that parses a proposal or a design and emits requirements. Those kinds carry no imposed structure, so there is nothing for such a command to parse reliably, and one written anyway would produce a specification that passes every check and misstates what the change established.</p>
+            <p>Archival SHALL NOT complete while the produced specification reports an error. A change archived with an invalid specification would leave the accepted contract in a state the project's own tools reject.</p>
+            <article class="scenario" id="scenario-archiving-a-completed-change" data-change="added">
+              <h4>Archiving a completed change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor archives a change whose tasks are complete</dd>
+                <dt>Then</dt>
+                <dd>its specification artifact is produced, validated, applied to the project's accepted specifications, and archived alongside the change's other documents</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-change-s-documents-survive" data-change="added">
+              <h4>The change's documents survive</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>archival completes</dd>
+                <dt>Then</dt>
+                <dd>the change's proposal, design, tasks, and specification are all still readable in the archive</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-archiving-with-an-invalid-specification" data-change="added">
+              <h4>Archiving with an invalid specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the produced specification reports an error</dd>
+                <dt>Then</dt>
+                <dd>archival does not complete, and the error is reported for reconciliation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-tool-does-not-extract-requirements-itself" data-change="added">
+              <h4>The tool does not extract requirements itself</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the archival operation runs</dd>
+                <dt>Then</dt>
+                <dd>the program validates the specification an agent wrote rather than deriving requirements from the source documents by rule</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each unit below, and each verification after them, summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links, and the record is the authority. Where a verification rests on a test the record names without showing what it asserts, its method says the test was read at <code>9c3a3c7</code>, the commit that landed this change.</p>
+          </aside>
+          <section class="evidence" id="evidence-measured-claims" data-change="added" data-refs="req-a-document-declares-its-identity-and-provenance req-a-specification-must-not-carry-task-units req-a-tasks-document-must-carry-at-least-one-task req-a-specification-requirement-without-verification-is-reported-as-incomplete req-a-proposal-argues-value-and-the-tool-does-not-shape-it req-archival-produces-the-specification-and-then-updates-the-accepted-contract req-archival-produces-the-specification-and-updates-the-accepted-contract req-a-change-is-a-directory-of-kinded-documents">
+            <h3>Evidence for the measured claims <span class="hs-id">evidence-measured-claims</span></h3>
+            <p>Task 10.6's measurements, each with the command that produced it. At <code>9fec61d</code>, the commit before this change, 69 of 80 tracked <code>.html</code> files declared <code>htmlspec-status</code>; after group 9, none did, and 81 of 93 declared <code>htmlspec-kind</code>, the other 12 being the 10 parse-error fixtures and two repository pages. The record notes that the design's denominator of 82 was two high. Eleven documents, each built to trip one rule from one unit, show which rules fire from which units, among them <code>review/unverified-requirement</code> firing in a specification and reporting nothing in a proposal. A proposal carrying all seven semantic units drew no diagnostic under <code>--strict</code>, and a specification with unverified requirements was reported and accepted under <code>--strict</code>. Nine tests in <code>crates/htmlspec-cli/tests/archive.rs</code> drive the archival check through the built binary, one of them asserting that a proposal and a design filled with <code>SHALL</code> and <code>MUST</code> prose produce no specification. The record also summarizes the five mutation runs and reports this change authored in the project's own format, with the four things the vocabulary made awkward. <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-mutation-testing" data-change="added" data-refs="req-a-specification-must-not-carry-task-units req-a-specification-states-the-settled-contract-as-built req-a-tasks-document-must-carry-at-least-one-task req-a-tasks-document-carries-the-workable-items req-a-specification-requirement-without-verification-is-reported-as-incomplete req-a-document-declares-its-identity-and-provenance">
+            <h3>Mutation testing <span class="hs-id">evidence-mutation-testing</span></h3>
+            <p>Task 10.3's raw output: five deliberate defects, and every test that failed for each. Making the placement rule, <code>kind/task-in-specification</code>, report nothing failed 5 tests; inverting the completeness rule, <code>kind/no-tasks</code>, failed 17; scoping the advisory rule, <code>review/unverified-requirement</code>, to the wrong kinds failed 8; making <code>review/*</code> promotable, so that <code>--strict</code> gates an in-progress specification, failed 7; and no longer requiring <code>kind</code> in the schema failed 41. <a href="evidence/mutation-testing.txt"><code>evidence/mutation-testing.txt</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-proposal" data-change="added" data-refs="req-a-change-is-a-directory-of-kinded-documents req-a-proposal-argues-value-and-the-tool-does-not-shape-it">
+            <h3>Separate a change into four artifact kinds <span class="hs-id">evidence-proposal</span></h3>
+            <p>This change's proposal as authored by hand in the project's own format under task 10.5, declaring the <code>proposal</code> kind and contract <code>0.1.0</code>: headings and paragraphs with no unit markup, no figure, and no table, closing "Nothing above is a requirement." <a href="evidence/documents/proposal.html"><code>evidence/documents/proposal.html</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-design" data-change="added" data-refs="req-a-change-is-a-directory-of-kinded-documents req-a-design-reasons-in-whatever-form-the-reasoning-takes">
+            <h3>Separate a change into four artifact kinds: design <span class="hs-id">evidence-design</span></h3>
+            <p>This change's design as authored by hand in the project's own format under task 10.5, declaring the <code>design</code> kind and contract <code>0.1.0</code>: prose, with five decisions and three risks marked as units, two of the risks referencing the decisions they rest on, and a section, "What the split of the template cost", that no Markdown document of this change holds. <a href="evidence/documents/design.html"><code>evidence/documents/design.html</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-tasks" data-change="added" data-refs="req-a-change-is-a-directory-of-kinded-documents req-a-tasks-document-carries-the-workable-items">
+            <h3>Separate a change into four artifact kinds: tasks <span class="hs-id">evidence-tasks</span></h3>
+            <p>This change's tasks as authored by hand in the project's own format under task 10.5, declaring the <code>tasks</code> kind and contract <code>0.1.0</code>: one task unit for each of the ten groups, nine done and one in progress, and a dropped task, "Land the migration in stages", with its reason, followed by "What the vocabulary made awkward", the record of the four findings task 10.5 asked for. <a href="evidence/documents/tasks.html"><code>evidence/documents/tasks.html</code></a></p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-task-in-a-specification-is-reported-and-named" data-change="added" data-outcome="passed" data-refs="scenario-a-task-in-a-specification scenario-a-specification-carrying-tasks">
+            <h3>A task in a specification is reported and named <span class="hs-id">verify-a-task-in-a-specification-is-reported-and-named</span></h3>
+            <p data-field="method">A mutation run recorded in <a href="evidence/mutation-testing.txt"><code>evidence/mutation-testing.txt</code></a>: with the placement rule made to report nothing, 5 tests failed, among them <code>rules::kinds::tests::a_task_in_a_specification_is_reported_and_named</code> and <code>a_specification_carrying_a_task_stops_archival</code>. Read at <code>9c3a3c7</code>, the first validates a specification carrying one task unit with the kind rules and asserts one <code>kind/task-in-specification</code> diagnostic, located at the task, reported as an error, whose message speaks of the obligation. <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §6 records the second: a task unit in the specification stops archival.</p>
+          </section>
+          <section class="verification" id="verify-a-tasks-document-with-no-task-is-reported" data-change="added" data-outcome="passed" data-refs="scenario-a-tasks-document-with-no-tasks scenario-an-empty-tasks-document">
+            <h3>A tasks document with no task is reported <span class="hs-id">verify-a-tasks-document-with-no-task-is-reported</span></h3>
+            <p data-field="method">A mutation run recorded in <a href="evidence/mutation-testing.txt"><code>evidence/mutation-testing.txt</code></a>: with the completeness rule inverted, 17 tests failed, among them <code>rules::kinds::tests::a_tasks_document_with_no_task_is_reported</code>. Read at <code>9c3a3c7</code>, it validates a tasks document holding one paragraph and no task unit with the kind rules and asserts one <code>kind/no-tasks</code> diagnostic, reported as an error, located at the document. <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §2 also records <code>kind/no-tasks</code> firing from such a document through the built binary.</p>
+          </section>
+          <section class="verification" id="verify-a-tasks-document-carrying-other-units-is-reported-for-none-of-them" data-change="added" data-outcome="partial" data-refs="scenario-a-tasks-document-carries-the-workable-items-a-tasks-document-carrying-other-units scenario-a-tasks-document-must-carry-at-least-one-task-a-tasks-document-carrying-other-units">
+            <h3>A tasks document carrying other units is reported for none of them <span class="hs-id">verify-a-tasks-document-carrying-other-units-is-reported-for-none-of-them</span></h3>
+            <p data-field="method">The same mutation run: with the completeness rule inverted, <code>rules::kinds::tests::a_tasks_document_carrying_other_units_is_reported_for_none_of_them</code> failed, as <a href="evidence/mutation-testing.txt"><code>evidence/mutation-testing.txt</code></a> records. Read at <code>9c3a3c7</code>, it validates a tasks document carrying a task unit, a decision unit, and a requirement unit with the kind rules alone, and asserts that no diagnostic is reported.</p>
+            <p data-field="unchecked">validation reports nothing about the decision</p>
+          </section>
+          <section class="verification" id="verify-a-proposal-carrying-every-unit-draws-no-diagnostic" data-change="added" data-outcome="partial" data-refs="scenario-a-proposal-that-states-a-draft-requirement scenario-a-requirement-in-a-proposal scenario-guidance-departed-from scenario-an-unnamed-combination">
+            <h3>A proposal carrying every unit draws no diagnostic <span class="hs-id">verify-a-proposal-carrying-every-unit-draws-no-diagnostic</span></h3>
+            <p data-field="method">A run of the built binary recorded in <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §4: a proposal carrying all seven semantic units, a requirement among them, validated with <code>--strict</code>, printed "no diagnostics: the document is accepted". The record says the change states were removed from the document, so that the claim is about kind alone.</p>
+            <p data-field="unchecked">a design carries a unit outside its intended content</p>
+          </section>
+          <section class="verification" id="verify-an-unverified-requirement-in-a-proposal-reports-nothing" data-change="added" data-outcome="passed" data-refs="scenario-an-unverified-requirement-in-a-proposal">
+            <h3>An unverified requirement in a proposal reports nothing <span class="hs-id">verify-an-unverified-requirement-in-a-proposal-reports-nothing</span></h3>
+            <p data-field="method">Two documents validated through the built binary, recorded in <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §2: the same requirement fires <code>review/unverified-requirement</code> in a specification and reports nothing in a proposal.</p>
+          </section>
+          <section class="verification" id="verify-strict-mode-does-not-gate-an-unverified-specification" data-change="added" data-outcome="passed" data-refs="scenario-a-requirement-with-no-verification scenario-verification-is-not-a-gate">
+            <h3>Strict mode does not gate an unverified specification <span class="hs-id">verify-strict-mode-does-not-gate-an-unverified-specification</span></h3>
+            <p data-field="method">A run of the built binary recorded in <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §5: <code>htmlspec validate fixtures/dogfood/dark-theme-specification.html --strict</code> printed two <code>review/unverified-requirement</code> warnings and the summary line "0 errors, 3 warnings: the document is accepted".</p>
+          </section>
+          <section class="verification" id="verify-an-invalid-specification-stops-archival" data-change="added" data-outcome="passed" data-refs="scenario-archiving-with-an-invalid-specification">
+            <h3>An invalid specification stops archival <span class="hs-id">verify-an-invalid-specification-stops-archival</span></h3>
+            <p data-field="method">Tests that drive the built binary over change directories created by <code>init --change</code>, recorded in <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §6: a dangling reference stops archival, and the message says archival does not proceed. Read at <code>9c3a3c7</code>, the test, <code>an_invalid_specification_stops_archival</code>, asserts a failing exit status, <code>refs/unresolved</code> in the report, and "does not proceed" on standard error.</p>
+          </section>
+          <section class="verification" id="verify-an-invalid-specification-is-never-archivals-output" data-change="added" data-outcome="partial" data-refs="scenario-the-produced-specification-does-not-validate">
+            <h3>An invalid specification is never archival's output <span class="hs-id">verify-an-invalid-specification-is-never-archivals-output</span></h3>
+            <p data-field="method">The same test, recorded in <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §6 and read at <code>9c3a3c7</code>: archival does not proceed while the specification reports an error.</p>
+            <p data-field="unchecked">the agent reconciles it</p>
+          </section>
+          <section class="verification" id="verify-the-archive-operation-ships-no-requirement-extractor" data-change="added" data-outcome="passed" data-refs="scenario-the-tool-does-not-extract-requirements-itself">
+            <h3>The archive operation ships no requirement extractor <span class="hs-id">verify-the-archive-operation-ships-no-requirement-extractor</span></h3>
+            <p data-field="method">Tests that drive the built binary, recorded in <a href="evidence/measured-claims.md"><code>evidence/measured-claims.md</code></a> §6: a valid specification lets archival proceed; <code>the_archive_operation_ships_no_requirement_extractor</code> asserts that a change whose proposal and design are filled with <code>SHALL</code> and <code>MUST</code> prose produces no specification; and <code>the_archive_check_reads_only_the_specification</code> asserts that the command resolves one file by name, names neither upstream document, and calls <code>read_to_string</code> exactly once.</p>
+          </section>
+          <section class="verification" id="verify-init-change-creates-a-valid-change-directory" data-change="added" data-outcome="passed" data-refs="scenario-initializing-a-change">
+            <h3>Initializing a change creates a valid change directory <span class="hs-id">verify-init-change-creates-a-valid-change-directory</span></h3>
+            <p data-field="method">A mutation run recorded in <a href="evidence/mutation-testing.txt"><code>evidence/mutation-testing.txt</code></a>: <code>commands::tests::init_change_creates_a_valid_change_directory</code> failed when the completeness rule was inverted and when <code>kind</code> was no longer required. Read at <code>9c3a3c7</code>, it initializes a change and asserts that <code>proposal.html</code>, <code>design.html</code>, and <code>tasks.html</code> are written, that each declares the kind it is named for and shows it on the page, that each validates, and that no specification is written.</p>
+          </section>
+          <section class="verification" id="verify-a-document-declaring-no-kind-is-invalid" data-change="added" data-outcome="passed" data-refs="scenario-missing-kind">
+            <h3>A document declaring no kind is invalid <span class="hs-id">verify-a-document-declaring-no-kind-is-invalid</span></h3>
+            <p data-field="method">A mutation run recorded in <a href="evidence/mutation-testing.txt"><code>evidence/mutation-testing.txt</code></a>: with <code>kind</code> no longer required by the schema, 41 tests failed, among them <code>rules::schema::tests::a_missing_required_property_is_rejected</code>. Read at <code>9c3a3c7</code>, it validates a document carrying no <code>htmlspec-kind</code> declaration and asserts that the document is not accepted and that the report names <code>kind</code>.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Record how a risk was settled</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Record how a risk was settled</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Record how a risk was settled</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-08-record-how-a-risk-was-settled/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>See <a href="proposal.html">proposal.md</a> for why. The approach depends on this shape of the current system:</p>
+          <ul>
+            <li><strong>A risk's shape lives in the schema and the projection, not in a requirement.</strong> The schema's <code>risk</code> definition requires <code>unit</code>, <code>id</code>, <code>change</code>, <code>title</code>, <code>statement</code>, and <code>mitigation</code>. Projection section 4.7 reads: "<code>statement</code> projects from the single unmarked paragraph, and <code>mitigation</code> from a <code>data-field="mitigation"</code> paragraph. A risk missing either one is invalid." document-schema names <code>risk</code> only in its class vocabulary, its prefix table, its reference rule, and the scenario that lists the units a <code>renamed-from</code> paragraph may not sit in.</li>
+            <li><strong>Every closed per-unit value is an attribute with a row in projection section 2.</strong> The rows are <code>data-change</code> (default <code>unchanged</code>), <code>data-state</code> (task only), <code>data-status</code> (decision only), and <code>data-outcome</code> (verification only). Section 2.2 ignores every other <code>data-*</code> attribute. A per-unit attribute on the wrong unit is ignored silently too: see <a href="evidence/the-measurement-2026-09-30.md">the evidence, variant E</a>.</li>
+            <li><strong>A conditional requirement is a validator rule.</strong> The schema's <code>task</code> description says it "keeps to a conservative subset with no conditional composition", and that subset is what lets <code>typify</code> generate types from it. So <code>rules/relations.rs</code> owns <code>schema/missing-reason</code> (a dropped task states why) and <code>schema/missing-successor</code> (a superseded decision names its replacement). Each finds its enumerated value in the schema by a stem, through <code>status_named</code>, and <code>every_conditional_rule_finds_its_state</code> fails if a stem stops matching.</li>
+            <li><strong>The model is permissive on purpose.</strong> <code>model.rs</code> holds enumerated values as <code>String</code>, so an unrecognized value survives projection and the validator reports it as <code>schema/*</code>. A defaulted attribute is filled by the projection from a constant: <code>DEFAULT_CHANGE_STATE</code>, which <code>the_default_change_state_matches_the_schema</code> ties to the schema's <code>changeState.default</code>.</li>
+            <li><strong>The formatter writes the contract's attributes first.</strong> <code>LEADING</code> in <code>crates/htmlspec-format/src/attributes.rs</code> is <code>class</code>, <code>id</code>, <code>data-change</code>, <code>data-state</code>, <code>data-status</code>, <code>data-outcome</code>, <code>data-superseded-by</code>, <code>data-field</code>, <code>data-refs</code>. Every other attribute sorts after them, alphabetically.</li>
+            <li><strong>The conformance base is the specification template, frozen.</strong> <code>generate_fixtures.rs</code> renders the template, then rewrites its asset addresses and its declared version back to the committed form. The reason is in its own header: re-rendering "would also rewrite all 37 committed inputs, whose exact bytes are what each fixture pins." The template's example risk, with its sentence "A risk with no mitigation is a worry.", appears in 68 committed fixture inputs, 64 when this was written and four more from the changes earlier in this set.</li>
+            <li><strong>The stylesheet shows one badge per heading.</strong> Change state, task state, decision status, and verification outcome all write the heading's <code>::after</code>, with equal specificity. So a decision shows its status in place of its change state.</li>
+          </ul>
+        </section>
+        <section id="hs-goals-non-goals">
+          <h2>Goals / Non-Goals</h2>
+          <p><strong>Goals:</strong></p>
+          <ul>
+            <li>A risk states whether it was mitigated or accepted, and the model carries the answer.</li>
+            <li>An accepted risk is valid with no mitigation. A mitigated risk is held to its mitigation, as every risk is now.</li>
+            <li>Every document that validates today still validates, with the same meaning.</li>
+          </ul>
+          <p><strong>Non-Goals:</strong></p>
+          <ul>
+            <li><strong>Judging a response.</strong> The validator checks that a mitigated risk states a mitigation. It cannot check that an accepted risk ought to be borne, just as it cannot check that a decision ought to be accepted.</li>
+            <li><strong>A history of a risk's response.</strong> <code>data-change</code> already records what a change did to the unit.</li>
+            <li><strong>Rendering the response.</strong> See decision 9.</li>
+            <li><strong>Migrating the archive's risks.</strong> That is <code>migrate-into-the-extended-vocabulary</code>.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-two-values-and-an-absent-response-is-mitigated" data-change="added" data-status="accepted">
+            <h3>1. Two values, and an absent response is <code>mitigated</code> <span class="hs-id">decision-two-values-and-an-absent-response-is-mitigated</span></h3>
+            <p><code>data-response</code> takes <code>mitigated</code> or <code>accepted</code>. A risk with no attribute is <code>mitigated</code>.</p>
+            <p data-field="rationale">The default is what every existing risk already is. All 83 risk units in tracked HTML and all 11 in the staged migration carry a mitigation (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 3</a>). With this default, no document changes meaning or validity, which is what a minor bump promises.</p>
+            <p data-field="rationale"><strong>Considered: a third value, <code>partial</code>.</strong> Rejected. No settlement word in the archive says "partly" (<a href="evidence/the-measurement-2026-09-30.md">evidence, section 4</a>). The two nearest are "Partially mitigated by the visible-source fallback" and the runbook's "Partly held down and honestly not fully". Both are mitigations that say how far they reach, and stating that reach is what a mitigation paragraph is for. "Mitigated, but not fully" is true of nearly every mitigation. A third value would ask every author to judge a boundary that nothing reads.</p>
+            <p data-field="rationale"><strong>Considered: <code>disproved</code> or <code>retired</code>.</strong> The reader of <code>conform-generated-frontmatter-names</code> describes a risk "disproved by task 4". The reader of <code>pass-the-description-through</code> describes one "retired for one of the two unconfirmed tools". Rejected. A risk that a check disproved is mitigated by that check, and its mitigation paragraph names the check. A risk that a later change retires is <code>modified</code> or <code>removed</code> in that change, which <code>data-change</code> already expresses.</p>
+            <p data-field="rationale"><strong>Considered: no default, so every risk declares one.</strong> Rejected. It would invalidate all 83 risks in this repository and all 11 staged, to record a fact each of them already states by carrying a mitigation.</p>
+            <p data-field="rationale"><strong>Considered: infer the response from whether a mitigation paragraph is present.</strong> Rejected by the measurement. Five archived risks are accepted and name a partial measure, and one of them is the only risk the migration drafted as a unit. Its reader said it directly: "'accepted' cannot be carried as 'has no mitigation paragraph'".</p>
+            <p data-field="note">Migration note: the 83 risk units in tracked HTML are the count of 2026-09-30. On 2026-10-08, before the build, task 1.2 recounted 87, every one with a mitigation, and corrected the figure in this design's <em>Migration Plan</em>, not in this decision (<a href="tasks.html#task-1-2">task 1.2</a>).</p>
+          </section>
+          <section class="decision" id="decision-an-accepted-risk-may-carry-a-mitigation-and-needs-no-reason-field" data-change="added" data-status="accepted" data-refs="req-a-decision-records-its-outcome-and-rationale">
+            <h3>2. An accepted risk may carry a mitigation, and needs no reason field <span class="hs-id">decision-an-accepted-risk-may-carry-a-mitigation-and-needs-no-reason-field</span></h3>
+            <p>An <code>accepted</code> risk is valid with or without a mitigation paragraph. A paragraph it carries projects into <code>mitigation</code>, as it does now, and states the part of the risk that something does hold down.</p>
+            <p data-field="rationale">The precedent is a decision's status. document-schema's "<a href="../../../specs/document-schema/spec.html#req-a-decision-records-its-outcome-and-rationale">A decision records its outcome and rationale</a>" requires something extra of only one status: a <code>superseded</code> decision must name its replacement, because that value points at something the reader needs. <code>accepted</code> needs nothing beyond what every decision carries. The same split holds for a risk. <code>mitigated</code> points at a measure, so the measure is required. <code>accepted</code> is complete in itself.</p>
+            <p data-field="rationale"><strong>Considered: forbid a mitigation on an accepted risk.</strong> Rejected. The five measured risks that are accepted with a partial measure could not be written, and one of them is the migration's only drafted risk unit.</p>
+            <p data-field="rationale"><strong>Considered: require a <code>data-field="reason"</code> paragraph on an accepted risk</strong>, as a dropped task requires one. Rejected, for three reasons:</p>
+            <ul>
+              <li>
+                <p data-field="rationale">Every accepted risk in the archive says why right beside the word, or points to the subsection that does. Two examples: "Accepted: rewording is cheap, and the alternative direction of failure is…", and "Accepted, matching <code>specs/</code> and <code>archive/</code>." A required separate paragraph would split those sentences. That is the shape that already keeps most of the migration's risks as prose.</p>
+              </li>
+              <li>
+                <p data-field="rationale">A presence check cannot tell a reason from the word "Accepted." An author with no reason would write the word, and the rule would pass.</p>
+              </li>
+              <li>
+                <p data-field="rationale">A task's reason carries something its title cannot: the title says what the work was, and only the reason says why it stopped. A risk's statement already says how the change can fail. The judgment that the failure is tolerable belongs beside it, in the statement or in a note.</p>
+              </li>
+            </ul>
+            <p data-field="rationale"><strong>Considered: an optional <code>reason</code> field.</strong> Rejected. It adds vocabulary that nothing reads, and <code>data-field="note"</code> already carries prose that is not a field.</p>
+            <p data-field="note"><strong>The contributor should confirm this decision.</strong> It is the one place where this change chooses less structure than a precedent in the contract, the dropped task, would suggest.</p>
+            <p data-field="note">Migration note: task 9.1 records the confirmation. It was settled with the contributor on 2026-10-08 that an accepted risk needs no separate reason field, because its statement and its notes say why it is borne (<a href="tasks.html#task-9-1">task 9.1</a>).</p>
+          </section>
+          <section id="hs-decision-3">
+            <h3>3. The response is an attribute, <code>data-response</code>, not a field paragraph</h3>
+            <p><code>record-a-renamed-requirement</code> chose a paragraph over a <code>data-renamed-from</code> attribute, because an attribute is invisible in the rendered page. That reasoning was about free text: a previous heading is prose a reader has to see. A response is a closed value, and every closed per-unit value in this contract is an attribute: <code>data-state</code>, <code>data-status</code>, and <code>data-outcome</code>. A paragraph would carry a closed value as free text, and the projection would have to normalize and match it.</p>
+            <p><strong>The attribute is <code>data-response</code>, and the field is <code>response</code>.</strong> "Response" is the usual project-management term for how a team answers a risk, whether by accepting, mitigating, avoiding, or transferring it. This contract takes two of those answers. Checked with grep on 2026-10-01, the word names nothing in <code>openspec/specs</code>, <code>crates/htmlspec-schema</code>, <code>crates/htmlspec-assets/instructions</code>, or <code>assets/template-*.html</code>. Elsewhere in <code>crates/</code>, it means what a command answers. <code>crates/htmlspec-cli/src/preflight/host.rs</code> uses it for a scripted test runner's responses and the Nix evaluator's response shape, and one comment in <code>crates/htmlspec-cli/src/exit.rs</code> uses it in passing. Neither is a domain term. The vendored third-party bundles under <code>assets/sha256-*/</code> use the word in their own code.</p>
+            <p><strong>Considered: <code>data-disposition</code>, with a <code>disposition</code> field.</strong> This design used that name until the contributor rejected it on 2026-10-01. In project-migration, "disposition" already names the fate of a migration plan entry: converted, folded, carried, or dropped, written as <code>&lt;p data-field="note"&gt;disposition: converted&lt;/p&gt;</code> in a plan task. The migration instructions are exactly where both meanings meet. <code>migrate-into-the-extended-vocabulary</code> had to write "a risk's <code>data-disposition</code>" at every mention to keep them apart. The evidence's scratch documents were written under the old name, and <a href="evidence/the-measurement-2026-09-30.md">its note of 2026-10-01</a> says so.</p>
+          </section>
+          <section class="decision" id="decision-the-model-always-carries-the-response-as-a-string" data-change="added" data-status="accepted" data-refs="req-the-element-contract-is-published-as-a-machine-readable-schema">
+            <h3>4. The model always carries the response, as a string <span class="hs-id">decision-the-model-always-carries-the-response-as-a-string</span></h3>
+            <p><code>Risk</code> gains <code>response: String</code>, always serialized. The projection fills it from <code>data-response</code>, trimmed per section 2.3. When the attribute is absent, it fills it from <code>DEFAULT_RISK_RESPONSE</code>, which is <code>"mitigated"</code>. A test asserts that the constant equals the schema's <code>response.default</code>, as <code>the_default_change_state_matches_the_schema</code> does for <code>change</code>. The schema requires <code>response</code>, as it requires <code>change</code>. The projection always supplies it, so a consumer never has to apply the default itself.</p>
+            <p data-field="rationale"><strong>Considered: leave <code>response</code> out of the model when the HTML declares none.</strong> Rejected. A consumer would have to restate the default, which document-schema's "<a href="../../../specs/document-schema/spec.html#req-the-element-contract-is-published-as-a-machine-readable-schema">The element contract is published as a machine-readable schema</a>" says tools do not do. The model would also spell one fact two ways.</p>
+            <p data-field="rationale"><strong>Considered: a Rust enum for the value.</strong> Rejected, for the reason the header of <code>model.rs</code> gives. An enum would reject <code>data-response="partial"</code> inside the projection, and the author would lose the <code>schema/invalid</code> diagnostic that names the permitted values.</p>
+          </section>
+          <section id="hs-decision-5">
+            <h3>5. A mitigated risk without a mitigation is <code>schema/missing-mitigation</code></h3>
+            <p>The schema drops <code>mitigation</code> from the risk's <code>required</code>. A new rule in <code>rules/relations.rs</code>, <code>mitigated_risks_state_a_mitigation</code>, reports each risk whose response is <code>mitigated</code> and whose <code>mitigation</code> is absent. It finds the value <code>mitigated</code> with <code>status_named("mitigat", "definitions/risk/properties/response")</code>, and <code>every_conditional_rule_finds_its_state</code> gains that stem. <code>mitigated</code> joins the schema-owned literals in <code>tests/schema_rust_split.rs</code>. <code>accepted</code> does not, because it is also a decision status and a word this project's prose uses constantly.</p>
+            <p>The message names both remedies. It also says that a risk that declares no response is <code>mitigated</code>, because the author most likely to meet this rule wrote the risk before the attribute existed.</p>
+            <p>A risk with an unrecognized response gets <code>schema/invalid</code> from the enumeration, and nothing from this rule. One defect gets one diagnostic.</p>
+            <p><strong>Considered: JSON Schema <code>if</code>/<code>then</code>.</strong> Rejected. The schema keeps to a subset <code>typify</code> can generate from, and both existing conditional requirements are validator rules for that reason.</p>
+            <p><strong>The rule identifier changes for a document that is already invalid.</strong> Variant A in <a href="evidence/the-measurement-2026-09-30.md">the evidence</a> fails today with <code>schema/invalid</code>, "mitigation is a required property". After this change it fails with <code>schema/missing-mitigation</code>. document-validation's "<a href="../../../specs/document-validation/spec.html#req-diagnostics-are-actionable-and-machine-readable">Diagnostics are actionable and machine-readable</a>" asks that "the same violation" keep its identifier across versions. The violation is not quite the same. The old rule was that every risk states a mitigation, and that rule no longer exists. The <code>0.2.0</code> contract made the same kind of move: a <code>renamed-from</code> paragraph outside a requirement stopped being a section 4.0 fault and got a rule of its own. The CHANGELOG entry names this move, as the <code>0.2.0</code> entry named that one.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, the rule also finds <code>accepted</code>, with the stem <code>accept</code> from the same schema path, because its message names <code>data-response="accepted"</code> as a remedy and reads that value from the schema rather than restating it. It runs only when both values are found, and <code>every_conditional_rule_finds_its_state</code> was given both stems (<a href="evidence/what-the-implementation-revealed-2026-10-08.md"><code>evidence/what-the-implementation-revealed-2026-10-08.md</code></a>, "Built beside the design"). After the review, that test names no stems of its own: each value the conditional rules read is a constant holding its stem and its schema field, which the rule and the test both read (<a href="tasks.html#task-9-1">task 9.1</a>).</p>
+            </aside>
+          </section>
+          <section class="decision" id="decision-a-response-on-another-unit-is-ignored" data-change="added" data-status="accepted">
+            <h3>6. A response on another unit is ignored <span class="hs-id">decision-a-response-on-another-unit-is-ignored</span></h3>
+            <p>Section 2's new row reads <code>data-response</code> (risk only), like <code>data-state</code> (task only). On any other unit it projects nowhere. Measured today, <code>data-state</code> and <code>data-outcome</code> on a decision are ignored with no diagnostic (<a href="evidence/the-measurement-2026-09-30.md">evidence, variant E</a>).</p>
+            <p data-field="rationale"><strong>Considered: an error for a <code>data-response</code> outside a risk</strong>, as a <code>renamed-from</code> paragraph outside a requirement is an error. Rejected here, because the same gap exists for all four per-unit attributes, and a rule for one would leave the other three. The proposal records it under "Not in this change".</p>
+          </section>
+          <section id="hs-decision-7">
+            <h3>7. The formatter writes the response with the other state attributes</h3>
+            <p><code>data-response</code> joins <code>LEADING</code> after <code>data-outcome</code>. <code>LEADING</code> holds "the ones the contract reads", and after this change the contract reads this one. No existing document carries the attribute, so no formatted file moves.</p>
+          </section>
+          <section id="hs-decision-8">
+            <h3>8. The template shows the attribute, and the conformance base keeps its old risk</h3>
+            <p>The specification template's example risk becomes:</p>
+            <pre><code>&lt;section class="risk" id="risk-example" data-change="added" data-response="mitigated"&gt;
+  &lt;h3&gt;The example risk &lt;span class="hs-id"&gt;risk-example&lt;/span&gt;&lt;/h3&gt;
+  &lt;p&gt;State what could go wrong, in one unmarked paragraph.&lt;/p&gt;
+  &lt;p data-field="mitigation"&gt;State what holds it down. A risk this change bears as it stands declares &lt;code&gt;data-response="accepted"&lt;/code&gt; instead, needs no paragraph like this one, and says in its statement why it is borne.&lt;/p&gt;
+&lt;/section&gt;</code></pre>
+            <p>The attribute is written even though it is the default. A template is where an author learns the vocabulary, and nobody uses an attribute they never see. The old sentence, "A risk with no mitigation is a worry.", is false once an accepted risk exists.</p>
+            <p><code>generate_fixtures.rs</code> rewrites the base's risk back to its committed form, beside the addresses and the version it already rewrites. Its own header gives the reason: regenerating must not rewrite committed inputs whose bytes each fixture pins. Without this step, 68 committed inputs would change a paragraph that pins no rule, and the base would carry a newer attribute under its frozen <code>0.1.0</code>. The new fixtures make their own edits, and declare the current version through <code>declaring_the_current_version</code>.</p>
+            <p><strong>Considered: a second, accepted example risk in the template.</strong> Rejected. Every generated fixture would gain a unit, and one sentence in the existing example teaches the same thing.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> As built, the generator replaces the template's whole risk element, from its opening tag to its closing one, with the committed text, rather than the two edits this change made, so a later edit to the template's risk is frozen out too (<a href="evidence/what-the-implementation-revealed-2026-10-08.md"><code>evidence/what-the-implementation-revealed-2026-10-08.md</code></a>, "Built beside the design", and <a href="tasks.html#task-6-1">task 6.1</a>).</p>
+            </aside>
+          </section>
+          <section id="hs-decision-9">
+            <h3>9. The stylesheet does not render the response in this change</h3>
+            <p>A heading carries one <code>::after</code> badge, and a decision's status already replaces its change-state badge. A response badge would hide a risk's change state in the same way, and that is a presentation decision of its own. Rendering it would also need new content-addressed revisions of both stylesheets, a retained revision of each, and a new address in every template, which is what <code>record-a-renamed-requirement</code> decision 7 did. A risk's mitigation paragraph carries no label today either, so a reader already tells a risk's statement from its mitigation by the prose. After this change the page reads as it does now, and the response is in the markup and the model.</p>
+          </section>
+        </section>
+        <section id="hs-risks-trade-offs">
+          <h2>Risks / Trade-offs</h2>
+          <ul>
+            <li><strong>[Two authors settle one partly held-down risk differently.]</strong> One writes <code>mitigated</code>, with a paragraph that names the gap. The other writes <code>accepted</code>, with a paragraph that names the partial measure. → The response records the change's answer to the risk, not how much of it remains. The answer is <code>mitigated</code> when it is the measure, and <code>accepted</code> when it is to bear the risk. The only thing that reads the value is the rule that decides whether a mitigation is required, and both versions satisfy it.</li>
+            <li><strong>[Accepting a risk becomes a way to avoid writing a mitigation.]</strong> → An accepted risk says, in its markup and in its statement, that the change bears it, and a reviewer reads that. The validator cannot judge whether bearing it is right, just as it cannot judge a decision's status.</li>
+            <li><strong>[A document that is already invalid reports a different rule.]</strong> → See decision 5. The CHANGELOG entry names the move, and the new message names both remedies.</li>
+            <li><strong>["Accepted" gains a second meaning.]</strong> <code>accepted</code> is also a decision status, and "the accepted specifications" is this project's name for its contract. → Each value is read only from its own unit's attribute, and the new requirement defines the risk's. In four instruction bodies, the phrase "the risks accepted" becomes "the risks and how each was settled", so an agent does not read it as a filter on the new value.</li>
+            <li><strong>[A consumer assumed that every risk carries <code>mitigation</code>.]</strong> → The field is absent only on a risk that declares <code>accepted</code>. <code>response</code> is always in the model, so a consumer can read it first. While the contract is <code>0.x</code>, a minor release may make a required field conditional.</li>
+            <li><strong>[A downgrade is quiet for an accepted risk that carries a mitigation.]</strong> An older toolchain ignores the attribute, so it reads such a risk as mitigated, with no diagnostic (<a href="evidence/the-measurement-2026-09-30.md">evidence, variant C</a>). → An accepted risk without a mitigation fails loudly on an older toolchain (<a href="evidence/the-measurement-2026-09-30.md">variant B</a>). In the quiet case the risk loses its label, and every sentence the author wrote is kept.</li>
+          </ul>
+        </section>
+        <section id="hs-migration-plan">
+          <h2>Migration Plan</h2>
+          <p>This change is additive for documents. No existing document carries <code>data-response</code>. All 87 risks in tracked HTML (83 when this was written) and all 11 in the staged migration project as <code>mitigated</code>, with the mitigation they already state. Each validates, and its model gains one field.</p>
+          <p><strong>The contract moves one minor version</strong> from the version that is current when this change lands. It was <code>0.2.0</code> when this was written and <code>0.4.0</code> when the change was built, and the two changes below this one in the set, <code>record-a-task-done-differently</code> and <code>record-a-partial-verification</code>, move it to <code>0.5.0</code> and <code>0.6.0</code>. So this change moves it from <code>0.6.0</code> to <code>0.7.0</code>. The new version joins the <code>schemaVersion</code> enumeration, and every earlier version stays in it.</p>
+          <p><strong>The toolchain release is a minor increment, expected to be 0.27.0.</strong> The contributor confirms the increment at the release task.</p>
+          <p><strong>The release runbook is not edited.</strong> Its two risks go on validating as <code>mitigated</code>. Declaring <code>accepted</code> there is a later release of the runbook, which moves <code>runbooks/release/VERSION</code>. That file stays at <code>0.1.0</code> in this change, so this archive's <code>runbooks.json</code> is byte-identical to the previous archive's.</p>
+          <p>Rollback is a revert. A document that adopted <code>accepted</code> without a mitigation then fails with <code>schema/invalid</code>, which is loud.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

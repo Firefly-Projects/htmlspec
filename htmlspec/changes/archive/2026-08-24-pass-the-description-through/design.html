@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Pass the description through</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Pass the description through</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Pass the description through</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-24-pass-the-description-through/design.md</code></dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-context">
+          <h2>Context</h2>
+          <p>Two functions write every file with a command surface. <code>write_skills</code> (<code>crates/htmlspec-cli/src/install.rs:88</code>) and <code>write_commands</code> (<code>:124</code>) each build frontmatter with a <code>format!</code> and append <code>workflow.body</code> unchanged. <code>write_region</code> (<code>:174</code>) writes the <code>AGENTS.md</code> region and has no invocation at all.</p>
+          <p><a href="evidence/the-loss-2026-08-22.md">The frontmatter each currently writes</a>:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Writer</th>
+                <th>Fields</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>write_skills</code></td>
+                <td><code>name</code>, <code>description</code>, <code>allowed-tools</code>, <code>license</code>, <code>metadata.generatedBy</code></td>
+              </tr>
+              <tr>
+                <td><code>write_commands</code></td>
+                <td><code>description</code>, <code>allowed-tools</code>, <code>generatedBy</code></td>
+              </tr>
+            </tbody>
+          </table>
+          <p>Neither writes <code>argument-hint</code>. Neither body contains a placeholder. The loss is therefore in two places at once — the frontmatter that declares an argument exists, and the body that consumes it — and fixing one without the other produces a file that either declares an argument it ignores or consumes one no tool told it to expect.</p>
+        </section>
+        <section id="hs-goals">
+          <h2>Goals</h2>
+          <ul>
+            <li>The text after an invocation reaches the agent, for every workflow and every tool with a command surface.</li>
+            <li>An absent argument reaches the agent as absent, so the "ask when nothing was described" behavior survives.</li>
+            <li>The obligation is checked against produced files rather than against the table it derives from.</li>
+          </ul>
+        </section>
+        <section id="hs-non-goals">
+          <h2>Non-Goals</h2>
+          <ul>
+            <li>Positional arguments, flag parsing, or a second placeholder. See the proposal.</li>
+            <li>Any change to a body's existing guidance.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section id="hs-the-hint-belongs-in-workflows-not-in-the-writers">
+            <h3>The hint belongs in <code>WORKFLOWS</code>, not in the writers</h3>
+            <p><code>Workflow</code> gains one field:</p>
+            <pre><code>/// What a contributor may type after the invocation, as a tool's `argument-hint`.
+///
+/// A property of the workflow because what it takes differs per workflow: `new` takes a
+/// description of the work, `apply` takes the change to work on. One string shared by all
+/// seven would describe none of them.
+pub argument_hint: &amp;'static str,</code></pre>
+            <p>The alternative was a single constant in <code>install.rs</code>, and it is wrong for the reason the module comment on <code>tools.rs</code> already gives about <code>Delivery</code>: a property with one value per row belongs in the row. <code>project-bootstrap</code> also requires the workflow set to be data, so that covering another stage is an entry in the table. A hint hard-coded in the writer would make a new workflow's hint a change to a function.</p>
+            <p>Every hint is optional in the tools' sense — <code>[description]</code> rather than <code>&lt;description&gt;</code> — because no workflow should fail on a bare invocation. <code>new</code> asks what the work is; <code>explore</code> opens with the idea unspecified; <code>apply</code> and <code>verify</code> operate on the change they find. Marking one required would make a tool reject an invocation the guidance handles correctly.</p>
+          </section>
+          <section class="decision" id="decision-the-placeholder-goes-at-the-top-of-the-body-under-a-heading-of-its-own" data-change="added" data-status="accepted">
+            <h3>The placeholder goes at the top of the body, under a heading of its own <span class="hs-id">decision-the-placeholder-goes-at-the-top-of-the-body-under-a-heading-of-its-own</span></h3>
+            <p>Each instruction body gains an opening section:</p>
+            <pre><code>## What you were asked
+
+$ARGUMENTS
+
+Where that is empty, nothing was passed and this workflow's own guidance on an absent
+input applies.</code></pre>
+            <p data-field="rationale"><strong>Why the top.</strong> The body is a document an agent reads in order, and the input it is acting on is the first thing it needs. Placed at the bottom, an agent reads seven sections of procedure before learning what it was asked to do.</p>
+            <p data-field="rationale"><strong>Why a heading rather than an inline substitution.</strong> The alternative was weaving the token into a sentence — "Start a change for $ARGUMENTS" — which reads well when an argument is present and badly when it is not: "Start a change for ." A heading with the substitution on its own line degrades to an empty section, which is legible either way.</p>
+            <p data-field="rationale"><strong>Why the sentence about emptiness.</strong> Task 4.5 of the archived change and this change's third Non-Goal both require a bare invocation to keep asking. An agent meeting an empty section without that sentence has to infer whether the input was lost or never given, and the recorded refusal is what an agent does when it suspects the former. Naming it removes the ambiguity.</p>
+            <p data-field="note">Migration note: as built, the seven bodies do not share the sentence shown above. Each follows <code>$ARGUMENTS</code> with its own account of an empty input: <code>new</code>, <code>ff</code>, and <code>explore</code> say that nothing was passed and ask, and <code>apply</code>, <code>verify</code>, <code>continue</code>, and <code>archive</code> say that nothing was passed and infer the change from the context, saying which one they picked. <code>new</code> and <code>ff</code> also open by saying to read the text as the description of the work. No record this change carries shows the bodies. They are the source at commit <code>4f2f3e7</code>, under <code>crates/htmlspec-assets/instructions/</code>. The design was not amended for it.</p>
+          </section>
+          <section id="hs-the-check-asserts-against-files-following-the-two-checks-already-there">
+            <h3>The check asserts against files, following the two checks already there</h3>
+            <p><code>install.rs</code> has a stated convention for this, in the comment on <code>every_generated_name_is_loadable</code>: assert against the files an install produces rather than against <code>WORKFLOWS</code>, "because the value is assembled by a format string at write time." <code>generated_files_record_the_generating_version</code> does the same for <code>generatedBy</code>.</p>
+            <p>An argument placeholder is assembled by the same format strings, so it gets the same treatment: install for every tool in <code>TOOLS</code>, read back every skill and command file, and assert both that the frontmatter declares a hint and that the body carries the placeholder. A test over <code>WORKFLOWS</code> would pass while a writer that forgot to emit the field shipped.</p>
+            <p>The <code>AGENTS.md</code> region is excluded, and by construction rather than by a special case: <code>Installed.regions</code> is a separate field from <code>skills</code> and <code>commands</code>, so a test that iterates the latter two never reaches it.</p>
+            <aside data-migration="note">
+              <p><strong>Migration note.</strong> The build also added a test over <code>WORKFLOWS</code>, <code>every_workflow_declares_an_optional_argument</code> in <code>crates/htmlspec-assets/src/instructions.rs</code>, beside the file-level test this section describes. It asserts that every workflow declares a hint, that no hint is required in form, and that every body carries the placeholder, and it is the only check that a hint is optional in form. <a href="evidence/the-checks-failing-2026-08-22.md"><code>evidence/the-checks-failing-2026-08-22.md</code></a> records both tests failing before the repair, and <a href="tasks.html#task-5-1">task 5.1</a> states the test as its deviation. The design was not amended for it.</p>
+            </aside>
+          </section>
+          <section class="risk" id="risk-a-tool-that-does-not-substitute" data-change="added" data-response="accepted">
+            <h3>Risk: a tool that does not substitute <span class="hs-id">risk-a-tool-that-does-not-substitute</span></h3>
+            <p data-field="note"><strong>Accepted, with the reasoning stated because it is the one thing this change cannot verify from inside the program.</strong></p>
+            <p>Substitution happens in the tool, not here. <a href="evidence/the-loss-2026-08-22.md">Claude Code and Codex are confirmed</a> — Claude Code's own example plugin uses <code>$ARGUMENTS</code> in both a command and a skill and documents the two as "loaded identically", and a Codex plugin command branches on its contents. Cursor and Pi are not confirmed by an artifact on this machine.</p>
+            <p data-field="note">The failure mode if one does not substitute is that a literal <code>$ARGUMENTS</code> appears in the body an agent reads. That is visible rather than silent — an agent seeing the token unexpanded knows something was meant to be there — which is strictly better than the current behavior, where the text vanishes and the agent cannot tell it was ever sent. So the risk is worth taking on an unconfirmed tool: the bad outcome is a legible artifact rather than a lost input.</p>
+            <p data-field="note"><code>$ARGUMENTS</code> is also the only spelling worth trying. It is what both confirmed tools use, and a per-tool placeholder would put a tool-specific string into a body the contract requires to be tool-independent — the <code>instructions.rs</code> module comment states that a skill and a prompt "differ in their header and not in what they say to do."</p>
+            <p data-field="note">Migration note: Pi was later observed to substitute. <a href="evidence/pi-substitutes-2026-08-24.md"><code>evidence/pi-substitutes-2026-08-24.md</code></a>, recorded for tasks 6.2, 6.3, and 6.6 against the installed <code>htmlspec 0.4.0</code>, records that Pi showed no literal <code>$ARGUMENTS</code> and acted on the description, and that Cursor remains unobserved. The design was not amended for it.</p>
+          </section>
+          <section id="hs-why-this-repository-s-own-installed-files-are-regenerated-in-the-same-change">
+            <h3>Why this repository's own installed files are regenerated in the same change</h3>
+            <p><code>0.2.0</code> and <code>0.3.0</code> both regenerated all 35 files, and <code>0.3.0</code> did it to fix exactly the fault of this repository dogfooding text its own source had removed. The same applies here: this repository's <code>.claude/commands/htmlspec/new.md</code> is what an agent working on html-spec itself reads, so leaving it without the placeholder would leave the project unable to use the fix it shipped.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <ul>
+            <li><strong>A tool that does not substitute <code>$ARGUMENTS</code>.</strong> Accepted above; the failure is visible rather than silent.</li>
+            <li><strong>An argument long enough to crowd the body.</strong> Not mitigated. A description is prose a contributor typed on one line, and the bodies are already thousands of words, so a proportional risk does not exist.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

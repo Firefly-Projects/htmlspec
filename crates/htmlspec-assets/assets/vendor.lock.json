@@ -1,0 +1,176 @@
+{
+  "comment": [
+    "The pinned browser-side runtime. Every entry records the library version, the",
+    "exact source the bytes came from, and the content hash of both the published",
+    "archive and the extracted file.",
+    "",
+    "Committing third-party build output is unpleasant, and this file is the answer:",
+    "`cargo test -p htmlspec-assets` verifies the committed bytes against these",
+    "hashes offline, and the Nix check re-fetches each archive from its pinned source",
+    "and verifies that too. So the committed copy is auditable rather than trusted.",
+    "",
+    "The archive hash covers the npm tarball as published. The file hash covers the",
+    "single file extracted from it, which is what a browser loads. Both are SHA-256,",
+    "lowercase hex.",
+    "",
+    "The file hash is also the file's address. Each asset is stored at",
+    "`assets/sha256-<first 16 hex characters of the file hash>/<file name>`, and a",
+    "document references that path. So identical bytes occupy one location and",
+    "differing bytes occupy distinct ones, which is what lets a project hold one copy",
+    "of each library while an archived document keeps rendering with the bytes it was",
+    "authored against.",
+    "",
+    "The address is truncated for readability, because the full 64 characters would be",
+    "paid in every reference in every document and in every diff. Truncation is safe",
+    "only because this store is closed: every entry appears here with its full digest,",
+    "the checks compare the full digest rather than the address, and a truncated-form",
+    "collision between two entries fails the suite instead of silently aliasing one to",
+    "the other. The `sha256-` prefix names the algorithm at every reference site, so",
+    "changing algorithms is a visible change rather than an ambiguous one.",
+    "",
+    "`own` records this project's own assets. They have no upstream to re-fetch, so",
+    "they carry no archive and the repository's history is their provenance. They are",
+    "recorded here because they need addresses by the same rule, and because a",
+    "stylesheet nothing pins is how a stale copy shipped undetected once already.",
+    "",
+    "`retained` records revisions of an own asset that a newer revision replaced and",
+    "that stay committed at their addresses, because documents in this repository name",
+    "them and a document keeps the revision it was authored against. They are pinned",
+    "for the reason above, and they are neither embedded nor written into a new",
+    "project: `init` stores the revision `own` records. A revision is replaced by",
+    "adding the new bytes at their own address, moving the `own` digest to them, and",
+    "adding the old digest here, never by overwriting a stored file."
+  ],
+  "own": [
+    {
+      "path": "htmlspec.css",
+      "sha256": "03627137bcbb81c95fb5e2f2534e1921285b776c91674a1609ddd84caee60f73"
+    },
+    {
+      "path": "htmlspec-print.css",
+      "sha256": "04ac9a24fc436a87453396ca192c53fed47dbdc75abe22013fe31998f92c3c98"
+    },
+    {
+      "path": "htmlspec.js",
+      "sha256": "84427613110957a7ce62d57f76e1b36ed2f3707121d4dda90982aff9a2dcc2fa"
+    },
+    {
+      "path": "template-proposal.html",
+      "sha256": "7899ee48c9b5f6dd01d2eb5f25579693d4914fc5010807f4959ca5dd139c2d24",
+      "stored": false,
+      "note": "Pinned but not addressed. A template is the document `init` produces rather than an asset copied into a project, so it has no stored path. One template per artifact kind that init can produce: the shape a document of that kind arrives with is part of the contract, and the shapes differ by kind on purpose."
+    },
+    {
+      "path": "template-design.html",
+      "sha256": "e429775680251b3e46659a34355ccc2ce05ff77548ead0ef481d62e3626b71d0",
+      "stored": false,
+      "note": "Pinned but not addressed. A template is the document `init` produces rather than an asset copied into a project, so it has no stored path. One template per artifact kind that init can produce: the shape a document of that kind arrives with is part of the contract, and the shapes differ by kind on purpose."
+    },
+    {
+      "path": "template-tasks.html",
+      "sha256": "e44af2c4db76f47e08729e20d320cc2015b6b91f5d5bce63fffcce32fa983083",
+      "stored": false,
+      "note": "Pinned but not addressed. A template is the document `init` produces rather than an asset copied into a project, so it has no stored path. One template per artifact kind that init can produce: the shape a document of that kind arrives with is part of the contract, and the shapes differ by kind on purpose."
+    },
+    {
+      "path": "template-specification.html",
+      "sha256": "bed709fa51fb3440f2628b5f30c5fff96d2d3d5506ed740209c14e63b4b461d6",
+      "stored": false,
+      "note": "Pinned but not addressed. A template is the document `init` produces rather than an asset copied into a project, so it has no stored path. One template per artifact kind that init can produce: the shape a document of that kind arrives with is part of the contract, and the shapes differ by kind on purpose."
+    }
+  ],
+  "retained": [
+    {
+      "path": "htmlspec.css",
+      "sha256": "ebf35a36fe4dc1a784462654c5075f2e15a2e93ac7a995853876ed8e44dbbce2",
+      "note": "Superseded by the revision `own` records, which labels a verification's `partial` outcome and is otherwise these bytes. Kept at its address, as every superseded revision is: `init` in releases 0.23.0 to 0.25.0 stored it in each project it set up, and those projects' documents name it. No document this repository tracks names it."
+    },
+    {
+      "path": "htmlspec.css",
+      "sha256": "aac8967609f80d9f90b9a92adff22e495a5d4863618b5b12a3cf89c9b08453d1",
+      "note": "Superseded by the revision `own` records, which draws a change's inserted and deleted words by shape and announces them. Kept at its address because the documents this repository's migration out of OpenSpec has staged name it, 109 of them, and they keep the revision they were written against once promoted."
+    },
+    {
+      "path": "htmlspec.css",
+      "sha256": "e4f5de7cecc4f691484d2a6067685ab89c8e87b4f6cbf7e473ccbbb4d9fb1d9b",
+      "note": "Superseded by the revision `own` records, which labels a renamed requirement's previous heading. Kept at its address because this repository's runbook and archived documents name it."
+    },
+    {
+      "path": "htmlspec-print.css",
+      "sha256": "0350261bb566616721cbbc015c17d2c9df7271398627c7e113f770d2823f8b8a",
+      "note": "Superseded by the revision `own` records, which labels a renamed requirement's previous heading. Kept at its address because this repository's runbook and archived documents name it."
+    }
+  ],
+  "libraries": [
+    {
+      "name": "mermaid",
+      "version": "11.16.1",
+      "purpose": "Renders diagram sources. No Rust implementation of its grammar exists, so a document's diagram source is only shallowly validated; see the viz rules.",
+      "archive": {
+        "url": "https://registry.npmjs.org/mermaid/-/mermaid-11.16.1.tgz",
+        "sha256": "ebd9885111092c78cefc79a76f6c1dc34ed5b834b02ae8f338227ce79c003de4"
+      },
+      "files": [
+        {
+          "path": "vendor/mermaid.min.js",
+          "archive_member": "package/dist/mermaid.min.js",
+          "sha256": "18327bef70d96fb505fe7287d9f6a7362ebf07ff6576ddfaffb1a06f3e1a2954"
+        }
+      ]
+    },
+    {
+      "name": "vega",
+      "version": "6.3.1",
+      "purpose": "The rendering engine Vega-Lite compiles to. Required by vega-embed rather than used directly.",
+      "archive": {
+        "url": "https://registry.npmjs.org/vega/-/vega-6.3.1.tgz",
+        "sha256": "2ab5c6693179c60d8a2d6e1a3f2c11926e6b2c2b22e8bf12abf7a8ce8cdbf413"
+      },
+      "files": [
+        {
+          "path": "vendor/vega.min.js",
+          "archive_member": "package/build/vega.min.js",
+          "sha256": "70bfdc84b15f11f3fb3469a24af03314b3222dece4f2c8615e542f183f8f775a"
+        }
+      ]
+    },
+    {
+      "name": "vega-lite",
+      "version": "6.4.3",
+      "purpose": "Renders chart specifications. Its published JSON Schema is vendored alongside the library, because the validator checks every embedded specification against it rather than merely parsing the JSON.",
+      "archive": {
+        "url": "https://registry.npmjs.org/vega-lite/-/vega-lite-6.4.3.tgz",
+        "sha256": "24260f85e6f5bfe1069505f7c5c2b9863181ac413ef1030746f0a80c93991ce5"
+      },
+      "files": [
+        {
+          "path": "vendor/vega-lite.min.js",
+          "archive_member": "package/build/vega-lite.min.js",
+          "sha256": "35a9821df838825b05a6a73e9414b58747a1b18321583858ed903c66393a5c7e"
+        },
+        {
+          "path": "vendor/vega-lite-schema.json",
+          "archive_member": "package/build/vega-lite-schema.json",
+          "sha256": "4f11cd379b7cac0ddee17eefea84c028bd41619ace28778acf843c009e43abd2",
+          "note": "126 of this schema's $ref values embed TypeScript type names containing <, > and |, which are illegal in a URI reference, so draft-07 metaschema validation rejects the schema before any chart is validated. The validator slugifies the definition names and the refs pointing at them before compiling. See the viz rules."
+        }
+      ]
+    },
+    {
+      "name": "vega-embed",
+      "version": "7.1.0",
+      "purpose": "Mounts a compiled Vega-Lite specification into an element. Used so a figure renders into a sibling of its source rather than over it.",
+      "archive": {
+        "url": "https://registry.npmjs.org/vega-embed/-/vega-embed-7.1.0.tgz",
+        "sha256": "a4db01011ad87ed847b83c3b47538f08145ec269bb3c2bff8e35ff692e0f0d58"
+      },
+      "files": [
+        {
+          "path": "vendor/vega-embed.min.js",
+          "archive_member": "package/build/vega-embed.min.js",
+          "sha256": "c36254270219eee58fb9b1d954decad954fb07bfc9ab780c5d4401bd445cd50c"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="0.1.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>The html-spec foundation change</title>
+  </head>
+  <body>
+    <header>
+      <h1>The html-spec foundation change</h1>
+      <p>The settled contract this change established: its requirements, the decisions behind them, the evidence measured, the risks accepted, and the verification recorded. Hand-authored with no tooling. The work that delivered it is in the tasks document beside this one.</p>
+    </header>
+    <main>
+      <h2>Requirements</h2>
+      <section class="requirement" id="req-recovery-free-parse" data-change="added">
+        <h3>Markup must be deterministically parseable</h3>
+        <p>A conforming document MUST produce zero recovered parse errors. Validation MUST reject a document whose interpretation depends on parser error recovery.</p>
+        <p>The parser is pinned exactly, and every permitted recovery MUST carry a project-owned diagnostic code justified by a fixture.</p>
+        <article class="scenario" id="scenario-benign-document-clean" data-change="added">
+          <h4>A conforming document reports nothing</h4>
+          <dl>
+            <dt>Given</dt>
+            <dd>A document with a short doctype, a head, a title, and one requirement.</dd>
+            <dt>When</dt>
+            <dd>The validator parses it.</dd>
+            <dt>Then</dt>
+            <dd>No recovery is reported and the document is accepted.</dd>
+          </dl>
+        </article>
+        <article class="scenario" id="scenario-unmapped-recovery-fatal" data-change="added">
+          <h4>An unmapped recovery is fatal</h4>
+          <dl>
+            <dt>Given</dt>
+            <dd>A parser message the enumeration does not name.</dd>
+            <dt>When</dt>
+            <dd>The validator classifies it.</dd>
+            <dt>Then</dt>
+            <dd>It reports <code>parse/unmapped-recovery</code> and fails, rather than ignoring the message.</dd>
+          </dl>
+        </article>
+      </section>
+      <section class="requirement" id="req-schema-source-of-truth" data-change="added">
+        <h3>The element contract is published as a machine-readable schema</h3>
+        <p>The projected model MUST be published as a JSON Schema that is the single source of truth for the vocabulary, the required structure, the identifier prefixes, and the permitted attribute values.</p>
+        <p>The schema alone MUST NOT be treated as the complete public contract, because it describes the model and not the HTML that produces it.</p>
+        <article class="scenario" id="scenario-third-party-reads-contract" data-change="added">
+          <h4>A third party reads the contract</h4>
+          <dl>
+            <dt>Given</dt>
+            <dd>A consumer outside this project.</dd>
+            <dt>When</dt>
+            <dd>It reads the schema and the projection specification.</dd>
+            <dt>Then</dt>
+            <dd>It determines every semantic unit and reproduces the model for a fixture.</dd>
+          </dl>
+        </article>
+      </section>
+      <h2>Decisions</h2>
+      <section class="decision" id="decision-fatal-recovery" data-change="added" data-status="accepted" data-refs="req-recovery-free-parse">
+        <h3>Parse with the browser's grammar, then refuse its forgiveness</h3>
+        <p>Documents are parsed with <code>html5ever</code>, and every recovery the parser reports is a fatal diagnostic.</p>
+        <p data-field="rationale">Requiring XML well-formedness instead would validate a grammar no consumer uses, so a document could be well-formed and still read differently in a browser. Keeping the browser's grammar and discarding its tolerance rejects exactly the documents whose meaning is not determined by their markup.</p>
+      </section>
+      <section class="decision" id="decision-schema-alone" data-change="added" data-status="superseded" data-superseded-by="decision-three-piece-contract">
+        <h3>A third party can derive the vocabulary from the schema alone</h3>
+        <p>The published JSON Schema was to be the whole public contract.</p>
+        <p data-field="rationale">This was too strong. A schema describes the projected model and says nothing about which elements produce it, so an outside implementation reading only the schema could not reproduce the model.</p>
+      </section>
+      <section class="decision" id="decision-three-piece-contract" data-change="added" data-status="accepted" data-refs="req-schema-source-of-truth">
+        <h3>The public contract is three pieces</h3>
+        <p>The contract is the JSON Schema for the projected model, a normative HTML-to-model projection specification, and conformance fixtures that pin the mapping.</p>
+        <p data-field="rationale">Each piece answers a question the others cannot. The schema fixes the shape, the projection fixes the mapping, and the fixtures stop both from drifting from the implementation.</p>
+      </section>
+      <h2>Evidence</h2>
+      <section class="evidence" id="evidence-benign-parse" data-change="added" data-refs="req-recovery-free-parse scenario-benign-document-clean">
+        <h3>A conforming document produces zero recoveries</h3>
+        <p>The task 1.5 spike parsed a ten-document corpus with the pinned parser. The conforming document reported no recovery, and the permitted-recovery allowlist is therefore empty.</p>
+        <p>This contradicted the risk register, which expected recoveries for benign input. The measurement replaced the expectation.</p>
+      </section>
+      <section class="evidence" id="evidence-typify-losses" data-change="added" data-refs="req-schema-source-of-truth">
+        <h3>Type generation is lossy in two measured places</h3>
+        <p><code>minItems</code> becomes a plain <code>Vec</code>, and a bare <code>const</code> becomes an arbitrary JSON value rather than a string.</p>
+        <p>Generated types are therefore a convenience for rule code, and the runtime validator is the enforcement layer. Two tests assert the losses, so a later upgrade that closes a gap forces a review.</p>
+      </section>
+      <h2>Risks</h2>
+      <section class="risk" id="risk-closed-vocabulary" data-change="added" data-refs="req-schema-source-of-truth">
+        <h3>The closed vocabulary will prove incomplete</h3>
+        <p>Seven unit types will not cover every real specification, and a vocabulary that cannot express a document pushes meaning back into prose.</p>
+        <p data-field="mitigation">Held down by order rather than by an extension mechanism: three documents are hand-authored against the draft before the parser, the formatter, the validator, and the template harden around it.</p>
+      </section>
+      <section class="risk" id="risk-parser-rewording" data-change="added" data-refs="req-recovery-free-parse">
+        <h3>A parser upgrade can reword a message</h3>
+        <p>The enumeration maps free-text messages, so a reworded message could silently change what the validator accepts.</p>
+        <p data-field="mitigation">Held down by prefix matching, a fatal residual code, and a test that fails when the pinned version moves.</p>
+      </section>
+      <h2>Verification</h2>
+      <section class="verification" id="verify-parse-corpus" data-change="added" data-outcome="passed" data-refs="scenario-benign-document-clean scenario-unmapped-recovery-fatal">
+        <h3>The parse-error enumeration holds against the corpus</h3>
+        <p data-field="method">Ran <code>cargo test -p htmlspec-parse</code>. Eight tests pass, including the corpus sweep asserting that no fixture produces an unmapped recovery.</p>
+      </section>
+      <section class="verification" id="verify-contract-shape" data-change="added" data-outcome="passed" data-refs="scenario-third-party-reads-contract">
+        <h3>The schema and the projection specification agree</h3>
+        <p data-field="method">Ran <code>cargo test -p htmlspec-schema</code>. Seven contract tests pass, including the one asserting the schema states that it is not the whole contract.</p>
+      </section>
+      <section class="verification" id="verify-formatter-idempotence" data-change="added" data-outcome="not-run" data-refs="req-schema-source-of-truth">
+        <h3>The formatter is a fixed point</h3>
+        <p data-field="note">Not run. The formatter does not exist yet; group 5 implements it.</p>
+      </section>
+    </main>
+  </body>
+</html>

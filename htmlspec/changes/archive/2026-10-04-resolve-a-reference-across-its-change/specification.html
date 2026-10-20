@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Resolve a reference across its change</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Resolve a reference across its change</h1>
+        <p>Under document-schema's "Cross-references address units by identifier", a reference written in <code>data-refs</code> resolves beyond the document that makes it, by where that document sits: a change's proposal, design, and tasks reach that change's specification, every one of a change's documents reaches the accepted specifications, an accepted specification reaches the others, and the first place that declares the identifier decides which unit the reference means, a withdrawn one included. Under document-validation's "Cross-references must resolve", validation reads the documents a reference reaches only for the identifiers they declare, and reports a reference that resolves nowhere with the places it searched and any document it could not read, and toolchain-packaging's "The command surface names its operations as OpenSpec names them" has validating one document report on that document alone. Under "The contract rules apply to every kind", a document's kind does not decide what its references reach, and runbook-execution's "A record carries the procedure it ran and the obligations it attests to" gives a runbook's documents, which reach only themselves, as the reason a record copies its requirements.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Resolve a reference across its change</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-04-resolve-a-reference-across-its-change/specs/document-schema/spec.md</code><br><code>openspec/changes/archive/2026-10-04-resolve-a-reference-across-its-change/specs/document-validation/spec.md</code><br><code>openspec/changes/archive/2026-10-04-resolve-a-reference-across-its-change/specs/runbook-execution/spec.md</code><br><code>openspec/changes/archive/2026-10-04-resolve-a-reference-across-its-change/specs/toolchain-packaging/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-document-schema">document-schema</a></li>
+          <li><a href="#hs-document-validation">document-validation</a></li>
+          <li><a href="#hs-runbook-execution">runbook-execution</a></li>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-document-schema">
+          <h2>document-schema</h2>
+          <section class="requirement" id="req-cross-references-address-units-by-identifier" data-change="modified">
+            <h3>Cross-references address units by identifier <span class="hs-id">req-cross-references-address-units-by-identifier</span></h3>
+            <p>A task, verification, evidence, or risk unit MAY reference the semantic units it relates to. Such a reference SHALL name the target by its identifier, and SHALL resolve to a unit that exists in the same document or in <del>an accepted spec</del><ins>a document</ins> reachable from it.</p>
+            <ins>
+              <p><strong>A reference written in a <code>data-refs</code> attribute SHALL be resolved in the following places, in this order, and SHALL resolve to the unit declared in the first place that declares its identifier:</strong></p>
+            </ins>
+            <ins>
+              <ol>
+                <li>
+                  <p>the document that makes the reference;</p>
+                </li>
+                <li>
+                  <p>where that document is one of a change's documents other than its specification, that change's own specification;</p>
+                </li>
+                <li>
+                  <p>where that document is one of a change's documents, including its specification, or is an accepted specification, the project's accepted specifications, every one of them.</p>
+                </li>
+              </ol>
+            </ins>
+            <ins>
+              <p>A change's documents are the documents directly within a change's directory, whether the change is active or archived. The project's accepted specifications are the documents beneath the place where the project keeps them. Nothing else is reachable. A document outside any project, a file beneath a change's evidence, and a runbook's documents reach only themselves. A change's documents do not reach another change's documents, and they do not reach their own change's proposal, design, or tasks.</p>
+            </ins>
+            <ins>
+              <p>A change's other documents reach its specification because they exist to serve it. A proposal argues for what the specification states, a design reasons about it, and the tasks carry it out. The tasks template already tells an author that a task may reference the requirement it serves "once that requirement exists in this change's specification". The accepted specifications are reachable because they are the contract every change starts from.</p>
+            </ins>
+            <ins>
+              <p><strong>The order decides which unit a reference means when two places declare one identifier.</strong> A change's specification restates, under the accepted identifier, each accepted requirement the change modifies or withdraws. For the change's own documents, the change's statement is the one that counts. So a task that references a requirement its change withdraws targets a withdrawn obligation, even while the accepted specification still holds that requirement unchanged.</p>
+            </ins>
+            <ins>
+              <p><strong>Every accepted specification is reachable, and an accepted specification reaches the others.</strong> A reference names a unit, not a capability. The merge that applies a change places each requirement in the accepted specification for its capability, so a reference that resolved in a change's specification must still resolve after that change's units are merged into two different accepted specifications.</p>
+            </ins>
+            <ins>
+              <p>A reference written as a fragment link, <code>href="#…"</code>, SHALL resolve within the document that makes it. It is a hyperlink into that page. If it resolved somewhere else while the link arrived nowhere, the reference would be true and the hyperlink false.</p>
+            </ins>
+            <ins>
+              <p>Where more than one accepted specification declares an identifier, a reference to it SHALL resolve. Which of them it means is not decided here.</p>
+            </ins>
+            <ins>
+              <p>A reference SHALL NOT resolve to a unit that the place resolving it marks <code>removed</code>. This holds in every place, not only in the document that makes the reference. A task and the requirement it serves rarely share a document, so a rule confined to one document would miss the case the scenario "Reference to a removed requirement" names.</p>
+            </ins>
+            <article class="scenario" id="scenario-task-implements-a-requirement" data-change="unchanged">
+              <h4>Task implements a requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task declares that it satisfies <code>req-theme-selection</code></dd>
+                <dt>Then</dt>
+                <dd>consumers can report implementation progress per requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-verification-covers-a-scenario" data-change="unchanged">
+              <h4>Verification covers a scenario</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a verification unit references <code>scenario-theme-persists</code></dd>
+                <dt>Then</dt>
+                <dd>consumers can report which scenarios have been verified and which have not</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-dangling-reference" data-change="unchanged">
+              <h4>Dangling reference</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task references <code>req-does-not-exist</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-cross-references-address-units-by-identifier-reference-to-a-removed-requirement" data-change="unchanged">
+              <h4>Reference to a removed requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task references a requirement carrying <code>data-change="removed"</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because work cannot target a withdrawn obligation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-task-references-a-requirement-in-its-change-s-specification" data-change="added">
+              <h4>A task references a requirement in its change's specification</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification declares <code>req-x</code></dd>
+                <dt>When</dt>
+                <dd>a task in that change's tasks document names <code>req-x</code> in its <code>data-refs</code></dd>
+                <dt>Then</dt>
+                <dd>the reference resolves, and the tasks document is valid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-task-references-a-requirement-only-the-accepted-contract-holds" data-change="added">
+              <h4>A task references a requirement only the accepted contract holds</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted specification declaring <code>req-y</code>, and no document in the change declaring it</dd>
+                <dt>When</dt>
+                <dd>a task in the change names <code>req-y</code> in its <code>data-refs</code></dd>
+                <dt>Then</dt>
+                <dd>the reference resolves</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-withdraws-a-requirement-the-accepted-contract-still-holds" data-change="added">
+              <h4>A change withdraws a requirement the accepted contract still holds</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an accepted specification declaring <code>req-y</code> unchanged, and a change whose specification declares <code>req-y</code> with <code>data-change="removed"</code></dd>
+                <dt>When</dt>
+                <dd>a task in that change names <code>req-y</code> in its <code>data-refs</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because the change's specification is reached first and it withdraws the obligation</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-accepted-specifications-reference-one-another" data-change="added">
+              <h4>Accepted specifications reference one another</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a unit in one accepted specification names, in its <code>data-refs</code>, a requirement that another accepted specification declares</dd>
+                <dt>Then</dt>
+                <dd>the reference resolves</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-identifier-two-accepted-specifications-declare" data-change="added">
+              <h4>An identifier two accepted specifications declare</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task names in its <code>data-refs</code> an identifier that two accepted specifications both declare</dd>
+                <dt>Then</dt>
+                <dd>the reference resolves</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reference-to-another-change" data-change="added">
+              <h4>A reference to another change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task names in its <code>data-refs</code> a requirement that only another change's specification declares</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because a change's documents reach their own change's specification and no other</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-that-reaches-only-itself" data-change="added">
+              <h4>A document that reaches only itself</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document outside any project, or a file beneath a change's evidence, names in its <code>data-refs</code> an identifier it does not declare itself</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because nothing beyond it is reachable</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-s-document-names-an-accepted-requirement" data-change="added">
+              <h4>A runbook's document names an accepted requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's tasks document names in its <code>data-refs</code> a requirement that only an accepted specification declares</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because a runbook is not a change and its documents reach only themselves</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-fragment-link-to-a-unit-in-another-document" data-change="added">
+              <h4>A fragment link to a unit in another document</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification declares <code>req-x</code></dd>
+                <dt>When</dt>
+                <dd>a task in that change's tasks document links to <code>#req-x</code></dd>
+                <dt>Then</dt>
+                <dd>the document is invalid, because a fragment link resolves within its own document</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-document-validation">
+          <h2>document-validation</h2>
+          <section class="requirement" id="req-cross-references-must-resolve" data-change="modified">
+            <h3>Cross-references must resolve <span class="hs-id">req-cross-references-must-resolve</span></h3>
+            <p>Validation SHALL verify that every reference to a semantic unit resolves to a unit that exists. This includes fragment links within the document, and references from tasks, verification, evidence, and risks to the requirements and scenarios they address.</p>
+            <ins>
+              <p>A reference resolves in the places that document-schema's "Cross-references address units by identifier" makes reachable. <strong>Validation SHALL read the other documents a reference can reach for the identifiers they declare, and SHALL report nothing about them.</strong> A diagnostic belongs to the document being validated. The documents it reaches are reported when they are validated themselves, so a defect in one of them is reported once, against the document that has it.</p>
+            </ins>
+            <ins>
+              <p>A reference that resolves nowhere SHALL be reported against the unit that makes it, and the report SHALL name the places that were searched. "No unit in the document declares that identifier" is true of a document that reaches only itself. For a task in a change it would hide that the change's specification and the accepted specifications were searched too.</p>
+            </ins>
+            <ins>
+              <p><strong>A reachable document that cannot be read, or whose markup needs the parser to recover, declares nothing a reference can rely on.</strong> A reference that resolves in no other place SHALL be reported, and the report SHALL name that document as unread. It SHALL NOT claim that no unit declares the identifier. A document with more than one reading has no determinate content, so identifiers taken from it are a guess. And a report that no unit declares the identifier would send the author to add a unit that may already be there.</p>
+            </ins>
+            <ins>
+              <p>A change that has no specification yet is a change in progress. Its specification is then a place that declares nothing, and it SHALL NOT be reported as a document that could not be read.</p>
+            </ins>
+            <article class="scenario" id="scenario-dangling-task-reference" data-change="unchanged">
+              <h4>Dangling task reference</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task references a requirement identifier that does not exist</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the task and the unresolved identifier</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-broken-fragment-link" data-change="unchanged">
+              <h4>Broken fragment link</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document links to a fragment with no matching element</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the link</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-cross-references-must-resolve-reference-to-a-removed-requirement" data-change="unchanged">
+              <h4>Reference to a removed requirement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task or verification references a requirement marked removed</dd>
+                <dt>Then</dt>
+                <dd>validation fails</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reference-resolved-by-the-change-s-specification" data-change="added">
+              <h4>A reference resolved by the change's specification</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification declares <code>req-x</code>, and also declares a requirement with no scenario</dd>
+                <dt>When</dt>
+                <dd>the change's tasks document, whose task names <code>req-x</code> in its <code>data-refs</code>, is validated</dd>
+                <dt>Then</dt>
+                <dd>validation of the tasks document succeeds, and it reports nothing about the reference or about the specification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-dangling-reference-in-a-change-says-where-it-looked" data-change="added">
+              <h4>A dangling reference in a change says where it looked</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a task in a change names in its <code>data-refs</code> an identifier that no reachable place declares</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports the task, the identifier, and the places that were searched</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reachable-document-that-cannot-be-read" data-change="added">
+              <h4>A reachable document that cannot be read</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose specification's markup needs the parser to recover</dd>
+                <dt>When</dt>
+                <dd>a task in that change names in its <code>data-refs</code> a requirement that no other reachable place declares</dd>
+                <dt>Then</dt>
+                <dd>validation of the tasks document fails, and the report names the specification as the document that could not be read</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-change-with-no-specification-yet" data-change="added">
+              <h4>A change with no specification yet</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change that has no specification, and an accepted specification declaring <code>req-y</code></dd>
+                <dt>When</dt>
+                <dd>a task in that change names <code>req-y</code> in its <code>data-refs</code></dd>
+                <dt>Then</dt>
+                <dd>the reference resolves, and nothing is reported about the missing specification</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-contract-rules-apply-to-every-kind" data-change="modified">
+            <h3>The contract rules apply to every kind <span class="hs-id">req-the-contract-rules-apply-to-every-kind</span></h3>
+            <p>The rules that make a document readable, parseable, and offline SHALL apply to all four kinds without relaxation. Freedom of structure at the proposal and design kinds SHALL NOT extend to markup that cannot be parsed unambiguously, a reference that resolves to nothing, a remote or executable dependency, or an asset reference that disagrees with the bytes beside it.</p>
+            <p>A kind decides how much <em>shape</em> validation requires. It SHALL NOT decide whether a document opens.</p>
+            <ins>
+              <p>A kind SHALL NOT decide what a reference can reach, either. That is decided by where a document sits, so a change's proposal, design, and tasks reach the same documents.</p>
+            </ins>
+            <article class="scenario" id="scenario-a-proposal-with-a-remote-script" data-change="unchanged">
+              <h4>A proposal with a remote script</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal loads a script from outside the project</dd>
+                <dt>Then</dt>
+                <dd>validation fails, exactly as it does for any other kind</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-design-with-a-dangling-reference" data-change="modified">
+              <h4>A design with a dangling reference</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a design references an identifier that no unit <del>in the document </del>declares<ins>, in the design or in any document it can reach</ins></dd>
+                <dt>Then</dt>
+                <dd>validation fails, because a pointer to nothing is a defect at every stage</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-design-references-its-change-s-specification" data-change="added">
+              <h4>A design references its change's specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a decision in a change's design names in its <code>data-refs</code> a requirement that the change's specification declares</dd>
+                <dt>Then</dt>
+                <dd>the reference resolves, exactly as it would from a task in the same change</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-proposal-that-needs-error-recovery" data-change="unchanged">
+              <h4>A proposal that needs error recovery</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a proposal's markup requires the parser to recover</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because a document with more than one reading has no determinate content whatever its kind</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-runbook-execution">
+          <h2>runbook-execution</h2>
+          <section class="requirement" id="req-a-record-carries-the-procedure-it-ran-and-the-obligations-it-attests-to" data-change="modified">
+            <h3>A record carries the procedure it ran and the obligations it attests to <span class="hs-id">req-a-record-carries-the-procedure-it-ran-and-the-obligations-it-attests-to</span></h3>
+            <p>A run's record SHALL carry the runbook's procedure, copied, with each step's state advanced as the run advanced it. A record that referenced the procedure instead of carrying it could not say which version of the procedure ran, which is the question the record exists to answer: a procedure improves, and a record naming one that has since changed describes a run that did not happen that way.</p>
+            <p>A run's record SHALL carry the requirements it attests to, copied from the runbook's specification, each with the scenarios that make it checkable. <strong>This is forced rather than chosen.</strong> A reference <ins>from a runbook's documents </ins>addresses a unit within <del>one document, so</del><ins>the document that makes it: document-schema's "Cross-references address units by identifier" lets a reference reach beyond its own document only from a change's documents or an accepted specification, and a runbook is neither. So</ins> a record naming a requirement in the runbook's specification resolves to nothing and is reported as an error — a record that pointed outward would be invalid on the day it was written.</p>
+            <p>Each copied requirement SHALL state its obligation in a form that carries an obligation, and SHALL declare itself unchanged. Both follow from the copy being a faithful one: a requirement whose modal is weakened states a preference, and a requirement declared as being added claims an obligation that is not there yet.</p>
+            <p>A run's record SHALL record, for each requirement it carries, an outcome and how that outcome was reached, precisely enough that someone else could repeat it. The outcome and the method are the recorded values, and a record stating an outcome with no method is a claim nobody can check.</p>
+            <p>The copy SHALL be whole at the moment the run starts rather than grown as the run proceeds. A partial copy presents itself as a complete procedure — nothing in a list of steps says there are more — so a reader between two steps would see a version of the procedure that never existed.</p>
+            <p>A run's record SHALL be of the artifact kind that carries work, and the set of kinds SHALL NOT gain one for a run. A record is a copy of a procedure with its states advanced, which is what that kind already is; and the kind that carries obligations refuses a step outright, so a record declared as one would be invalid for every step it carried.</p>
+            <article class="scenario" id="scenario-a-record-naming-a-requirement-it-does-not-carry" data-change="unchanged">
+              <h4>A record naming a requirement it does not carry</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a run's record attests to a requirement that lives only in the runbook's specification</dd>
+                <dt>Then</dt>
+                <dd>the reference resolves to nothing and is reported as an error, which is why the requirement is copied</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-record-of-a-procedure-that-has-since-changed" data-change="unchanged">
+              <h4>A record of a procedure that has since changed</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook edited after a run was recorded</dd>
+                <dt>When</dt>
+                <dd>the record is read</dd>
+                <dt>Then</dt>
+                <dd>it states the procedure as it was when it ran, because the record carries the steps rather than pointing at them</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-record-declaring-its-copied-requirement-as-added" data-change="unchanged">
+              <h4>A record declaring its copied requirement as added</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a run's record declares a copied requirement as being added by a change</dd>
+                <dt>Then</dt>
+                <dd>its verification is reported as attesting to an obligation that has moved, because the obligation existed before the run</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-outcome-with-no-method" data-change="unchanged">
+              <h4>An outcome with no method</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a run records an outcome and states nothing about how it was reached</dd>
+                <dt>Then</dt>
+                <dd>the record states a claim nobody can repeat, which is what the method exists to prevent</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-record-grown-as-the-run-proceeds" data-change="unchanged">
+              <h4>A record grown as the run proceeds</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a record is written with only the steps the run has reached</dd>
+                <dt>Then</dt>
+                <dd>it presents a procedure that never existed, so the copy is whole from the start</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-a-single-command-exposes-validate-format-and-init" data-change="modified">
+            <h3>The command surface names its operations as OpenSpec names them <span class="hs-id">req-a-single-command-exposes-validate-format-and-init</span></h3>
+            <p>The project SHALL provide one command-line program offering, at minimum, a subcommand to validate documents, a subcommand to format documents, a subcommand to bootstrap a project, and a subcommand to create documents. Each subcommand SHALL be usable without configuration in a conforming project.</p>
+            <p><strong>Where an operation corresponds to one OpenSpec provides, it SHALL carry OpenSpec's name for it.</strong> This holds for the subcommand and for the options that select what it acts on. Every plausible adopter arrives from OpenSpec — HTMLSpec is a spinoff and its README says so — and a contributor who has learned one surface SHALL NOT have to learn a second spelling for the same operation. An operation OpenSpec does not provide takes the name this project chooses for it.</p>
+            <p>The spellings are therefore fixed rather than left to an implementer: <code>validate</code>, <code>archive</code>, <code>init</code>, <code>new</code>, <code>list</code>, <code>status</code>, <code>sync</code>, <code>instructions</code>, and <code>store</code> name the operations OpenSpec also provides. <code>format</code> and <code>assets</code> name operations it does not. The selectors <code>--json</code>, <code>--specs</code>, <code>--change</code>, and <code>--store</code> carry OpenSpec's spellings for the same reason.</p>
+            <p>Fixing a spelling in the contract is not decoration. A requirement that describes an operation by role alone — <em>an operation that enumerates a project's active changes</em> — is satisfied by a subcommand called <code>changes</code>, or <code>ls</code>, and the instructions written against it would then name a command that does not exist. The workflow instructions this project installs invoke these commands by name, so the name is part of the contract they depend on.</p>
+            <p>The bootstrap subcommand's subject SHALL be a project and it SHALL require no arguments, because the operation a contributor needs first is the one that establishes the project they are standing in. The creation subcommand's subject SHALL be a document or a change.</p>
+            <p>These SHALL be distinct subcommands. One subcommand meaning both "establish this project" and "write this file" would leave a contributor unable to ask for either without also specifying which they meant.</p>
+            <p>Creation SHALL take the artifact kind of the document to create, and SHALL produce a document already shaped for that kind. A <code>proposal</code> SHALL be initialized as a page of prose with no unit scaffolding at all, and a <code>specification</code> SHALL be initialized with the units its kind expects.</p>
+            <p>The asymmetry is the requirement. A proposal that arrived full of empty requirement scaffolding would push its author toward stating a contract at the stage meant for arguing about one, and the emptiest possible starting point is the correct one for a document whose structure is the author's to choose.</p>
+            <p>Creation SHALL be able to create a whole change — the directory and its documents — rather than one document at a time, because a change is a directory of kinded documents. A change created in a project SHALL be placed where that project keeps its active changes, and the resolved location SHALL be reported.</p>
+            <p>Documents SHALL be created referencing the project's asset store rather than establishing one of their own.</p>
+            <article class="scenario" id="scenario-validating-a-project" data-change="unchanged">
+              <h4>Validating a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand in a project with no arguments</dd>
+                <dt>Then</dt>
+                <dd>every document in the project is validated and the results are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-validating-one-document" data-change="modified">
+              <h4>Validating one document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand against a single file path</dd>
+                <dt>Then</dt>
+                <dd>only that document is validated<ins> and reported on, and the other documents its references can reach are read only for the identifiers they declare</ins></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-bootstrapping-with-no-arguments" data-change="unchanged">
+              <h4>Bootstrapping with no arguments</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the bootstrap subcommand with no arguments</dd>
+                <dt>Then</dt>
+                <dd>it establishes a project in the current repository rather than reporting a missing argument</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-proposal" data-change="unchanged">
+              <h4>Creating a proposal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document of the proposal kind</dd>
+                <dt>Then</dt>
+                <dd>it opens as a readable page of prose, with no semantic unit scaffolding to fill in</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-specification" data-change="unchanged">
+              <h4>Creating a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document of the specification kind</dd>
+                <dt>Then</dt>
+                <dd>it arrives with the units that kind expects, because its shape is not the author's to invent</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-change" data-change="unchanged">
+              <h4>Creating a change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a new change in a project</dd>
+                <dt>Then</dt>
+                <dd>its directory is created where the project keeps active changes, holding the documents that stage needs, each declaring its kind and each valid immediately, and its location is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-created-document-uses-the-project-s-store" data-change="unchanged">
+              <h4>A created document uses the project's store</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document in a project</dd>
+                <dt>Then</dt>
+                <dd>it references the project's existing asset store and no second store is established</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-change-outside-a-project" data-change="unchanged">
+              <h4>Creating a change outside a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a change where no project exists</dd>
+                <dt>Then</dt>
+                <dd>the program reports that no project was found and names the bootstrap subcommand</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unknown-subcommand" data-change="unchanged">
+              <h4>Unknown subcommand</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes a subcommand that does not exist</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error, lists the available subcommands, and exits with a failure status</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-withdrawn-spelling-names-its-replacement" data-change="unchanged">
+              <h4>A withdrawn spelling names its replacement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes the bootstrap subcommand with the arguments creation formerly took</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error and names the subcommand that now performs it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-proposal" data-change="unchanged">
+              <h4>Initializing a proposal</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>that initialization formerly created one document and its subject is now the project</dd>
+                <dt>When</dt>
+                <dd>a contributor names a document path on the bootstrap subcommand</dd>
+                <dt>Then</dt>
+                <dd>the program refuses, states that the subject is the project, and names the creation subcommand that writes one document</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-specification" data-change="unchanged">
+              <h4>Initializing a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor names a document path on the bootstrap subcommand for any artifact kind</dd>
+                <dt>Then</dt>
+                <dd>the refusal is the same regardless of kind, because the subject changed rather than the kind vocabulary</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-change" data-change="unchanged">
+              <h4>Initializing a change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor names a path on the bootstrap subcommand intending to create a change</dd>
+                <dt>Then</dt>
+                <dd>the program refuses and names the creation subcommand for a change, so a contributor who used the withdrawn spelling is not left guessing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-discoverable-help" data-change="unchanged">
+              <h4>Discoverable help</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests help</dd>
+                <dt>Then</dt>
+                <dd>every subcommand and option is documented in the output</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-operation-openspec-also-provides" data-change="unchanged">
+              <h4>An operation OpenSpec also provides</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the command surface offers an operation that enumerates a project's changes, reports a change's completion, emits workflow instructions, or registers a standalone project</dd>
+                <dt>Then</dt>
+                <dd>it is named <code>list</code>, <code>status</code>, <code>instructions</code>, and <code>store</code> respectively, because those are OpenSpec's names for those operations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-selectors-carry-openspec-s-spellings" data-change="unchanged">
+              <h4>The selectors carry OpenSpec's spellings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor asks for structured output, for specifications rather than changes, for one named change, or for a registered standalone project</dd>
+                <dt>Then</dt>
+                <dd>the options are <code>--json</code>, <code>--specs</code>, <code>--change</code>, and <code>--store</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-operation-openspec-does-not-provide" data-change="unchanged">
+              <h4>An operation OpenSpec does not provide</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the command surface offers an operation with no OpenSpec counterpart</dd>
+                <dt>Then</dt>
+                <dd>it takes the name this project chooses for it, as <code>format</code> and <code>assets</code> do</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-renamed-operation-breaks-the-installed-instructions" data-change="unchanged">
+              <h4>A renamed operation breaks the installed instructions</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>workflow instructions that invoke a subcommand by name</dd>
+                <dt>When</dt>
+                <dd>that subcommand is spelled differently from what the instructions name</dd>
+                <dt>Then</dt>
+                <dd>the instructions name a command that does not exist, which is why the spellings are fixed in the contract rather than left to an implementer</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Every evidence and verification unit in this section and the next was written when this document was migrated. Each summarizes a record carried unchanged in this change's <code>evidence/</code>, as project-migration's "Evidence crosses unchanged" requires, and links it, and the record is the authority. Where a record names a test and reports it passing without showing what it asserts, the verification's method says what the test checks as read at <code>e61e3b1</code>, the commit that carries the record. <a href="evidence/the-runbook-ran-2026-10-03.md"><code>evidence/the-runbook-ran-2026-10-03.md</code></a> records the release, bears on no requirement this specification states, and has no unit.</p>
+          </aside>
+          <section class="evidence" id="evidence-the-measurement-2026-09-30" data-change="added" data-refs="req-cross-references-address-units-by-identifier req-cross-references-must-resolve">
+            <h3>The template's advice followed, and the links drafted instead, before the change <span class="hs-id">evidence-the-measurement-2026-09-30</span></h3>
+            <p>Measured on 2026-09-30 with <code>htmlspec 0.18.0</code>, before this change (<a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a>). In a scratch project, a task naming its change specification's <code>req-example</code> in <code>data-refs</code>, as the tasks template advises, reported <code>refs/unresolved</code>, and <code>validate</code> exited 1, over the project and with the tasks document named alone. A task naming a requirement only an accepted specification declared failed the same way, and a plain link to <code>specification.html#req-does-not-exist</code> was accepted with exit status 0, with no reference projected. In the first attempt's staged migration, 54 task units in 15 changes and 2 decision units linked to a unit in another document, 68 links in all: 31 units to their own change's specification, 23 to an accepted specification, and 2 to another change's specification. 24 links targeted a unit marked <code>added</code>, 12 one marked <code>modified</code>, 31 an unchanged unit, and 1 a removed unit, and no <code>data-refs</code> entry crossed a document. Two identifiers were each declared by two accepted specifications, one requirement had been withdrawn in 24 archived changes, and the staged tree validated with 109 documents, 0 errors, and 781 warnings, in 19.2 seconds.</p>
+          </section>
+          <section class="evidence" id="evidence-the-measurement-repeated-2026-10-03" data-change="added" data-refs="req-cross-references-address-units-by-identifier req-cross-references-must-resolve req-the-contract-rules-apply-to-every-kind req-a-record-carries-the-procedure-it-ran-and-the-obligations-it-attests-to req-a-single-command-exposes-validate-format-and-init">
+            <h3>The measurement, repeated before anything changed <span class="hs-id">evidence-the-measurement-repeated-2026-10-03</span></h3>
+            <p>Measured on 2026-10-03 with <code>htmlspec 0.21.0</code>, built from <code>913a87d</code>, before any of this change was built (<a href="evidence/the-measurement-repeated-2026-10-03.md"><code>evidence/the-measurement-repeated-2026-10-03.md</code></a>). Steps 1 and 2 and the plain-link workaround reproduced word for word, the count script's output equalled the first run's in every line, and the staged baseline was 109 documents, 0 errors, and 781 warnings, in 19.47 seconds. Each of this change's MODIFIED blocks differed from the accepted text at HEAD only by this change's own edits, and the design's Migration Plan and task 6.2 were corrected from contract version <code>0.2.0</code> to <code>0.3.0</code> before the measurement ran.</p>
+          </section>
+          <section class="evidence" id="evidence-the-rule-measured-2026-10-03" data-change="added" data-refs="req-cross-references-address-units-by-identifier req-cross-references-must-resolve req-a-single-command-exposes-validate-format-and-init">
+            <h3>The measurement, repeated against the built change <span class="hs-id">evidence-the-rule-measured-2026-10-03</span></h3>
+            <p>Measured on 2026-10-03 against the built change (<a href="evidence/the-rule-measured-2026-10-03.md"><code>evidence/the-rule-measured-2026-10-03.md</code></a>). Steps 1 and 2 exited 0 with no <code>refs/*</code> diagnostic, and the tasks document named alone reported 0 errors and 3 warnings, while the plain links were still accepted with no reference projected. The staged tree's diagnostics equalled the baseline document by document. Four runs took 134, 97, 553, and 102 seconds of wall time while the machine paused the session's file-touching processes, and the CPU time moved by about 0.7 seconds, 4 percent. Given as <code>data-refs</code>, the staged tree's 68 linked identifiers resolved in 55 of the 56 units: task 5.1 of <code>2026-08-21-distinguish-command-names-from-skill-names</code> reported <code>refs/removed-target</code>, and the 2 units linking to another change's specification resolved, because each identifier they name is also declared by an accepted specification.</p>
+          </section>
+          <section class="evidence" id="evidence-mutation-testing-2026-10-03" data-change="added" data-refs="req-cross-references-address-units-by-identifier req-cross-references-must-resolve req-the-contract-rules-apply-to-every-kind">
+            <h3>Mutation testing <span class="hs-id">evidence-mutation-testing-2026-10-03</span></h3>
+            <p>Task 5.4's run on 2026-10-03 (<a href="evidence/mutation-testing-2026-10-03.md"><code>evidence/mutation-testing-2026-10-03.md</code></a>). Each of the ten mutations task 5.4 names was applied alone, <code>cargo test --workspace --all-targets --no-fail-fast</code> failed at least one test under every one, and the record names each test that failed. A last run with nothing mutated passed every test. Mutation 5, an unread document treated as an empty set, was caught only by the end-to-end test, and mutation 8, a change's evidence placed as a change document, only by the placement test, and the record calls both deliberate. Undoing task 7.1's fix for a document named by its bare file name fails <code>a_document_named_by_its_bare_file_name_is_placed_where_it_sits</code>.</p>
+          </section>
+          <section class="evidence" id="evidence-what-the-implementation-revealed-2026-10-03" data-change="added" data-refs="req-cross-references-address-units-by-identifier req-cross-references-must-resolve">
+            <h3>What the implementation revealed <span class="hs-id">evidence-what-the-implementation-revealed-2026-10-03</span></h3>
+            <p>Tasks 5.5 and 5.6, on 2026-10-03 (<a href="evidence/what-the-implementation-revealed-2026-10-03.md"><code>evidence/what-the-implementation-revealed-2026-10-03.md</code></a>). The test stage ran 1,194 tests and none failed, and every stage of <code>scripts/check</code> passed, its four Python stages outside <code>nix develop</code>. Among the findings: each of 47 calls to <code>engine::run</code> passes a scope, every one but <code>validate_source</code> passing <code>Scope::loose()</code>, with no default; the test of a change with no specification was narrowed to assert no <code>refs/*</code> diagnostic and output that neither names <code>specification.html</code> nor says "could not be read"; task 5.3's expectation for two links was wrong; and two types were named <code>Declared</code>, which review settled by renaming the command line's enum <code>ContractEffect</code>.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-a-task-references-a-requirement-in-its-change-s-specification" data-change="added" data-outcome="passed" data-refs="scenario-a-task-references-a-requirement-in-its-change-s-specification">
+            <h3>Step 1 of the measurement, against the built change <span class="hs-id">verify-a-task-references-a-requirement-in-its-change-s-specification</span></h3>
+            <p data-field="method">In a scratch project that <code>measure.sh</code> rebuilt from an empty directory with <code>init --tools none</code>, <code>new change</code>, and <code>new document specification</code>, <code>task-example</code> in the change's tasks document was given the <code>data-refs</code> entry <code>req-example</code>, which the change's specification declares, and <code>validate</code> was run over the project and on the tasks document alone.</p>
+            <p>Over the project, <code>validate</code> exited 0 with 0 errors and no <code>refs/*</code> diagnostic, and the tasks document named alone exited 0 with 0 errors (<a href="evidence/the-rule-measured-2026-10-03.md"><code>evidence/the-rule-measured-2026-10-03.md</code></a>, section 5.1).</p>
+          </section>
+          <section class="verification" id="verify-a-task-references-a-requirement-only-the-accepted-contract-holds" data-change="added" data-outcome="passed" data-refs="scenario-a-task-references-a-requirement-only-the-accepted-contract-holds">
+            <h3>Step 2 of the measurement, against the built change <span class="hs-id">verify-a-task-references-a-requirement-only-the-accepted-contract-holds</span></h3>
+            <p data-field="method">In the same scratch project, <code>htmlspec/specs/measure/spec.html</code> declared <code>req-held-by-the-accepted-contract</code> as an unchanged requirement, no document in the change declared it, <code>task-example</code> named it in its <code>data-refs</code>, and <code>validate</code> was run over the project.</p>
+            <p><code>validate</code> exited 0 with 0 errors and 16 warnings, and no <code>refs/*</code> diagnostic (<a href="evidence/the-rule-measured-2026-10-03.md"><code>evidence/the-rule-measured-2026-10-03.md</code></a>, section 5.1).</p>
+          </section>
+          <section class="verification" id="verify-a-change-withdraws-a-requirement-the-accepted-contract-still-holds" data-change="added" data-outcome="passed" data-refs="scenario-a-change-withdraws-a-requirement-the-accepted-contract-still-holds">
+            <h3>A task naming a requirement its change withdraws <span class="hs-id">verify-a-change-withdraws-a-requirement-the-accepted-contract-still-holds</span></h3>
+            <p data-field="method">Read at <code>e61e3b1</code>, the command-line test <code>a_task_naming_a_requirement_its_change_withdraws_is_a_removed_target</code> in <code>crates/htmlspec-cli/tests/cli.rs</code> builds a project with <code>init</code> and <code>new change</code>, writes an accepted specification declaring <code>req-y</code> with no change state and a change specification declaring <code>req-y</code> with <code>data-change="removed"</code>, gives the change's task the <code>data-refs</code> entry <code>req-y</code>, and validates the tasks document. It asserts the document-violation exit status, a <code>refs/removed-target</code> diagnostic, and no <code>refs/unresolved</code>.</p>
+            <p>The record names the test among those that catch mutations 1, 3, and 6, the last applying the withdrawal only in the document itself, and its last run, with nothing mutated, reports every test passing (<a href="evidence/mutation-testing-2026-10-03.md"><code>evidence/mutation-testing-2026-10-03.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-accepted-specifications-reference-one-another" data-change="added" data-outcome="passed" data-refs="scenario-accepted-specifications-reference-one-another">
+            <h3>An accepted specification naming another's requirement <span class="hs-id">verify-accepted-specifications-reference-one-another</span></h3>
+            <p data-field="method">Read at <code>e61e3b1</code>, the command-line test <code>an_accepted_specification_naming_anothers_requirement_resolves</code> writes <code>htmlspec/specs/a/spec.html</code> declaring <code>req-x</code> and <code>htmlspec/specs/b/spec.html</code>, whose evidence unit names <code>req-x</code> in its <code>data-refs</code>, and validates the second. It asserts success and no <code>refs/*</code> diagnostic.</p>
+            <p>The record names the test among those that catch mutation 10, an accepted specification reaching only itself, and its last run reports every test passing (<a href="evidence/mutation-testing-2026-10-03.md"><code>evidence/mutation-testing-2026-10-03.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-an-identifier-two-accepted-specifications-declare" data-change="added" data-outcome="passed" data-refs="scenario-an-identifier-two-accepted-specifications-declare">
+            <h3>An identifier two accepted specifications declare <span class="hs-id">verify-an-identifier-two-accepted-specifications-declare</span></h3>
+            <p data-field="method">Read at <code>e61e3b1</code>, the conformance test <code>an_identifier_two_accepted_specifications_declare_resolves</code> in <code>conformance/tests/references.rs</code> validates, through the validator's public API, a tasks document whose task names <code>req-x</code> in its <code>data-refs</code>, placed as a change's document, with a change specification that declares nothing and accepted specifications of which two both declare <code>req-x</code>. It asserts no <code>refs/*</code> diagnostic.</p>
+            <p>The record names the test among those that catch mutation 2, skipping the accepted specifications, and its last run reports every test passing (<a href="evidence/mutation-testing-2026-10-03.md"><code>evidence/mutation-testing-2026-10-03.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-a-reference-to-another-change" data-change="added" data-outcome="passed" data-refs="scenario-a-reference-to-another-change">
+            <h3>A task naming another change's requirement <span class="hs-id">verify-a-reference-to-another-change</span></h3>
+            <p data-field="method">Read at <code>e61e3b1</code>, the command-line test <code>a_task_naming_another_changes_requirement_is_unresolved</code> creates a second change, <code>b-change</code>, whose specification declares <code>req-x</code>, gives the task of the first change, which has no specification, the <code>data-refs</code> entry <code>req-x</code>, and validates its tasks document. It asserts the document-violation exit status and a <code>refs/unresolved</code> diagnostic.</p>
+            <p><a href="evidence/the-rule-measured-2026-10-03.md"><code>evidence/the-rule-measured-2026-10-03.md</code></a>, section 5.3, names the test as pinning that this scenario still holds where only the other change declares the identifier, and the last run of <a href="evidence/mutation-testing-2026-10-03.md"><code>evidence/mutation-testing-2026-10-03.md</code></a>, with nothing mutated, reports every test passing.</p>
+          </section>
+          <section class="verification" id="verify-a-runbook-s-document-names-an-accepted-requirement" data-change="added" data-outcome="passed" data-refs="scenario-a-runbook-s-document-names-an-accepted-requirement">
+            <h3>A runbook's task naming an accepted requirement <span class="hs-id">verify-a-runbook-s-document-names-an-accepted-requirement</span></h3>
+            <p data-field="method">Read at <code>e61e3b1</code>, the command-line test <code>a_runbooks_task_naming_an_accepted_requirement_is_unresolved</code> writes an accepted specification declaring <code>req-y</code> and a runbook's tasks document at <code>htmlspec/runbooks/release/tasks.html</code>, gives its task the <code>data-refs</code> entry <code>req-y</code>, and validates it. It asserts the document-violation exit status and a <code>refs/unresolved</code> diagnostic.</p>
+            <p>The record names the test among those that catch mutation 9, a runbook's document reaching the accepted specifications, and its last run reports every test passing (<a href="evidence/mutation-testing-2026-10-03.md"><code>evidence/mutation-testing-2026-10-03.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-a-fragment-link-to-a-unit-in-another-document" data-change="added" data-outcome="passed" data-refs="scenario-a-fragment-link-to-a-unit-in-another-document">
+            <h3>A fragment link to the change's specification <span class="hs-id">verify-a-fragment-link-to-a-unit-in-another-document</span></h3>
+            <p data-field="method">Read at <code>e61e3b1</code>, the command-line test <code>a_fragment_link_to_the_change_specification_is_unresolved_and_broken</code> writes a change specification declaring <code>req-x</code>, puts a link to <code>#req-x</code> in the note of the change's task, and validates the tasks document. It asserts the document-violation exit status, a <code>refs/unresolved</code> diagnostic, and a <code>refs/broken-link</code> diagnostic.</p>
+            <p>The record names the test among those that catch mutation 4, a link-origin reference resolved through the scope, and its last run reports every test passing (<a href="evidence/mutation-testing-2026-10-03.md"><code>evidence/mutation-testing-2026-10-03.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-a-reference-resolved-by-the-change-s-specification" data-change="added" data-outcome="passed" data-refs="scenario-a-reference-resolved-by-the-change-s-specification">
+            <h3>A task resolved by an invalid change specification <span class="hs-id">verify-a-reference-resolved-by-the-change-s-specification</span></h3>
+            <p data-field="method">Read at <code>e61e3b1</code>, the command-line test <code>validating_one_document_reports_nothing_about_the_documents_it_reaches</code> adds to a change specification declaring <code>req-x</code> a requirement with no scenario, checks that the specification alone fails validation, gives the change's task the <code>data-refs</code> entry <code>req-x</code>, and validates the tasks document. It asserts success and output that does not name <code>specification.html</code>. The conformance test <code>a_reached_specification_is_read_and_not_reported</code> validates the same task against the same specification through the public API, and asserts an accepted report with no <code>refs/*</code> diagnostic.</p>
+            <p>The record names both tests among those that catch mutation 1, skipping the change's specification, and its last run reports every test passing (<a href="evidence/mutation-testing-2026-10-03.md"><code>evidence/mutation-testing-2026-10-03.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-a-dangling-reference-in-a-change-says-where-it-looked" data-change="added" data-outcome="partial" data-refs="scenario-a-dangling-reference-in-a-change-says-where-it-looked">
+            <h3>The places a dangling reference was searched for <span class="hs-id">verify-a-dangling-reference-in-a-change-says-where-it-looked</span></h3>
+            <p data-field="method">Read at <code>e61e3b1</code>, the conformance test <code>a_dangling_reference_names_the_places_searched</code> validates, through the public API, a task placed as a change's document whose <code>data-refs</code> names <code>req-nowhere</code>, with a change specification declaring <code>req-x</code> and an accepted specification declaring <code>req-y</code>. It asserts that the report holds one <code>refs/unresolved</code> diagnostic, and that its message contains "no unit in this document, in its change's specification, or in the accepted specifications declares that identifier".</p>
+            <p data-field="unchecked">validation fails</p>
+            <p data-field="unchecked">reports the task</p>
+            <p data-field="unchecked">reports the identifier</p>
+            <p>The record names the test among those that catch mutations 1, 2, and 3, and its last run reports every test passing (<a href="evidence/mutation-testing-2026-10-03.md"><code>evidence/mutation-testing-2026-10-03.md</code></a>). The test checks the message's places, and does not check the report's outcome, the unit it names, or the identifier in the message.</p>
+          </section>
+          <section class="verification" id="verify-a-reachable-document-that-cannot-be-read" data-change="added" data-outcome="partial" data-refs="scenario-a-reachable-document-that-cannot-be-read">
+            <h3>A change specification that needs the parser to recover <span class="hs-id">verify-a-reachable-document-that-cannot-be-read</span></h3>
+            <p data-field="method">Read at <code>e61e3b1</code>, the command-line test <code>a_specification_that_needs_recovery_is_named_as_unread</code> leaves a <code>strong</code> element unclosed in a change specification declaring <code>req-x</code>, so that its markup needs the parser to recover, gives the change's task the <code>data-refs</code> entry <code>req-x</code>, and validates the tasks document. It asserts the document-violation exit status and a <code>refs/unresolved</code> line that names <code>specification.html</code>. The conformance test <code>an_unread_document_is_named_and_not_treated_as_empty</code> gives a change's task a change specification recorded as unread, and asserts that the <code>refs/unresolved</code> message names that specification's path and says it "could not be read".</p>
+            <p data-field="unchecked">the report names the specification as the document that could not be read: the command-line test asserts only that the <code>refs/unresolved</code> line names <code>specification.html</code>, and the conformance test that asserts "could not be read" is given a specification recorded as unread, not one whose markup needs the parser to recover</p>
+            <p>The record names the first test as the only one that catches mutation 5, an unread document treated as an empty set, and both among those that catch mutation 1, and its last run reports every test passing (<a href="evidence/mutation-testing-2026-10-03.md"><code>evidence/mutation-testing-2026-10-03.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-a-change-with-no-specification-yet" data-change="added" data-outcome="passed" data-refs="scenario-a-change-with-no-specification-yet">
+            <h3>A change with no specification, naming an accepted requirement <span class="hs-id">verify-a-change-with-no-specification-yet</span></h3>
+            <p data-field="method">Read at <code>e61e3b1</code>, the command-line test <code>a_change_with_no_specification_reaches_the_accepted_contract</code> writes an accepted specification declaring <code>req-y</code> in a project whose change has no specification, gives the change's task the <code>data-refs</code> entry <code>req-y</code>, and validates the tasks document. It asserts success, no <code>refs/*</code> diagnostic, and output that neither names <code>specification.html</code> nor says "could not be read".</p>
+            <p><a href="evidence/what-the-implementation-revealed-2026-10-03.md"><code>evidence/what-the-implementation-revealed-2026-10-03.md</code></a> records that assertion, narrowed from one that failed against correct behavior, as what the scenario means by "nothing is reported about the missing specification", and the test stage's 1,194 tests passing.</p>
+          </section>
+          <section class="verification" id="verify-a-design-references-its-change-s-specification" data-change="added" data-outcome="passed" data-refs="scenario-a-design-references-its-change-s-specification">
+            <h3>A decision in the design naming its change's specification <span class="hs-id">verify-a-design-references-its-change-s-specification</span></h3>
+            <p data-field="method">Read at <code>e61e3b1</code>, the command-line test <code>a_decision_in_the_design_naming_its_change_specification_resolves</code> adds to a change's design a decision whose <code>data-refs</code> names <code>req-x</code>, which the change's specification declares, and validates the design. It asserts success and no <code>refs/*</code> diagnostic, as <code>a_task_naming_its_change_specifications_requirement_resolves</code> asserts for a task in the same setup.</p>
+            <p>The record names both tests among those that catch mutation 1, skipping the change's specification, and its last run reports every test passing (<a href="evidence/mutation-testing-2026-10-03.md"><code>evidence/mutation-testing-2026-10-03.md</code></a>).</p>
+          </section>
+          <section class="verification" id="verify-validating-one-document" data-change="added" data-outcome="passed" data-refs="scenario-validating-one-document">
+            <h3>The tasks document of step 1, validated by its path <span class="hs-id">verify-validating-one-document</span></h3>
+            <p data-field="method">The tasks document of step 1, whose task names its change specification's <code>req-example</code>, was validated by its path alone, as <code>measure.sh</code> does, before and after the change.</p>
+            <p>Before the change it reported 1 error and 3 warnings, and after it 0 errors and 3 warnings, and <code>validate</code> exited 0. The reference resolved in the change's specification, and none of that specification's own warnings, 10 over the project before the change, was reported (<a href="evidence/the-rule-measured-2026-10-03.md"><code>evidence/the-rule-measured-2026-10-03.md</code></a>, section 5.1, and <a href="evidence/the-measurement-2026-09-30.md"><code>evidence/the-measurement-2026-09-30.md</code></a>, step 1).</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

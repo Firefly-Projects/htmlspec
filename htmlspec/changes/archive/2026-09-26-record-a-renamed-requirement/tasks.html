@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Record a renamed requirement</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Record a renamed requirement</h1>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Record a renamed requirement</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-09-26-record-a-renamed-requirement/tasks.md</code></dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-1-confirm-the-premises-before-building-on-them">1. Confirm the premises before building on them</a></li>
+          <li><a href="#hs-2-the-contract-in-the-schema-and-the-projection">2. The contract in the schema and the projection</a></li>
+          <li><a href="#hs-3-projection">3. Projection</a></li>
+          <li><a href="#hs-4-validation">4. Validation</a></li>
+          <li><a href="#hs-5-the-merge-comparison">5. The merge comparison</a></li>
+          <li><a href="#hs-6-instructions">6. Instructions</a></li>
+          <li><a href="#hs-7-migration">7. Migration</a></li>
+          <li><a href="#hs-8-presentation">8. Presentation</a></li>
+          <li><a href="#hs-9-prove-it">9. Prove it</a></li>
+          <li><a href="#hs-10-release">10. Release</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-1-confirm-the-premises-before-building-on-them">
+          <h2>1. Confirm the premises before building on them</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Confirm that a renamed requirement already keeps its identifier: build a two-change fixture that renames <code>req-x</code> with the same <code>id</code>, and check that <code>htmlspec validate</code> accepts both documents and that <code>htmlspec sync --change</code> reports <code>req-x</code> as reached.</h3>
+              <p>That report is the defect this change fixes, so <a href="evidence/the-premises-2026-09-26.md">record it as the "before" state</a></p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Confirm how the projection derives a requirement's <code>title</code> when the heading carries <code>&lt;span class="hs-id"&gt;</code>, and whether whitespace normalization makes a reflowed heading compare equal.</h3>
+              <p>Check with a heading passed through <code>htmlspec format</code>, and <a href="evidence/the-premises-2026-09-26.md">record the answer</a>, because decisions 3 and 4 depend on it</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Re-read <code>openspec</code> 1.13.1's <code>dist/core/specs-apply.js</code> rename handling and <a href="evidence/the-premises-2026-09-26.md">list each rule against its counterpart</a> in <a href="specification.html#hs-document-schema"><code>specs/document-schema/spec.md</code></a> and design decision 1.</h3>
+              <p>Any OpenSpec rule with no counterpart is either added here or named as a deliberate difference in the design</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-2-the-contract-in-the-schema-and-the-projection">
+          <h2>2. The contract in the schema and the projection</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Add <code>renamedFrom</code> (optional, <code>nonEmptyText</code>) to the requirement definition in <code>crates/htmlspec-schema/schema/document.schema.json</code>, and amend the <code>changeState</code> description of <code>unchanged</code> as design decision 2 states.</h3>
+              <p>Check with <code>cargo test -p htmlspec-schema</code></p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Add <code>renamed-from</code> to the requirement row of the projection specification's section 4 field table, with the single-valued rule and the exclusion from <code>statements</code>, in <code>crates/htmlspec-schema/doc/projection.md</code></h3>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Record the minor bump and the date in <code>crates/htmlspec-schema/CHANGELOG.md</code> under its bump table, and check that the contract tests in <code>crates/htmlspec-schema/tests/contract.rs</code> agree with the new version</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-3-projection">
+          <h2>3. Projection</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done" data-refs="scenario-the-previous-heading-is-a-field-not-a-statement scenario-a-requirement-with-no-rename">
+              <h3>3.1 Project a requirement's <code>data-field="renamed-from"</code> paragraph into <code>renamedFrom</code> in <code>crates/htmlspec-parse</code>, and keep it out of <code>statements</code>.</h3>
+              <p>Check with a projection test for each document-schema scenario named "<a href="specification.html#scenario-the-previous-heading-is-a-field-not-a-statement">The previous heading is a field, not a statement</a>" and "<a href="specification.html#scenario-a-requirement-with-no-rename">A requirement with no rename</a>"</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-4-validation">
+          <h2>4. Validation</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Add the six placement and consistency rules from the document-schema delta to <code>crates/htmlspec-validate</code> as errors with distinct codes: not a requirement, on <code>added</code>, on <code>removed</code>, repeated, empty, and equal to the heading.</h3>
+              <p>Check with <a href="evidence/the-implementation-2026-09-26.md">one unit test per rule that fails before the rule exists</a></p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Add conformance fixtures, one valid and one invalid per rule, through <code>conformance/src/bin/generate_fixtures.rs</code>.</h3>
+              <p>Check that the two hand-written placeholder fixtures the generator is known to delete survive regeneration, or restore them and say so</p>
+              <p data-field="note">Migration note: the generator deleted four hand-written fixtures, not two. The two <code>valid-runbook-machine-requirements*</code> fixtures had arrived after the record of the first two was written, and all four were restored. <a href="evidence/the-implementation-2026-09-26.md"><code>evidence/the-implementation-2026-09-26.md</code></a>, section 4.2, records it. The two the task anticipated are the ones <a href="../2026-09-26-log-a-runbook-run/evidence/the-generator-deletes-two-fixtures-2026-09-18.md"><code>log-a-runbook-run/evidence/the-generator-deletes-two-fixtures-2026-09-18.md</code></a> records.</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Check that <code>htmlspec format</code> leaves a <code>renamed-from</code> paragraph canonical and idempotent: <a href="evidence/the-implementation-2026-09-26.md">format twice, and diff</a></h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-5-the-merge-comparison">
+          <h2>5. The merge comparison</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Extend <code>merge_state</code> in <code>crates/htmlspec-cli/src/commands.rs</code> with the untaken-rename set as design decision 4 states.</h3>
+              <p>An untaken rename leaves <code>reached</code>, and an identifier the accepted specifications do not hold is never an untaken rename. Check with unit tests for each toolchain-packaging scenario that names a rename</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Report untaken renames from <code>sync</code> and from archival, human and structured, each naming the identifier and both headings.</h3>
+              <p>Make "not synced" true when either set is non-empty. Check that the existing test for "the two operations disagree about what is unmerged" still holds with a rename in the fixture</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done" data-refs="scenario-a-change-whose-only-unapplied-work-is-a-rename">
+              <h3>5.3 Add a CLI test for <a href="specification.html#scenario-a-change-whose-only-unapplied-work-is-a-rename">the change whose only unapplied work is a rename</a>: archival reports it as not synced, and names both the untaken rename and <code>sync</code></h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-6-instructions">
+          <h2>6. Instructions</h2>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 State in <code>crates/htmlspec-assets/instructions/sync.md</code> how a rename is merged: new heading, same identifier, no <code>renamed-from</code> carried into the accepted specification, and the modification applied to the same requirement when both are present</h3>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 State the same in <code>archive.md</code> wherever it describes applying a contract, and state how to produce a renaming change's specification</h3>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 In <code>migrate.md</code>, replace the <code>## RENAMED Requirements</code> → "no state exists" row.</h3>
+              <p>The new row maps to <code>renamed-from</code> on the <code>TO:</code> requirement, with the state taken from the rest of the delta and a chain resolving to the first heading's identifier. Remove the instruction to record renames as open</p>
+            </li>
+            <li class="task" id="task-6-4" data-change="added" data-state="done">
+              <h3>6.4 Regenerate the installed copies under <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code> with the command the release runbook names, never by hand.</h3>
+              <p>Check with <a href="evidence/the-implementation-2026-09-26.md"><code>scripts/check-installed</code></a></p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-7-migration">
+          <h2>7. Migration</h2>
+          <ul>
+            <li class="task" id="task-7-1" data-change="added" data-state="done">
+              <h3>7.1 Rewrite <code>the_delta_section_the_destination_cannot_express_is_surfaced</code> in <code>crates/htmlspec-cli/tests/migrate.rs</code>.</h3>
+              <p>Its tripwire looks for <code>"renamed"</code> in the schema and does <strong>not</strong> fire on a <code>renamedFrom</code> field, so it would keep calling the rename open after this change lands. It becomes a test that the survey still surfaces RENAMED sections and that the schema can now express them</p>
+            </li>
+            <li class="task" id="task-7-2" data-change="added" data-state="done" data-refs="req-a-single-command-exposes-validate-format-and-init">
+              <h3>7.2 <a href="evidence/the-implementation-2026-09-26.md">Check the chained identifier rule against this repository's two real renames.</a></h3>
+              <p>Derive the identifier for the <code>toolchain-packaging</code> requirement now titled "<a href="../../../specs/toolchain-packaging/spec.html#req-a-single-command-exposes-validate-format-and-init">The command surface names its operations as OpenSpec names them</a>", and check that it is <code>req-a-single-command-exposes-validate-format-and-init</code> in both renaming changes and in the accepted specification</p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-8-presentation">
+          <h2>8. Presentation</h2>
+          <ul>
+            <li class="task" id="task-8-1" data-change="added" data-state="done">
+              <h3>8.1 Add the "Renamed from" generated-content rule to the screen and print stylesheets as new content-addressed revisions, through the <code>assets/vendor.lock.json</code> procedure.</h3>
+              <p>Move the templates to the new addresses, and leave every existing revision in place. Check with <code>cargo test -p htmlspec-assets</code> and <code>conformance/tests/presentation.rs</code></p>
+              <p data-field="deviation">Migration note: the "Renamed from" generated content and the quotation marks went into the screen stylesheet's new revision alone, which applies on paper too, and the print stylesheet's new revision sets only the paragraph's ink. The lockfile had no place for a revision left in place, so it gained a <code>retained</code> list recording the previous revisions, with a test that checks each one. <a href="evidence/the-implementation-2026-09-26.md"><code>evidence/the-implementation-2026-09-26.md</code></a>, section "8.1 and 8.2", records both.</p>
+            </li>
+            <li class="task" id="task-8-2" data-change="added" data-state="done">
+              <h3>8.2 Render a document that carries a renamed-and-modified requirement, with styles on and with styles off.</h3>
+              <p><a href="evidence/the-implementation-2026-09-26.md">Check that the previous heading is readable in both and labelled in the first</a></p>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-9-prove-it">
+          <h2>9. Prove it</h2>
+          <ul>
+            <li class="task" id="task-9-1" data-change="added" data-state="done">
+              <h3>9.1 Mutation-test each new rule and the untaken-rename set: neuter each one alone, and <a href="evidence/mutation-testing-2026-09-26.md">record which test catches it</a>.</h3>
+              <p>A mutation that nothing catches needs a new test before this task is done</p>
+            </li>
+            <li class="task" id="task-9-2" data-change="added" data-state="done">
+              <h3>9.2 Run <code>cargo test --workspace --all-targets</code>, then <code>scripts/check</code>, with every stage green</h3>
+              <p data-field="note">Migration note: <a href="evidence/the-runbook-ran-2026-09-26.md"><code>evidence/the-runbook-ran-2026-09-26.md</code></a>, step 2, records <code>scripts/check</code> run after the release's regeneration with all 13 stages green. Its <code>test</code> stage runs <code>cargo test --workspace --all-targets --locked</code> (<code>scripts/check</code> at <code>51c5aea</code>). Nothing records a run of <code>cargo test --workspace --all-targets</code> on its own.</p>
+            </li>
+            <li class="task" id="task-9-3" data-change="added" data-state="done">
+              <h3>9.3 <a href="evidence/what-the-implementation-revealed-2026-09-26.md">Record what the implementation revealed</a>, including anything from task 1.3 that the design did not anticipate</h3>
+            </li>
+          </ul>
+        </section>
+        <section id="hs-10-release">
+          <h2>10. Release</h2>
+          <ul>
+            <li class="task" id="task-10-1" data-change="added" data-state="done">
+              <h3>10.1 Run the release runbook at <code>runbooks/release/tasks.html</code>, and <a href="evidence/the-runbook-ran-2026-09-26.md">report whether it worked as written</a></h3>
+            </li>
+            <li class="task" id="task-10-2" data-change="added" data-state="done">
+              <h3>10.2 Choose the increment and <a href="evidence/the-runbook-ran-2026-09-26.md">state the reasoning</a>.</h3>
+              <p>The archive instructions reserve this for a human, so flag it for confirmation</p>
+            </li>
+            <li class="task" id="task-10-3" data-change="added" data-state="done">
+              <h3>10.3 Check that <code>scripts/check-release</code> passes after archival writes <code>VERSION</code></h3>
+              <p data-field="deviation">Migration note: the archive was made with the OpenSpec workflow, which writes neither <code>VERSION</code> nor <code>runbooks.json</code>, and the first <code>scripts/check-release</code> after it failed because the archive carried no <code>runbooks.json</code>. The inventory was generated by hand from the committed runbook, byte-identical to <code>2026-09-26-carry-a-runbook-to-another-machine/runbooks.json</code>, and <code>scripts/check-release</code> then reported <code>ok 22 archived change(s) record a version</code> and exited 0. <a href="evidence/the-runbook-ran-2026-09-26.md"><code>evidence/the-runbook-ran-2026-09-26.md</code></a>, section "Task 10.3, after archival, and the step the runbook does not name", records it.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

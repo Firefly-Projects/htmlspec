@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Name each command by its request verb</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Name each command by its request verb</h1>
+        <p>This change makes toolchain-packaging's "The command surface names its operations as OpenSpec names them" require that every operation also answer to a request-verb spelling: one of <code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, or <code>delete</code>, carrying the meaning HTTP gives it and chosen by the most the operation writes in any invocation, followed by the operation's object. A request-verb spelling runs the same operation as its OpenSpec spelling, with the same output and exit status, and the OpenSpec spellings stay the ones the program's messages and its installed instructions name.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Name each command by its request verb</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-10-12-name-each-command-by-its-request-verb/specs/toolchain-packaging/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-a-single-command-exposes-validate-format-and-init" data-change="modified">
+            <h3>The command surface names its operations as OpenSpec names them <span class="hs-id">req-a-single-command-exposes-validate-format-and-init</span></h3>
+            <p>The project SHALL provide one command-line program offering, at minimum, a subcommand to validate documents, a subcommand to format documents, a subcommand to bootstrap a project, and a subcommand to create documents. Each subcommand SHALL be usable without configuration in a conforming project.</p>
+            <p><strong>Where an operation corresponds to one OpenSpec provides, it SHALL carry OpenSpec's name for it.</strong> This holds for the subcommand and for the options that select what it acts on. Every plausible adopter arrives from OpenSpec — HTMLSpec is a spinoff and its README says so — and a contributor who has learned one surface SHALL NOT have to learn a second spelling for the same operation. An operation OpenSpec does not provide takes the name this project chooses for it.</p>
+            <p>The spellings are therefore fixed rather than left to an implementer: <code>validate</code>, <code>archive</code>, <code>init</code>, <code>new</code>, <code>list</code>, <code>status</code>, <code>sync</code>, <code>show</code>, <code>instructions</code>, and <code>store</code> name the operations OpenSpec also provides. <code>format</code> and <code>assets</code> name operations it does not. The selectors <code>--json</code>, <code>--specs</code>, <code>--change</code>, <code>--store</code>, and <code>--diff</code> carry OpenSpec's spellings for the same reason.</p>
+            <p>Fixing a spelling in the contract is not decoration. A requirement that describes an operation by role alone — <em>an operation that enumerates a project's active changes</em> — is satisfied by a subcommand called <code>changes</code>, or <code>ls</code>, and the instructions written against it would then name a command that does not exist. The workflow instructions this project installs invoke these commands by name, so the name is part of the contract they depend on.</p>
+            <ins>
+              <p><strong>Each operation SHALL also answer to a request-verb spelling, which says what the operation does to the files it acts on.</strong> The verb is one of htmx's five request keywords without their <code>hx-</code> prefix, <code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, and <code>delete</code>, and it carries the meaning HTTP gives it: <code>get</code> for an operation that never writes, <code>post</code> for one that creates something that was not there, <code>put</code> for one that creates or replaces a whole thing and leaves it as one run did when run again, <code>patch</code> for one that changes something that exists, and <code>delete</code> for one that removes something. The verb is followed by the operation's object. These spellings are fixed as the OpenSpec spellings are: <code>get validity</code>, <code>get list</code>, <code>get status</code>, <code>get sync</code>, <code>get show</code>, <code>get assets</code>, <code>get preflight</code>, <code>get instructions</code>, <code>get registrations</code>, and <code>get survey</code>; <code>post change</code>, <code>post document</code>, <code>post registration</code>, <code>post run</code>, and <code>post promotion</code>; <code>put project</code> and <code>put format</code>; <code>patch archive</code>; and <code>delete registration</code>. The verb names the most the operation writes in any invocation, so <code>get</code> spells only an operation that never writes, and an operation that writes only with an option takes the verb of that write. An option keeps its meaning under both spellings: <code>put format --check</code> writes nothing, as <code>format --check</code> does.</p>
+            </ins>
+            <ins>
+              <p><strong>A request-verb spelling SHALL be a second spelling of an operation and never its replacement.</strong> It SHALL run the operation its OpenSpec spelling runs, with the same arguments and options, and SHALL produce the same output and exit status. The OpenSpec spellings stay the ones this requirement fixes above, and the program's own messages and the workflow instructions it installs SHALL name them, so a contributor who arrives from OpenSpec still has one spelling to learn. A name says what an operation is about, and a verb says whether it can change the tree, which the names do not say and which differs between the two tools for two of them: OpenSpec's sync and archive write the accepted specifications, and this program's <code>sync</code> and <code>archive</code> never do. The verbs are vocabulary only. No operation sends a request, and none needs a server or a network.</p>
+            </ins>
+            <p data-field="note">Migration note: where clap refuses an invocation's arguments before any operation runs, both spellings print the same error and exit with status 2, and the usage line names the spelling typed: <code>htmlspec validate --bogus</code> prints <code>Usage: htmlspec validate [OPTIONS] [PATH]</code>, and <code>htmlspec get validity --bogus</code> prints <code>Usage: htmlspec get validity [OPTIONS] [PATH]</code>. <a href="evidence/what-the-implementation-revealed-2026-10-09.md"><code>evidence/what-the-implementation-revealed-2026-10-09.md</code></a> records this in section 5 as what <a href="design.html#decision-one-closed-type-states-both-spellings">design decision 4</a> chose when it rejected rewriting the arguments before clap parses them. In <a href="tasks.html#task-7-1">task 7.1</a> the contributor chose not to change it, recording that the parity tests cover every invocation that reaches an operation. The statement above is carried as the delta and the accepted specification state it.</p>
+            <p>The bootstrap subcommand's subject SHALL be a project and it SHALL require no arguments, because the operation a contributor needs first is the one that establishes the project they are standing in. The creation subcommand's subject SHALL be a document or a change.</p>
+            <p>These SHALL be distinct subcommands. One subcommand meaning both "establish this project" and "write this file" would leave a contributor unable to ask for either without also specifying which they meant.</p>
+            <p>Creation SHALL take the artifact kind of the document to create, and SHALL produce a document already shaped for that kind. A <code>proposal</code> SHALL be initialized as a page of prose with no unit scaffolding at all, and a <code>specification</code> SHALL be initialized with the units its kind expects.</p>
+            <p>The asymmetry is the requirement. A proposal that arrived full of empty requirement scaffolding would push its author toward stating a contract at the stage meant for arguing about one, and the emptiest possible starting point is the correct one for a document whose structure is the author's to choose.</p>
+            <p>Creation SHALL be able to create a whole change — the directory and its documents — rather than one document at a time, because a change is a directory of kinded documents. A change created in a project SHALL be placed where that project keeps its active changes, and the resolved location SHALL be reported.</p>
+            <p>Documents SHALL be created referencing the project's asset store rather than establishing one of their own.</p>
+            <article class="scenario" id="scenario-validating-a-project" data-change="unchanged">
+              <h4>Validating a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand in a project with no arguments</dd>
+                <dt>Then</dt>
+                <dd>every document in the project is validated and the results are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-validating-one-document" data-change="unchanged">
+              <h4>Validating one document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand against a single file path</dd>
+                <dt>Then</dt>
+                <dd>only that document is validated and reported on, and the other documents its references can reach are read only for the identifiers they declare</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-bootstrapping-with-no-arguments" data-change="unchanged">
+              <h4>Bootstrapping with no arguments</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the bootstrap subcommand with no arguments</dd>
+                <dt>Then</dt>
+                <dd>it establishes a project in the current repository rather than reporting a missing argument</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-proposal" data-change="unchanged">
+              <h4>Creating a proposal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document of the proposal kind</dd>
+                <dt>Then</dt>
+                <dd>it opens as a readable page of prose, with no semantic unit scaffolding to fill in</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-specification" data-change="unchanged">
+              <h4>Creating a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document of the specification kind</dd>
+                <dt>Then</dt>
+                <dd>it arrives with the units that kind expects, because its shape is not the author's to invent</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-change" data-change="unchanged">
+              <h4>Creating a change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a new change in a project</dd>
+                <dt>Then</dt>
+                <dd>its directory is created where the project keeps active changes, holding the documents that stage needs, each declaring its kind and each valid immediately, and its location is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-created-document-uses-the-project-s-store" data-change="unchanged">
+              <h4>A created document uses the project's store</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document in a project</dd>
+                <dt>Then</dt>
+                <dd>it references the project's existing asset store and no second store is established</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-change-outside-a-project" data-change="unchanged">
+              <h4>Creating a change outside a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a change where no project exists</dd>
+                <dt>Then</dt>
+                <dd>the program reports that no project was found and names the bootstrap subcommand</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unknown-subcommand" data-change="unchanged">
+              <h4>Unknown subcommand</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes a subcommand that does not exist</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error, lists the available subcommands, and exits with a failure status</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-withdrawn-spelling-names-its-replacement" data-change="unchanged">
+              <h4>A withdrawn spelling names its replacement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes the bootstrap subcommand with the arguments creation formerly took</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error and names the subcommand that now performs it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-proposal" data-change="unchanged">
+              <h4>Initializing a proposal</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>that initialization formerly created one document and its subject is now the project</dd>
+                <dt>When</dt>
+                <dd>a contributor names a document path on the bootstrap subcommand</dd>
+                <dt>Then</dt>
+                <dd>the program refuses, states that the subject is the project, and names the creation subcommand that writes one document</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-specification" data-change="unchanged">
+              <h4>Initializing a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor names a document path on the bootstrap subcommand for any artifact kind</dd>
+                <dt>Then</dt>
+                <dd>the refusal is the same regardless of kind, because the subject changed rather than the kind vocabulary</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-change" data-change="unchanged">
+              <h4>Initializing a change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor names a path on the bootstrap subcommand intending to create a change</dd>
+                <dt>Then</dt>
+                <dd>the program refuses and names the creation subcommand for a change, so a contributor who used the withdrawn spelling is not left guessing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-discoverable-help" data-change="unchanged">
+              <h4>Discoverable help</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests help</dd>
+                <dt>Then</dt>
+                <dd>every subcommand and option is documented in the output</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-operation-openspec-also-provides" data-change="unchanged">
+              <h4>An operation OpenSpec also provides</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the command surface offers an operation that enumerates a project's changes, reports a change's completion, emits workflow instructions, registers a standalone project, or shows a change's modified requirements beside the accepted ones</dd>
+                <dt>Then</dt>
+                <dd>it is named <code>list</code>, <code>status</code>, <code>instructions</code>, <code>store</code>, and <code>show</code> respectively, because those are OpenSpec's names for those operations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-selectors-carry-openspec-s-spellings" data-change="unchanged">
+              <h4>The selectors carry OpenSpec's spellings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor asks for structured output, for specifications rather than changes, for one named change, for a registered standalone project, or for a change's modified requirements beside the accepted ones</dd>
+                <dt>Then</dt>
+                <dd>the options are <code>--json</code>, <code>--specs</code>, <code>--change</code>, <code>--store</code>, and <code>--diff</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-operation-openspec-does-not-provide" data-change="unchanged">
+              <h4>An operation OpenSpec does not provide</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the command surface offers an operation with no OpenSpec counterpart</dd>
+                <dt>Then</dt>
+                <dd>it takes the name this project chooses for it, as <code>format</code> and <code>assets</code> do</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-renamed-operation-breaks-the-installed-instructions" data-change="unchanged">
+              <h4>A renamed operation breaks the installed instructions</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>workflow instructions that invoke a subcommand by name</dd>
+                <dt>When</dt>
+                <dd>that subcommand is spelled differently from what the instructions name</dd>
+                <dt>Then</dt>
+                <dd>the instructions name a command that does not exist, which is why the spellings are fixed in the contract rather than left to an implementer</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-request-verb-spelling-runs-the-same-operation" data-change="added">
+              <h4>A request-verb spelling runs the same operation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec get validity</code> in a project with no arguments</dd>
+                <dt>Then</dt>
+                <dd>every document in the project is validated and reported exactly as <code>htmlspec validate</code> reports them, with the same exit status</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-get-operation-writes-nothing" data-change="added">
+              <h4>A get operation writes nothing</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs any operation through a <code>get</code> spelling, with any of the options it accepts</dd>
+                <dt>Then</dt>
+                <dd>no file is created, changed, or removed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-option-keeps-its-meaning-under-the-verb" data-change="added">
+              <h4>An option keeps its meaning under the verb</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec put format --check</code> on a document that is not canonical</dd>
+                <dt>Then</dt>
+                <dd>nothing is written, and the report and exit status are those of <code>htmlspec format --check</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-program-names-the-openspec-spelling" data-change="added">
+              <h4>The program names the OpenSpec spelling</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the program tells a contributor which operation to run, as it does when no project is found</dd>
+                <dt>Then</dt>
+                <dd>it names the OpenSpec spelling, such as <code>init</code>, and not the request-verb spelling</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-operation-has-both-spellings" data-change="added">
+              <h4>Every operation has both spellings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor reads the program's help</dd>
+                <dt>Then</dt>
+                <dd>every operation it lists has one request-verb spelling, and every request-verb spelling runs exactly one operation it lists</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each evidence unit below, and each verification unit in the next section, summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links. The record is the authority.</p>
+          </aside>
+          <section class="evidence" id="evidence-the-measurement-2026-10-05" data-change="added" data-refs="req-a-single-command-exposes-validate-format-and-init">
+            <h3>The command surface, what each command writes, and where its spellings are used <span class="hs-id">evidence-the-measurement-2026-10-05</span></h3>
+            <p>Measured on 2026-10-05 at <code>e112067</code>, with <code>htmlspec 0.22.0</code> and OpenSpec 1.13.1. The command line offered 14 subcommands, and 18 operations once <code>new</code>, <code>store</code>, and <code>migrate</code> are split; read from each operation's help, 9 of the 18 never write. OpenSpec's sync and archive write the accepted specifications, and <code>htmlspec sync</code> and <code>htmlspec archive</code> never do. htmx's request keywords are <code>hx-get</code>, <code>hx-post</code>, <code>hx-put</code>, <code>hx-patch</code>, and <code>hx-delete</code>, and none of OpenSpec 1.13.1's commands is <code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, or <code>delete</code>. <code>htmlspec &lt;command&gt;</code> occurred 1,075 times in tracked files, and <code>main.rs</code> declared no alias.</p>
+            <p>Recorded in <a href="evidence/the-measurement-2026-10-05.md"><code>evidence/the-measurement-2026-10-05.md</code></a>.</p>
+          </section>
+          <section class="evidence" id="evidence-the-measurement-repeated-2026-10-09" data-change="added" data-refs="req-a-single-command-exposes-validate-format-and-init">
+            <h3>The measurement repeated, and what each operation writes measured <span class="hs-id">evidence-the-measurement-repeated-2026-10-09</span></h3>
+            <p>Measured on 2026-10-09 at <code>219d1b6</code> (<code>0.28.1</code>), before any code change, for tasks 1.1 and 1.2. The command line offered 15 subcommands and 19 operations, <code>show</code> being the new one; OpenSpec 1.13.2 answered <code>error: unknown command</code> to each of the five verbs; the spellings occurred 1,253 times, and the instruction lines that invoke a command were 348; <code>main.rs</code> still declared no alias. Of 42 invocations, each in a fresh committed tree, 31 changed nothing, among them all 25 invocations of the 10 operations spelled <code>get</code>. <code>init</code> and <code>format</code>, each run twice, changed nothing the second time, and <code>archive</code> also wrote <code>runbooks.json</code> and, at the first publication, <code>runbook-releases.json</code>.</p>
+            <p>Recorded in <a href="evidence/the-measurement-repeated-2026-10-09.md"><code>evidence/the-measurement-repeated-2026-10-09.md</code></a>.</p>
+          </section>
+          <section class="evidence" id="evidence-the-change-measured-2026-10-09" data-change="added" data-refs="req-a-single-command-exposes-validate-format-and-init">
+            <h3>The measurement repeated with both spellings <span class="hs-id">evidence-the-change-measured-2026-10-09</span></h3>
+            <p>For task 5.1, the 42 cases of task 1.2 ran against the built change twice, once with each case's OpenSpec spelling and once with its request-verb spelling. Every case's exit status and tree difference were equal under both spellings, 31 cases changed nothing under each, and the verb run reached all 19 operations. The OpenSpec-spelling summary was byte for byte the one taken at HEAD in task 1.2. What each spelling prints is left to the parity tests in <code>crates/htmlspec-cli/tests/verbs.rs</code>, 59 pairs.</p>
+            <p>Recorded in <a href="evidence/the-change-measured-2026-10-09.md"><code>evidence/the-change-measured-2026-10-09.md</code></a>.</p>
+          </section>
+          <section class="evidence" id="evidence-mutation-testing-2026-10-09" data-change="added" data-refs="req-a-single-command-exposes-validate-format-and-init">
+            <h3>Mutation testing <span class="hs-id">evidence-mutation-testing-2026-10-09</span></h3>
+            <p>For task 5.2, ten mutations were applied one at a time, the nine the task names and 8b, and the command-line and assets test suites run after each. Every mutation was caught, and all 10 restores matched their backups byte for byte. Mutation 2, a dropped <code>--strict</code> under <code>get validity</code>, was caught only by the parse test, and 8b, a message no command-line test reaches, only by <code>no_program_message_names_a_request_verb_spelling</code>.</p>
+            <p>Recorded in <a href="evidence/mutation-testing-2026-10-09.md"><code>evidence/mutation-testing-2026-10-09.md</code></a>.</p>
+          </section>
+          <section class="evidence" id="evidence-what-the-implementation-revealed-2026-10-09" data-change="added" data-refs="req-a-single-command-exposes-validate-format-and-init">
+            <h3>What the implementation revealed <span class="hs-id">evidence-what-the-implementation-revealed-2026-10-09</span></h3>
+            <p>Recorded for task 5.4. The verbs are declared hidden and listed in a "Request verbs:" section written as help text, which costs clap's suggestion for a mistyped verb; the verbs' help is written from the operation table; the handler is reached through <code>Invocation</code> rather than <code>Operation</code>; a dropped <code>--strict</code> cannot be told apart by running the program; a usage error names the spelling typed, with exit status 2 under both spellings; and the configuration directory resolves as a project, recorded as a follow-up.</p>
+            <p>Recorded in <a href="evidence/what-the-implementation-revealed-2026-10-09.md"><code>evidence/what-the-implementation-revealed-2026-10-09.md</code></a>.</p>
+          </section>
+          <section class="evidence" id="evidence-the-runbook-ran-2026-10-09" data-change="added" data-refs="req-a-single-command-exposes-validate-format-and-init">
+            <h3>The release runbook's run for 0.29.0 <span class="hs-id">evidence-the-runbook-ran-2026-10-09</span></h3>
+            <p>For tasks 6.1 and 6.2, the release runbook at version <code>0.1.0</code> worked as written. The increment <code>0.28.1</code> → <code>0.29.0</code> was confirmed by the contributor on 2026-10-09. All 45 installed instruction files changed only their <code>generatedBy</code> stamp, so no instruction text changed and the instructions keep naming the OpenSpec spellings, and <code>scripts/check-release</code> passed.</p>
+            <p>Recorded in <a href="evidence/the-runbook-ran-2026-10-09.md"><code>evidence/the-runbook-ran-2026-10-09.md</code></a>.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-get-validity-against-validate" data-change="added" data-outcome="partial" data-refs="scenario-a-request-verb-spelling-runs-the-same-operation">
+            <h3><code>get validity</code> run bare against <code>validate</code>, by exit status and tree <span class="hs-id">verify-get-validity-against-validate</span></h3>
+            <p data-field="method">For task 5.1, the 42 cases of task 1.2 ran against the built change, each in a fresh committed tree, once with each case's OpenSpec spelling and once with its request-verb spelling, the leading words rewritten (<code>validate</code> → <code>get validity</code>) and every argument after them passed as it was. Each case's exit status and <code>git status --porcelain --untracked-files=all</code> afterwards were compared byte for byte. The four <code>validate</code> cases, bare among them, are listed in <a href="evidence/the-measurement-repeated-2026-10-09.md"><code>evidence/the-measurement-repeated-2026-10-09.md</code></a>, and <a href="evidence/the-change-measured-2026-10-09.md"><code>evidence/the-change-measured-2026-10-09.md</code></a> records every case's exit status and tree difference equal under both spellings.</p>
+            <p data-field="unchecked">every document in the project is validated and reported exactly as <code>htmlspec validate</code> reports them: the record compares exit statuses and trees, and leaves what each spelling prints to the parity tests</p>
+          </section>
+          <section class="verification" id="verify-every-get-invocation-of-task-1-2" data-change="added" data-outcome="partial" data-refs="scenario-a-get-operation-writes-nothing">
+            <h3>Every <code>get</code> invocation of task 1.2, under the verb spelling <span class="hs-id">verify-every-get-invocation-of-task-1-2</span></h3>
+            <p data-field="method">The same run of the 42 cases under the request-verb spelling. Among them are 25 invocations of the 10 <code>get</code> operations, with the options task 1.2 gave them, such as <code>validate</code> bare, with <code>--strict</code>, with <code>--json</code>, and with one path. <a href="evidence/the-change-measured-2026-10-09.md"><code>evidence/the-change-measured-2026-10-09.md</code></a> records that 31 cases changed nothing under each spelling and that every tree difference equals the OpenSpec spelling's, and <a href="evidence/the-measurement-repeated-2026-10-09.md"><code>evidence/the-measurement-repeated-2026-10-09.md</code></a> identifies those 31 as all 25 <code>get</code> invocations and six with an option that withholds writes.</p>
+            <p data-field="unchecked">with any of the options it accepts: only the options task 1.2's 25 <code>get</code> invocations gave were run</p>
+          </section>
+          <section class="verification" id="verify-put-format-check-against-format-check" data-change="added" data-outcome="partial" data-refs="scenario-an-option-keeps-its-meaning-under-the-verb">
+            <h3><code>put format --check</code> against <code>format --check</code>, by exit status and tree <span class="hs-id">verify-put-format-check-against-format-check</span></h3>
+            <p data-field="method">The same run of the 42 cases. <code>put format --check</code> ran on a project with a non-canonical document, against <code>format --check</code> on the same project, and <a href="evidence/the-change-measured-2026-10-09.md"><code>evidence/the-change-measured-2026-10-09.md</code></a> records exit status 1 and the tree unchanged under the verb spelling, as under <code>format --check</code>.</p>
+            <p data-field="unchecked">the report is that of <code>htmlspec format --check</code>: the record does not compare what either spelling printed</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

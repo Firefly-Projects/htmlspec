@@ -1,0 +1,106 @@
+## MODIFIED Requirements
+
+### Requirement: Bootstrapping installs agent instructions for the tools a project uses
+
+The bootstrap operation SHALL install, for each selected AI coding tool, the instructions that tool needs to drive the HTMLSpec workflow. Where a tool supports invocable commands, the operation SHALL install those as well as the instructions.
+
+The instructions SHALL cover the project's lifecycle from an idea to an archived change, rather than a single stage of it. A contributor who has bootstrapped a project and lists what was installed SHALL find the stage they are at. Instructions covering only the final stage leave every earlier stage to be improvised, which is the case the project's own contract for artifact kinds exists to prevent.
+
+A workflow SHALL be installed whether or not a command performs it. Archival is already agent-driven — the program checks a specification it does not produce — so a stage whose work is judgment is the ordinary case rather than the exception.
+
+An installed workflow's instructions SHALL NOT name a command the program does not provide, and this SHALL be checked mechanically rather than by review. Naming an absent command sends an agent to an error, and it is the hazard that a rule limiting how many workflows are installed was attempting to avoid.
+
+The set of supported tools SHALL be data rather than logic, so that supporting an additional tool is an entry in that set. The set of workflows SHALL likewise be data, so that covering an additional stage is an entry in that set together with its instructions.
+
+The order of the workflows SHALL be the order the lifecycle moves through them, because instructions written into a shared file are presented in that order and a reader meets them as a document.
+
+How a tool receives instructions SHALL be a property of the tool with one value per tool, rather than a combination of independent settings. A tool for which no instructions could be written is a state the program SHALL NOT be able to reach.
+
+Instructions SHALL record the version of the program that generated them, so an installation predating the instructions it should carry is identifiable.
+
+Where a workflow is reached through an invocation, whatever a contributor types after that invocation SHALL reach the agent that performs the workflow. An invocation surface that accepts text and discards it makes the workflow ask for what it was already given, which is the failure a contributor experiences as being asked twice. This obligation reaches the kinds of file a tool invokes and SHALL NOT reach a kind that carries no invocation, because there is no argument to pass where there is nothing to type.
+
+What a workflow takes SHALL be declared alongside the workflow, and SHALL be a property of that workflow rather than one description shared by all of them. Workflows differ in their input — one begins from a description of work that does not exist, another acts on a change already present — so a shared declaration describes none of them accurately.
+
+An absent argument SHALL reach the agent as absent rather than as an error, and a workflow SHALL remain invocable with no argument at all. Where nothing was typed, the workflow's own guidance on a missing input applies; a surface that rejected a bare invocation would remove the behavior that is correct when a contributor has genuinely described nothing. An agent SHALL be able to distinguish an argument that was not supplied from one that was lost in delivery, because an agent that suspects the latter asks again for what it was sent.
+
+An argument's declaration and its delivery SHALL both be checked against the files the operation produces, rather than against the values they derive from. Each is assembled when a file is written, so a check over the inputs passes while a writer that omitted one ships.
+
+Every generated file's declared name SHALL be composed only of lowercase letters, digits, and hyphens, because a tool that reads it may reject any other character. This SHALL hold for each kind of file the operation writes, and SHALL be checked against the files produced rather than against the values they are derived from — a name is assembled at the moment of writing, so a fault introduced there is invisible to a check on the inputs.
+
+A generated name SHALL NOT be the invocation a contributor types. The invocation is a property of a tool's command surface, it differs per tool, and it SHALL have one producer; a name field holding it states that fact a second time and states it where a stricter reader rejects it. The name SHALL instead identify the workflow, so that a workflow has one generated identity rather than one per file kind.
+
+No two files the operation writes for one tool SHALL declare the same name. A declared name is a registry key for the tool that loads it, so a workflow's identity SHALL be declared once within a tool rather than repeated in each kind of file the workflow produces — a second declaration presents one workflow as two. Where a kind of file does not need a name in order to be found, the operation SHALL NOT write one; a command whose invocation is determined by its file path is such a kind. The same name appearing in two different tools' files is not a repeat, because each tool's namespace is its own.
+
+#### Scenario: Installing for a tool with commands
+- **WHEN** the bootstrap operation installs instructions for a tool that supports invocable commands
+- **THEN** both the instructions and the commands are written where that tool reads them, one of each per workflow
+
+#### Scenario: Installing for a tool without commands
+- **WHEN** the bootstrap operation installs instructions for a tool that supports instructions only
+- **THEN** the instructions are written and no command files are created
+
+#### Scenario: Every selected tool receives something
+- **WHEN** the bootstrap operation completes for any selected tool
+- **THEN** that tool has received instructions, because a selected tool that receives nothing is not a representable outcome
+
+#### Scenario: The lifecycle is covered
+- **WHEN** a contributor lists the workflows installed by the bootstrap operation
+- **THEN** the stages from exploring an idea through to archiving a completed change are each named
+
+#### Scenario: A workflow with no command behind it
+- **GIVEN** a stage of the lifecycle that no command performs
+- **WHEN** the bootstrap operation installs instructions
+- **THEN** that stage's instructions are installed, and they state that the work is the agent's
+
+#### Scenario: Instructions naming an absent command
+- **WHEN** an installed workflow's instructions name an invocation the program does not provide
+- **THEN** the project's own checks report it, rather than the invocation reaching a contributor
+
+#### Scenario: Workflows are presented in lifecycle order
+- **WHEN** instructions for every workflow are written into one shared file
+- **THEN** they appear in the order the lifecycle moves through them
+
+#### Scenario: Generated instructions name their version
+- **WHEN** instructions are installed
+- **THEN** they record the version of the program that generated them
+
+#### Scenario: An invocation carrying a description
+- **WHEN** a contributor invokes a workflow and types a description of the work after it
+- **THEN** that description reaches the agent, which acts on it rather than asking what the work is
+
+#### Scenario: An invocation carrying nothing
+- **WHEN** a contributor invokes a workflow and types nothing after it
+- **THEN** the workflow runs, the agent observes that no input was supplied, and its guidance for a missing input applies
+
+#### Scenario: A workflow declares what it takes
+- **WHEN** the bootstrap operation installs a workflow whose input differs from another's
+- **THEN** the file it writes declares that workflow's own input rather than a description shared across workflows
+
+#### Scenario: A delivery kind with no invocation
+- **WHEN** instructions are written into a shared file that no contributor invokes
+- **THEN** no argument is declared, because there is no invocation to carry one
+
+#### Scenario: A dropped argument is caught before release
+- **WHEN** the operation would write a file that declares an argument its body never consumes, or consumes one it never declares
+- **THEN** the project's own checks report it against the produced file, rather than a contributor's description being discarded at invocation
+
+#### Scenario: Every generated name is loadable
+- **WHEN** the bootstrap operation installs for every supported tool
+- **THEN** every file it writes declares a name of lowercase letters, digits, and hyphens only
+
+#### Scenario: A name that is not an invocation
+- **WHEN** a command file is generated for a tool whose invocation carries a character outside that set
+- **THEN** the file's declared name identifies the workflow and does not carry the invocation
+
+#### Scenario: A workflow is listed once per tool
+- **WHEN** a workflow produces both instructions and a command for one tool
+- **THEN** the workflow's name is declared once across the two, so a contributor listing what is installed finds the workflow once rather than twice
+
+#### Scenario: A repeated name is caught before release
+- **WHEN** the bootstrap operation would write the same name into two files one tool loads
+- **THEN** the project's own checks report it, rather than a contributor meeting a doubled listing when their tool loads them
+
+#### Scenario: A malformed name is caught before release
+- **WHEN** a workflow is added whose identity carries a character outside that set
+- **THEN** the project's own checks report it, rather than a contributor meeting it when their tool loads the file

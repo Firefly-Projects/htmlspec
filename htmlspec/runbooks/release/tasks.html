@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.1.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Releasing html-spec</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../assets/sha256-e4f5de7cecc4f691/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-0350261bb5666167/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Releasing html-spec</h1>
+        <p>The four steps that ship a version of this project, in the order its known hazards force rather than in the order five archived change documents each wrote them. Read the specification beside this document first: it states why the version is advanced before the instruction files are regenerated, and every release that got the order wrong discovered the reason at run time, and why the version moves only through the script that moves its pins.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>0.1.0</dd>
+          <dt>Subject</dt>
+          <dd>Releasing html-spec</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-what-this-consumes">What this procedure consumes</a></li>
+          <li><a href="#hs-tasks">Tasks</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-what-this-consumes">
+          <h2>What this procedure consumes</h2>
+          <p><strong>This section is here because there is nowhere else to put it, and that is a recorded finding rather than a design.</strong> None of the following is a step somebody performs, so none of them is a task unit — but a runbook has no notion of an input, so they are prose.</p>
+          <ul>
+            <li><code>cargo</code>, at the version <code>rust-toolchain.toml</code> pins. Note that <code>~/.cargo/bin/cargo</code> may be a broken symlink; the rustup toolchain's own <code>bin</code> directory works, and so does running inside <code>nix develop</code>.</li>
+            <li><code>python3</code>, standard library only. <code>scripts/set-version</code>, <code>scripts/check-release</code>, and <code>scripts/check-installed</code> are all Python.</li>
+            <li><code>git</code>, for staging. A file no commit has staged is invisible to the build sandbox, which receives a filtered snapshot of git-tracked files rather than the working tree.</li>
+            <li>A working tree whose change is finished. This procedure ships work; it does not decide whether the work is done.</li>
+            <li><strong>A repository whose project is in place.</strong> <code>htmlspec/</code> holds this repository's project and <code>spec.nix</code> declares its version, and this procedure regenerates inside it. Until 0.29.0 the procedure assumed the opposite, and the second hazard in the specification beside this document is what changed.</li>
+          </ul>
+        </section>
+        <section id="hs-tasks">
+          <h2>Tasks</h2>
+          <p>Each step is one unit of work, individually addressable, so a state change is a change to one unit rather than to a list. These four stay <code>todo</code> in this document forever, because this is the canonical procedure and nobody works it — a run copies the document and advances the states in the copy.</p>
+          <p><strong>The order is the correction, not the transcription.</strong> All five archived <code>## N. Release</code> sections state regeneration before the version bump, and the last three of them each discovered at run time that they then had to regenerate again. The order below is what those three learned.</p>
+          <ul>
+            <li class="task" id="task-advance-the-version" data-change="unchanged" data-state="todo">
+              <h3>Advance the workspace version and relock offline <span class="hs-id">task-advance-the-version</span></h3>
+              <p data-field="note">Run <code>scripts/set-version X.Y.Z</code> with the new version. It writes <code>version</code> under <code>[workspace.package]</code> in <code>Cargo.toml</code> and every <code>htmlspec-*</code> pin in <code>[workspace.dependencies]</code> in one edit, then runs <code>cargo update --workspace --offline</code>. Offline because the relock must move the workspace members and nothing else; the suite's stages pass <code>--locked</code> and fail on a lockfile the manifest does not agree with. <strong>Edit neither the version nor a pin by hand</strong>: a version raised alone leaves every pin naming the old one, and the relock fails before anything can say why, which the specification beside this document states as a requirement. <strong>Deciding whether the change earned a patch, a minor, or a major increment is judgment and it is yours</strong> — <code>archive.md</code> reserves it, and <code>scripts/check-release</code>'s own docstring explains why the automated version is impossible rather than merely unbuilt: a change under way legitimately has not advanced the version, so a stage asking about it would be red from a change's first commit to its last. <strong>This is first, and the reason is the first hazard the specification beside this document states as a requirement.</strong></p>
+            </li>
+            <li class="task" id="task-regenerate-the-instructions" data-change="unchanged" data-state="todo">
+              <h3>Regenerate the installed instruction files <span class="hs-id">task-regenerate-the-instructions</span></h3>
+              <p data-field="note">Run <code>htmlspec init --tools claude,codex,pi</code> — this repository's set, and <strong>not</strong> <code>all</code>, which appends the workflow bodies to the hand-authored <code>AGENTS.md</code>. <strong>This is never a no-op after the step above</strong>, whatever the change did to the workflow bodies: each installed file carries <code>generatedBy: htmlspec &lt;version&gt;</code> written from <code>CARGO_PKG_VERSION</code> at run time, so advancing the version restales every one of them. Regenerate through the command rather than editing the stamp — a hand-edited stamp is a file claiming a run that never happened, which is the defect <code>scripts/check-installed</code> exists to make impossible to repeat quietly. Run it from the repository root, with the binary built at the new version. <strong>Save what <code>git status --short --untracked-files=all</code> lists at the root first.</strong> The working tree is not clean here: the step above left <code>Cargo.toml</code> and <code>Cargo.lock</code> changed, and the change being released can be uncommitted too, so what matters is what <code>init</code> adds to that listing. <strong>Remove nothing afterwards.</strong> <code>htmlspec/</code> and <code>spec.nix</code> are this repository's project and its declaration, and <code>init</code> extends the project and leaves both as they are: it reports <code>extending the project in</code> the root and <code>spec.nix already exists, so it was left as it is</code>, and the paths <code>git status</code> lists afterwards that it did not list before are the installed files under the root's <code>.claude/</code>, <code>.codex/</code>, and <code>.pi/</code>, each changed by its <code>generatedBy</code> line. Where the new binary pins an asset the project's store lacks, <code>init</code> also writes it, reports <code>established</code> so many <code>shared asset(s) in</code> the store, and the new files under <code>htmlspec/assets/</code> are new paths too. If it reports instead that it <code>created the project structure</code>, or <code>git status</code> lists any other path it did not list before, stop the run: <code>init</code> did not find this repository's project, and what it wrote is for a person to settle, not for this step. Then run <code>scripts/check</code>. Its <code>release</code> and <code>self-runbooks</code> stages are the ones that read the project.</p>
+            </li>
+            <li class="task" id="task-write-the-changelog" data-change="unchanged" data-state="todo">
+              <h3>Write the changelog entry <span class="hs-id">task-write-the-changelog</span></h3>
+              <p data-field="note">Add an entry to <code>CHANGELOG.md</code>, newest first. <strong>The heading must name the version</strong>, because <code>scripts/check-release</code> finds an entry by reading headings for a dotted numeric version and nothing else. Open with what a contributor gets rather than with what was implemented, and state what the release does not do — an entry that names only the win is one a reader cannot check. Prose inside an entry is not parsed: a changelog exists to be read by a person.</p>
+            </li>
+            <li class="task" id="task-confirm-the-release-check" data-change="unchanged" data-state="todo">
+              <h3>Confirm <code>scripts/check-release</code> passes <span class="hs-id">task-confirm-the-release-check</span></h3>
+              <p data-field="note">Run <code>scripts/check-release</code>. It asks four questions of the archive in <code>htmlspec/changes/archive/</code> — every archived change records a version, every recorded version above the baseline is distinct, every recorded version has a changelog entry, and every runbook release the archive publishes is accounted for — plus three about the workspace: the version <code>Cargo.toml</code> declares has a changelog entry, every internal dependency pins exactly that version, and every published crate carries a copy of the root <code>LICENSE</code>. <strong>The <code>VERSION</code> file beside the change's documents is written at archival rather than here</strong>, because the archived directory does not exist until archival runs, and <code>htmlspec archive</code> writes it, from the version <code>spec.nix</code> declares. Do not write it. Raise <code>spec.nix</code> at archival, as the archive workflow does, to the version the first step set in <code>Cargo.toml</code>. So this step passes on the declared version now and the archived one later, which is why it is the last task open in every change that has run this procedure.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

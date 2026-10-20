@@ -1,0 +1,511 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://html-spec.dev/schema/payload/1/show.schema.json",
+  "title": "htmlspec show --diff --json",
+  "description": "The payload `htmlspec show <change> --diff --json` (`get show`) writes: each requirement the change states, beside the accepted one where there is one. Every text is a list of runs labelled by the side that holds it. A later 1.x release can add a property to any object in this payload, and only a major release removes, renames, or retypes one, so a consumer ignores a property it does not know.",
+  "type": "object",
+  "required": [
+    "change",
+    "requirements"
+  ],
+  "properties": {
+    "change": {
+      "type": "string"
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "declared",
+          "heading",
+          "comparison"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "declared": {
+            "type": "string"
+          },
+          "heading": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "comparison": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "shown"
+                ],
+                "properties": {
+                  "shown": {
+                    "type": "string",
+                    "const": "not-compared"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "shown"
+                ],
+                "properties": {
+                  "shown": {
+                    "type": "string",
+                    "const": "held-by-none"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "shown",
+                  "acceptedIn",
+                  "acceptedHeading"
+                ],
+                "properties": {
+                  "shown": {
+                    "type": "string",
+                    "const": "held-as-stated"
+                  },
+                  "acceptedIn": {
+                    "type": "string"
+                  },
+                  "acceptedHeading": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "shown",
+                  "acceptedIn",
+                  "acceptedHeading",
+                  "statements",
+                  "scenarios"
+                ],
+                "properties": {
+                  "shown": {
+                    "type": "string",
+                    "const": "differs"
+                  },
+                  "acceptedIn": {
+                    "type": "string"
+                  },
+                  "acceptedHeading": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "statements": {
+                    "type": "object",
+                    "required": [
+                      "marks",
+                      "paragraphs"
+                    ],
+                    "properties": {
+                      "marks": {
+                        "type": "string",
+                        "enum": [
+                          "author",
+                          "comparison",
+                          "unreconciled"
+                        ]
+                      },
+                      "paragraphs": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/paragraph"
+                        }
+                      }
+                    }
+                  },
+                  "scenarios": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/scenario"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "paragraph": {
+      "description": "One statement paragraph or scenario entry, as the view pairs it.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "position",
+            "acceptedPosition"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "both"
+            },
+            "position": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "acceptedPosition": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "position",
+            "acceptedPosition",
+            "acceptedHolds",
+            "changeStates"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "pair"
+            },
+            "position": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "acceptedPosition": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "acceptedHolds": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "text"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  },
+                  "onlyThisSide": {
+                    "type": "boolean",
+                    "const": true
+                  }
+                }
+              }
+            },
+            "changeStates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "text"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  },
+                  "onlyThisSide": {
+                    "type": "boolean",
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "position",
+            "changeStates"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "change"
+            },
+            "position": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "changeStates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "text"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "acceptedPosition",
+            "acceptedHolds"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "accepted"
+            },
+            "acceptedPosition": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "acceptedHolds": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "text"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "scenario": {
+      "description": "One scenario, as the view pairs it.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "id",
+            "declared"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "both"
+            },
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "declared": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "id",
+            "declared",
+            "heading",
+            "acceptedHeading",
+            "marks",
+            "given",
+            "when",
+            "then"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "pair"
+            },
+            "id": {
+              "type": "string"
+            },
+            "declared": {
+              "type": "string"
+            },
+            "heading": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "acceptedHeading": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "marks": {
+              "type": "string",
+              "enum": [
+                "author",
+                "comparison",
+                "unreconciled"
+              ]
+            },
+            "given": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/paragraph"
+              }
+            },
+            "when": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/paragraph"
+              }
+            },
+            "then": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/paragraph"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "id",
+            "declared",
+            "changeStates"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "change"
+            },
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "declared": {
+              "type": "string"
+            },
+            "changeStates": {
+              "$ref": "#/definitions/wholeScenario"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "id",
+            "declared",
+            "heading",
+            "stillHeld"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "withdrawn"
+            },
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "declared": {
+              "type": "string"
+            },
+            "heading": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "stillHeld": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "id",
+            "acceptedHolds"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "accepted"
+            },
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "acceptedHolds": {
+              "$ref": "#/definitions/wholeScenario"
+            }
+          }
+        }
+      ]
+    },
+    "wholeScenario": {
+      "type": "object",
+      "required": [
+        "heading",
+        "given",
+        "when",
+        "then"
+      ],
+      "properties": {
+        "heading": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "given": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "when": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "then": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

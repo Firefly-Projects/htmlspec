@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="0.7.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Content-address runtime assets</title>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Content-address runtime assets</h1>
+        <p>This change made the project store each runtime asset once, at a location derived from the hash of its bytes, and have each document reference its assets by that hash, so that identical bytes occupy one location and differing bytes coexist (<em>Documents share one pinned runtime</em>), with initialization writing such references and no second copy (<em>A project can be initialized with a conforming document</em>). It made asset topology a checked property: a document's asset reference must resolve to stored bytes whose hash is the one it names (<em>An asset reference must match the bytes it names</em>), a project must not store one asset's bytes at more than one location (<em>A project must not store one asset's bytes more than once</em>), and the project's check suite evaluates both rules (<em>Asset rules are checked as part of the project's check suite</em>).</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>0.7.0</dd>
+          <dt>Subject</dt>
+          <dd>Content-address runtime assets</dd>
+          <dt>Migrated from</dt>
+          <dd><code>openspec/changes/archive/2026-08-13-content-address-runtime-assets/specs/document-template/spec.md</code><br><code>openspec/changes/archive/2026-08-13-content-address-runtime-assets/specs/document-validation/spec.md</code></dd>
+          <dt>Summary</dt>
+          <dd>Written when this document was migrated. No source document states it.</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-document-template">document-template</a></li>
+          <li><a href="#hs-document-validation">document-validation</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-document-template">
+          <h2>document-template</h2>
+          <section class="requirement" id="req-documents-share-one-pinned-runtime" data-change="modified">
+            <h3>Documents share one pinned runtime <span class="hs-id">req-documents-share-one-pinned-runtime</span></h3>
+            <p>Diagram, chart, and equation support SHALL come from a fixed set of approved libraries at versions pinned by the project. The runtime SHALL be shared across documents in a project rather than duplicated into each file. Arbitrary generated scripts SHALL NOT be embedded in a document.</p>
+            <ins>
+              <p>Each runtime asset SHALL be stored at a location derived from the hash of its bytes. Identical bytes SHALL therefore occupy exactly one location in a project, and bytes that differ SHALL occupy distinct locations rather than overwriting one another. A document SHALL reference each asset by the hash it was authored against, so the bytes a document renders with cannot change without changing the document.</p>
+            </ins>
+            <ins>
+              <p>An asset location SHALL NOT be rewritten in place. Replacing a library SHALL add a location and leave existing locations intact, so a document authored earlier continues to render as authored.</p>
+            </ins>
+            <article class="scenario" id="scenario-approved-libraries" data-change="unchanged">
+              <h4>Approved libraries</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document renders a diagram or a chart</dd>
+                <dt>Then</dt>
+                <dd>it does so through the project's pinned diagram or charting library, and equations use native MathML with no library at all</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-shared-assets" data-change="unchanged">
+              <h4>Shared assets</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project containing many documents</dd>
+                <dt>When</dt>
+                <dd>the runtime is measured</dd>
+                <dt>Then</dt>
+                <dd>each library appears once in the project rather than once per document</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unapproved-script" data-change="unchanged">
+              <h4>Unapproved script</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document embeds an inline script that is not part of the pinned runtime</dd>
+                <dt>Then</dt>
+                <dd>the document is invalid</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-runtime-version-is-recorded" data-change="unchanged">
+              <h4>Runtime version is recorded</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a reviewer inspects a project's assets</dd>
+                <dt>Then</dt>
+                <dd>each vendored library's exact version and content hash are recorded, so a rendered document can be reproduced later</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-documents-needing-the-same-bytes" data-change="added">
+              <h4>Two documents needing the same bytes</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>two documents that reference the same library version</dd>
+                <dt>When</dt>
+                <dd>the project's assets are measured</dd>
+                <dt>Then</dt>
+                <dd>one stored copy serves both documents</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-upgrading-a-library" data-change="added">
+              <h4>Upgrading a library</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an existing document that references a library</dd>
+                <dt>When</dt>
+                <dd>a newer version of that library is added to the project</dd>
+                <dt>Then</dt>
+                <dd>the new bytes are stored at a new location, the existing document's references are unchanged, and it renders with the bytes it was authored against</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-documents-needing-different-bytes-of-one-file" data-change="added">
+              <h4>Two documents needing different bytes of one file</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>two documents authored against different revisions of the same stylesheet</dd>
+                <dt>When</dt>
+                <dd>both are stored in one project</dd>
+                <dt>Then</dt>
+                <dd>both revisions are retained at distinct locations and neither document is silently re-pointed at the other's bytes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-asset-reference-identifies-its-bytes" data-change="added">
+              <h4>An asset reference identifies its bytes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a consumer reads a document's asset reference</dd>
+                <dt>Then</dt>
+                <dd>it can determine the exact bytes the document expects without consulting any other file</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-project-can-be-initialized-with-a-conforming-document" data-change="modified">
+            <h3>A project can be initialized with a conforming document <span class="hs-id">req-a-project-can-be-initialized-with-a-conforming-document</span></h3>
+            <p>The project SHALL provide a way to create a new document that already conforms to the element contract, the visual system, and the runtime conventions, without hand-assembly.</p>
+            <ins>
+              <p>Initialization SHALL write asset references that match the bytes it stores. It SHALL NOT copy a runtime asset that the project already stores, and SHALL NOT produce a document whose references and stored bytes disagree.</p>
+            </ins>
+            <article class="scenario" id="scenario-starting-a-new-change" data-change="unchanged">
+              <h4>Starting a new change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor initializes a new change document</dd>
+                <dt>Then</dt>
+                <dd>the resulting file passes validation immediately and opens as a readable page</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-into-a-project-without-assets" data-change="unchanged">
+              <h4>Initializing into a project without assets</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is created in a project whose shared assets are not yet present</dd>
+                <dt>Then</dt>
+                <dd>the assets are established as part of initialization, so the document renders offline without a further step</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-into-a-project-that-already-has-the-runtime" data-change="added">
+              <h4>Initializing into a project that already has the runtime</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project already storing the runtime a new document needs</dd>
+                <dt>When</dt>
+                <dd>a contributor initializes that document</dd>
+                <dt>Then</dt>
+                <dd>it references the stored bytes and no second copy of any asset is written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initialization-cannot-emit-a-stale-reference" data-change="added">
+              <h4>Initialization cannot emit a stale reference</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>initialization writes a document and its asset references</dd>
+                <dt>Then</dt>
+                <dd>every reference matches the hash of the bytes the project stores, so a document cannot be created already pointing at bytes it does not get</dd>
+              </dl>
+            </article>
+          </section>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Tasks 5.1 to 5.4 built a formatter that fills an asset reference only when the bytes it names are absent from the store, and leaves a reference naming stored bytes as it was. No requirement this change states says so, and neither of its deltas names the formatter. Since <code>2026-10-09-fill-only-the-references-a-document-loads</code>, the accepted deterministic-formatting's "<a href="../../../specs/deterministic-formatting/spec.html#req-formatting-preserves-meaning">Formatting preserves meaning</a>" states the fill.</p>
+          </aside>
+        </section>
+        <section id="hs-document-validation">
+          <h2>document-validation</h2>
+          <section class="requirement" id="req-an-asset-reference-must-match-the-bytes-it-names" data-change="added">
+            <h3>An asset reference must match the bytes it names <span class="hs-id">req-an-asset-reference-must-match-the-bytes-it-names</span></h3>
+            <p>Validation SHALL reject a document whose asset reference does not resolve to stored bytes whose hash equals the hash named by that reference. A reference naming bytes the project does not store SHALL be reported as unresolved. A reference resolving to bytes whose hash differs from the name SHALL be reported as a mismatch, and the two SHALL be distinguishable diagnostics because they have different causes.</p>
+            <p>This rule SHALL apply only to a document validated within a project that has an asset store. A document validated outside such a project SHALL NOT have its asset references resolved, and SHALL NOT be rejected for naming bytes that no store holds. The rule states a relationship between a document and the bytes beside it, and where there are no bytes there is no relationship to violate.</p>
+            <p>A document SHALL NOT be able to exempt itself. The scope SHALL be determined by whether a store is present, never by a declaration inside the document, because a rule a document can switch off protects nothing.</p>
+            <p>This rule SHALL be an error rather than a warning, and SHALL NOT be reducible to a warning. A document that renders against bytes other than the ones it names is misreporting its own provenance.</p>
+            <p data-field="note">Migration note: as built, a reference that names no hash, such as <code>assets/htmlspec.css</code>, resolves to <code>NotAddressed</code>, and no asset rule reports it; <code>an_unaddressed_reference_is_not_this_rules_business</code> pins that, as <a href="evidence/group-3-decision.md"><code>evidence/group-3-decision.md</code></a> records. The archive's original defect had that shape, and section 8.4 of <a href="evidence/group-8-verification.md"><code>evidence/group-8-verification.md</code></a>, under "A coverage boundary this exercise found", records that this rule does not catch it: <code>htmlspec validate</code> exits 0 on it, and <code>htmlspec format --check</code> exits 1. Task 8.4 records the same boundary. The record concludes that the defect therefore fails the suite through the formatter; at <code>86c33f4</code>, though, the suite's <code>format --check</code> step ran over <code>fixtures/dogfood</code> only. It is still so in htmlspec 0.29.0, run when this document was migrated: a reference naming no hash, in a project with a store, passes validation and fails <code>format --check</code>.</p>
+            <p data-field="note">Migration note: as built, the rule reads only the last two components of a reference, its address and its file name, "because a stored asset is an address and a file name however deep the document sits", as the comment on <code>Store::resolve</code> in <code>crates/htmlspec-assets/src/store.rs</code> records at <code>86c33f4</code>. So a reference at the wrong relative depth, which does not reach the bytes from the document, still resolves. That was deliberate, and it is recorded only in that comment. Commit <code>86c33f4</code> records the formatter writing such references into the archived document, each naming the right bytes while the document rendered unstyled, and corrects the formatter. It is still so in htmlspec 0.29.0, run when this document was migrated.</p>
+            <article class="scenario" id="scenario-reference-matches-stored-bytes" data-change="added">
+              <h4>Reference matches stored bytes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>every asset reference in a document names the hash of the bytes stored at its location</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-document-validated-with-no-store-present" data-change="added">
+              <h4>Document validated with no store present</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document that is not part of a project with an asset store, such as a conformance fixture whose references are symbolic</dd>
+                <dt>When</dt>
+                <dd>it is validated</dd>
+                <dt>Then</dt>
+                <dd>its asset references are not resolved, and their targets being absent is not a violation</dd>
+              </dl>
+              <p data-field="note">Migration note: as built, a document's store is found by walking upward from the document's own directory to the nearest one holding <code>assets/</code>. So a conformance fixture validated from inside this repository is in scope, under the repository's own store, and passes because its references are unaddressed; only the conformance harness, which supplies no store, validates a fixture with none. <a href="evidence/group-3-decision.md"><code>evidence/group-3-decision.md</code></a> records that consequence and calls it the correct outcome, and the change kept this scenario's words as they were.</p>
+            </article>
+            <article class="scenario" id="scenario-a-document-cannot-exempt-itself" data-change="added">
+              <h4>A document cannot exempt itself</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document declares that its asset references are not to be resolved, by any marker it carries</dd>
+                <dt>Then</dt>
+                <dd>the declaration has no effect, and a document inside a project with a store is checked regardless</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reference-to-bytes-the-project-does-not-store" data-change="added">
+              <h4>Reference to bytes the project does not store</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document references an asset hash that no stored asset matches</dd>
+                <dt>Then</dt>
+                <dd>validation fails, reports the document, the reference, and that the bytes are absent</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-stored-bytes-do-not-match-the-name" data-change="added">
+              <h4>Stored bytes do not match the name</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an asset location whose contents were replaced with different bytes</dd>
+                <dt>When</dt>
+                <dd>a document referencing that location is validated</dd>
+                <dt>Then</dt>
+                <dd>validation fails and reports a mismatch rather than an absent asset</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-stale-reference-cannot-pass" data-change="added">
+              <h4>Stale reference cannot pass</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document authored against one revision of a stylesheet</dd>
+                <dt>When</dt>
+                <dd>it is stored beside a different revision of that stylesheet</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the reference and the bytes disagree</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-mismatch-cannot-be-downgraded" data-change="added">
+              <h4>Mismatch cannot be downgraded</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests that asset mismatches be treated as warnings</dd>
+                <dt>Then</dt>
+                <dd>the violation is still reported as an error</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-project-must-not-store-one-asset-s-bytes-more-than-once" data-change="added">
+            <h3>A project must not store one asset's bytes more than once <span class="hs-id">req-a-project-must-not-store-one-asset-s-bytes-more-than-once</span></h3>
+            <p>Validation SHALL reject a project that stores identical asset bytes at more than one location. The report SHALL name every location holding the duplicated bytes, so a contributor can tell which copy to remove.</p>
+            <p>Two assets whose bytes differ SHALL NOT be reported as duplicates, however similar their names, versions, or purposes.</p>
+            <p>This rule takes a project as its subject rather than a document, so it SHALL be evaluated where a project is in view. A directory holding no asset store has nothing to duplicate, and SHALL NOT be reported.</p>
+            <article class="scenario" id="scenario-duplicate-copies-of-one-library" data-change="added">
+              <h4>Duplicate copies of one library</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project storing the same library bytes in two locations</dd>
+                <dt>When</dt>
+                <dd>the project is validated</dd>
+                <dt>Then</dt>
+                <dd>validation fails and names both locations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-copy-per-document-is-rejected" data-change="added">
+              <h4>A copy per document is rejected</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project in which each document carries its own copy of the runtime</dd>
+                <dt>When</dt>
+                <dd>the project is validated</dd>
+                <dt>Then</dt>
+                <dd>validation fails, because the shared-runtime obligation is violated</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-different-revisions-are-not-duplicates" data-change="added">
+              <h4>Different revisions are not duplicates</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project storing two revisions of one stylesheet whose bytes differ</dd>
+                <dt>When</dt>
+                <dd>the project is validated</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds, because distinct bytes are not a duplicate</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-one-store-serving-many-documents" data-change="added">
+              <h4>One store serving many documents</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>many documents referencing one stored copy of each library</dd>
+                <dt>When</dt>
+                <dd>the project is validated</dd>
+                <dt>Then</dt>
+                <dd>validation succeeds</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-asset-rules-are-checked-as-part-of-the-project-s-check-suite" data-change="added">
+            <h3>Asset rules are checked as part of the project's check suite <span class="hs-id">req-asset-rules-are-checked-as-part-of-the-project-s-check-suite</span></h3>
+            <p>The asset reference and duplication rules SHALL be evaluated by the project's single check command, so a contributor and continuous integration verify the same asset topology. A project whose documents validate individually but whose asset topology violates these rules SHALL fail the check suite.</p>
+            <article class="scenario" id="scenario-topology-regression-fails-the-suite" data-change="added">
+              <h4>Topology regression fails the suite</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a change introduces a second copy of a stored asset</dd>
+                <dt>Then</dt>
+                <dd>the check command fails and identifies the duplicated locations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-per-document-validation-is-not-sufficient" data-change="added">
+              <h4>Per-document validation is not sufficient</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose every document passes validation on its own</dd>
+                <dt>When</dt>
+                <dd>two documents together hold duplicate asset bytes</dd>
+                <dt>Then</dt>
+                <dd>the check command still fails, because the violation is a property of the project rather than of one document</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <aside data-migration="note">
+            <p><strong>Migration note.</strong> Each unit below, and each unit under Verification, summarizes a record carried unchanged in this change's <code>evidence/</code>, which it links, and the record is the authority.</p>
+          </aside>
+          <section class="evidence" id="evidence-group-3-handoff" data-change="added" data-refs="req-documents-share-one-pinned-runtime req-an-asset-reference-must-match-the-bytes-it-names req-a-project-must-not-store-one-asset-s-bytes-more-than-once">
+            <h3>Handoff: groups 1–2 done, group 3 next <span class="hs-id">evidence-group-3-handoff</span></h3>
+            <p>Written at the end of the session that implemented groups 1 and 2, at 12 of 40 tasks, with <code>scripts/check</code> passing all 6 steps and nothing committed. It records what those groups built: <code>stored_path(digest, name)</code>, yielding <code>sha256-&lt;first 16 hex&gt;/&lt;name&gt;</code>; <code>Store::discover</code>, which tells an absent store from an empty one and resolves a reference to <code>Match</code>, <code>Absent</code>, <code>Mismatch</code>, or <code>NotAddressed</code>, keeping <code>Absent</code> and <code>Mismatch</code> apart because the specs require distinguishable diagnostics; a duplicate comparison over addressed and unaddressed files together; a build script generating the asset table from <code>assets/vendor.lock.json</code>; and <code>{{ASSET:&lt;name&gt;}}</code> template placeholders. It records <code>nix build .#checks.aarch64-darwin.assetProvenance</code> re-fetching all four libraries and reporting <code>ok</code> for each, that tasks 2.6–2.8 were added after the fact, the open question of how a rule reaches a store with three unranked options, and the 8 duplicate sets <code>Store::discover(".").duplicates()</code> reported, as the expected state until the old copies were removed. <a href="evidence/group-3-handoff.md"><code>evidence/group-3-handoff.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-group-3-decision" data-change="added" data-refs="req-an-asset-reference-must-match-the-bytes-it-names req-a-project-must-not-store-one-asset-s-bytes-more-than-once">
+            <h3>Group 3: the rule-context decision, and what it cost <span class="hs-id">evidence-group-3-decision</span></h3>
+            <p>Written while implementing group 3. It records the decision the handoff left open: the hybrid, with reference resolution in the per-document engine, given the store through a <code>Subject { projection, store }</code> rule signature, and duplication as a project-level pass wired into <code>scripts/check</code>, because the two requirements name different subjects. It records that a document's store is found by walking upward to the nearest ancestor holding <code>assets/</code>, pinned by three tests, so the existing conformance fixtures are in scope when validated from the repository and pass because their references are unaddressed, pinned by <code>an_unaddressed_reference_is_not_this_rules_business</code>; that <code>Namespace::Asset</code> joins <code>Safety</code> in refusing downgrade; and that the fixture generator was made additive, so the original 37 fixtures reproduce byte-for-byte. At the end of group 3: tasks 3.1–3.8 complete, 20 of 43; <code>scripts/check</code> passing all 6 steps; 41 conformance fixtures; the new rule identifiers <code>asset/unresolved</code> and <code>asset/mismatch</code>. <a href="evidence/group-3-decision.md"><code>evidence/group-3-decision.md</code></a></p>
+          </section>
+          <section class="evidence" id="evidence-group-8-verification" data-change="added" data-refs="req-documents-share-one-pinned-runtime req-an-asset-reference-must-match-the-bytes-it-names req-a-project-must-not-store-one-asset-s-bytes-more-than-once req-asset-rules-are-checked-as-part-of-the-project-s-check-suite">
+            <h3>Group 8: verifying the whole property <span class="hs-id">evidence-group-8-verification</span></h3>
+            <p>Written at the end of group 8, against commit <code>86c33f4</code>, with the command for each check. <code>./scripts/check</code> passed all 7 steps, and the new <code>self-assets</code> step had failed deliberately from <code>f9ea88f</code> until <code>86c33f4</code> removed the duplication. <code>htmlspec assets .</code> checked 8 stored assets and found each once. The re-rendered document's skip link was verified statically against four conditions, and interactively by Scott in Firefox. With each defect reintroduced into a fresh <code>htmlspec init</code> project, a fabricated address reported <code>asset/unresolved</code>, bytes replaced in place reported <code>asset/mismatch</code> with <code>asset/unresolved</code> firing zero times, and a second copy of one library reported <code>asset/duplicate</code>, each exiting 1, and <code>htmlspec assets .</code> exited 1 where <code>htmlspec validate doc.html</code> exited 0. It names a coverage boundary: the archive's original unaddressed reference passes <code>htmlspec validate</code> and fails <code>htmlspec format --check</code>. Tracked asset bytes measured 18.1 MB at <code>18acf0d</code> and 6.0 MB at <code>86c33f4</code>, as three trees went: the 6.0 MB copy under the archived change, <code>assets/vendor/</code>, and the three flat stylesheets. <a href="evidence/group-8-verification.md"><code>evidence/group-8-verification.md</code></a></p>
+            <p data-field="note">Migration note: the record's "before", <code>18acf0d</code>, is this change's own first commit, at which the content-addressed store already sat beside <code>assets/vendor/</code> and the flat stylesheets. So its 18.1 MB counts three copies of the runtime, one of them the store this change added, and the fall to 6.0 MB is not the change's net effect: before the change, the proposal describes two 6.0 MB copies.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-scripts-check-passes" data-change="added" data-outcome="partial" data-refs="req-asset-rules-are-checked-as-part-of-the-project-s-check-suite">
+            <h3>8.1 — <code>scripts/check</code> passes <span class="hs-id">verify-scripts-check-passes</span></h3>
+            <p data-field="method"><code>./scripts/check</code> run at <code>86c33f4</code>, as section 8.1 of <a href="evidence/group-8-verification.md"><code>evidence/group-8-verification.md</code></a> records it: all 7 checks passed, the new <code>self-assets</code> step among them, and the record states that <code>self-assets</code> failed deliberately from <code>f9ea88f</code> until <code>86c33f4</code> removed the project's duplication.</p>
+            <p data-field="unchecked">The asset reference rule evaluated by the project's single check command</p>
+            <p data-field="unchecked">A project whose documents validate individually failing the check suite</p>
+          </section>
+          <section class="verification" id="verify-each-library-appears-exactly-once" data-change="added" data-outcome="partial" data-refs="scenario-shared-assets">
+            <h3>8.2 — each library appears exactly once <span class="hs-id">verify-each-library-appears-exactly-once</span></h3>
+            <p data-field="method"><code>htmlspec assets .</code> run over the repository at <code>86c33f4</code>, as section 8.2 of <a href="evidence/group-8-verification.md"><code>evidence/group-8-verification.md</code></a> records it: it checked 8 stored assets and reported that each appears once. A cross-check by digest over every stylesheet, script, and schema in the repository found one duplicate digest, shared by two conformance fixtures that are each a project of their own.</p>
+            <p data-field="unchecked">a project containing many documents</p>
+          </section>
+          <section class="verification" id="verify-a-fabricated-address" data-change="added" data-outcome="partial" data-refs="scenario-reference-to-bytes-the-project-does-not-store">
+            <h3>8.4 — a reference names a fabricated address <span class="hs-id">verify-a-fabricated-address</span></h3>
+            <p data-field="method">A reference naming a fabricated address, reintroduced into a fresh <code>htmlspec init</code> project, as section 8.4 of <a href="evidence/group-8-verification.md"><code>evidence/group-8-verification.md</code></a> records it: validation reported <code>asset/unresolved</code> and exited 1.</p>
+            <p data-field="unchecked">reports the document, the reference</p>
+          </section>
+          <section class="verification" id="verify-stored-bytes-replaced-in-place" data-change="added" data-outcome="passed" data-refs="scenario-stored-bytes-do-not-match-the-name">
+            <h3>8.4 — stored bytes replaced in place <span class="hs-id">verify-stored-bytes-replaced-in-place</span></h3>
+            <p data-field="method">Stored bytes replaced in place in a fresh <code>htmlspec init</code> project, as section 8.4 of <a href="evidence/group-8-verification.md"><code>evidence/group-8-verification.md</code></a> records it: validation reported <code>asset/mismatch</code> and exited 1, and <code>asset/unresolved</code> fired zero times.</p>
+          </section>
+          <section class="verification" id="verify-a-second-copy-of-one-library" data-change="added" data-outcome="partial" data-refs="scenario-duplicate-copies-of-one-library">
+            <h3>8.4 — a second copy of one library <span class="hs-id">verify-a-second-copy-of-one-library</span></h3>
+            <p data-field="method">A second copy of one library in a fresh <code>htmlspec init</code> project, checked with <code>htmlspec assets .</code>, as section 8.4 of <a href="evidence/group-8-verification.md"><code>evidence/group-8-verification.md</code></a> records it: it reported <code>asset/duplicate</code> and exited 1.</p>
+            <p data-field="unchecked">names both locations</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+#
+# Check the Homebrew formula for a set of release tarballs, before any of it is published.
+#
+# Current Homebrew refuses to audit or install a formula named by a file path, so the check
+# makes a tap for the purpose. `brew tap-new --no-git` creates it, the formula rendered from
+# DIST's SHA256SUMS goes into it with addresses pointing at the tarballs in DIST, and then
+# `brew audit --strict`, `brew install`, and `brew test` each name the formula through that tap.
+# The formula's test runs `htmlspec --version`. The install and the tap are removed afterwards,
+# whatever the outcome.
+#
+# Homebrew is kept from updating itself and from sending analytics while it runs, so the check
+# makes no request beyond what an install from a local file needs.
+#
+# Usage:
+#   scripts/check-formula DIST    DIST holds the four tarballs and SHA256SUMS
+#
+# It refuses to run where htmlspec is already installed through Homebrew or the check's tap
+# already exists, rather than replace either.
+
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+if [[ $# -ne 1 || ! -f "$1/SHA256SUMS" ]]; then
+  printf 'usage: %s DIST, where DIST holds the tarballs and SHA256SUMS\n' "$0" >&2
+  exit 2
+fi
+dist="$(cd "$1" && pwd)"
+
+export HOMEBREW_NO_AUTO_UPDATE=1
+export HOMEBREW_NO_ANALYTICS=1
+export HOMEBREW_NO_INSTALL_CLEANUP=1
+export HOMEBREW_NO_ENV_HINTS=1
+
+# A name for a tap that exists only for the length of this check, on this machine.
+tap="htmlspec-check/local"
+
+if brew tap | grep -qx "$tap"; then
+  printf 'the tap %s already exists; remove it with brew untap %s first\n' "$tap" "$tap" >&2
+  exit 2
+fi
+if brew list --formula htmlspec >/dev/null 2>&1; then
+  printf 'htmlspec is already installed through Homebrew, and this check would replace it\n' >&2
+  exit 2
+fi
+
+# `tap-new` is a developer command, and Homebrew turns developer mode on when one runs. The
+# check puts the setting back as it found it, because developer mode changes what `brew update`
+# installs afterwards.
+developer="$(brew developer 2>/dev/null | head -n 1 || true)"
+
+cleanup() {
+  brew uninstall --formula "$tap/htmlspec" >/dev/null 2>&1 || true
+  brew untap "$tap" >/dev/null 2>&1 || true
+  case "$developer" in
+    *disabled*) brew developer off >/dev/null 2>&1 || true ;;
+  esac
+}
+trap cleanup EXIT
+
+brew tap-new --no-git "$tap"
+formula="$(brew --repository "$tap")/Formula/htmlspec.rb"
+scripts/render-formula --sums "$dist/SHA256SUMS" --base-url "file://$dist" > "$formula"
+
+printf '\n=== brew audit --strict ===\n'
+brew audit --strict "$tap/htmlspec"
+printf '\n=== brew install ===\n'
+brew install "$tap/htmlspec"
+printf '\n=== brew test ===\n'
+brew test "$tap/htmlspec"
+"$(brew --prefix)/bin/htmlspec" --version
+
+printf '\nthe formula audits, installs, and passes its test\n'
