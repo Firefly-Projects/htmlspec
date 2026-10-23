@@ -10,8 +10,9 @@ version and each target's digest from that file and nothing else.
 It refuses a SHA256SUMS that lacks one of the four targets, names two versions, or names a file
 that is not a release tarball, and a rendering that leaves any placeholder unfilled. It refuses a
 template whose tarballs are not exactly the four targets, and one whose `license` names other
-licenses than the `license` field of `crates/htmlspec-assets/Cargo.toml`: the binary embeds what
-that crate embeds, so the formula declares what the crate declares, and a copy that drifted fails
+licenses than the binary credits: the `license` field of `crates/htmlspec-assets/Cargo.toml`, for
+the libraries the binary embeds, joined with the licenses `crates/htmlspec-cli/CRATE-LICENSES`
+names in its header, for the Rust crates it is built from. A copy that drifted from either fails
 the formula job of the pull request that changed it.
 
 Usage:
@@ -33,6 +34,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE = ROOT / "packaging" / "homebrew" / "htmlspec.rb.in"
 ASSETS_MANIFEST = ROOT / "crates" / "htmlspec-assets" / "Cargo.toml"
+CRATE_LICENSES = ROOT / "crates" / "htmlspec-cli" / "CRATE-LICENSES"
+CREDITED_PREFIX = "Credited licenses: "
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from release_facts import TARGETS, section_fields  # noqa: E402
@@ -74,8 +77,16 @@ def read_sums(text: str) -> tuple[str, dict[str, str]]:
     return version, digests
 
 
-def template_faults(template: str, assets_manifest: str) -> list[str]:
-    """Where the template disagrees with the four targets or with the assets crate's license."""
+def credited_licenses(crate_licenses: str) -> list[str] | None:
+    """The licenses CRATE-LICENSES' header says the binary's Rust crates are credited under."""
+    for line in crate_licenses.splitlines():
+        if line.startswith(CREDITED_PREFIX):
+            return [name for name in line[len(CREDITED_PREFIX):].split(" AND ") if name]
+    return None
+
+
+def template_faults(template: str, assets_manifest: str, crate_licenses: str) -> list[str]:
+    """Where the template disagrees with the four targets or with what the binary credits."""
     faults = []
     named = TEMPLATE_TARBALL.findall(template)
     if sorted(named) != sorted(TARGETS):
@@ -90,14 +101,21 @@ def template_faults(template: str, assets_manifest: str) -> list[str]:
             f"compares only licenses joined by AND, which is what the formula's all_of states"
         )
         return faults
-    wanted = declared.split(" AND ")
+    credited = credited_licenses(crate_licenses)
+    if credited is None:
+        faults.append(
+            f"crates/htmlspec-cli/CRATE-LICENSES has no {CREDITED_PREFIX.strip()!r} line; run "
+            f"scripts/crate-notices to write it"
+        )
+        return faults
+    wanted = sorted(set(declared.split(" AND ")) | set(credited))
     found = TEMPLATE_LICENSE.search(template)
     stated = re.findall(r'"([^"]+)"', found.group(1)) if found else []
-    if sorted(stated) != sorted(wanted):
+    if sorted(stated) != wanted:
         faults.append(
-            f"the template's license is all_of {stated}, and crates/htmlspec-assets/Cargo.toml "
-            f"declares {declared}. The binary embeds what that crate embeds, so the two name the "
-            f"same licenses"
+            f"the template's license is all_of {stated}, and the binary credits {wanted}: "
+            f"crates/htmlspec-assets/Cargo.toml declares {declared} for what it embeds, and "
+            f"CRATE-LICENSES credits {' AND '.join(credited)} for the crates it is built from"
         )
     return faults
 
@@ -121,7 +139,11 @@ def main() -> int:
     arguments = parser.parse_args()
     try:
         template = arguments.template.read_text(encoding="utf-8")
-        faults = template_faults(template, ASSETS_MANIFEST.read_text(encoding="utf-8"))
+        faults = template_faults(
+            template,
+            ASSETS_MANIFEST.read_text(encoding="utf-8"),
+            CRATE_LICENSES.read_text(encoding="utf-8"),
+        )
         if faults:
             raise Refused("; ".join(faults))
         version, digests = read_sums(arguments.sums.read_text(encoding="utf-8"))

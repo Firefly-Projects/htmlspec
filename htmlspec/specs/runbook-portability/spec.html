@@ -61,6 +61,7 @@
             unsupported format versions SHALL be reported against the requirement and SHALL prevent starting
             a run. A contract with no machine declarations SHALL report zero checks, without claiming to
             have established unstated prerequisites.</p>
+            <p>A second declaration format, <code>preflight/v2</code>, SHALL read every form <code>preflight/v1</code> reads and one optional field, <code>remedy</code>: text saying where to get what the check needs. A remedy SHALL be one line of 1 to 200 characters once the spaces around it are trimmed, holding no control character, no whitespace but the plain space, and no invisible character, Unicode's format and default-ignorable characters, beyond the two joiners and one emoji presentation selector directly after the character it is for. A remedy breaking any of these SHALL make the declaration malformed. A remedy is text: preflight SHALL NOT run it, open an address in it, or count it as satisfying the check. <code>preflight/v1</code> SHALL keep refusing the field, and an unsupported format version SHALL be reported naming the formats the program reads.</p>
             <article class="scenario" id="scenario-a-missing-tool" data-change="unchanged">
               <h4>A missing tool</h4>
               <dl>
@@ -115,6 +116,39 @@
                 <dd>an ordinary logging requirement has no machine-check declaration</dd>
                 <dt>Then</dt>
                 <dd>preflight does not attempt to check that outcome and the run still owes its verification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-remedy-in-a-v2-declaration" data-change="unchanged">
+              <h4>A remedy in a v2 declaration</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a <code>preflight/v2</code> skill declaration whose remedy says where to get the skill</dd>
+                <dt>When</dt>
+                <dd>preflight reads it</dd>
+                <dt>Then</dt>
+                <dd>the check is the one v1 would make, and the remedy is carried as text</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-remedy-holding-a-hidden-character" data-change="unchanged">
+              <h4>A remedy holding a hidden character</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a remedy holding a zero-width space, a variation selector, a line separator, or an escape sequence</dd>
+                <dt>When</dt>
+                <dd>preflight reads it</dd>
+                <dt>Then</dt>
+                <dd>the declaration is malformed, the fault names the character by its code point, and no run starts</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-remedy-in-a-v1-declaration" data-change="unchanged">
+              <h4>A remedy in a v1 declaration</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a <code>preflight/v1</code> declaration with a <code>remedy</code> field</dd>
+                <dt>When</dt>
+                <dd>preflight reads it</dd>
+                <dt>Then</dt>
+                <dd>the field is refused as one the form does not have</dd>
               </dl>
             </article>
           </section>

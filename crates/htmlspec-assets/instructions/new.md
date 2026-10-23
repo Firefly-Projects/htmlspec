@@ -62,6 +62,20 @@ requirement behind any of them.
 
 ## Create the change
 
+**Where the work is a procedure somebody runs again and again, it is a runbook, not a change.**
+A release, a deployment, a restore: each is run many times, and a change ends when it is
+archived, so a procedure written as a change is a procedure destroyed after its first run.
+Create a runbook instead, and stop here:
+
+```bash
+htmlspec new runbook <name> --subject "<subject>"
+```
+
+It writes a specification of what every run must record, a tasks document holding the steps
+and a figure of their order, a `VERSION`, and a changelog, every unit `unchanged` and every
+step `todo`. `htmlspec run <name> --as <record>` starts a run of it. Work that changes what
+the project does, including work that changes a runbook, is a change.
+
 ```bash
 htmlspec new change <name> --subject "<subject>"
 ```

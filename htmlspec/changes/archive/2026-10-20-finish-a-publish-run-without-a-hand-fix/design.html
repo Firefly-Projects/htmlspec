@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>A publish run finishes without a hand fix: design</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>A publish run finishes without a hand fix: design</h1>
+        <p>The development shell supplies <code>python3</code> from the flake's pinned nixpkgs, and both runbooks' <code>toolchain</code> declarations name it, so preflight refuses a run whose interpreter is the macOS developer-tools stub instead of letting a step fail on it. The export titles its commit and pull request by the version it publishes and a twelve-character id, and holds that title to the public guard's rules before it exports anything. How the export's push authenticates stays open.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>A publish run finishes without a hand fix: design</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="cause">
+          <h2>What fails, and where</h2>
+          <p><code>craneLib.devShell</code> is an impure <code>mkShell</code>. It prepends its packages' <code>bin</code> directories to the search path and keeps the rest, and on Darwin the stdenv's SDK hook sets <code>DEVELOPER_DIR</code> and <code>SDKROOT</code> to the Nix <code>apple-sdk</code>. Before this change the shell's packages were the Rust toolchain, <code>cargo-nextest</code>, and <code>jq</code>, so <code>python3</code> resolved to <code>/usr/bin/python3</code>. That executable is a stub that runs the interpreter the developer tools at <code>DEVELOPER_DIR</code> hold, and the Nix SDK holds none.</p>
+          <p>Measured inside <code>nix develop</code> on the machine whose v1.0.0 publish run stopped: <code>command -v python3</code> printed <code>/usr/bin/python3</code>, and <code>python3 --version</code> printed <code>error: tool 'python3' not found</code>. With <code>pkgs.python3</code> in the shell, <code>python3</code> resolved to <code>/nix/store/…-python3-3.13.14/bin/python3</code> and printed <code>Python 3.13.14</code>. The same measurement found <code>git</code>, <code>/usr/bin/git</code>, <code>gh</code>, <code>nix</code>, <code>brew</code>, <code>shasum</code>, and <code>curl</code> each printing its version inside the shell.</p>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-the-shell-supplies-python" data-change="added" data-status="accepted">
+            <h3>1. The shell supplies <code>pkgs.python3</code>, and nothing else new</h3>
+            <p><code>devShells.default</code> gains <code>pkgs.python3</code>, the package <code>checkSuite</code> already lists in its <code>nativeBuildInputs</code> for the same scripts. Its interpreter comes from the flake's locked nixpkgs, so <code>flake.lock</code> does not change and every machine entering the shell runs the same Python.</p>
+            <p data-field="rationale">The scripts use the standard library only, so any Python 3 would do. The shell supplies one anyway because the failure is not a missing interpreter but an interpreter that resolves and cannot run, and only a program inside the shell is certain to shadow the stub. Adding the programs that run already, the version-control client above all, would put a second copy ahead of a contributor's own, with their credential helpers and signing configured against it, to fix nothing that was measured to fail.</p>
+            <p data-field="note">Found while building it: the shell's interpreter writes bytecode beside a module the scripts import, as <code>publish/__pycache__/</code>, and macOS's own interpreter writes it to a cache directory of its own (its <code>sys.pycache_prefix</code>), so a run inside the shell left an untracked directory nothing had met before, and one was nearly committed. <code>.gitignore</code> now names <code>__pycache__/</code>.</p>
+          </section>
+          <section class="decision" id="decision-the-toolchain-form-declares-python" data-change="added" data-status="accepted">
+            <h3>2. Both runbooks name <code>python3</code> in their <code>toolchain</code> declaration</h3>
+            <p>The note on <code>req-the-pinned-toolchain-is-what-runs</code> in each runbook's specification becomes <code>{"kind":"toolchain","manifest":"flake.nix","shell":"default","tools":["cargo","rustc","python3"]}</code>. The requirement's statement names <code>python3</code> beside <code>cargo</code> and <code>rustc</code>, and each specification gains a scenario: a <code>python3</code> that resolves outside the shell is reported, with where it resolved, and the run does not start.</p>
+            <p data-field="rationale">The release runbook's specification said <code>python3</code> was deliberately not declared, because a <code>tool</code> check states an exact version and pinning one would be "a second dependency language beside the flake". That reasoning is about the <code>tool</code> form. The <code>toolchain</code> form states no version: it checks that the named program resolves into a store path the shell's inputs occupy, which is the property that failed. Measured: outside the shell, with the pinned Rust toolchain first on the search path, <code>htmlspec preflight publish</code> now reports <code>python3</code> resolving to <code>/usr/bin/python3</code> and refuses. Inside it, it reports ready.</p>
+            <p data-field="rationale">Declaring it is what makes decision 1 hold. Without the declaration, a shell that lost <code>python3</code> in a later edit would pass preflight and fail at a step again, and nothing would say so before a run.</p>
+          </section>
+          <section class="decision" id="decision-two-runbook-releases" data-change="added" data-status="accepted">
+            <h3>3. The publish runbook releases 0.2.0 and the release runbook 0.4.0</h3>
+            <p>Each runbook's <code>VERSION</code> moves and its <code>CHANGELOG.md</code> gains a heading, because archival refuses one version for two different canonical documents. Both are minor increments: a machine that passed preflight before can be refused now, which is a change in what the procedure accepts, and no step changes. The project releases 1.0.1, a patch: no command, flag, payload, exit code, or document rule changes, and the shell is not part of the published crates.</p>
+            <p data-field="rationale">The release runbook's own prerequisites list says that <code>python3</code> is needed and that the shell supplies the toolchain. That list gains that the shell supplies <code>python3</code> too, and its 0.2.0 changelog's "does not yet say so" is answered by the 0.4.0 heading.</p>
+          </section>
+          <section class="decision" id="decision-the-contract-states-it" data-change="added" data-status="accepted">
+            <h3>4. The contract gains two scenarios, not a requirement</h3>
+            <p>toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-the-toolchain-builds-reproducibly-from-pinned-inputs">"The toolchain builds reproducibly from pinned inputs"</a> already requires equivalent results "regardless of what is already installed on the machine". A shell whose scripts run the machine's interpreter breaks that, so archival restates the requirement with one added scenario: the suite and the runbooks' scripts, run inside the development shell, run the shell's interpreter. No new requirement is needed, because the obligation is the existing one. The title gets the same treatment. toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-the-public-repository-receives-only-reviewed-exports">"The public repository receives only reviewed exports of the private one"</a> says how an export reaches the public repository, and archival restates it with one added scenario: an export of a full commit id opens a pull request whose title names the version and a twelve-character id, and passes the public repository's title rules.</p>
+            <p data-field="rationale">A separate requirement naming <code>python3</code> would state a property of one package in the contract, where the flake already states it. The scenario states the property the contract cares about: what is already installed does not decide which interpreter the project's scripts run.</p>
+          </section>
+          <section class="decision" id="decision-the-title-names-the-version" data-change="added" data-status="accepted">
+            <h3>5. The export's subject names the version and a short id, and is held to the guard's rules</h3>
+            <p><code>publishing.export_subject</code> builds the export commit's subject, which is also its pull request's title: <code>Export htmlspec {version} from {sha[:12]}</code>. The version is <code>[workspace.package]</code>'s <code>version</code> in <code>Cargo.toml</code> at the ref, read by <code>release_facts.section_fields</code>, the one reader of that table the release scripts share. The bootstrap commit keeps its fixed subject, <code>publishing.BOOTSTRAP_SUBJECT</code>. Before it exports anything, the export loads <code>scripts/check-pull-request</code> and applies its <code>title_faults</code> to the subject, and refuses with each fault it reports. A ref whose manifest declares no version is refused too, because the subject has nothing to name.</p>
+            <p data-field="rationale">The old subject named the ref as the caller spelled it, so its length was the caller's choice. The runbook spells it as a full commit id, which made 77 characters. With the version and a fixed-length id, a release's title is 39 characters for a version like <code>1.0.1</code>, and only a version longer than 38 characters could pass the limit. The rules are applied by loading the guard's own script rather than restating its limit, because a copy of the limit would drift from the rule the public repository runs. Checking before the export starts means a refused title costs a few seconds, not a suite run and a public pull request with a failed check.</p>
+            <p data-field="rationale">Measured: the old title for the first run's ref is 77 characters and <code>title_faults</code> refuses it as over 72. The new one, "Export htmlspec 1.0.1 from 7983c4a90031", passes, and matches the title the first run's pull request was given by hand apart from its version.</p>
+            <p data-field="note">Revised after the code review. The rules are read at the ref, not from beside the export: the public repository's guard runs the copy inside the exported tree, which is the ref's, and the export reads every other fact from the ref and nothing from the working tree. A ref that holds no <code>scripts/check-pull-request</code> is refused, because nothing could then say whether the guard would take the title. Only an export onto the target's <code>main</code> reads the version and the rules. The bootstrap commit opens no pull request and carries <code>publishing.BOOTSTRAP_SUBJECT</code>, so it needs neither, and a test holds that subject to the rules instead. The loader is <code>publishing.title_faults</code>, which the export and its tests share. <code>release_facts</code> stays the export's own code, as <code>publishing</code> is, because it reads the ref's <code>Cargo.toml</code> and states no rule the public repository applies.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <section class="risk" id="risk-a-later-program-fails-the-same-way" data-change="added" data-response="accepted">
+            <h3>A program not declared fails inside the shell on another machine</h3>
+            <p>The measurement covers one macOS machine. Another machine can resolve a program the runbooks run outside the shell, such as <code>gh</code> or <code>shasum</code>, to one that does not run inside it, and preflight would not see it, because those programs are not declared.</p>
+            <p data-field="mitigation">Accepted. A <code>tool</code> check would pin a version the procedure does not need, and naming a program the shell does not supply in the <code>toolchain</code> form would refuse every run. If a step meets such a failure, the fix is this change's: put the program in the shell and name it in the declaration.</p>
+          </section>
+        </section>
+        <section id="open-question-the-push-credential">
+          <h2>Open question: who supplies the push's GitHub credential</h2>
+          <p>The export pushes its branch to the public repository with plain <code>git push</code> over HTTPS, and it opens the pull request and reads the rulesets with <code>gh</code>. On the machine that made the first run, <code>git</code> had no GitHub HTTPS credential: the helper its configuration names for <code>https://github.com</code>, <code>manager</code>, is not installed. The run pushed by setting <code>credential.https://github.com.helper</code> to <code>gh auth git-credential</code> for that one command, through <code>GIT_CONFIG_COUNT</code> in the command's environment, after an empty entry that clears the helpers configured before it. This change implements neither answer below. It records them so the next change can choose.</p>
+          <ul>
+            <li><strong>The export does it.</strong> For a GitHub target, the export sets the same two entries in the environment of its own <code>git push</code> and <code>git ls-remote</code> calls, so nothing persists past the command. Every GitHub operation of a delivery then authenticates as the account <code>gh</code> is signed in to, and a delivery already requires <code>gh</code> for the pull request and the ruleset checks, so this adds no dependency. The cost: the push no longer uses a contributor's own helper. If <code>gh</code> is signed in to another account than the one their helper holds, the push goes as <code>gh</code>'s account without saying so, unless the export also prints which account <code>gh</code> is, which is one more call. The tests target local bare repositories, so they would not reach this path, and it would need a test that fakes <code>gh</code>.</li>
+            <li><strong>The runbook says it.</strong> The push step names the two entries and the command, and the run records that it used them. Nothing in the code changes, and a contributor whose helper works keeps it. The cost: the knowledge lives in prose, and a run meets the missing credential only when the push fails, which is how the first run met it. Preflight cannot check it either, because no declaration form reads a credential.</li>
+          </ul>
+          <p>My recommendation is the export, limited to a GitHub target: the delivery already trusts <code>gh</code>'s account for everything else it does on GitHub, and one credential for the whole delivery is easier to reason about than two. The cost that decides it is the silent account switch, and printing <code>gh</code>'s account before the push answers that. Until a change settles it, the publish runbook's run record is where a run states the credential it used.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

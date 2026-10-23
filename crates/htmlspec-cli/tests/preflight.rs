@@ -355,20 +355,31 @@ fn every_declared_example_in_the_readme_parses() {
     // rather than from prose**: the README explains the format in sentences that also contain the
     // marker, and a sentence is not a declaration. What an author copies is the example in the
     // document, so that is what is checked.
-    let examples: Vec<&str> = source
-        .split("data-field=\"note\">preflight/v1 ")
+    //
+    // Each example keeps its own marker, `preflight/v1` or `preflight/v2`, and is checked under it:
+    // a v2 example wrapped in a v1 note would be refused for its remedy, and a v1 example wrapped
+    // in a v2 note would never test that v1 still reads.
+    let examples: Vec<(&str, &str)> = source
+        .split("data-field=\"note\">preflight/")
         .skip(1)
         .filter_map(|rest| {
             let end = rest.find("</p>")?;
-            Some(&rest[..end])
+            let (version, example) = rest[..end].split_once(' ')?;
+            Some((version, example))
         })
         .collect();
     assert!(
         !examples.is_empty(),
         "the README documents no declaration, so there is nothing for a contributor to copy"
     );
+    for version in ["v1", "v2"] {
+        assert!(
+            examples.iter().any(|(found, _)| *found == version),
+            "the README documents no preflight/{version} declaration"
+        );
+    }
 
-    for example in examples {
+    for (version, example) in examples {
         // Read through a document rather than through a private parser, so the example is checked the
         // way an author's declaration is: as a note, projected, then parsed.
         assert!(
@@ -383,11 +394,12 @@ fn every_declared_example_in_the_readme_parses() {
              <section class=\"requirement\" id=\"req-documented\" data-change=\"unchanged\">\
              <h3>A documented check <span class=\"hs-id\">req-documented</span></h3>\
              <p>A run MUST satisfy it.</p>\
-             <p data-field=\"note\">preflight/v1 {}</p>\
+             <p data-field=\"note\">preflight/{} {}</p>\
              <article class=\"scenario\" id=\"scenario-documented\" data-change=\"unchanged\">\
              <h3>Its scenario</h3>\
              <dl><dt>When</dt><dd>A run starts.</dd><dt>Then</dt><dd>It is checked.</dd></dl>\
              </article></section></main></body></html>",
+            htmlspec_assets::escape_text(version),
             htmlspec_assets::escape_text(example)
         );
         let parsed = htmlspec_parse::parse_document(&document);
@@ -431,6 +443,152 @@ fn every_declared_example_in_the_readme_parses() {
              {out}{err}"
         );
     }
+}
+
+/// A specification whose one requirement carries `note` as its declaration.
+fn a_specification_declaring(note: &str) -> String {
+    format!(
+        "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">\
+         <meta content=\"0.1.0\" name=\"htmlspec-version\">\
+         <meta content=\"specification\" name=\"htmlspec-kind\"><title>E</title></head>\
+         <body><main>\
+         <section class=\"requirement\" id=\"req-outside\" data-change=\"unchanged\">\
+         <h3>The run starts outside a project <span class=\"hs-id\">req-outside</span></h3>\
+         <p>A run MUST start outside a project.</p>\
+         <p data-field=\"note\">{}</p>\
+         <article class=\"scenario\" id=\"scenario-outside\" data-change=\"unchanged\">\
+         <h3>Its scenario</h3>\
+         <dl><dt>When</dt><dd>A run starts.</dd><dt>Then</dt><dd>It is checked.</dd></dl>\
+         </article></section></main></body></html>",
+        htmlspec_assets::escape_text(note)
+    )
+}
+
+/// A runbook's remedy reaches the operator through the binary: after the program's own remedy in
+/// the human report, as `runbookRemedy` in the payload, and nowhere under `preflight/v1`.
+///
+/// Run from inside the project, so the declared `outside-project` state is unmet.
+#[test]
+fn a_runbooks_remedy_reaches_the_report_and_v1_refuses_one() {
+    let scratch = Scratch::new("remedy");
+    let project = a_project_holding(SATISFIABLE, &scratch, "remedied");
+    let specification = project.join("htmlspec/runbooks/remedied/specification.html");
+    std::fs::write(
+        &specification,
+        a_specification_declaring(
+            "preflight/v2 {\"kind\":\"state\",\"check\":\"outside-project\",\
+             \"remedy\":\"cd to the parent of the project first\"}",
+        ),
+    )
+    .expect("written");
+
+    let (code, out, err) = run_in(&project, &["preflight", "remedied"]);
+    assert_eq!(code, 1, "an unmet check did not exit 1:\n{out}{err}");
+    let report = format!("{out}{err}");
+    let program = report
+        .find("remedy: run this from a directory that is not inside a project")
+        .unwrap_or_else(|| panic!("the program's remedy is missing:\n{report}"));
+    let runbook = report
+        .find("the runbook says: cd to the parent of the project first")
+        .unwrap_or_else(|| panic!("the runbook's remedy is missing:\n{report}"));
+    assert!(
+        program < runbook,
+        "the runbook's words came first:\n{report}"
+    );
+
+    let (code, out, err) = run_in(&project, &["--json", "preflight", "remedied"]);
+    assert_eq!(code, 1, "{out}{err}");
+    let payload: serde_json::Value = serde_json::from_str(&out).expect("one JSON payload");
+    assert_eq!(
+        payload["checks"][0]["runbookRemedy"],
+        serde_json::json!("cd to the parent of the project first"),
+        "{payload:#}"
+    );
+
+    // A run the machine cannot start writes the same report, remedy included, and no record.
+    let (code, out, err) = run_in(&project, &["--json", "run", "remedied", "--as", "first"]);
+    assert_eq!(code, 1, "{out}{err}");
+    let refusal: serde_json::Value = serde_json::from_str(&out).expect("one JSON payload");
+    assert_eq!(
+        refusal["checks"][0]["runbookRemedy"],
+        serde_json::json!("cd to the parent of the project first"),
+        "{refusal:#}"
+    );
+    assert!(
+        !project
+            .join("htmlspec/runbooks/remedied/runs/first.html")
+            .exists(),
+        "a refused run wrote a record"
+    );
+
+    // The same declaration under v1 is a contract this program cannot read: exit 2, naming the
+    // field, rather than an unmet check.
+    std::fs::write(
+        &specification,
+        a_specification_declaring(
+            "preflight/v1 {\"kind\":\"state\",\"check\":\"outside-project\",\
+             \"remedy\":\"cd to the parent of the project first\"}",
+        ),
+    )
+    .expect("written");
+    let (code, out, err) = run_in(&project, &["preflight", "remedied"]);
+    assert_eq!(code, 2, "v1 read a remedy:\n{out}{err}");
+    assert!(
+        err.contains("`remedy` is not a field this form has"),
+        "the refusal does not name the field:\n{err}"
+    );
+}
+
+/// A declared manifest path holding an escape sequence reaches the report by code point, in both
+/// the message for an absent manifest and the one for a manifest with no `flake.lock` beside it.
+///
+/// The archived scenario "A declared name holding an escape sequence": the probe uses the path as
+/// written, and the operator's terminal receives no escape byte from it.
+#[cfg(unix)]
+#[test]
+fn a_manifest_path_holding_an_escape_sequence_reaches_the_report_by_code_point() {
+    let scratch = Scratch::new("manifest-escape");
+    let project = a_project_holding(SATISFIABLE, &scratch, "escaped");
+    let specification = project.join("htmlspec/runbooks/escaped/specification.html");
+    std::fs::write(
+        &specification,
+        a_specification_declaring(
+            "preflight/v1 {\"kind\":\"toolchain\",\"manifest\":\"a\\u001b[2Jb/flake.nix\",\
+             \"shell\":\"default\",\"tools\":[\"cargo\"]}",
+        ),
+    )
+    .expect("written");
+
+    let report = |label: &str| {
+        let (code, out, err) = run_in(&project, &["preflight", "escaped"]);
+        assert_eq!(
+            code, 1,
+            "{label}: an unavailable manifest did not exit 1:\n{out}{err}"
+        );
+        let report = format!("{out}{err}");
+        assert!(
+            !report.contains('\u{1b}'),
+            "{label}: an escape byte reached the report:\n{report:?}"
+        );
+        assert!(
+            report.contains("a<U+001B>[2Jb/flake.nix"),
+            "{label}: the path is not named by code point:\n{report}"
+        );
+        report
+    };
+
+    let absent = report("absent");
+    assert!(absent.contains("no manifest at"), "{absent}");
+
+    // The manifest present and unlocked: the second message, which names the same path.
+    let directory = project.join("a\u{1b}[2Jb");
+    std::fs::create_dir_all(&directory).expect("the manifest's directory");
+    std::fs::write(directory.join("flake.nix"), "{ outputs = _: { }; }\n").expect("the manifest");
+    let unlocked = report("unlocked");
+    assert!(
+        unlocked.contains("has no `flake.lock` beside it"),
+        "{unlocked}"
+    );
 }
 
 /// Every command the README's portability section names is one the binary provides.

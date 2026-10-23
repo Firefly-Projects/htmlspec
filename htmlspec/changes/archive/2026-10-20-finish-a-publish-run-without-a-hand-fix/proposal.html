@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>A publish run finishes without a hand fix</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>A publish run finishes without a hand fix</h1>
+        <p>The first publish run needed two fixes by hand. Its procedure could not run <code>python3</code> inside the shell its preflight requires, and the export titled its public pull request past the public guard's 72 characters. The shell should supply the interpreter and the preflight should check it, and the export should title what it publishes by version, within the guard's rules.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>A publish run finishes without a hand fix</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>The first run of the publish runbook, the v1.0.0 release, needed two fixes by hand before it reached the public repository. Each is a defect in what this repository ships for that run, and the next run would meet both again.</p>
+          <p><strong>The procedure could not run inside the shell its preflight requires.</strong> Both runbooks declare <code>req-the-pinned-toolchain-is-what-runs</code>, so a run starts inside <code>nix develop</code>. That shell supplies the Rust toolchain, <code>cargo-nextest</code>, and <code>jq</code>, and every other program comes from the machine's own search path. On macOS the <code>python3</code> there is <code>/usr/bin/python3</code>, a stub that asks the developer tools at <code>DEVELOPER_DIR</code> for the interpreter. The shell points <code>DEVELOPER_DIR</code> at the Nix SDK, which holds none, so the stub resolves and then exits with "error: tool 'python3' not found". <code>publish/export</code>, <code>scripts/set-version</code>, <code>scripts/check-release</code>, <code>scripts/release_facts.py</code>, and the suite's Python stages all run it. The run's preflight reported it ready, and its second step stopped. The release runbook's 0.2.0 changelog already records the same failure for the release check, and says the runbook "does not yet say so".</p>
+          <p><strong>The export titled its pull request past the public repository's limit.</strong> <code>publish/export</code> titled the pull request, and the export commit's subject, <code>Export htmlspec from {ref} at {sha[:12]}</code>. The runbook passes <code>--ref</code> a full commit id, so the title ran to 77 characters, and the public repository's pull-request guard, which allows 72, failed on Firefly-Projects/htmlspec pull request 1. The run went on only after the pull request was retitled by hand to "Export htmlspec 1.0.0 from 7983c4a90031".</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <ul>
+            <li><strong>The shell supplies <code>python3</code>.</strong> <code>flake.nix</code>'s <code>default</code> development shell gains <code>pkgs.python3</code>, from the flake's pinned nixpkgs. The suite's own derivation already builds with the same package.</li>
+            <li><strong>Both runbooks declare it.</strong> Each runbook's <code>toolchain</code> declaration names <code>python3</code> beside <code>cargo</code> and <code>rustc</code>, so <code>htmlspec preflight</code> refuses a run whose <code>python3</code> resolves outside the shell, and names where it resolved. The publish runbook moves to 0.2.0 and the release runbook to 0.4.0, each with a changelog heading.</li>
+            <li><strong>The export names the version, not the ref.</strong> The export commit's subject and its pull request's title become <code>Export htmlspec {version} from {sha[:12]}</code>, with the version <code>Cargo.toml</code> declares at the ref. The export holds the subject to <code>scripts/check-pull-request</code>'s title rules before it exports anything, so a title the public guard would refuse stops the export instead of failing a public pull request.</li>
+            <li><strong>A patch release, 1.0.1.</strong> No command, flag, payload, or document rule changes.</li>
+          </ul>
+          <p>What working looks like: <code>nix develop -c htmlspec preflight publish</code> reports ready, <code>nix develop -c publish/export --ref "$(git rev-parse origin/main)" --dry-run</code> runs to its end, and an export pushed with a full commit id opens a pull request titled like "Export htmlspec 1.0.1 from 7983c4a90031", which the public guard accepts. On macOS, the same preflight run outside the shell reports that <code>python3</code> resolves to <code>/usr/bin/python3</code>, and refuses.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <ul>
+            <li><strong>Declare <code>python3</code> with a <code>tool</code> check.</strong> A tool check states an exact version, and the scripts need any Python 3 with its standard library. The release runbook's specification rejected that for this reason. The <code>toolchain</code> form names the manifest and pins nothing new, so the objection does not apply to it.</li>
+            <li><strong>Unset <code>DEVELOPER_DIR</code> in the shell.</strong> The stub would then find the system interpreter, but the Nix stdenv sets that variable for the compiler's linker, and the interpreter would still be whatever the machine has.</li>
+            <li><strong>Tell the runbooks to run outside the shell, with the toolchain first on the search path.</strong> That is how the runs so far worked around it. It gives up the provenance check, which is the reason the runbooks name the shell.</li>
+            <li><strong>Tell the runbook to pass a short ref.</strong> The title would fit, but its length would still depend on what a caller types, and a branch name can be any length. A title built from the version and a fixed-length id fits whatever the ref is.</li>
+          </ul>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <p>This change does not put <code>git</code>, <code>gh</code>, <code>nix</code>, <code>brew</code>, or <code>shasum</code> in the shell. Each resolves outside the shell and runs inside it: measured on the machine that met the failure, every one of them printed its version from within <code>nix develop</code>, <code>/usr/bin/git</code> included. The shell gains only the program that was measured to fail, and the design records how a later one would be found.</p>
+          <p>It does not settle how the export's push authenticates to GitHub. The first run needed git's GitHub credential helper set to <code>gh auth git-credential</code> for one command. The design records that as an open question, with what each answer would cost, and implements neither.</p>
+          <p>It does not change the v1.0.0 run already under way, whose record copies the procedure it started with, or the public pull request that run retitled.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

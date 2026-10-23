@@ -5,6 +5,39 @@ What this runbook's releases are. A release is the pair of canonical documents â
 identifies one such pair. Nothing else moves it: a run's record is history rather than procedure, so
 adding or editing one is not a release.
 
+## 0.5.0
+
+Published with the project's 1.1.0 release.
+
+**The procedure renders as the project's specifications do, and draws its order.** Both documents
+move onto the current stylesheet, through `htmlspec format --upgrade-assets`, which rewrites their
+references to the store's current assets and downloads nothing. The stylesheet they referenced had
+no styling for a partial outcome, a renamed requirement's heading, or a change's inserted and
+deleted words. The tasks document gains "The order of the steps": the flowchart the change that
+established this runbook drew in its design, with the hazard that puts the version ahead of
+regeneration on the edge between them.
+
+**What this release does not do.** The four steps, their order, their words, and the requirements
+are unchanged. A run reads the same procedure it read at 0.4.0.
+
+## 0.4.0
+
+Published with the project's 1.0.1 release.
+
+**`python3` is declared, and the shell supplies it.** 0.2.0's changelog recorded that the release
+check's Python stages fail inside `nix develop` on macOS, where the system `python3` cannot run,
+and that this runbook did not yet say so. The development shell now supplies `python3`, and
+`req-the-pinned-toolchain-is-what-runs` names it beside `cargo` and `rustc`, so a run whose
+`python3` resolves outside the shell is refused before it starts. The specification's paragraph
+that kept `python3` undeclared is replaced: its reason was the exact version a `tool` check states,
+and the `toolchain` declaration states none. The specification gains the scenario of an interpreter
+that resolves outside the shell, the list of what the procedure consumes says the shell supplies
+`python3`, and the hazard that the inputs are prose now counts the interpreter among what preflight
+checks.
+
+**What this release does not do.** The four steps, their order, and the other requirements are
+unchanged. `git` stays undeclared.
+
 ## 0.3.0
 
 Published with the project's 0.33.0 release.

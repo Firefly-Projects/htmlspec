@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Ship the crates' notices and runbook affordances</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Ship the crates' notices and runbook affordances</h1>
+        <p>What this change established. The binary carries the notices of the Rust crates it is built from, in every channel that ships it, and the suite fails when they fall behind. A runbook is created in one command, a document can be moved onto the store's current assets on request, and the runbooks a project holds are listed with their versions and titles. A preflight declaration can say where to get what a check needs, and every report shows a declaration's text with its hidden characters named. An export reaches GitHub as the account <code>gh</code> is signed in as, and a walk from above a project passes over its evidence.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Ship the crates' notices and runbook affordances</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-document-template">document-template</a></li>
+          <li><a href="#hs-deterministic-formatting">deterministic-formatting</a></li>
+          <li><a href="#hs-runbook-authority">runbook-authority</a></li>
+          <li><a href="#hs-runbook-portability">runbook-portability</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-the-program-is-distributable-as-a-standalone-artifact" data-change="modified">
+            <h3>The program is distributable as a standalone artifact <span class="hs-id">req-the-program-is-distributable-as-a-standalone-artifact</span></h3>
+            <p>The toolchain SHALL be packageable as an executable artifact that runs without a source checkout and without the packaging tool present at runtime.</p>
+            <ins>
+              <p>Every binary artifact SHALL carry, beside the program, the notices of everything compiled into it: <code>LICENSE</code> for the program itself, <code>THIRD-PARTY-LICENSES</code> for the libraries it embeds, and <code>CRATE-LICENSES</code> for the Rust crates it is built from. <code>CRATE-LICENSES</code> SHALL credit each crate the binary is compiled from for the release targets, procedural macros included, and each crate the workspace's own code generation depends on, and SHALL NOT credit a third-party crate's build or development dependencies. Under <code>OR</code> it SHALL credit the alternative whose least-preferred license comes earliest in the accepted order, MIT, Apache-2.0, BSD-3-Clause, BSD-2-Clause, ISC, Zlib, Unicode-3.0, MIT-0, Unlicense, MPL-2.0, and under <code>AND</code> every part, and a license <code>WITH</code> an exception SHALL be credited as that license. An expression leaving no accepted license SHALL stop the notices. Each text SHALL come from a file the crate ships whose name states its license, or from a reviewed row naming a file the crate ships or a standard text vendored with the program, and never from a path outside either. A crate whose expression names Apache-2.0 SHALL have its <code>NOTICE</code> files reproduced, and an MPL-2.0 crate SHALL say where its source form is.</p>
+            </ins>
+            <article class="scenario" id="scenario-running-the-packaged-program" data-change="unchanged">
+              <h4>Running the packaged program</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a machine with only the packaged artifact</dd>
+                <dt>When</dt>
+                <dd>a user runs the validate subcommand against a document</dd>
+                <dt>Then</dt>
+                <dd>it works without a source checkout or a development environment</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-version-reporting" data-change="unchanged">
+              <h4>Version reporting</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a user asks the program for its version</dd>
+                <dt>Then</dt>
+                <dd>it reports a version identifying the revision it was built from, so a diagnostic can be traced to a specific build</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-version-answers-to-v" data-change="added">
+              <h4>The version answers to <code>-v</code></h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a user runs <code>htmlspec -v</code></dd>
+                <dt>Then</dt>
+                <dd>it prints exactly what <code>htmlspec --version</code> and <code>htmlspec -V</code> print</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-binary-carries-its-notices" data-change="added">
+              <h4>A binary carries its notices</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a release tarball, a Homebrew install, or the Nix package</dd>
+                <dt>When</dt>
+                <dd>a user lists what it installed beside the program</dd>
+                <dt>Then</dt>
+                <dd><code>LICENSE</code>, <code>THIRD-PARTY-LICENSES</code>, and <code>CRATE-LICENSES</code> are there, the Nix package keeping them under <code>share/doc/htmlspec/</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-review-row-reads-from-outside-the-crate" data-change="added">
+              <h4>A reviewed row naming a file outside the crate</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a reviewed row whose source is an absolute path or climbs out with <code>..</code></dd>
+                <dt>When</dt>
+                <dd>the notices are written</dd>
+                <dt>Then</dt>
+                <dd>they stop, naming the row, and read nothing from outside the crate and the vendored texts</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-release-reaches-every-channel-from-one-tag" data-change="modified">
+            <h3>A release reaches every channel from one tag <span class="hs-id">req-a-release-reaches-every-channel-from-one-tag</span></h3>
+            <p>Every release SHALL be cut from one tag, <code>vX.Y.Z</code>, whose version equals the version the workspace declares, and the binaries, the crates, and the Homebrew formula the release produces SHALL each name that version. The release SHALL refuse a tag that names another version before it builds anything.</p>
+            <p>Publication SHALL begin only from a version tag in the public repository, <code>Firefly-Projects/htmlspec</code>, only for a commit that repository's <code>main</code> holds, and only after the check suite has passed on that commit. A tag in any other repository SHALL publish nothing. A release SHALL publish only from a run in which the binary of every target it releases was built and the formula passed its check, though runs elsewhere leave some of those jobs out.</p>
+            <p>A publication interrupted partway SHALL finish when run again, and SHALL NOT publish any version twice: the crates publish one at a time, a version the registry already holds is skipped, and a rate limit is waited out within a stated budget, after which the run stops and names the crates that remain. Every request the release makes to crates.io SHALL carry a fixed User-Agent that names the project, and no personal information.</p>
+            <ins>
+              <p>Each channel that ships the binary SHALL ship its notices with it: each release tarball holds them beside the program, the Homebrew formula installs them, and the Nix package installs them under <code>share/doc/htmlspec/</code>. The formula SHALL declare exactly the licenses the binary credits. The check suite SHALL fail when <code>CRATE-LICENSES</code> differs from what the lockfile reaches, naming each crate added, removed, or changed, and when the formula's template declares other licenses than the binary credits, so a pull request that changes either meets it, on Linux as well as where the macOS jobs run.</p>
+            </ins>
+            <article class="scenario" id="scenario-a-tag-naming-another-version" data-change="unchanged">
+              <h4>A tag naming another version</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a workspace that declares 0.33.0</dd>
+                <dt>When</dt>
+                <dd>the release runs on the tag <code>v9.9.9</code></dd>
+                <dt>Then</dt>
+                <dd>it refuses before any build, naming both versions</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tag-in-another-repository" data-change="unchanged">
+              <h4>A tag in another repository</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a version tag is pushed to a repository other than the public one</dd>
+                <dt>Then</dt>
+                <dd>the workflow verifies and builds, and its release, crates, and tap jobs publish nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tag-on-a-commit-main-does-not-hold" data-change="unchanged">
+              <h4>A tag on a commit main does not hold</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a version tag in the public repository names a commit that its <code>main</code> does not hold</dd>
+                <dt>Then</dt>
+                <dd>the release refuses it, and nothing publishes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-artifact-names-the-version" data-change="unchanged">
+              <h4>Every artifact names the version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release builds from a tag</dd>
+                <dt>Then</dt>
+                <dd>each binary reports that version, each crate is packaged at it, and the formula installs it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-formula-matches-the-release" data-change="unchanged">
+              <h4>The formula matches the release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the formula is rendered for a release</dd>
+                <dt>Then</dt>
+                <dd>each target's digest is the one the release's <code>SHA256SUMS</code> records, and the rendered formula passes Homebrew's strict audit, installs, and passes its test in a local tap</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-publication-stopped-by-the-rate-limit" data-change="unchanged">
+              <h4>A publication stopped by the rate limit</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a crates publication that published some crates and stopped on the registry's rate limit</dd>
+                <dt>When</dt>
+                <dd>it runs again</dd>
+                <dt>Then</dt>
+                <dd>it skips the crates already published, publishes the rest, and publishes nothing twice</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-request-names-the-project" data-change="unchanged">
+              <h4>Every request names the project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release sends a request to crates.io</dd>
+                <dt>Then</dt>
+                <dd>its User-Agent names the project and its public repository, and no header carries personal information</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-missing-a-target-publishes-nothing" data-change="unchanged">
+              <h4>A run missing a target publishes nothing</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a run on a version tag in the public repository in which a build failed, the formula's check did not pass, or <code>SHA256SUMS</code> names no tarball for one of the four targets</dd>
+                <dt>When</dt>
+                <dd>the run reaches the release</dd>
+                <dt>Then</dt>
+                <dd>the release job is skipped, or its first step refuses, and nothing publishes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-dependency-added-without-its-notices" data-change="added">
+              <h4>A dependency added without its notices</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a pull request that adds a crate to the binary's dependencies and leaves <code>CRATE-LICENSES</code> as it was</dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>it fails, naming each crate the lockfile now reaches that the notices do not credit</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-formula-that-drifted-from-the-notices" data-change="added">
+              <h4>A formula that drifted from the notices</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>the formula's template, declaring licenses other than the binary credits</dd>
+                <dt>When</dt>
+                <dd>the check suite runs, on Linux</dd>
+                <dt>Then</dt>
+                <dd>it fails, naming the licenses the template states and the ones the binary credits</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-single-command-exposes-validate-format-and-init" data-change="modified">
+            <h3>The command surface names its operations as OpenSpec names them <span class="hs-id">req-a-single-command-exposes-validate-format-and-init</span></h3>
+            <p>The project SHALL provide one command-line program offering, at minimum, a subcommand to validate documents, a subcommand to format documents, a subcommand to bootstrap a project, and a subcommand to create documents. Each subcommand SHALL be usable without configuration in a conforming project.</p>
+            <p><strong>Where an operation corresponds to one OpenSpec provides, it SHALL carry OpenSpec's name for it.</strong> This holds for the subcommand and for the options that select what it acts on. Every plausible adopter arrives from OpenSpec — HTMLSpec is a spinoff and its README says so — and a contributor who has learned one surface SHALL NOT have to learn a second spelling for the same operation. An operation OpenSpec does not provide takes the name this project chooses for it.</p>
+            <p>The spellings are therefore fixed rather than left to an implementer: <code>validate</code>, <code>archive</code>, <code>init</code>, <code>new</code>, <code>list</code>, <code>status</code>, <code>sync</code>, <code>show</code>, <code>instructions</code>, and <code>store</code> name the operations OpenSpec also provides. <code>format</code> and <code>assets</code> name operations it does not. The selectors <code>--json</code>, <code>--specs</code>, <code>--change</code>, <code>--store</code>, and <code>--diff</code> carry OpenSpec's spellings for the same reason.</p>
+            <p>Fixing a spelling in the contract is not decoration. A requirement that describes an operation by role alone — <em>an operation that enumerates a project's active changes</em> — is satisfied by a subcommand called <code>changes</code>, or <code>ls</code>, and the instructions written against it would then name a command that does not exist. The workflow instructions this project installs invoke these commands by name, so the name is part of the contract they depend on.</p>
+            <p><strong>Each operation SHALL also answer to a request-verb spelling, which says what the operation does to the files it acts on.</strong> The verb is one of htmx's five request keywords without their <code>hx-</code> prefix, <code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, and <code>delete</code>, and it carries the meaning HTTP gives it: <code>get</code> for an operation that never writes, <code>post</code> for one that creates something that was not there, <code>put</code> for one that creates or replaces a whole thing and leaves it as one run did when run again, <code>patch</code> for one that changes something that exists, and <code>delete</code> for one that removes something. The verb is followed by the operation's object. These spellings are fixed as the OpenSpec spellings are: <code>get validity</code>, <code>get list</code>, <code>get status</code>, <code>get sync</code>, <code>get show</code>, <code>get assets</code>, <code>get preflight</code>, <code>get instructions</code>, <code>get registrations</code>, and <code>get survey</code>; <code>post change</code>, <code>post document</code>, <ins><code>post runbook</code>, </ins><code>post registration</code>, <code>post run</code>, and <code>post promotion</code>; <code>put project</code> and <code>put format</code>; <code>patch archive</code>; and <code>delete registration</code>. The verb names the most the operation writes in any invocation, so <code>get</code> spells only an operation that never writes, and an operation that writes only with an option takes the verb of that write. An option keeps its meaning under both spellings: <code>put format --check</code> writes nothing, as <code>format --check</code> does.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Verb</th>
+                  <th>Meaning</th>
+                  <th>Spellings</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>get</code></td>
+                  <td>for an operation that never writes</td>
+                  <td><code>get validity</code>, <code>get list</code>, <code>get status</code>, <code>get sync</code>, <code>get show</code>, <code>get assets</code>, <code>get preflight</code>, <code>get instructions</code>, <code>get registrations</code>, and <code>get survey</code></td>
+                </tr>
+                <tr>
+                  <td><code>post</code></td>
+                  <td>for one that creates something that was not there</td>
+                  <td><code>post change</code>, <code>post document</code>, <ins><code>post runbook</code>, </ins><code>post registration</code>, <code>post run</code>, and <code>post promotion</code></td>
+                </tr>
+                <tr>
+                  <td><code>put</code></td>
+                  <td>for one that creates or replaces a whole thing and leaves it as one run did when run again</td>
+                  <td><code>put project</code> and <code>put format</code></td>
+                </tr>
+                <tr>
+                  <td><code>patch</code></td>
+                  <td>for one that changes something that exists</td>
+                  <td><code>patch archive</code></td>
+                </tr>
+                <tr>
+                  <td><code>delete</code></td>
+                  <td>for one that removes something</td>
+                  <td><code>delete registration</code></td>
+                </tr>
+              </tbody>
+            </table>
+            <p><strong>A request-verb spelling SHALL be a second spelling of an operation and never its replacement.</strong> It SHALL run the operation its OpenSpec spelling runs, with the same arguments and options, and SHALL produce the same output and exit status. The OpenSpec spellings stay the ones this requirement fixes above, and the program's own messages and the workflow instructions it installs SHALL name them, so a contributor who arrives from OpenSpec still has one spelling to learn. A name says what an operation is about, and a verb says whether it can change the tree, which the names do not say and which differs between the two tools for two of them: OpenSpec's sync and archive write the accepted specifications, and this program's <code>sync</code> and <code>archive</code> never do. The verbs are vocabulary only. No operation sends a request, and none needs a server or a network.</p>
+            <p>The bootstrap subcommand's subject SHALL be a project and it SHALL require no arguments, because the operation a contributor needs first is the one that establishes the project they are standing in. The creation subcommand's subject SHALL be a document<del> or</del><ins>,</ins> a change<ins>, or a runbook</ins>.</p>
+            <p>These SHALL be distinct subcommands. One subcommand meaning both "establish this project" and "write this file" would leave a contributor unable to ask for either without also specifying which they meant.</p>
+            <p>Creation SHALL take the artifact kind of the document to create, and SHALL produce a document already shaped for that kind. A <code>proposal</code> SHALL be initialized as a page of prose with no unit scaffolding at all, and a <code>specification</code> SHALL be initialized with the units its kind expects.</p>
+            <p>The asymmetry is the requirement. A proposal that arrived full of empty requirement scaffolding would push its author toward stating a contract at the stage meant for arguing about one, and the emptiest possible starting point is the correct one for a document whose structure is the author's to choose.</p>
+            <p>Creation SHALL be able to create a whole change — the directory and its documents — rather than one document at a time, because a change is a directory of kinded documents. A change created in a project SHALL be placed where that project keeps its active changes, and the resolved location SHALL be reported.</p>
+            <p>Documents SHALL be created referencing the project's asset store rather than establishing one of their own.</p>
+            <article class="scenario" id="scenario-validating-a-project" data-change="unchanged">
+              <h4>Validating a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand in a project with no arguments</dd>
+                <dt>Then</dt>
+                <dd>every document in the project is validated and the results are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-validating-one-document" data-change="unchanged">
+              <h4>Validating one document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the validate subcommand against a single file path</dd>
+                <dt>Then</dt>
+                <dd>only that document is validated and reported on, and the other documents its references can reach are read only for the identifiers they declare</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-bootstrapping-with-no-arguments" data-change="unchanged">
+              <h4>Bootstrapping with no arguments</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs the bootstrap subcommand with no arguments</dd>
+                <dt>Then</dt>
+                <dd>it establishes a project in the current repository rather than reporting a missing argument</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-proposal" data-change="unchanged">
+              <h4>Creating a proposal</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document of the proposal kind</dd>
+                <dt>Then</dt>
+                <dd>it opens as a readable page of prose, with no semantic unit scaffolding to fill in</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-specification" data-change="unchanged">
+              <h4>Creating a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document of the specification kind</dd>
+                <dt>Then</dt>
+                <dd>it arrives with the units that kind expects, because its shape is not the author's to invent</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-change" data-change="unchanged">
+              <h4>Creating a change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a new change in a project</dd>
+                <dt>Then</dt>
+                <dd>its directory is created where the project keeps active changes, holding the documents that stage needs, each declaring its kind and each valid immediately, and its location is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-created-document-uses-the-project-s-store" data-change="unchanged">
+              <h4>A created document uses the project's store</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a document in a project</dd>
+                <dt>Then</dt>
+                <dd>it references the project's existing asset store and no second store is established</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-change-outside-a-project" data-change="unchanged">
+              <h4>Creating a change outside a project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a change where no project exists</dd>
+                <dt>Then</dt>
+                <dd>the program reports that no project was found and names the bootstrap subcommand</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unknown-subcommand" data-change="unchanged">
+              <h4>Unknown subcommand</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes a subcommand that does not exist</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error, lists the available subcommands, and exits with a failure status</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-withdrawn-spelling-names-its-replacement" data-change="unchanged">
+              <h4>A withdrawn spelling names its replacement</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor invokes the bootstrap subcommand with the arguments creation formerly took</dd>
+                <dt>Then</dt>
+                <dd>the program reports the error and names the subcommand that now performs it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-proposal" data-change="unchanged">
+              <h4>Initializing a proposal</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>that initialization formerly created one document and its subject is now the project</dd>
+                <dt>When</dt>
+                <dd>a contributor names a document path on the bootstrap subcommand</dd>
+                <dt>Then</dt>
+                <dd>the program refuses, states that the subject is the project, and names the creation subcommand that writes one document</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-specification" data-change="unchanged">
+              <h4>Initializing a specification</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor names a document path on the bootstrap subcommand for any artifact kind</dd>
+                <dt>Then</dt>
+                <dd>the refusal is the same regardless of kind, because the subject changed rather than the kind vocabulary</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-a-change" data-change="unchanged">
+              <h4>Initializing a change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor names a path on the bootstrap subcommand intending to create a change</dd>
+                <dt>Then</dt>
+                <dd>the program refuses and names the creation subcommand for a change, so a contributor who used the withdrawn spelling is not left guessing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-discoverable-help" data-change="unchanged">
+              <h4>Discoverable help</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor requests help</dd>
+                <dt>Then</dt>
+                <dd>every subcommand and option is documented in the output</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-operation-openspec-also-provides" data-change="unchanged">
+              <h4>An operation OpenSpec also provides</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the command surface offers an operation that enumerates a project's changes, reports a change's completion, emits workflow instructions, registers a standalone project, or shows a change's modified requirements beside the accepted ones</dd>
+                <dt>Then</dt>
+                <dd>it is named <code>list</code>, <code>status</code>, <code>instructions</code>, <code>store</code>, and <code>show</code> respectively, because those are OpenSpec's names for those operations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-selectors-carry-openspec-s-spellings" data-change="unchanged">
+              <h4>The selectors carry OpenSpec's spellings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor asks for structured output, for specifications rather than changes, for one named change, for a registered standalone project, or for a change's modified requirements beside the accepted ones</dd>
+                <dt>Then</dt>
+                <dd>the options are <code>--json</code>, <code>--specs</code>, <code>--change</code>, <code>--store</code>, and <code>--diff</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-operation-openspec-does-not-provide" data-change="unchanged">
+              <h4>An operation OpenSpec does not provide</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the command surface offers an operation with no OpenSpec counterpart</dd>
+                <dt>Then</dt>
+                <dd>it takes the name this project chooses for it, as <code>format</code> and <code>assets</code> do</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-renamed-operation-breaks-the-installed-instructions" data-change="unchanged">
+              <h4>A renamed operation breaks the installed instructions</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>workflow instructions that invoke a subcommand by name</dd>
+                <dt>When</dt>
+                <dd>that subcommand is spelled differently from what the instructions name</dd>
+                <dt>Then</dt>
+                <dd>the instructions name a command that does not exist, which is why the spellings are fixed in the contract rather than left to an implementer</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-request-verb-spelling-runs-the-same-operation" data-change="unchanged">
+              <h4>A request-verb spelling runs the same operation</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec get validity</code> in a project with no arguments</dd>
+                <dt>Then</dt>
+                <dd>every document in the project is validated and reported exactly as <code>htmlspec validate</code> reports them, with the same exit status</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-get-operation-writes-nothing" data-change="unchanged">
+              <h4>A get operation writes nothing</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs any operation through a <code>get</code> spelling, with any of the options it accepts</dd>
+                <dt>Then</dt>
+                <dd>no file is created, changed, or removed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-option-keeps-its-meaning-under-the-verb" data-change="unchanged">
+              <h4>An option keeps its meaning under the verb</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec put format --check</code> on a document that is not canonical</dd>
+                <dt>Then</dt>
+                <dd>nothing is written, and the report and exit status are those of <code>htmlspec format --check</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-program-names-the-openspec-spelling" data-change="unchanged">
+              <h4>The program names the OpenSpec spelling</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the program tells a contributor which operation to run, as it does when no project is found</dd>
+                <dt>Then</dt>
+                <dd>it names the OpenSpec spelling, such as <code>init</code>, and not the request-verb spelling</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-operation-has-both-spellings" data-change="unchanged">
+              <h4>Every operation has both spellings</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor reads the program's help</dd>
+                <dt>Then</dt>
+                <dd>every operation it lists has one request-verb spelling, and every request-verb spelling runs exactly one operation it lists</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-creating-a-runbook" data-change="added">
+              <h4>Creating a runbook</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec new runbook deploy</code>, or <code>htmlspec post runbook deploy</code></dd>
+                <dt>Then</dt>
+                <dd>both write the same runbook, where the project keeps its runbooks, and report its location</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-command-surface-checks-a-runbook-s-machine-prerequisites" data-change="modified">
+            <h3>The command surface checks a runbook's machine prerequisites <span class="hs-id">req-the-command-surface-checks-a-runbook-s-machine-prerequisites</span></h3>
+            <p>The command <code>htmlspec preflight &lt;runbook&gt;</code> SHALL report whether the selected runbook can start in the invocation's working environment. It SHALL support the existing <code>--store</code> and <code>--json</code> selectors. Store selection SHALL locate the runbook and its records, while machine requirements SHALL be evaluated against the invocation's working directory and environment, not the store's directory. Names SHALL follow the existing runbook-name rules.</p>
+            <p>The report SHALL identify the runbook, carried version, source location, working directory, aggregate readiness, and each checked requirement with its expected condition, observation, outcome, and remedy for a refusal. Results SHALL follow document order. Human output SHALL lead with readiness. JSON output SHALL contain one structured report with no probe output interleaved.</p>
+            <ins>
+              <p>Where a check's declaration carries a remedy, the JSON report SHALL carry it as <code>runbookRemedy</code> on that check whatever its outcome, and the human report SHALL show it, labelled as the runbook's words, after the program's own remedy for a check whose outcome is <code>unmet</code>, <code>unavailable</code>, <code>timed-out</code>, or <code>probe-failed</code>, and never for one that passed. A declaration's field name, tool name, and path SHALL reach a report with each character a terminal would not show as itself named by its code point, and the probe SHALL use them as written. The help of <code>preflight</code> and <code>run</code> SHALL point to the operation that lists the project's runbooks.</p>
+            </ins>
+            <p>A completed preflight with unmet requirements SHALL exit 1, a successful one SHALL exit 0, an invalid invocation, invalid contract, or operational failure SHALL exit 2, and cancellation SHALL exit 3. Unknown observations such as an unavailable manifest environment or a timed-out probe SHALL be reported as unmet readiness rather than as success. An invalid declaration SHALL remain distinguishable from a valid check whose condition is false.</p>
+            <p><code>htmlspec run &lt;runbook&gt; --as &lt;record&gt;</code> SHALL apply the same checks and exit distinctions before creating a run. <code>htmlspec run &lt;runbook&gt; --check</code> SHALL continue to report existing run conformance without checking the present machine. Existing JSON fields on successful run creation SHALL be preserved, with version and preflight information added.</p>
+            <article class="scenario" id="scenario-an-agent-inspects-readiness" data-change="unchanged">
+              <h4>An agent inspects readiness</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operator requests preflight with <code>--json</code></dd>
+                <dt>Then</dt>
+                <dd>standard output is one parseable readiness report, no prompt occurs, and probe output stays inside the report</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-selected-store-differs-from-the-working-directory" data-change="unchanged">
+              <h4>The selected store differs from the working directory</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a stored runbook is checked from a separate target checkout</dd>
+                <dt>Then</dt>
+                <dd>the report identifies both locations and evaluates working-tree assumptions in the target checkout</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-several-prerequisites-fail" data-change="unchanged">
+              <h4>Several prerequisites fail</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>several valid checks report unsatisfied conditions</dd>
+                <dt>Then</dt>
+                <dd>one report names all of them in document order and the command exits 1</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-contract-is-malformed" data-change="unchanged">
+              <h4>The contract is malformed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a selected runbook contains an invalid machine declaration</dd>
+                <dt>Then</dt>
+                <dd>the command exits 2 and identifies the requirement and invalid field</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reviewing-existing-records" data-change="unchanged">
+              <h4>Reviewing existing records</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operator runs <code>htmlspec run &lt;runbook&gt; --check</code> on a machine missing a prerequisite</dd>
+                <dt>Then</dt>
+                <dd>it reports run conformance under its existing advisory contract</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-failing-check-whose-runbook-names-a-remedy" data-change="added">
+              <h4>A failing check whose runbook names a remedy</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a <code>preflight/v2</code> declaration with a remedy, whose condition does not hold</dd>
+                <dt>When</dt>
+                <dd>an operator runs <code>htmlspec preflight</code></dd>
+                <dt>Then</dt>
+                <dd>the report shows the program's remedy, then <code>the runbook says:</code> and the runbook's text, and with <code>--json</code> the check carries <code>runbookRemedy</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-passing-check-with-a-remedy" data-change="added">
+              <h4>A passing check with a remedy</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a <code>preflight/v2</code> declaration with a remedy, whose condition holds</dd>
+                <dt>When</dt>
+                <dd>an operator runs <code>htmlspec preflight</code></dd>
+                <dt>Then</dt>
+                <dd>the human report shows no remedy for it, and the JSON report still carries <code>runbookRemedy</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-declared-name-holding-an-escape-sequence" data-change="added">
+              <h4>A declared name holding an escape sequence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a declaration whose tool name, path, or unknown field holds an escape sequence</dd>
+                <dt>When</dt>
+                <dd>the report names it</dd>
+                <dt>Then</dt>
+                <dd>each such character is written as its code point, and nothing reaches the terminal as an escape</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-public-repository-receives-only-reviewed-exports" data-change="modified">
+            <h3>The public repository receives only reviewed exports of the private one <span class="hs-id">req-the-public-repository-receives-only-reviewed-exports</span></h3>
+            <p>The project's public repository SHALL receive only trees exported from its private working repository. Each tree SHALL come from a committed ref of the private repository, through the allowlist of paths that may cross, with every rewrite applied at the count it expects, found clean by the scan against the private pattern file, passed by the project's full suite run inside the exported tree, and reviewed by a person as the exact tree that is pushed.</p>
+            <p>A tree SHALL reach the public repository only from a commit the private repository's <code>main</code> holds, so that the reads of its paths and the contributor's sign-off it is delivered under are ones a reviewed pull request landed. A read SHALL name the content it covers, so that it survives the squash merge that lands it, and every file under an allowlisted path whose content differs from the content its read names, added or changed since, SHALL be refused, each one named.</p>
+            <p>Each export SHALL arrive in a commit whose only parent is the public repository's own <code>main</code>, or with no parent for the first commit of an empty public repository, made by a GitHub noreply identity as author and committer, and naming its source ref and commit. No commit of the private repository's history SHALL reach the public repository, and the private repository SHALL refuse any push of its own to the public one, tags included, under any spelling of the public repository's address.</p>
+            <p>An export's commit subject, which is also its pull request's title, SHALL name the version the exported ref declares and the commit's first twelve characters, and SHALL pass the title rules the ref itself states, the ones the public repository's guard runs from the exported tree, before anything is exported. A ref that states no such rules SHALL be refused. The first commit of an empty public repository opens no pull request and carries a fixed subject, so it needs neither.</p>
+            <ins>
+              <p>Every git command the export runs against a GitHub target, a review's included, SHALL reach it over HTTPS with git's credential helper for <code>https://github.com</code> set to <code>gh auth git-credential</code> for that command alone, after any the environment carries, and without prompting for a password. A delivery to a GitHub target SHALL refuse, before it reaches the target, when the addresses git would fetch from or push to, after the machine's rewrites, are not that target on <code>https://github.com</code>, and when <code>gh</code> names no account. It SHALL name the account it pushes as before it reads the target, and SHALL refuse the push when that account has changed since.</p>
+            </ins>
+            <p>The publishing tooling, its allowlist, rewrites, pattern file, and tests, SHALL stay in the private repository and SHALL be absent from every export, because its tables name the material they guard against.</p>
+            <article class="scenario" id="scenario-a-planted-private-string-is-refused" data-change="unchanged">
+              <h4>A planted private string is refused at the scan</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an allowlisted file holding a string the private pattern file names</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the scan refuses, naming the file and the line, and nothing is committed or pushed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-vanished-rewrite-is-refused" data-change="unchanged">
+              <h4>A rewrite whose text is gone is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a rewrite whose expected text no longer appears the number of times it states</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the export stops, naming the file and the text it expected</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-failing-suite-is-refused" data-change="unchanged">
+              <h4>A failing suite is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an exported tree in which the project's suite fails</dd>
+                <dt>When</dt>
+                <dd>the export runs the suite inside it</dd>
+                <dt>Then</dt>
+                <dd>the export stops before anything is committed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unreviewed-tree-is-refused" data-change="unchanged">
+              <h4>An unreviewed tree is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a push or a bootstrap is asked for without naming the tree a person reviewed, or names a different one</dd>
+                <dt>Then</dt>
+                <dd>it refuses, and nothing reaches the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unread-path-or-changed-image-is-refused" data-change="unchanged">
+              <h4>An unread path, a newly added file, or a changed image is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an allowlisted path nobody recorded as read, a file added or changed beneath an allowlisted path since the content its read names, or an image whose bytes differ from the blob a person read</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the export refuses, naming each one, however many there are</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-personal-identity-is-refused" data-change="unchanged">
+              <h4>A commit identity that is not a GitHub noreply address is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the export is to commit with an author or committer that is not a GitHub noreply address</dd>
+                <dt>Then</dt>
+                <dd>it refuses before anything reaches the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-private-history-reaches-the-public-repository" data-change="unchanged">
+              <h4>No commit of the private history reaches the public repository</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a first commit is bootstrapped into an empty public repository and a later export is pushed</dd>
+                <dt>Then</dt>
+                <dd>the first commit has no parent, the later one has only the public repository's main as its parent, and no commit or blob that only the private history holds is in the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-tooling-never-crosses" data-change="unchanged">
+              <h4>The publishing tooling never crosses</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>any tree is exported</dd>
+                <dt>Then</dt>
+                <dd>it holds nothing of the publishing tooling or of the workflow that tests it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-push-from-the-private-repository-is-refused" data-change="unchanged">
+              <h4>A push from the private repository to the public one is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the private working repository pushes anything, a branch or a tag, to the public repository, under any spelling of its address</dd>
+                <dt>Then</dt>
+                <dd>its pre-push hook refuses, because the push would carry the private history</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-read-survives-the-squash-merge-that-lands-it" data-change="unchanged">
+              <h4>A read survives the squash merge that lands it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a read recorded on a branch, naming the content it read</dd>
+                <dt>When</dt>
+                <dd>the branch is squash-merged into <code>main</code> and deleted, and its commits are gone</dd>
+                <dt>Then</dt>
+                <dd>the export of <code>main</code> accepts the read, because <code>main</code> holds the content it names</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-delivery-of-a-commit-main-does-not-hold-is-refused" data-change="unchanged">
+              <h4>A delivery of a commit main does not hold is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a commit the private repository's <code>main</code> does not hold, carrying a signed readiness record</dd>
+                <dt>When</dt>
+                <dd>a push or a bootstrap exports it</dd>
+                <dt>Then</dt>
+                <dd>it refuses, naming the commit, and nothing reaches the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-export-is-titled-within-the-guards-rules" data-change="unchanged">
+              <h4>An export is titled within the public guard's rules</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a ref named by its full commit id, as the publish runbook names it</dd>
+                <dt>When</dt>
+                <dd>the export commits it onto the public repository's <code>main</code> and opens its pull request</dd>
+                <dt>Then</dt>
+                <dd>the subject and the title name the version the ref declares and the commit's first twelve characters, and pass the title rules the ref states, and a subject those rules refuse, or a ref without them, stops the export before anything is exported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-export-names-the-account-it-pushes-as" data-change="added">
+              <h4>An export names the account it pushes as</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd><code>gh</code> signed in to GitHub</dd>
+                <dt>When</dt>
+                <dd>a contributor delivers an export with <code>--push</code> or <code>--bootstrap</code></dd>
+                <dt>Then</dt>
+                <dd>the export prints <code>pushing as</code> and the account before it reads the target, and pushes with that account</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-push-rewritten-to-ssh-is-refused" data-change="added">
+              <h4>A push rewritten to SSH is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>the contributor's git configuration rewriting the target's address to an SSH one, for fetches or for pushes</dd>
+                <dt>When</dt>
+                <dd>a contributor delivers an export</dd>
+                <dt>Then</dt>
+                <dd>the export refuses before it reaches anything, saying the push would not go out as the account <code>gh</code> names</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-account-changes-before-the-push" data-change="added">
+              <h4>The account changes before the push</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a delivery that named its account, after which <code>gh</code> signs in as another</dd>
+                <dt>When</dt>
+                <dd>the export reaches its push</dd>
+                <dt>Then</dt>
+                <dd>it refuses, naming both accounts, and pushes nothing</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence" data-change="modified">
+            <h3>An operation over a directory collects documents and not a change's evidence <span class="hs-id">req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence</span></h3>
+            <p>When <code>validate</code> or <code>format</code>, in either its writing or its checking mode, is given a directory or no path at all, it SHALL operate on every <code>.html</code> file beneath that directory, except files beneath a change's evidence as artifact-kinds' "A change's evidence is kept in the change and is not one of its documents" places it. Every other operation that collects a project's documents by walking a directory SHALL make the same exclusion from the same definition.</p>
+            <p><strong>A path the contributor names SHALL be checked as named.</strong> A file means that file. A directory that is itself a change's evidence directory, or lies beneath one, means that directory, and <code>validate</code> and <code>format --check</code> SHALL check every <code>.html</code> file beneath it. The exclusion applies to what a walk comes across and never to what a contributor asked for. A contributor who wants to know whether a record still conforms can ask, and the answer is the ordinary one.</p>
+            <p><strong>Checking is not writing.</strong> <code>format</code> in its writing mode SHALL NOT write a file beneath a change's evidence, including one a contributor names, because artifact-kinds states that no operation rewrites one. Given such a path, it SHALL name each record, write nothing at all, and exit with the status for an operation that could not run. It SHALL NOT write the other documents and skip the records. A partial write would report success for a request it half ignored.</p>
+            <p>Where the walked directory is not within a project, no directory is a change's evidence, and every <code>.html</code> file beneath it SHALL be operated on. A conformance fixture and a loose directory of documents keep the behavior they have.</p>
+            <ins>
+              <p>Which project a directory belongs to SHALL be decided for each directory the walk enters, as resolving from that directory would decide it, and never once from the walk's root. A walk from a directory above a project, or through a link to one, SHALL pass over that project's changes' evidence exactly as a walk from inside it does.</p>
+            </ins>
+            <p>The exclusion SHALL be defined once and reached by every such operation. It SHALL NOT be restated per command. A second definition that drifts from the first would have <code>validate</code> and <code>format</code> disagree about which files are documents. That is the fault this requirement exists to remove, arriving by another route.</p>
+            <article class="scenario" id="scenario-validating-a-project-that-holds-html-evidence" data-change="unchanged">
+              <h4>Validating a project that holds HTML evidence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose documents all conform, and a change whose evidence holds an HTML file that does not</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code> with no path</dd>
+                <dt>Then</dt>
+                <dd>it succeeds and reports no diagnostic naming the evidence file</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-formatting-leaves-evidence-untouched" data-change="unchanged">
+              <h4>Formatting leaves evidence untouched</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file that is not in canonical form</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>format</code> over the project, and then <code>format --check</code></dd>
+                <dt>Then</dt>
+                <dd>the evidence file is byte-identical to what it was, and the check succeeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-naming-an-evidence-file-checks-it" data-change="unchanged">
+              <h4>Naming an evidence file checks it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file that does not conform</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code> naming that file</dd>
+                <dt>Then</dt>
+                <dd>the file is validated and its diagnostics are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-naming-the-evidence-directory-checks-what-it-holds" data-change="unchanged">
+              <h4>Naming the evidence directory checks what it holds</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file that does not conform</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code> naming the change's evidence directory</dd>
+                <dt>Then</dt>
+                <dd>the file is validated and its diagnostics are reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-formatting-a-named-record-is-refused" data-change="unchanged">
+              <h4>Formatting a named record is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a change whose evidence holds an HTML file that is not in canonical form</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>format</code> naming that file, or the evidence directory holding it</dd>
+                <dt>Then</dt>
+                <dd>nothing is written, each record is named, and the exit is the one for an operation that could not run, while <code>format --check</code> naming the same path still reports the file</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-outside-a-project-every-file-is-a-document" data-change="unchanged">
+              <h4>Outside a project every file is a document</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a directory that is not within a project, holding <code>evidence/a-record.html</code></dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code> naming that directory</dd>
+                <dt>Then</dt>
+                <dd>the file is validated, because outside a project there is no change for it to be the evidence of</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-walking-from-above-a-project" data-change="added">
+              <h4>Walking from above a project</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a directory holding a project whose change has HTML evidence, or a link to that project</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code>, <code>format --check</code>, or <code>format</code> on that directory</dd>
+                <dt>Then</dt>
+                <dd>each passes over the evidence as it does from inside the project, and <code>format</code> formats the project's documents and writes nothing beneath the evidence</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-document-template">
+          <h2>document-template</h2>
+          <section class="requirement" id="req-a-project-can-be-initialized-with-a-conforming-document" data-change="modified">
+            <h3>A project can be initialized with a conforming document <span class="hs-id">req-a-project-can-be-initialized-with-a-conforming-document</span></h3>
+            <p>The project SHALL provide a way to create a new document that already conforms to the element contract, the visual system, and the runtime conventions, without hand-assembly.</p>
+            <ins>
+              <p>It SHALL also provide a way to create a new runbook without hand-assembly: a specification, a tasks document, a <code>VERSION</code> at 0.1.0, and a changelog heading for that version, where the project the working directory belongs to keeps its runbooks. The runbook SHALL validate at once, report ready with no machine checks, and start a run, and its documents SHALL take the subject a contributor gives, or the name where none is given. Its name SHALL be a plain directory name the project's layout leaves free: no path, no <code>..</code>, no character a terminal would not show as itself, no leading dot, and none of the names the layout already uses. A name refused, or a runbook that would not validate, SHALL leave nothing written.</p>
+            </ins>
+            <p>Initialization SHALL write asset references that match the bytes it stores. It SHALL NOT copy a runtime asset that the project already stores, and SHALL NOT produce a document whose references and stored bytes disagree.</p>
+            <p>Initialization SHALL decide which project a new document belongs to from the location of the document it creates, never from the directory it runs in. A document created beneath a project's own directory, <code>htmlspec/</code>, SHALL reference that project's store, and establish it there if it is absent. Any other document SHALL be given a store beside it, because validation looks for a document's store in the document's own directory and above it, and the project's store is above only the documents beneath the project's own directory.</p>
+            <p>Whether a location is beneath a project's own directory SHALL be decided as the filesystem identifies that directory, whatever the location's spelling, and the store SHALL be referenced by the path the location spells.</p>
+            <article class="scenario" id="scenario-starting-a-new-change" data-change="unchanged">
+              <h4>Starting a new change</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor initializes a new change document</dd>
+                <dt>Then</dt>
+                <dd>the resulting file passes validation immediately and opens as a readable page</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-into-a-project-without-assets" data-change="unchanged">
+              <h4>Initializing into a project without assets</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is created in a project whose shared assets are not yet present</dd>
+                <dt>Then</dt>
+                <dd>the assets are established as part of initialization, so the document renders offline without a further step</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initializing-into-a-project-that-already-has-the-runtime" data-change="unchanged">
+              <h4>Initializing into a project that already has the runtime</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project already storing the runtime a new document needs</dd>
+                <dt>When</dt>
+                <dd>a contributor initializes that document</dd>
+                <dt>Then</dt>
+                <dd>it references the stored bytes and no second copy of any asset is written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-initialization-cannot-emit-a-stale-reference" data-change="unchanged">
+              <h4>Initialization cannot emit a stale reference</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>initialization writes a document and its asset references</dd>
+                <dt>Then</dt>
+                <dd>every reference matches the hash of the bytes the project stores, so a document cannot be created already pointing at bytes it does not get</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-written-outside-the-project-it-is-created-from" data-change="unchanged">
+              <h4>A document written outside the project it is created from</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a contributor working in a directory inside a project</dd>
+                <dt>When</dt>
+                <dd>they initialize a document at a location outside that project</dd>
+                <dt>Then</dt>
+                <dd>the document is given a store beside it, and passes validation immediately</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-written-into-a-project-s-root-outside-its-own-directory" data-change="unchanged">
+              <h4>A document written into a project's root, outside its own directory</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is initialized in a project's root directory, or another directory there that is not beneath <code>htmlspec/</code></dd>
+                <dt>Then</dt>
+                <dd>the document is given a store beside it, which validation finds, so every reference it carries is checked</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-document-written-into-a-project-from-outside-it" data-change="unchanged">
+              <h4>A document written into a project from outside it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project already storing the runtime a new document needs</dd>
+                <dt>When</dt>
+                <dd>a contributor working outside that project initializes a document beneath its <code>htmlspec/</code></dd>
+                <dt>Then</dt>
+                <dd>the document references the project's store, and no second copy of any asset is written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-project-s-own-directory-named-another-way" data-change="unchanged">
+              <h4>The project's own directory named another way</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is initialized at a location that names a project's own directory in another case, on a filesystem that ignores case, or through a link at the level below the project's root</dd>
+                <dt>Then</dt>
+                <dd>the document references the project's store by that spelling, and no second copy of any asset is written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-starting-a-new-runbook" data-change="added">
+              <h4>Starting a new runbook</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec new runbook deploy</code> in a project</dd>
+                <dt>Then</dt>
+                <dd><code>htmlspec/runbooks/deploy/</code> holds a specification, a tasks document with a figure of its steps, <code>VERSION</code> at 0.1.0, and a changelog heading it, and the runbook validates, reports ready, and starts a run</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-name-the-layout-uses" data-change="added">
+              <h4>A runbook name the layout already uses</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor asks for a runbook named <code>assets</code>, <code>target</code>, a name with a leading dot, or one holding a bidirectional override</dd>
+                <dt>Then</dt>
+                <dd>the name is refused and nothing is written</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-deterministic-formatting">
+          <h2>deterministic-formatting</h2>
+          <section class="requirement" id="req-formatting-preserves-meaning" data-change="modified">
+            <h3>Formatting preserves meaning <span class="hs-id">req-formatting-preserves-meaning</span></h3>
+            <p>Formatting SHALL NOT change a document's semantic content. It SHALL preserve every semantic unit, every identifier, every attribute value, every cross-reference, and the document order of content. It SHALL NOT add, remove, or reorder semantic units.</p>
+            <p>One kind of attribute value is excepted. Where an asset reference names bytes the project's store does not hold, formatting SHALL fill it with the address of the bytes the toolchain ships. A reference that names bytes the store holds SHALL be left as written, even when the store also holds a newer revision, because the reference records what the document was authored against.</p>
+            <p>An asset reference SHALL be the value of an attribute through which an element loads an asset. These are the same attributes that document-validation's "An asset reference must match the bytes it names" judges, so the formatter and the validator SHALL NOT disagree about which values are references. A hyperlink is a citation, not something the document loads, and SHALL NOT be filled. Text SHALL NOT be read as an asset reference. Prose that quotes one, whether as characters in a code element or escaped in an example, is content, and formatting SHALL leave it as the author wrote it.</p>
+            <p>A second exception is made only on a contributor's request. Where the request is made, formatting SHALL add the fallback stylesheet that "A document stays readable when its stylesheet cannot load" describes to a document that lacks one, SHALL replace a fallback whose text differs from the current one, and SHALL change nothing else. It SHALL NOT do so for a document of an archived change or a run's record, which are history, <ins>judged by the project the document resolves into wherever formatting is run from, </ins>whether reached directly or through a symbolic link. Without the request, formatting SHALL leave a document's fallback present, absent, or stale as written.</p>
+            <ins>
+              <p>A third exception is made only on a contributor's request as well. Where the request is made, formatting SHALL rewrite each asset reference a document carries to the store location of the bytes the toolchain ships for the same asset, SHALL write those bytes into the store where it lacks them, from the copy the toolchain carries, and SHALL make no network request. It SHALL add no reference the document does not already carry. It SHALL leave as written a reference to an asset the toolchain ships no revision of, one whose stored bytes disagree with its address, and one the store holds other bytes for at the current revision's address, and SHALL say how to restore that file. It SHALL NOT rewrite a document of an archived change or a run's record, judged as the second exception judges them. Checking with the request SHALL name each document it would rewrite and write nothing, and SHALL succeed where it would write nothing, blocked references included.</p>
+            </ins>
+            <article class="scenario" id="scenario-identifiers-survive-formatting" data-change="unchanged">
+              <h4>Identifiers survive formatting</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document is formatted</dd>
+                <dt>Then</dt>
+                <dd>every semantic unit retains the identifier it had before</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-content-order-preserved" data-change="unchanged">
+              <h4>Content order preserved</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document with requirements in a deliberate order is formatted</dd>
+                <dt>Then</dt>
+                <dd>the requirements appear in the same order</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-whitespace-sensitive-content-untouched" data-change="unchanged">
+              <h4>Whitespace-sensitive content untouched</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a document contains a preformatted code excerpt</dd>
+                <dt>Then</dt>
+                <dd>formatting leaves that content's internal whitespace and line breaks exactly as authored</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-formatting-an-invalid-document" data-change="unchanged">
+              <h4>Formatting an invalid document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>formatting is applied to a document that fails validation</dd>
+                <dt>Then</dt>
+                <dd>the formatter either produces canonically formatted output without altering meaning, or refuses and reports why — it never silently repairs or discards content</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-prose-that-quotes-an-asset-reference" data-change="unchanged">
+              <h4>Prose that quotes an asset reference</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose store does not hold the bytes <code>assets/htmlspec.css</code> names</dd>
+                <dt>When</dt>
+                <dd>a document's prose quotes <code>href="assets/htmlspec.css"</code> in a code element, and the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the quoted words are unchanged, and only references on the document's own loading elements are filled</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-hyperlink-to-an-asset" data-change="unchanged">
+              <h4>A hyperlink to an asset</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project whose store does not hold the bytes a document's hyperlink names</dd>
+                <dt>When</dt>
+                <dd>the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the hyperlink is left as written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-reference-that-names-stored-bytes" data-change="unchanged">
+              <h4>A reference that names stored bytes</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document whose stylesheet reference names a revision the store holds, and a store that also holds a newer revision</dd>
+                <dt>When</dt>
+                <dd>the document is formatted</dd>
+                <dt>Then</dt>
+                <dd>the reference still names the revision it was authored against</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-plain-formatting-leaves-the-fallback-as-written" data-change="unchanged">
+              <h4>Plain formatting leaves the fallback as written</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document without the fallback</dd>
+                <dt>When</dt>
+                <dd>it is formatted without the request</dd>
+                <dt>Then</dt>
+                <dd>it still has no fallback</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-request-adds-the-fallback" data-change="unchanged">
+              <h4>The request adds the fallback</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document without the fallback</dd>
+                <dt>When</dt>
+                <dd>it is formatted on the request</dd>
+                <dt>Then</dt>
+                <dd>its head gains the fallback once and nothing else changes, and a second request changes nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-request-replaces-a-stale-fallback" data-change="unchanged">
+              <h4>The request replaces a stale fallback</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document whose fallback differs from the current text</dd>
+                <dt>When</dt>
+                <dd>it is formatted on the request</dd>
+                <dt>Then</dt>
+                <dd>the fallback's text is replaced and nothing else changes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-request-leaves-history-as-written" data-change="unchanged">
+              <h4>The request leaves history as written</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document of an archived change, or a run's record, without the fallback</dd>
+                <dt>When</dt>
+                <dd>the project is formatted on the request</dd>
+                <dt>Then</dt>
+                <dd>that document is left as written, and the request reports it as skipped</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-upgrade-request-moves-a-document" data-change="added">
+              <h4>The upgrade request moves a document onto the current assets</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document referencing an earlier revision of the stylesheet the store holds</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec format --upgrade-assets</code> on it</dd>
+                <dt>Then</dt>
+                <dd>its references name the revisions the toolchain ships, and nothing else in it changes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-upgrade-writes-missing-bytes-and-downloads-nothing" data-change="added">
+              <h4>The upgrade writes missing bytes and downloads nothing</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a store lacking the current revision's bytes</dd>
+                <dt>When</dt>
+                <dd>the upgrade request is made</dd>
+                <dt>Then</dt>
+                <dd>the bytes are written into the store from the toolchain's own copy, and no network request is made</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-upgrade-leaves-history-as-written" data-change="added">
+              <h4>The upgrade leaves history as written</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project's archived change and a run's record on an earlier stylesheet</dd>
+                <dt>When</dt>
+                <dd>the upgrade request is made from inside the project, from a directory above it, or through a link to either document</dd>
+                <dt>Then</dt>
+                <dd>neither document changes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-upgrade-does-not-move-onto-replaced-bytes" data-change="added">
+              <h4>The upgrade does not move a reference onto replaced bytes</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a store holding other bytes at the current revision's address</dd>
+                <dt>When</dt>
+                <dd>the upgrade request is made</dd>
+                <dt>Then</dt>
+                <dd>the reference stays as written, and the report says the stored file was edited or replaced and how to restore it</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-runbook-authority">
+          <h2>runbook-authority</h2>
+          <section class="requirement" id="req-the-canonical-procedure-carries-no-completion-state" data-change="modified">
+            <h3>The canonical procedure carries no completion state <span class="hs-id">req-the-canonical-procedure-carries-no-completion-state</span></h3>
+            <p>A runbook's <code>tasks</code> document SHALL carry its steps in the state they have before anyone works
+them, and that state SHALL NOT advance as a consequence of the runbook being run. The states
+advance in the copy a run makes, exactly as they advance in a change.</p>
+            <p>Nothing SHALL report a runbook whose steps are all unstarted. That is the correct state of a
+canonical procedure at every moment, so a report of it would fire on every runbook always, which
+teaches a reader to ignore the report.</p>
+            <p>An enumeration of a project's runbooks SHALL NOT present a completion fraction for the canonical
+procedure. The fraction is derivable and it is the same value forever, and a column that never
+moves is read once and then not read.</p>
+            <p><strong>A unit in a runbook's canonical documents SHALL declare that it is unchanged.</strong> A change state
+describes a unit's relationship to a change in progress, and a runbook has none: its procedure
+exists and the hazards it records were measured before the document was written. This is the same
+fact as the preceding paragraphs rather than a second rule, arriving at a different attribute.</p>
+            <p><strong>A unit in the record of a run SHALL declare that it is unchanged for the same reason</strong>, and this
+is that sentence reaching the one other document a runbook holds rather than a new obligation. A
+run's record carries the requirements it verifies, copied from the runbook, and a verification
+recording an outcome against a requirement declared <code>added</code> is reported — correctly — as attesting
+to an obligation that is not there yet. The obligation a run attests to existed before the run
+started, so the copy declares itself unchanged.</p>
+            <p>The consequence is what makes it worth stating. A verification that records an outcome against a
+requirement declared as added is reported, correctly, as attesting to an obligation that is not
+there yet — so a runbook whose units are declared the way a change's units are declared reports
+warnings whose cause is one attribute, and nothing states which. The operation that creates a
+document SHALL NOT be expected to know the difference, because it cannot: whether a document
+belongs to a change or to a runbook is not a fact about the document being written.</p>
+            <p><strong>The operation that starts a run is the exception, and it SHALL declare the state correctly.</strong> It
+knows what it is writing — a copy of an existing procedure, attesting to obligations that already
+exist — so the reason the general document-creating operation cannot know does not apply to it.
+This narrows the preceding paragraph rather than contradicting it: an author writing a run record
+by hand still meets the warnings, and so does an author writing a runbook by hand.</p>
+            <ins>
+              <p>The operation that creates a runbook is a second exception, and it SHALL declare the state correctly too. Every unit of the documents it writes SHALL declare that it is unchanged, and every step SHALL be unstarted. It knows what it is writing, a runbook's canonical procedure, as the operation that starts a run knows it is writing a copy of one.</p>
+            </ins>
+            <article class="scenario" id="scenario-a-runbook-that-has-been-run" data-change="unchanged">
+              <h4>A runbook that has been run</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook whose procedure a person has carried out</dd>
+                <dt>When</dt>
+                <dd>the runbook's tasks document is read</dd>
+                <dt>Then</dt>
+                <dd>its steps are unstarted, because the run advanced a copy</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-enumeration-of-runbooks" data-change="unchanged">
+              <h4>An enumeration of runbooks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor enumerates the project's runbooks</dd>
+                <dt>Then</dt>
+                <dd>no completion fraction is presented for a canonical procedure</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-verification-in-a-runbook-s-specification" data-change="unchanged">
+              <h4>A verification in a runbook's specification</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook whose specification records a hazard measured before the runbook was written</dd>
+                <dt>When</dt>
+                <dd>a verification in it records that the hazard was checked</dd>
+                <dt>Then</dt>
+                <dd>nothing reports the record as attesting to an obligation that has moved, because the requirement is declared unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-s-documents-created-from-a-template" data-change="unchanged">
+              <h4>A runbook's documents created from a template</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's documents are created by the operation that creates a document</dd>
+                <dt>Then</dt>
+                <dd>the declared change states are the author's to settle, because the operation cannot know that the document belongs to a runbook</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-s-record-created-by-the-operation-that-starts-a-run" data-change="unchanged">
+              <h4>A run's record created by the operation that starts a run</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operation that starts a run writes the record</dd>
+                <dt>Then</dt>
+                <dd>every unit in it declares that it is unchanged, because that operation does know what it is writing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-created-by-the-operation-that-creates-one" data-change="added">
+              <h4>A runbook created by the operation that creates one</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor creates a runbook with <code>htmlspec new runbook</code></dd>
+                <dt>Then</dt>
+                <dd>every unit of both documents declares that it is unchanged, every step is <code>todo</code>, and validation reports no stale reference from the change state</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-project-enumerates-the-runbooks-it-holds" data-change="modified">
+            <h3>The project enumerates the runbooks it holds <span class="hs-id">req-the-project-enumerates-the-runbooks-it-holds</span></h3>
+            <p>The operation that lists what a project holds SHALL be able to list its runbooks, as a selection
+alongside its changes and its accepted specifications. A separate top-level command SHALL NOT be
+introduced for it, because listing what the project holds is an operation that already exists and
+a second command would invent a second vocabulary for it.</p>
+            <p>The enumeration SHALL be derived from what the place holds rather than from a list a contributor
+maintains. A maintained list is the shape this project refuses when it forbids a gate from
+reading the last archived version out of a directory name: a value kept beside the facts it
+summarizes depends on a convention nothing enforces.</p>
+            <p>Each entry SHALL carry what a selector needs in order to choose between runbooks, rather than a name alone<ins>: its version, its title, and the documents it holds</ins>. A runbook whose procedure is absent is the case that matters, because a name alone
+cannot distinguish it from one that is complete.</p>
+            <p>The enumeration SHALL name a runbook once, whatever number of documents it holds. An enumeration
+that listed each document separately would present one runbook as two entries.</p>
+            <ins>
+              <p>The operation that starts a run, named with no runbook, SHALL list the project's runbooks as this enumeration does, say how to start one, and refuse as an invocation missing its argument does. A runbook's name and title SHALL reach a terminal with each character a terminal would not show as itself written as its escape, and the structured listing SHALL carry them as they are.</p>
+            </ins>
+            <article class="scenario" id="scenario-listing-the-project-s-runbooks" data-change="unchanged">
+              <h4>Listing the project's runbooks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor lists the project's runbooks</dd>
+                <dt>Then</dt>
+                <dd>each runbook the place holds appears once, with what it holds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-whose-procedure-is-absent" data-change="unchanged">
+              <h4>A runbook whose procedure is absent</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook holds no tasks document</dd>
+                <dt>Then</dt>
+                <dd>the enumeration shows that it holds none, so a selector is not left to open it to find out</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-project-with-no-runbooks" data-change="unchanged">
+              <h4>A project with no runbooks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor lists the runbooks of a project holding none</dd>
+                <dt>Then</dt>
+                <dd>the operation succeeds and reports that there are none</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-enumeration-nobody-maintains" data-change="unchanged">
+              <h4>An enumeration nobody maintains</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook added to the project by creating its directory</dd>
+                <dt>When</dt>
+                <dd>the runbooks are enumerated</dd>
+                <dt>Then</dt>
+                <dd>it appears, because the enumeration reads the place rather than a list</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-starting-a-run-with-no-runbook-named" data-change="added">
+              <h4>Starting a run with no runbook named</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec run</code> with no runbook</dd>
+                <dt>Then</dt>
+                <dd>the project's runbooks are listed with their versions and titles, the way to start one is named, and the command exits 2</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-title-holding-an-escape-sequence" data-change="added">
+              <h4>A title holding an escape sequence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook whose title holds an escape sequence or a bidirectional override</dd>
+                <dt>When</dt>
+                <dd>its runbooks are listed</dd>
+                <dt>Then</dt>
+                <dd>the title is shown with each such character written as its escape, and the JSON listing carries it as written</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-runbook-portability">
+          <h2>runbook-portability</h2>
+          <section class="requirement" id="req-machine-requirements-are-explicit-and-mechanically-checkable" data-change="modified">
+            <h3>Machine requirements are explicit and mechanically checkable <span class="hs-id">req-machine-requirements-are-explicit-and-mechanically-checkable</span></h3>
+            <p>A runbook SHALL state machine prerequisites as ordinary requirement units in its specification,
+            with stable identifiers, normative statements, scenarios, and an explicit check declaration.
+            Preflight SHALL read these declarations from the existing projected requirement notes. It SHALL
+            NOT infer checks from prose, requirement names, or executable examples. The declaration format
+            SHALL be documented and restricted to built-in checks; arbitrary commands SHALL NOT be accepted.</p>
+            <p>The supported needs SHALL include a tool at a stated version, a tool supplied by a pinned
+            package-manager environment, an installed agent skill, and a working-directory state. Machine
+            requirements SHALL remain part of the logging contract: passing preflight does not remove their
+            obligation to have an outcome recorded. Ordinary requirements without a check declaration SHALL
+            remain logging obligations without becoming machine checks.</p>
+            <p>Malformed declarations, unknown check kinds, duplicate declarations on one requirement, and
+            unsupported format versions SHALL be reported against the requirement and SHALL prevent starting
+            a run. A contract with no machine declarations SHALL report zero checks, without claiming to
+            have established unstated prerequisites.</p>
+            <ins>
+              <p>A second declaration format, <code>preflight/v2</code>, SHALL read every form <code>preflight/v1</code> reads and one optional field, <code>remedy</code>: text saying where to get what the check needs. A remedy SHALL be one line of 1 to 200 characters once the spaces around it are trimmed, holding no control character, no whitespace but the plain space, and no invisible character, Unicode's format and default-ignorable characters, beyond the two joiners and one emoji presentation selector directly after the character it is for. A remedy breaking any of these SHALL make the declaration malformed. A remedy is text: preflight SHALL NOT run it, open an address in it, or count it as satisfying the check. <code>preflight/v1</code> SHALL keep refusing the field, and an unsupported format version SHALL be reported naming the formats the program reads.</p>
+            </ins>
+            <article class="scenario" id="scenario-a-missing-tool" data-change="unchanged">
+              <h4>A missing tool</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a declared tool cannot be found on the invocation's executable search path</dd>
+                <dt>Then</dt>
+                <dd>preflight identifies the requirement and missing tool and refuses readiness</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-version-mismatch" data-change="unchanged">
+              <h4>A version mismatch</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the selected tool reports a different version from the declared one</dd>
+                <dt>Then</dt>
+                <dd>preflight reports the expected and observed versions and refuses readiness</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-missing-skill" data-change="unchanged">
+              <h4>A missing skill</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the declared skill file is absent from the declared local installation scope</dd>
+                <dt>Then</dt>
+                <dd>preflight names that scope and skill and refuses readiness without installing it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-bootstrap-hazard" data-change="unchanged">
+              <h4>The bootstrap hazard</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a requirement that the working directory must be outside an existing HTMLSpec project</dd>
+                <dt>When</dt>
+                <dd>the working directory resolves to a project</dd>
+                <dt>Then</dt>
+                <dd>preflight refuses readiness before bootstrap or any procedure step occurs</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-declaration-cannot-be-interpreted" data-change="unchanged">
+              <h4>A declaration cannot be interpreted</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a machine-check declaration is malformed, duplicated, or unsupported</dd>
+                <dt>Then</dt>
+                <dd>preflight reports an invalid declaration rather than omitting it or treating it as passed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-about-a-later-outcome" data-change="unchanged">
+              <h4>A requirement about a later outcome</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an ordinary logging requirement has no machine-check declaration</dd>
+                <dt>Then</dt>
+                <dd>preflight does not attempt to check that outcome and the run still owes its verification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-remedy-in-a-v2-declaration" data-change="added">
+              <h4>A remedy in a v2 declaration</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a <code>preflight/v2</code> skill declaration whose remedy says where to get the skill</dd>
+                <dt>When</dt>
+                <dd>preflight reads it</dd>
+                <dt>Then</dt>
+                <dd>the check is the one v1 would make, and the remedy is carried as text</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-remedy-holding-a-hidden-character" data-change="added">
+              <h4>A remedy holding a hidden character</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a remedy holding a zero-width space, a variation selector, a line separator, or an escape sequence</dd>
+                <dt>When</dt>
+                <dd>preflight reads it</dd>
+                <dt>Then</dt>
+                <dd>the declaration is malformed, the fault names the character by its code point, and no run starts</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-remedy-in-a-v1-declaration" data-change="added">
+              <h4>A remedy in a v1 declaration</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a <code>preflight/v1</code> declaration with a <code>remedy</code> field</dd>
+                <dt>When</dt>
+                <dd>preflight reads it</dd>
+                <dt>Then</dt>
+                <dd>the field is refused as one the form does not have</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-the-binarys-crates" data-change="added" data-refs="req-the-program-is-distributable-as-a-standalone-artifact">
+            <h3>What the binary is built from <span class="hs-id">evidence-the-binarys-crates</span></h3>
+            <p>For the four release targets, <code>cargo metadata --filter-platform</code> reaches 170 crates: 158 in the normal closure of <code>htmlspec-cli</code>, procedural macros included, and 12 that only the workspace's build scripts use to generate code, <code>typify</code> and what it depends on. They are credited under MIT, Apache-2.0, Zlib, Unicode-3.0, MIT-0, and MPL-2.0. Fifteen ship no file whose name states their license and are credited through reviewed rows. The four MPL-2.0 crates are <code>cssparser</code>, <code>cssparser-macros</code>, <code>dtoa-short</code>, and <code>selectors</code>.</p>
+          </section>
+          <section class="evidence" id="evidence-the-walk-from-above" data-change="added" data-refs="req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence">
+            <h3>A walk from above a project before and after <span class="hs-id">evidence-the-walk-from-above</span></h3>
+            <p>With this repository's <code>htmlspec/</code> and <code>spec.nix</code> copied to <code>outer/proj</code>, the 1.1.0 build before the fix reported 216 documents and 51 errors for <code>validate outer</code>, against 208 and 0 for <code>validate outer/proj</code>, and <code>format outer</code> refused, naming an evidence file. After it, <code>validate outer</code>, <code>validate</code> through a link to the project, and <code>validate outer/proj</code> each report 208 documents and 0 errors, <code>format --check outer</code> exits 0, and <code>format outer</code> writes nothing beneath the evidence.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-the-binary-carries-its-notices" data-change="added" data-outcome="partial" data-refs="req-the-program-is-distributable-as-a-standalone-artifact scenario-the-version-answers-to-v scenario-a-binary-carries-its-notices scenario-a-review-row-reads-from-outside-the-crate">
+            <h3>The binary carries its notices, and <code>-v</code> answers <span class="hs-id">verify-the-binary-carries-its-notices</span></h3>
+            <p data-field="method">The suite's <code>notices</code> stage regenerated <code>CRATE-LICENSES</code> from <code>Cargo.lock</code> for the four release targets and found it equal, 170 crates, and <code>notices-self-test</code>'s 26 cases hold the generator to its rules on synthetic crates: an <code>OR</code> choice, a refused license, a row's vendored text, an Apache-2.0 <code>NOTICE</code>, an MPL-2.0 source line, and a row whose source is absolute or climbs out with <code>..</code>. <code>nix build</code> installed the three notices under <code>share/doc/htmlspec/</code>, <code>cargo package --list -p htmlspec-cli</code> lists <code>CRATE-LICENSES</code>, and <code>scripts/pack-release</code> put it in the tarball. <code>tests/cli.rs</code>'s <code>every_spelling_of_the_version_flag_prints_the_version</code> holds <code>-v</code>, <code>-V</code>, and <code>--version</code> to one output.</p>
+            <p data-field="unchecked">No release has been cut since the notices joined the tarballs, so no published tarball, Homebrew install, or Nix package from a tag has been opened to find them.</p>
+          </section>
+          <section class="verification" id="verify-every-channel-ships-the-notices" data-change="added" data-outcome="passed" data-refs="req-a-release-reaches-every-channel-from-one-tag scenario-a-dependency-added-without-its-notices scenario-a-formula-that-drifted-from-the-notices">
+            <h3>Every channel ships the notices, and the suite holds them <span class="hs-id">verify-every-channel-ships-the-notices</span></h3>
+            <p data-field="method">Adding a dependency to <code>htmlspec-cli</code> without regenerating made <code>scripts/crate-notices --check</code> fail and name each crate it brought, and regenerating passed again. With <code>MPL-2.0</code> taken out of the formula's template, the same check failed on macOS, as it would on Linux, naming the licenses the template stated and the ones the binary credits, and passed once the template was restored. The macOS-gated <code>formula</code> job installed the formula from a local tap in pull request 78's run 39879625320, with 7 files in the Cellar, and passed <code>brew audit --strict</code>.</p>
+          </section>
+          <section class="verification" id="verify-post-runbook-creates-a-runbook" data-change="added" data-outcome="passed" data-refs="req-a-single-command-exposes-validate-format-and-init scenario-creating-a-runbook">
+            <h3><code>post runbook</code> creates what <code>new runbook</code> creates <span class="hs-id">verify-post-runbook-creates-a-runbook</span></h3>
+            <p data-field="method"><code>tests/verbs.rs</code> lists <code>post runbook</code> among the spellings and holds every operation to both, and <code>new_runbook_and_post_runbook_agree</code> creates a runbook with each spelling and finds the two byte-identical. <code>tests/surface/1.1.json</code> records both.</p>
+          </section>
+          <section class="verification" id="verify-preflight-reports-a-remedy-and-names-hidden-characters" data-change="added" data-outcome="passed" data-refs="req-the-command-surface-checks-a-runbook-s-machine-prerequisites scenario-a-failing-check-whose-runbook-names-a-remedy scenario-a-passing-check-with-a-remedy scenario-a-declared-name-holding-an-escape-sequence">
+            <h3>Preflight reports a remedy and names hidden characters <span class="hs-id">verify-preflight-reports-a-remedy-and-names-hidden-characters</span></h3>
+            <p data-field="method"><code>a_check_that_did_not_pass_shows_its_runbooks_remedy</code> and <code>the_payload_carries_every_declared_remedy_and_a_ready_report_shows_none</code> hold the two reports to the rule, and <code>tests/preflight.rs</code>'s <code>a_runbooks_remedy_reaches_the_report_and_v1_refuses_one</code> runs the binary on a runbook. <code>a_declared_name_or_path_is_shown_with_its_hidden_characters_named</code> holds a tool's name and a skill's path to their code points, and a runbook declaring an escape sequence in both, run under 1.1.0, wrote no escape byte to the terminal, where it wrote seven before. <code>run_and_preflight_help_point_to_the_listing</code> reads both help texts.</p>
+          </section>
+          <section class="verification" id="verify-an-export-reaches-github-as-gh-signs-in" data-change="added" data-outcome="partial" data-refs="req-the-public-repository-receives-only-reviewed-exports scenario-an-export-names-the-account-it-pushes-as scenario-a-push-rewritten-to-ssh-is-refused scenario-the-account-changes-before-the-push">
+            <h3>An export reaches GitHub as <code>gh</code> is signed in <span class="hs-id">verify-an-export-reaches-github-as-gh-signs-in</span></h3>
+            <p data-field="method"><code>publish/test</code>'s 64 tests pass, among them <code>test_a_github_delivery_names_the_account_before_it_pushes</code>, <code>test_a_github_delivery_with_no_account_is_refused_before_anything_is_reached</code>, <code>test_a_push_rewritten_to_ssh_is_refused_before_anything_is_reached</code>, <code>test_a_fetch_rewritten_to_ssh_is_refused_before_anything_is_reached</code>, <code>test_an_account_switched_before_the_push_is_refused</code>, and <code>test_the_credential_helper_follows_the_entries_the_environment_carries</code>. A stand-in <code>git</code> logs each command's configuration entries, and the tests find the two credential entries on every command that reaches the GitHub target and on no other.</p>
+            <p data-field="unchecked">No export has yet been delivered to the public repository through the new path, so a real push under a signed-in account has not been observed.</p>
+          </section>
+          <section class="verification" id="verify-a-walk-from-above-passes-over-evidence" data-change="added" data-outcome="passed" data-refs="req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence scenario-walking-from-above-a-project">
+            <h3>A walk from above a project passes over its evidence <span class="hs-id">verify-a-walk-from-above-passes-over-evidence</span></h3>
+            <p data-field="method"><code>tests/cli.rs</code>'s <code>from_above_a_project_a_walk_passes_over_its_evidence</code> runs <code>validate</code>, <code>format --check</code>, and <code>format</code> on a directory holding a project whose change has a non-conforming record, and <code>through_a_link_to_a_project_a_walk_passes_over_its_evidence</code> does the same through a link. Both fail with the walk's per-directory resolution switched off. On a copy of this repository's project, <code>validate</code> from the directory above reported 208 documents and 0 errors, where it reported 216 and 51 before.</p>
+          </section>
+          <section class="verification" id="verify-new-runbook-writes-a-runbook-that-starts" data-change="added" data-outcome="passed" data-refs="req-a-project-can-be-initialized-with-a-conforming-document scenario-starting-a-new-runbook scenario-a-runbook-name-the-layout-uses">
+            <h3><code>new runbook</code> writes a runbook that starts <span class="hs-id">verify-new-runbook-writes-a-runbook-that-starts</span></h3>
+            <p data-field="method"><code>tests/runbooks.rs</code>'s <code>new_runbook_writes_a_runbook_that_validates_and_can_start</code> validates the runbook, runs <code>preflight</code> and <code>run --as</code> on it, and reads its <code>VERSION</code> and changelog. <code>new_runbook_refuses_a_name_that_is_not_a_plain_name</code> and the unit test <code>a_new_runbook_takes_only_a_plain_name_the_layout_leaves_free</code> refuse the layout's names, a leading dot, a bidirectional override, a zero-width space, and a non-breaking space, and <code>new_runbook_writes_nothing_when_a_document_would_not_validate</code> and <code>new_runbook_refuses_a_link_at_its_path_and_leaves_it</code> find nothing written.</p>
+          </section>
+          <section class="verification" id="verify-the-upgrade-request" data-change="added" data-outcome="passed" data-refs="req-formatting-preserves-meaning scenario-the-upgrade-request-moves-a-document scenario-the-upgrade-writes-missing-bytes-and-downloads-nothing scenario-the-upgrade-leaves-history-as-written scenario-the-upgrade-does-not-move-onto-replaced-bytes">
+            <h3>The upgrade request moves only what it may <span class="hs-id">verify-the-upgrade-request</span></h3>
+            <p data-field="method"><code>htmlspec-format</code>'s <code>an_upgrade_moves_a_reference_to_an_older_revision_onto_the_current_one</code>, <code>an_upgrade_is_idempotent</code>, <code>an_upgrade_adds_nothing_and_keeps_what_it_cannot_place</code>, and <code>an_upgrade_does_not_move_a_reference_onto_replaced_bytes</code> hold the rewrite. <code>tests/runbooks.rs</code>'s <code>upgrade_assets_moves_a_document_onto_the_current_stylesheet_only_on_request</code>, <code>upgrade_assets_fills_the_store_from_the_program</code>, <code>upgrade_assets_leaves_history_as_written</code>, <code>format_given_a_directory_above_a_project_leaves_its_history_as_written</code>, <code>a_link_to_history_is_judged_where_it_resolves</code>, and <code>upgrade_assets_does_not_move_a_reference_onto_replaced_bytes</code> run the binary, and the release runbook moved onto the current stylesheet with it.</p>
+          </section>
+          <section class="verification" id="verify-new-runbook-writes-no-completion-state" data-change="added" data-outcome="passed" data-refs="req-the-canonical-procedure-carries-no-completion-state scenario-a-runbook-created-by-the-operation-that-creates-one">
+            <h3><code>new runbook</code> writes no completion state <span class="hs-id">verify-new-runbook-writes-no-completion-state</span></h3>
+            <p data-field="method"><code>tests/runbooks.rs</code>'s <code>new_runbook_writes_no_completion_state</code> reads every unit of both documents a new runbook gets and finds each <code>unchanged</code> and each step <code>todo</code>, and <code>a_fresh_runbook_reports_its_example_content</code> finds validation naming only the template's example content.</p>
+          </section>
+          <section class="verification" id="verify-the-runbook-listing" data-change="added" data-outcome="passed" data-refs="req-the-project-enumerates-the-runbooks-it-holds scenario-starting-a-run-with-no-runbook-named scenario-a-title-holding-an-escape-sequence">
+            <h3>The listing names each runbook and starts no run without one <span class="hs-id">verify-the-runbook-listing</span></h3>
+            <p data-field="method"><code>tests/runbooks.rs</code>'s <code>run_alone_lists_the_runbooks_and_exits_two</code>, <code>the_listing_names_each_runbooks_version_and_title</code>, and <code>a_runbook_title_reaches_the_terminal_escaped</code> run the binary, and the list payload's schema declares <code>version</code> and <code>title</code>.</p>
+          </section>
+          <section class="verification" id="verify-preflight-v2-reads-a-remedy" data-change="added" data-outcome="passed" data-refs="req-machine-requirements-are-explicit-and-mechanically-checkable scenario-a-remedy-in-a-v2-declaration scenario-a-remedy-holding-a-hidden-character scenario-a-remedy-in-a-v1-declaration">
+            <h3><code>preflight/v2</code> reads a remedy and refuses a hidden one <span class="hs-id">verify-preflight-v2-reads-a-remedy</span></h3>
+            <p data-field="method"><code>v2_reads_every_v1_form_with_an_optional_remedy</code>, <code>v1_still_refuses_a_remedy</code>, <code>a_remedy_reads_at_its_limits_and_is_refused_past_them</code>, <code>a_remedy_holding_an_escape_or_a_reordering_character_is_refused</code>, <code>a_remedy_holding_an_invisible_formatting_character_is_refused</code>, <code>a_remedy_holding_a_default_ignorable_character_is_refused</code>, <code>a_remedy_keeps_a_presentation_selector_only_after_a_visible_character</code>, <code>a_remedy_holding_a_line_separator_or_other_whitespace_is_refused</code>, and <code>a_remedy_is_trimmed_of_the_spaces_around_it</code> hold the rule, and <code>crates/htmlspec-cli/src/terminal.rs</code>'s tests hold the one predicate the remedy, the listing, and the reports share.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

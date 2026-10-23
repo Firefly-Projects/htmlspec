@@ -7,6 +7,179 @@ find it. That check also requires every archived change to record the version it
 in, in a `VERSION` file beside its documents. Prose inside an entry is not parsed — a
 changelog exists to be read by a person.
 
+## 1.1.0 — ship the crates' notices and runbook affordances
+
+The first minor release keeps every 1.0 promise and adds to it. The binary now carries the
+notices of every Rust crate it is built from, in every channel. A runbook starts in one command,
+renders and draws as a specification does, and is easy to find. A runbook can say where to get what
+a preflight check needs. `htmlspec -v` prints the version, and the publish runbook's export pushes
+as the account `gh` is signed in as. Every addition is recorded in
+`crates/htmlspec-cli/tests/surface/1.1.json`, and nothing 1.0 offered was removed or renamed. The
+release runbook is 0.5.0 and the publish runbook 0.2.1.
+
+### The crates' notices
+
+The `htmlspec` binary now ships the notices of the Rust crates it is built from. 1.0's binaries
+carried the notices of the JavaScript libraries they embed, in `THIRD-PARTY-LICENSES`, and not
+those of the 170 crates they are built from, whose licenses ask for their notices with a binary copy.
+
+- `scripts/crate-notices` reads `cargo metadata` for the four release targets and writes
+  `crates/htmlspec-cli/CRATE-LICENSES`: the crates the binary is compiled from, procedural macros
+  included, and every crate the workspace's code generation depends on, such as `typify` and what
+  it uses, each with its version, the license it is credited under, and that license's text. A
+  third-party crate's build or development dependencies are not credited.
+- Under `OR` the first of MIT, Apache-2.0, BSD-3-Clause, BSD-2-Clause, ISC, Zlib, Unicode-3.0,
+  MIT-0, Unlicense, and MPL-2.0 is credited, and under `AND` every part. A license `WITH` an
+  exception is credited as that license. Any other license stops
+  the script. A text comes only from a file whose name states its license. Fifteen crates ship
+  none, and each has a reviewed row in `crates/htmlspec-cli/license-clarifications.tsv`, naming
+  its exact version, with standard texts vendored under `crates/htmlspec-cli/licenses/`. A row
+  can give the copyright line a vendored text carries, read from the crate's repository. An
+  MPL-2.0 crate's entry says where its source form is.
+- Every channel that ships the binary ships the file: each release tarball holds `htmlspec`,
+  `LICENSE`, `THIRD-PARTY-LICENSES`, and `CRATE-LICENSES`; the Homebrew formula installs all
+  three; the Nix package now installs them under `share/doc/htmlspec/`, where it installed no
+  license file before; and `htmlspec-cli`'s published crate carries it.
+- The formula's `license` is now what the binary credits: MIT, BSD-3-Clause, ISC, Apache-2.0,
+  Unlicense, Zlib, Unicode-3.0, MIT-0, and MPL-2.0. `scripts/render-formula` reads the credited
+  licenses from `CRATE-LICENSES`' header and refuses a template that states another set.
+- `scripts/check` gains two stages: `notices-self-test`, the generator's rules on synthetic
+  crates, and `notices`, which regenerates the file from `Cargo.lock` and fails on any
+  difference, naming each crate added, removed, or changed. A dependency update now fails the
+  pull request that brings it until its notices are written.
+
+### Runbooks
+
+A runbook can be started in one command, it renders and draws as a specification does, and the
+runbooks a project holds are easy to find.
+
+**`htmlspec new runbook <name>` writes a runbook that validates at once.** It is spelled
+`post runbook` in the request verbs. It writes `htmlspec/runbooks/<name>/` with a specification,
+a tasks document, a `VERSION` at 0.1.0, and a `CHANGELOG.md` heading that version, so
+`htmlspec preflight <name>` and `htmlspec run <name> --as <record>` work straight away. Every unit
+is `unchanged` and every step `todo`, as a runbook's canonical procedure requires. The tasks
+document holds what the procedure consumes, two steps, and a figure of their order, with its
+Mermaid source readable without JavaScript. The specification shows a preflight declaration as a
+sample, so a new runbook starts on any machine. Its example content is reported by
+`htmlspec validate` until it is replaced. The name must be a plain directory name: a path, `..`, a
+character a terminal would not show as itself (a control character, a non-breaking space, or an
+invisible character such as a bidirectional override), a leading dot, `assets`, and the names a
+project's walk passes over, such as `target`, are refused, and nothing is written. `run` and `preflight` still accept every name 1.0
+ran, and refuse only what 1.0 refused.
+
+**`htmlspec format --upgrade-assets` moves documents onto the store's current assets.** It
+rewrites each document's references to the stylesheet and scripts this release writes into new
+documents. It never downloads anything: the current assets are the ones compiled into the
+program, and any the store lacks are written into it from that copy. It adds no asset a document
+does not load, and it leaves archived changes and run records as written, because they are
+history. It judges each document by the project it belongs to, wherever it is run from and through
+a link to the file, and where a stored file no longer matches its address it leaves the reference
+as written and says how to restore the file. Without the flag, formatting still leaves every
+reference to stored bytes as written. With `--check` it names each document that is behind and
+writes nothing.
+
+**A walk from above a project treats it as a walk from inside does.** Given a directory above a
+project, or a link to one, 1.0 resolved no project: `format --fallback` judged nothing to be
+history and rewrote archived changes and run records, and `validate`, `format --check`, and
+`format` walked into the project's changes' evidence. Each directory a walk enters is now judged
+by the project it belongs to and each document by the project it resolves into, so from anywhere
+the evidence is passed over and history is left as written.
+
+**The libraries gain what these operations are built on.** `htmlspec-assets` publishes
+`RunbookTemplate`, `RUNBOOK_TEMPLATES`, and `render_runbook`, the two runbook templates and the
+rendering `new runbook` writes with. `htmlspec-format` publishes `upgrade`, with its results
+`UpgradeOutcome` and `UpgradedReference`, the rewrite `format --upgrade-assets` applies. Each new
+type is `#[non_exhaustive]`, so a later 1.x release can add a field without breaking a caller.
+
+**`htmlspec run` alone lists the runbooks.** Named with no runbook, `run` lists the project's
+runbooks, each with its version and title, says how to start one, and exits 2, the status a
+missing argument always gave. `list --runbooks` shows each runbook's version and title too, and
+its `--json` entries gain `version` and `title`. `run --help` and `preflight --help` point to
+`htmlspec list --runbooks`. A runbook's name and title reach the terminal with every character a
+terminal would not show as itself written as its escape: the same set a remedy refuses and a
+preflight report names by code point.
+
+**The release runbook is 0.5.0.** Its documents move onto the current stylesheet, which styles a
+partial outcome, a renamed requirement's heading, and a change's inserted and deleted words, and
+its tasks document draws the order of its four steps. The steps and their words are unchanged.
+
+### Install hints
+
+- **`preflight/v2` lets a runbook say where to get what a check needs.** It reads every
+  `preflight/v1` form plus an optional `remedy`: one line of 1 to 200 visible characters, trimmed of
+  the spaces around it, with no control character, no whitespace but the plain space, and no
+  invisible character, none of Unicode's format or default-ignorable characters and not the
+  braille pattern blank, beyond the two joiners and one emoji presentation selector directly after
+  the character it is for. `preflight/v1` is unchanged and still
+  refuses the field.
+- **A declaration's text is shown safely.** A declaration's unknown field, tool name, and skill or
+  manifest path were printed as written, so a carried runbook holding an escape sequence in one
+  reached the terminal. Each is now shown with such characters as code points, and the probe still
+  uses the text as written.
+- **The remedy is shown, never run.** When a check does not pass, the human report adds
+  `the runbook says: …` after the program's own remedy. With `--json`, every check whose
+  declaration carries one has `runbookRemedy`, whatever its outcome, in `preflight`'s payload and in
+  the report `run --as` writes when it refuses.
+- **htmlspec 1.0 refuses `preflight/v2`** as a format it does not read, so a runbook that declares a
+  remedy needs 1.1 or later. A runbook with no remedy keeps writing `preflight/v1`.
+
+### Small additions
+
+**`htmlspec -v` prints the version.** It is a short alias of `--version`, beside `-V`, and prints
+exactly what they print. A colleague's first command against 1.0.0 was `htmlspec -v`, which was
+refused as an unexpected argument. `tests/surface/1.1.json` records the alias under `program`, so a
+later 1.x release cannot drop it unnoticed.
+
+**The export pushes to GitHub as the account `gh` is signed in as, and says which.** For a GitHub
+target, before `publish/export --bootstrap` or `--push` touches the network, it asks git which
+addresses it would fetch from and push to, after this machine's `url.*.insteadOf` and
+`url.*.pushInsteadOf` rewrites, and refuses unless each is the target on `https://github.com`:
+`gh`'s credentials reach git only over HTTPS, and over SSH a push would go out as whichever account
+the key belongs to. It then prints `pushing as LOGIN`, refuses when `gh` names no account, and reads
+the account again just before the push, refusing if it changed. Each git command that reaches
+GitHub sets git's credential helper for `https://github.com` to `gh auth git-credential`, through
+`GIT_CONFIG_COUNT`, after the entries the environment carries, for that command alone, so the
+contributor's own credential configuration neither helps nor stops the push. The v1.0.0 run set
+that helper by hand after its first push found no credentials. Nothing prints the token, and no
+configuration file is written. A target off GitHub is reached as before, without `gh`. The publish
+runbook moves to 0.2.1: steps 3 and 4 say the export prints the account, and that the run records
+it.
+
+## 1.0.1 — finish a publish run without a hand fix
+
+The first run of the publish runbook, the v1.0.0 release, needed two fixes by hand, and the next
+run no longer does. The development shell supplies the `python3` both runbooks' steps run, a
+runbook's preflight checks that a run uses it, and the export titles its public pull request within
+the public repository's rules.
+
+**The development shell supplies `python3`.** Inside `nix develop` on macOS, `python3` resolved to
+`/usr/bin/python3`, a stub that asks the developer tools at `DEVELOPER_DIR` for the interpreter,
+and the shell points that at the Nix SDK, which has none. It resolved and then exited with "error:
+tool 'python3' not found". `publish/export`, `scripts/set-version`, `scripts/check-release`, and
+the suite's Python stages all failed that way inside the shell, and the v1.0.0 publish run stopped
+on it at its second step, after its preflight had reported it ready. The shell now holds
+`pkgs.python3` from the flake's pinned nixpkgs, the interpreter the suite's own derivation already
+uses. `flake.lock` does not change.
+
+**Both runbooks declare it.** `req-the-pinned-toolchain-is-what-runs` names `python3` beside
+`cargo` and `rustc` in the publish runbook, now 0.2.0, and the release runbook, now 0.4.0. Outside
+the shell, `htmlspec preflight publish` reports where `python3` resolved and refuses before the
+run starts.
+
+**The export's pull request is titled by version.** `publish/export` titled its commit and pull
+request `Export htmlspec from {ref} at {sha[:12]}`, and the runbook passes a full commit id, so the
+first public pull request's title ran to 77 characters and the public repository's guard, which
+allows 72, refused it. Both are now `Export htmlspec {version} from {sha[:12]}`, with the version
+`Cargo.toml` declares at the ref, and before it exports anything the export applies the title
+rules `scripts/check-pull-request` states at the ref, the copy the public guard runs. The bootstrap
+commit keeps its fixed subject and needs no version.
+
+**What this release does not do.** No command, flag, exit code, payload, or document rule changes,
+and nothing the published crates contain. `gh`, `git`, `nix`, and `brew` still come from the
+machine, because each runs inside the shell as installed. How the export's push authenticates to
+GitHub is unchanged: the first run set the GitHub credential helper to `gh auth git-credential` for
+its push, and the change's design records whether the export or the runbook should do that.
+
 ## 1.0.0 — commit the contract and the command line
 
 Version 1.0 is a promise, and two requirements now state it. Nothing a document may contain

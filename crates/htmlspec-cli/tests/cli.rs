@@ -1277,6 +1277,93 @@ fn formatting_a_named_record_is_refused_and_writes_nothing() {
     assert_eq!(std::fs::read(&record).expect("readable"), before);
 }
 
+/// A project nested in `wrap/proj` of a fresh scratch directory, holding one change created by the
+/// program and a non-conforming record in that change's evidence.
+fn a_nested_project_with_evidence(label: &str) -> (Scratch, PathBuf) {
+    let scratch = Scratch::new(label);
+    let project = scratch.path("wrap/proj");
+    std::fs::create_dir_all(&project).expect("the project's directory");
+    let (code, out, err) = run_in(&project, &["init", "--tools", "none"]);
+    assert_eq!(code, SUCCESS, "stdout: {out}\nstderr: {err}");
+    let (code, out, err) = run_in(&project, &["new", "change", "a-change"]);
+    assert_eq!(code, SUCCESS, "stdout: {out}\nstderr: {err}");
+    let record = scratch.write(
+        "wrap/proj/htmlspec/changes/a-change/evidence/a-record.html",
+        &a_record(),
+    );
+    (scratch, record)
+}
+
+/// toolchain-packaging's "An operation over a directory collects documents and not a change's
+/// evidence", from a directory *above* the project.
+///
+/// Until 1.1.0 the walk resolved its project from its own root alone, so a root above a project
+/// resolved none and walked into that project's evidence: `validate wrap` reported the record,
+/// `format --check wrap` judged it, and `format wrap` met it and refused the whole run. The walk now
+/// takes the project of each directory it enters, so the three behave as they do from inside.
+#[test]
+fn from_above_a_project_a_walk_passes_over_its_evidence() {
+    let (scratch, record) = a_nested_project_with_evidence("evidence-from-above");
+    let before = std::fs::read(&record).expect("the record is readable");
+
+    let (code, out, err) = run_in(&scratch.0, &["validate", "wrap"]);
+    assert_eq!(
+        code, SUCCESS,
+        "validate from above walked into the evidence\nstdout: {out}\nstderr: {err}"
+    );
+    assert!(
+        !out.contains("a-record.html") && !err.contains("a-record.html"),
+        "the report names the evidence file:\nstdout: {out}\nstderr: {err}"
+    );
+    assert!(err.contains("a-change/proposal.html"), "{err}");
+
+    let (code, out, err) = run_in(&scratch.0, &["format", "--check", "wrap"]);
+    assert_eq!(
+        code, SUCCESS,
+        "format --check from above judged the evidence\nstdout: {out}\nstderr: {err}"
+    );
+
+    let (code, out, err) = run_in(&scratch.0, &["format", "wrap"]);
+    assert_eq!(
+        code, SUCCESS,
+        "format from above refused or failed\nstdout: {out}\nstderr: {err}"
+    );
+    assert!(!err.contains("refusing to write"), "{err}");
+    assert_eq!(
+        std::fs::read(&record).expect("the record is readable"),
+        before,
+        "format from above rewrote a change's evidence"
+    );
+}
+
+/// The same walk through a link: a directory outside the project holding a link to it walks the
+/// project's documents and passes over its evidence, as walking the project itself does.
+#[cfg(unix)]
+#[test]
+fn through_a_link_to_a_project_a_walk_passes_over_its_evidence() {
+    let (scratch, record) = a_nested_project_with_evidence("evidence-through-a-link");
+    let before = std::fs::read(&record).expect("the record is readable");
+    std::fs::create_dir_all(scratch.path("via")).expect("the linking directory");
+    std::os::unix::fs::symlink(scratch.path("wrap/proj"), scratch.path("via/proj"))
+        .expect("the link to the project");
+
+    let (code, out, err) = run_in(&scratch.0, &["validate", "via"]);
+    assert_eq!(
+        code, SUCCESS,
+        "validate through a link walked into the evidence\nstdout: {out}\nstderr: {err}"
+    );
+    assert!(!out.contains("a-record.html"), "{out}");
+    assert!(err.contains("a-change/proposal.html"), "{err}");
+
+    let (code, out, err) = run_in(&scratch.0, &["format", "via"]);
+    assert_eq!(code, SUCCESS, "stdout: {out}\nstderr: {err}");
+    assert_eq!(
+        std::fs::read(&record).expect("the record is readable"),
+        before,
+        "format through a link rewrote a change's evidence"
+    );
+}
+
 /// toolchain-packaging's "Outside a project every file is a document", in both of its settings.
 ///
 /// Outside any project there are no changes, so nothing is a change's evidence. And a directory
@@ -1608,6 +1695,22 @@ fn the_version_identifies_the_build() {
         out.contains('(') && out.contains(')'),
         "the version does not report a revision: {out}"
     );
+}
+
+/// `-v` and `-V` print exactly what `--version` prints, so a person's first guess at the flag
+/// works.
+#[test]
+fn every_spelling_of_the_version_flag_prints_the_version() {
+    let (code, expected, _) = run(&["--version"]);
+    assert_eq!(code, SUCCESS);
+    for spelling in ["-v", "-V"] {
+        let (code, out, err) = run(&[spelling]);
+        assert_eq!(code, SUCCESS, "`htmlspec {spelling}` failed: {err}");
+        assert_eq!(
+            out, expected,
+            "`htmlspec {spelling}` printed something else"
+        );
+    }
 }
 
 /// Every subcommand's help is reachable and documents its own options.

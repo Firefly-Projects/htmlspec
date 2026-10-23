@@ -37,6 +37,7 @@ use std::time::Duration;
 
 use serde::Deserialize;
 
+use crate::terminal::{first_hidden, shown};
 use crate::version::{RunbookVersion, ToolVersion};
 
 pub mod host;
@@ -48,6 +49,36 @@ pub mod host;
 /// requirement unit with an ordinary note, because the vocabulary is closed and this change adds
 /// nothing to it.
 pub const MARKER: &str = "preflight/v1";
+
+/// The marker of a declaration that may carry a remedy: every form [`MARKER`] has, with an optional
+/// `remedy` on each.
+///
+/// A version of its own rather than a field added to v1, which is the change
+/// `ship-the-crates-notices-and-runbook-affordances` decided (its design's decision 10). v1 refuses a
+/// field it does not know, so a 1.0 reader given a v1 declaration carrying a remedy would blame the
+/// runbook. Given this marker it reports a format it does not read, which points at the program,
+/// the thing that is out of date.
+pub const MARKER_V2: &str = "preflight/v2";
+
+/// The declaration formats this program reads, by the marker that opens each.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Format {
+    /// The four forms, and nothing else.
+    V1,
+    /// The four forms, each with an optional `remedy`.
+    V2,
+}
+
+impl Format {
+    /// The format a marker names, or nothing for a marker this program does not read.
+    fn of(marker: &str) -> Option<Self> {
+        match marker {
+            MARKER => Some(Self::V1),
+            MARKER_V2 => Some(Self::V2),
+            _ => None,
+        }
+    }
+}
 
 /// The stem every declaration marker shares, whatever version follows it.
 ///
@@ -198,9 +229,12 @@ impl ProgramName {
     }
 }
 
+/// Shown with each character a terminal would not show as itself named by code point, so a carried
+/// runbook cannot write an escape sequence into a report through a tool's name. The probe runs
+/// [`ProgramName::as_str`], the name as written.
 impl std::fmt::Display for ProgramName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(&shown(&self.0))
     }
 }
 
@@ -329,9 +363,11 @@ impl ScopedRelativePath {
     }
 }
 
+/// Shown with each character a terminal would not show as itself named by code point, as
+/// [`ProgramName`] is. The probe resolves [`ScopedRelativePath::within`], the path as written.
 impl std::fmt::Display for ScopedRelativePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.display())
+        f.write_str(&shown(&self.0.display().to_string()))
     }
 }
 
@@ -442,6 +478,96 @@ impl WorkingState {
                 "the working directory's Git worktree holds no modified, staged, conflicted, or \
                  untracked file"
             }
+        }
+    }
+}
+
+/// The most characters a remedy may hold.
+pub const REMEDY_LIMIT: usize = 200;
+
+/// What a runbook's author says to do when one of its checks does not pass.
+///
+/// **Text, and nothing else.** `runbook-portability` restricts declarations to built-in checks and
+/// refuses arbitrary commands, and a remedy keeps that line: a report shows it, labelled as the
+/// runbook's words, and nothing here runs it, opens an address in it, or treats it as satisfying
+/// anything. Tools and skills still come from the receiving machine, and the remedy only says where.
+///
+/// One line of 1 to [`REMEDY_LIMIT`] characters, every one of them shown as what it is, which is
+/// the design's decision 11. The character rule is the safety half: a carried runbook's remedy
+/// reaches an operator's terminal, and what the operator reads must be all the remedy holds. So
+/// [`crate::terminal::hidden`] refuses each character a terminal acts on, reorders by, or draws as
+/// nothing, and every whitespace character but the plain space, which keeps the remedy on one line. Spaces around
+/// it are trimmed, and the limit counts what remains.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Remedy(String);
+
+impl Remedy {
+    /// A remedy, trimmed of the spaces around it, refusing one that holds a character a terminal
+    /// would not show as itself, one with no visible character, and a long one.
+    pub fn new(text: &str) -> Result<Self, RemedyFault> {
+        if let Some(found) = first_hidden(text) {
+            return Err(RemedyFault::Unprintable { found });
+        }
+        // Only plain spaces and the two joiners can remain unseen, and a remedy of nothing else says
+        // nothing.
+        let trimmed = text.trim_matches(' ');
+        if trimmed
+            .chars()
+            .all(|character| matches!(character, ' ' | '\u{200C}' | '\u{200D}'))
+        {
+            return Err(RemedyFault::Empty);
+        }
+        let characters = trimmed.chars().count();
+        if characters > REMEDY_LIMIT {
+            return Err(RemedyFault::TooLong { characters });
+        }
+        Ok(Self(trimmed.to_owned()))
+    }
+}
+
+impl std::fmt::Display for Remedy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+/// Why a string could not be a remedy.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RemedyFault {
+    /// No visible character was given.
+    Empty,
+    /// More than [`REMEDY_LIMIT`] characters were given.
+    TooLong {
+        /// How many there were.
+        characters: usize,
+    },
+    /// A character a terminal would not show as itself was given.
+    Unprintable {
+        /// The first one found.
+        found: char,
+    },
+}
+
+impl std::fmt::Display for RemedyFault {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Empty => f.write_str(
+                "a remedy says something, and this one is empty. Leave `remedy` out where there \
+                 is nothing to add to the program's own",
+            ),
+            Self::TooLong { characters } => write!(
+                f,
+                "a remedy is at most {REMEDY_LIMIT} characters, and this one is {characters}. It \
+                 points somewhere: say the rest in the requirement's prose"
+            ),
+            Self::Unprintable { found } => write!(
+                f,
+                "a remedy is one line of printable text, and this one holds U+{:04X}. A remedy \
+                 reaches the operator's terminal, so a character the terminal would not show as \
+                 itself — a control character or escape, whitespace other than a plain space, or \
+                 an invisible formatting character — is refused",
+                u32::from(*found)
+            ),
         }
     }
 }
@@ -570,6 +696,10 @@ pub struct DeclaredCheck {
     pub requirement: RequirementId,
     /// What it declares.
     pub check: MachineCheck,
+    /// What the runbook says to do when the check does not pass, where it says anything.
+    ///
+    /// Only a `preflight/v2` declaration can carry one.
+    pub remedy: Option<Remedy>,
 }
 
 /// Every machine check one runbook declares, in document order.
@@ -633,6 +763,14 @@ impl MachineContract {
     /// How many checks the runbook declares.
     pub fn len(&self) -> usize {
         self.checks.len()
+    }
+
+    /// The remedy the runbook declares beside the check under `requirement`, if it declares one.
+    pub fn remedy_of(&self, requirement: &RequirementId) -> Option<&Remedy> {
+        self.checks
+            .iter()
+            .find(|declared| &declared.requirement == requirement)
+            .and_then(|declared| declared.remedy.as_ref())
     }
 }
 
@@ -711,6 +849,14 @@ pub enum DeclarationFault {
         /// The value as written.
         given: String,
     },
+    /// A remedy is not one line of printable text within its limit.
+    ///
+    /// Carries the fault and not the text, because the text may be long, and may hold the very
+    /// character the fault is about.
+    InvalidRemedy {
+        /// Why it is not one.
+        fault: RemedyFault,
+    },
     /// A toolchain declares no tool, so there is nothing to check.
     NoTools,
     /// One requirement carries more than one declaration.
@@ -733,7 +879,8 @@ impl std::fmt::Display for DeclarationFault {
             ),
             Self::UnsupportedFormat { marker } => write!(
                 f,
-                "{marker:?} is not a format this program reads; it reads {MARKER:?}. A note \
+                "{marker:?} is not a format this program reads; it reads {MARKER:?} and \
+                 {MARKER_V2:?}. A note \
                  beginning {MARKER_STEM:?} is a declaration rather than prose, so this is reported \
                  instead of being skipped — skipping it would report the runbook ready when it \
                  asked for checks nothing performed"
@@ -752,12 +899,17 @@ impl std::fmt::Display for DeclarationFault {
                 forms_list()
             ),
             Self::MissingField { field } => write!(f, "the declaration has no `{field}` field"),
+            // The key is the declaration's, so it is shown with every character a terminal would not
+            // show as itself named by code point: echoed as written, a key holding an escape
+            // sequence would draw on the operator's terminal. The other faults name declaration text
+            // through `{:?}`, which escapes those characters already.
             Self::UnknownField { field } => write!(
                 f,
-                "`{field}` is not a field this form has, and unknown fields are refused rather \
+                "`{}` is not a field this form has, and unknown fields are refused rather \
                  than ignored: a field this program does not read is a condition it does not \
                  check, and a report that stayed quiet about it would claim a check that never \
-                 ran"
+                 ran",
+                shown(field)
             ),
             Self::WrongType {
                 field,
@@ -793,6 +945,7 @@ impl std::fmt::Display for DeclarationFault {
                  adapter rather than an escape hatch, so until one exists it stays a manual \
                  obligation stated in prose"
             ),
+            Self::InvalidRemedy { fault } => write!(f, "`remedy` is refused: {fault}"),
             Self::NoTools => write!(
                 f,
                 "the toolchain declaration lists no tool, so there is nothing for it to check. \
@@ -973,9 +1126,10 @@ pub fn parse_contract(
             continue;
         };
         match declaration_in(note) {
-            Ok(check) => checks.push(DeclaredCheck {
+            Ok((check, remedy)) => checks.push(DeclaredCheck {
                 requirement: id,
                 check,
+                remedy,
             }),
             Err(found) => faults.extend(found.faults().iter().map(|fault| ContractFault {
                 requirement: Some(id.clone()),
@@ -1002,17 +1156,25 @@ pub fn parse_contract(
 /// that a declaration must not depend on whitespace *inside* a string value, since projection
 /// would collapse it — stated in the authoring documentation rather than checked here, because
 /// nothing at this point can tell the two apart.
-fn declaration_in(note: &str) -> Result<MachineCheck, ContractErrors> {
+///
+/// # The remedy
+///
+/// `preflight/v2` is v1 with one optional field, so its remedy is taken out of the object before the
+/// form's fields are checked, and the rest is read exactly as v1 reads it. Under v1 the field is
+/// left where it is, and the form's check refuses it as a field the form does not have: nothing
+/// about a v1 declaration changes. A bad remedy and a bad check field are reported together, as
+/// every other pair of faults in one declaration is.
+fn declaration_in(note: &str) -> Result<(MachineCheck, Option<Remedy>), ContractErrors> {
     let text = note.trim();
     let marker = text
         .split_whitespace()
         .next()
         .unwrap_or_default()
         .to_owned();
-    if marker != MARKER {
+    let Some(format) = Format::of(&marker) else {
         return Err(one(DeclarationFault::UnsupportedFormat { marker }));
-    }
-    let rest = text[MARKER.len()..].trim();
+    };
+    let rest = text[marker.len()..].trim();
     let value: serde_json::Value = serde_json::from_str(rest).map_err(|error| {
         one(DeclarationFault::NotOneObject {
             found: if rest.is_empty() {
@@ -1027,6 +1189,51 @@ fn declaration_in(note: &str) -> Result<MachineCheck, ContractErrors> {
             found: describe_value(&value),
         }));
     };
+
+    let mut fields = object.clone();
+    let mut remedy_faults = Vec::new();
+    let remedy = match format {
+        Format::V1 => None,
+        Format::V2 => match fields.remove("remedy") {
+            None => None,
+            Some(serde_json::Value::String(given)) => Remedy::new(&given)
+                .map_err(|fault| remedy_faults.push(DeclarationFault::InvalidRemedy { fault }))
+                .ok(),
+            Some(other) => {
+                remedy_faults.push(DeclarationFault::WrongType {
+                    field: String::from("remedy"),
+                    found: describe_value(&other),
+                    wanted: FieldType::Text.wanted(),
+                });
+                None
+            }
+        },
+    };
+
+    let remedy_faults = remedy_faults.into_iter().map(|fault| ContractFault {
+        requirement: None,
+        fault,
+    });
+    match form_in(&fields) {
+        Ok(check) => {
+            let faults: Vec<ContractFault> = remedy_faults.collect();
+            if faults.is_empty() {
+                Ok((check, remedy))
+            } else {
+                Err(ContractErrors(faults))
+            }
+        }
+        Err(mut faults) => {
+            faults.0.extend(remedy_faults);
+            Err(faults)
+        }
+    }
+}
+
+/// The one check a declaration's fields describe, its `kind` and the form's own fields.
+fn form_in(
+    object: &serde_json::Map<String, serde_json::Value>,
+) -> Result<MachineCheck, ContractErrors> {
     check_fields(object)?;
     // The field set and every type in it are already known to be the form's, so the deserializer's
     // only job here is to hand the values to the typed structs. `kind` is the tag this function
@@ -1390,7 +1597,7 @@ impl Fact {
                 version,
             } => format!(
                 "`{program}` resolved to {} and reported {version}",
-                resolved.display()
+                shown(&resolved.display().to_string())
             ),
             Self::ToolAbsent { program } => {
                 format!("no `{program}` resolves on the invocation's search path")
@@ -1402,7 +1609,7 @@ impl Fact {
             } => format!(
                 "`{program}` resolved to {} but reported no version this program can read: \
                  {problem}",
-                resolved.display()
+                shown(&resolved.display().to_string())
             ),
             Self::ToolchainTools {
                 manifest,
@@ -1417,14 +1624,14 @@ impl Fact {
                             (Some(resolved), true, Some(input)) => format!(
                                 "`{}` resolves to {} inside {}",
                                 tool.program,
-                                resolved.display(),
-                                input.display()
+                                shown(&resolved.display().to_string()),
+                                shown(&input.display().to_string())
                             ),
                             (Some(resolved), _, _) => format!(
                                 "`{}` resolves to {}, which is not inside the environment `{}`'s \
                              `{}` shell declares",
                                 tool.program,
-                                resolved.display(),
+                                shown(&resolved.display().to_string()),
                                 manifest,
                                 shell
                             ),
@@ -2002,7 +2209,7 @@ fn judge(check: &MachineCheck, observation: &Observation) -> Verdict {
                         Some(resolved) => format!(
                             "`{}` resolves to {}, which is not inside the declared environment",
                             tool.program,
-                            resolved.display()
+                            shown(&resolved.display().to_string())
                         ),
                     })
                     .collect::<Vec<_>>()
@@ -2207,6 +2414,12 @@ impl PreflightReport {
                         finding.observed,
                         finding.remedy
                     ));
+                    // Every finding is a check that did not pass, which is where a person needs the
+                    // author's pointer. After the program's own remedy, and labelled, so a reader
+                    // can tell the runbook's words from the program's.
+                    if let Some(remedy) = self.contract.remedy_of(&finding.requirement) {
+                        out.push_str(&format!("      the runbook says: {remedy}\n"));
+                    }
                 }
                 out.push_str(
                     "\nno run was started and nothing was written. Preflight reports rather than \
@@ -2222,10 +2435,10 @@ impl PreflightReport {
     fn identifies(&self) -> String {
         format!(
             "  runbook: {} {}\n  source:  {}\n  checked: {}\n",
-            self.runbook,
+            shown(&self.runbook.to_string()),
             self.version,
-            self.source.display(),
-            self.workdir.display()
+            shown(&self.source.display().to_string()),
+            shown(&self.workdir.display().to_string())
         )
     }
 
@@ -2234,6 +2447,9 @@ impl PreflightReport {
     /// Typed structures serialized rather than arbitrary probe JSON passed through, which the
     /// design requires and which is what keeps a probe's own output — a tool's `--version` text, a
     /// Nix evaluator's diagnostics — out of the payload an agent parses.
+    ///
+    /// A check whose declaration carries a remedy has `runbookRemedy`, whatever its outcome: the
+    /// payload describes what the runbook declares, and a passed check's remedy is still declared.
     pub fn payload(&self) -> serde_json::Value {
         serde_json::json!({
             "runbook": self.runbook,
@@ -2246,13 +2462,13 @@ impl PreflightReport {
                 PreflightAssessment::Ready(passed) => passed
                     .checks()
                     .iter()
-                    .map(|check| serde_json::json!({
+                    .map(|check| self.with_remedy(&check.requirement, serde_json::json!({
                         "requirement": check.requirement.to_string(),
                         "expected": check.check.expected(),
                         "observed": check.fact.observed(),
                         "outcome": "passed",
                         "remedy": null,
-                    }))
+                    })))
                     .collect::<Vec<_>>(),
                 PreflightAssessment::NotReady(findings) => {
                     // Every declared check appears, in document order: the passed ones beside the
@@ -2265,26 +2481,53 @@ impl PreflightReport {
                             .iter()
                             .find(|finding| finding.requirement == declared.requirement)
                         {
-                            Some(finding) => all.push(serde_json::json!({
-                                "requirement": finding.requirement.to_string(),
-                                "expected": finding.expected,
-                                "observed": finding.observed,
-                                "outcome": finding.outcome.name(),
-                                "remedy": finding.remedy,
-                            })),
-                            None => all.push(serde_json::json!({
-                                "requirement": declared.requirement.to_string(),
-                                "expected": declared.check.expected(),
-                                "observed": "the condition held",
-                                "outcome": "passed",
-                                "remedy": null,
-                            })),
+                            Some(finding) => all.push(self.with_remedy(
+                                &finding.requirement,
+                                serde_json::json!({
+                                    "requirement": finding.requirement.to_string(),
+                                    "expected": finding.expected,
+                                    "observed": finding.observed,
+                                    "outcome": finding.outcome.name(),
+                                    "remedy": finding.remedy,
+                                }),
+                            )),
+                            None => all.push(self.with_remedy(
+                                &declared.requirement,
+                                serde_json::json!({
+                                    "requirement": declared.requirement.to_string(),
+                                    "expected": declared.check.expected(),
+                                    "observed": "the condition held",
+                                    "outcome": "passed",
+                                    "remedy": null,
+                                }),
+                            )),
                         }
                     }
                     all
                 }
             },
         })
+    }
+
+    /// A check's payload object, with the remedy its runbook declares where it declares one.
+    ///
+    /// On every check whose declaration carries a remedy, whatever its outcome: the payload
+    /// describes what the runbook declares, and a remedy beside a check that passed is still
+    /// declared. The human report is the one that shows it only where a check did not pass.
+    fn with_remedy(
+        &self,
+        requirement: &RequirementId,
+        mut check: serde_json::Value,
+    ) -> serde_json::Value {
+        if let (Some(remedy), Some(object)) =
+            (self.contract.remedy_of(requirement), check.as_object_mut())
+        {
+            object.insert(
+                String::from("runbookRemedy"),
+                serde_json::Value::String(remedy.to_string()),
+            );
+        }
+        check
     }
 }
 
@@ -2319,20 +2562,19 @@ pub fn command<O: std::io::Write, E: std::io::Write>(
     };
     // Through the same constructor every name-taking operation uses, so `preflight ../other` is
     // refused rather than resolved somewhere the project does not keep runbooks.
-    if !crate::project::ProjectRoot::is_a_name(runbook) {
-        let _ = streams.failure(&format!(
-            "{runbook:?} is a path rather than a runbook name. A runbook lives where the project \
-             keeps runbooks, so pass the name alone. To see what the project holds, run \
-             `htmlspec list --runbooks`"
-        ));
-        return Outcome::OperationalFailure;
-    }
-    let directory = project.runbook(runbook);
+    let directory = match project.named_runbook(runbook) {
+        Ok(directory) => directory,
+        Err(error) => {
+            let _ = streams.failure(&error.to_string());
+            return Outcome::OperationalFailure;
+        }
+    };
     if !directory.is_dir() {
         let _ = streams.failure(&format!(
-            "no runbook named {runbook} in {}. To see what the project holds, run \
+            "no runbook named {} in {}. To see what the project holds, run \
              `htmlspec list --runbooks`",
-            project.runbooks().display()
+            shown(runbook),
+            shown(&project.runbooks().display().to_string())
         ));
         return Outcome::OperationalFailure;
     }
@@ -2599,12 +2841,12 @@ mod tests {
 
     /// A note beginning the stem with a version this program does not read is an error, not prose.
     ///
-    /// The failure this prevents is the quiet one: skipping `preflight/v2` would report a runbook
+    /// The failure this prevents is the quiet one: skipping `preflight/v3` would report a runbook
     /// ready when the runbook asked for checks this binary cannot perform.
     #[test]
     fn an_unsupported_format_version_is_refused_rather_than_skipped() {
         for note in [
-            "preflight/v2 {\"kind\":\"state\",\"check\":\"outside-project\"}",
+            "preflight/v3 {\"kind\":\"state\",\"check\":\"outside-project\"}",
             "preflight/v0 {\"kind\":\"tool\",\"program\":\"cargo\",\"version\":\"1.90.0\"}",
             "preflight/latest {}",
             "preflight/",
@@ -2624,6 +2866,407 @@ mod tests {
                 "the report does not name the marker: {text}"
             );
         }
+    }
+
+    /// `preflight/v2` reads every v1 form, with and without a remedy, and a v1 declaration reads as
+    /// it always has.
+    #[test]
+    fn v2_reads_every_v1_form_with_an_optional_remedy() {
+        let contract = contract_of(&[
+            (
+                "tool",
+                &["preflight/v2 {\"kind\":\"tool\",\"program\":\"python3\",\"version\":\"3.13.2\",\
+                   \"remedy\":\"brew install python@3.13\"}"],
+            ),
+            (
+                "toolchain",
+                &["preflight/v2 {\"kind\":\"toolchain\",\"manifest\":\"flake.nix\",\
+                   \"shell\":\"default\",\"tools\":[\"cargo\"],\
+                   \"remedy\":\"run this inside nix develop\"}"],
+            ),
+            (
+                "skill",
+                &["preflight/v2 {\"kind\":\"skill\",\"scope\":\"home\",\
+                   \"path\":\".claude/skills/login/SKILL.md\",\
+                   \"remedy\":\"see https://example.com/skills\"}"],
+            ),
+            (
+                "state",
+                &["preflight/v2 {\"kind\":\"state\",\"check\":\"outside-project\"}"],
+            ),
+            (
+                "old",
+                &["preflight/v1 {\"kind\":\"state\",\"check\":\"clean-git-worktree\"}"],
+            ),
+        ])
+        .expect("every form reads under v2, and v1 still reads");
+
+        assert_eq!(
+            declared(&contract),
+            [
+                ("req-tool", "tool"),
+                ("req-toolchain", "toolchain"),
+                ("req-skill", "skill"),
+                ("req-state", "state"),
+                ("req-old", "state"),
+            ]
+            .map(|(id, kind)| (String::from(id), String::from(kind)))
+        );
+        let remedy = |id: &str| {
+            contract
+                .remedy_of(&RequirementId::new(id).expect("an identifier"))
+                .map(ToString::to_string)
+        };
+        assert_eq!(
+            remedy("req-tool").as_deref(),
+            Some("brew install python@3.13")
+        );
+        assert_eq!(
+            remedy("req-skill").as_deref(),
+            Some("see https://example.com/skills")
+        );
+        assert_eq!(
+            remedy("req-state"),
+            None,
+            "a v2 declaration with no remedy has none"
+        );
+        assert_eq!(remedy("req-old"), None, "a v1 declaration has none");
+    }
+
+    /// v1 is unchanged: a remedy is a field its forms do not have, so it is refused and named.
+    #[test]
+    fn v1_still_refuses_a_remedy() {
+        let error = one(
+            "preflight/v1 {\"kind\":\"state\",\"check\":\"outside-project\",\
+             \"remedy\":\"move out of the project\"}",
+        )
+        .expect_err("v1 accepted a remedy");
+        assert!(
+            error.faults().iter().any(|fault| matches!(
+                &fault.fault,
+                DeclarationFault::UnknownField { field } if field == "remedy"
+            )),
+            "{error}"
+        );
+    }
+
+    /// A remedy at each limit reads, and one past either limit is refused.
+    #[test]
+    fn a_remedy_reads_at_its_limits_and_is_refused_past_them() {
+        let declaration = |remedy: &str| {
+            format!(
+                "preflight/v2 {{\"kind\":\"state\",\"check\":\"outside-project\",\
+                 \"remedy\":{}}}",
+                serde_json::Value::String(remedy.to_owned())
+            )
+        };
+
+        for accepted in ["x", &"é".repeat(REMEDY_LIMIT)] {
+            let contract = one(&declaration(accepted)).expect("a remedy within its limits");
+            assert_eq!(
+                contract
+                    .remedy_of(&RequirementId::new("req-one").expect("an identifier"))
+                    .map(ToString::to_string)
+                    .as_deref(),
+                Some(accepted)
+            );
+        }
+
+        // Counted in characters rather than bytes: 201 two-byte characters are one too many, and
+        // 200 of them, above, are not.
+        let error = one(&declaration(&"é".repeat(REMEDY_LIMIT + 1))).expect_err("too long");
+        assert!(
+            error.faults().iter().any(|fault| matches!(
+                fault.fault,
+                DeclarationFault::InvalidRemedy {
+                    fault: RemedyFault::TooLong { characters: 201 }
+                }
+            )),
+            "{error}"
+        );
+
+        for empty in ["", "   "] {
+            let error = one(&declaration(empty)).expect_err("an empty remedy");
+            assert!(
+                error.faults().iter().any(|fault| matches!(
+                    fault.fault,
+                    DeclarationFault::InvalidRemedy {
+                        fault: RemedyFault::Empty
+                    }
+                )),
+                "{empty:?}: {error}"
+            );
+        }
+    }
+
+    /// `text` as a JSON string literal with every character outside printable ASCII escaped.
+    ///
+    /// The JSON escape is what an author writes in a document to state such a character: the markup
+    /// itself cannot hold most of them without needing error recovery. A character beyond the Basic
+    /// Multilingual Plane is written as its UTF-16 surrogate pair, which is how JSON spells it.
+    fn json_escaped(text: &str) -> String {
+        let mut out = String::from("\"");
+        for character in text.chars() {
+            if character.is_ascii_graphic() && character != '"' && character != '\\' {
+                out.push(character);
+            } else if character == ' ' {
+                out.push(' ');
+            } else {
+                let mut units = [0_u16; 2];
+                for unit in character.encode_utf16(&mut units) {
+                    out.push_str(&format!("\\u{unit:04x}"));
+                }
+            }
+        }
+        out.push('"');
+        out
+    }
+
+    /// The declaration of an `outside-project` check whose remedy is `remedy`.
+    fn remedied_with(remedy: &str) -> Result<MachineContract, ContractErrors> {
+        one(&format!(
+            "preflight/v2 {{\"kind\":\"state\",\"check\":\"outside-project\",\"remedy\":{}}}",
+            json_escaped(remedy)
+        ))
+    }
+
+    /// The remedy `remedy` reads as, once accepted.
+    fn accepted_remedy(remedy: &str) -> String {
+        remedied_with(remedy)
+            .unwrap_or_else(|error| panic!("{remedy:?} was refused: {error}"))
+            .remedy_of(&RequirementId::new("req-one").expect("an identifier"))
+            .map(ToString::to_string)
+            .expect("a remedy")
+    }
+
+    /// Asserts that `remedy` is refused for `found`, and that the refusal does not echo it.
+    fn refused_for(remedy: &str, found: char) {
+        let error = remedied_with(remedy).expect_err("an unprintable remedy was accepted");
+        assert!(
+            error.faults().iter().any(|fault| fault.fault
+                == DeclarationFault::InvalidRemedy {
+                    fault: RemedyFault::Unprintable { found }
+                }),
+            "{remedy:?}: {error}"
+        );
+        // The fault names the character by its code point rather than echoing it.
+        assert!(!error.to_string().contains(found), "{remedy:?}: {error}");
+    }
+
+    /// A remedy holding a character a terminal acts on rather than shows is refused.
+    ///
+    /// A carried runbook's remedy reaches an operator's terminal, so an escape sequence, a line
+    /// break, or a bidirectional override in it would be the runbook drawing on that terminal.
+    #[test]
+    fn a_remedy_holding_an_escape_or_a_reordering_character_is_refused() {
+        for (given, found) in [
+            ("run \u{1b}[2Jthis", '\u{1b}'),
+            ("first line\nsecond line", '\n'),
+            ("a\ttab", '\t'),
+            ("delete\u{7f}", '\u{7f}'),
+            ("next\u{85}line", '\u{85}'),
+            ("hello \u{202e}dlrow", '\u{202e}'),
+            ("isolate \u{2066}this\u{2069}", '\u{2066}'),
+        ] {
+            refused_for(given, found);
+        }
+    }
+
+    /// A remedy holding an invisible formatting character is refused, so what a terminal shows is
+    /// all the remedy holds.
+    ///
+    /// Each class the review of this change found accepted: zero-width and word-joining characters,
+    /// the byte-order mark, the soft hyphen, the Mongolian vowel separator, interlinear annotation,
+    /// and the tag characters, which spell hidden ASCII.
+    #[test]
+    fn a_remedy_holding_an_invisible_formatting_character_is_refused() {
+        for found in [
+            '\u{200B}',
+            '\u{2060}',
+            '\u{2061}',
+            '\u{2062}',
+            '\u{2063}',
+            '\u{2064}',
+            '\u{FEFF}',
+            '\u{00AD}',
+            '\u{180E}',
+            '\u{FFF9}',
+            '\u{FFFA}',
+            '\u{FFFB}',
+            '\u{E0001}',
+            '\u{E0020}',
+            '\u{E0041}',
+            '\u{E007F}',
+            '\u{0600}',
+            '\u{110BD}',
+            '\u{1BCA0}',
+            '\u{1D173}',
+        ] {
+            refused_for(&format!("brew install x{found}"), found);
+        }
+    }
+
+    /// A remedy holding a default-ignorable character is refused, so what a terminal shows is all
+    /// the remedy holds.
+    ///
+    /// The pre-archival review of this change found these accepted while the rule refused only the
+    /// format category: variation selectors, the Hangul fillers, the combining grapheme joiner, the
+    /// Khmer inherent vowels, and a Mongolian free variation selector each draw as nothing.
+    #[test]
+    fn a_remedy_holding_a_default_ignorable_character_is_refused() {
+        for found in [
+            '\u{FE00}',
+            '\u{FE01}',
+            '\u{FE02}',
+            '\u{3164}',
+            '\u{FFA0}',
+            '\u{115F}',
+            '\u{034F}',
+            '\u{17B4}',
+            '\u{180B}',
+            '\u{E0100}',
+            '\u{E01EF}',
+            // Neither default-ignorable nor whitespace, and drawn as a blank all the same.
+            '\u{2800}',
+        ] {
+            refused_for(&format!("brew install x{found}"), found);
+        }
+    }
+
+    /// An emoji presentation selector is kept directly after a visible character, where it chooses
+    /// how that character is drawn, and refused anywhere else, where it would draw as nothing.
+    #[test]
+    fn a_remedy_keeps_a_presentation_selector_only_after_a_visible_character() {
+        for given in [
+            "ask in \u{2764}\u{FE0F} the channel",
+            "see \u{2139}\u{FE0E} the wiki",
+        ] {
+            assert_eq!(accepted_remedy(given), given);
+        }
+        for (given, found) in [
+            ("\u{FE0F}ask", '\u{FE0F}'),
+            ("ask \u{FE0F}", '\u{FE0F}'),
+            ("ask\u{2764}\u{FE0F}\u{FE0F}", '\u{FE0F}'),
+            ("ask\u{200D}\u{FE0E}", '\u{FE0E}'),
+        ] {
+            refused_for(given, found);
+        }
+    }
+
+    /// A declared tool's name and a skill's path reach a report with every character a terminal
+    /// would not show as itself named by code point, as a field's name does.
+    #[test]
+    fn a_declared_name_or_path_is_shown_with_its_hidden_characters_named() {
+        let program = ProgramName::new("x\u{1b}[31mred").expect("a bare name");
+        assert_eq!(program.to_string(), "x<U+001B>[31mred");
+        assert_eq!(
+            program.as_str(),
+            "x\u{1b}[31mred",
+            "the probe runs the name as written"
+        );
+        let path = ScopedRelativePath::new("a\u{1b}[2Jb/SKILL.md").expect("a relative path");
+        assert_eq!(path.to_string(), "a<U+001B>[2Jb/SKILL.md");
+        let check = MachineCheck::Tool {
+            program,
+            version: ToolVersion::parse("1.2.3").expect("a version"),
+        };
+        assert!(!check.expected().contains('\u{1b}'), "{}", check.expected());
+        assert!(!check.remedy().contains('\u{1b}'), "{}", check.remedy());
+    }
+
+    /// The two joiners stay, because a script or an emoji sequence needs them, and they are the
+    /// only formatting characters a remedy keeps.
+    #[test]
+    fn a_remedy_keeps_the_joiners_a_script_needs() {
+        for given in ["family \u{1F468}\u{200D}\u{1F469}", "می\u{200C}خواهم"] {
+            assert_eq!(accepted_remedy(given), given);
+        }
+    }
+
+    /// One line, with plain spaces between its words: every other whitespace character is refused,
+    /// the Unicode line and paragraph separators included.
+    #[test]
+    fn a_remedy_holding_a_line_separator_or_other_whitespace_is_refused() {
+        for found in [
+            '\u{2028}', '\u{2029}', '\u{00A0}', '\u{2003}', '\u{3000}', '\u{000B}', '\u{000C}',
+        ] {
+            refused_for(&format!("first{found}second"), found);
+        }
+    }
+
+    /// A remedy with no visible character says nothing, so it is refused as empty.
+    #[test]
+    fn a_remedy_with_no_visible_character_is_empty() {
+        for given in ["\u{200D}", " \u{200C} ", "\u{200C}\u{200D}"] {
+            let error = remedied_with(given).expect_err("an invisible remedy was accepted");
+            assert!(
+                error.faults().iter().any(|fault| fault.fault
+                    == DeclarationFault::InvalidRemedy {
+                        fault: RemedyFault::Empty
+                    }),
+                "{given:?}: {error}"
+            );
+        }
+    }
+
+    /// Spaces around a remedy are trimmed, and its limit is counted on what remains.
+    #[test]
+    fn a_remedy_is_trimmed_of_the_spaces_around_it() {
+        assert_eq!(accepted_remedy("  brew install x  "), "brew install x");
+        let full = "x".repeat(REMEDY_LIMIT);
+        assert_eq!(accepted_remedy(&format!("   {full}   ")), full);
+    }
+
+    /// A field name a declaration holds is shown with its unprintable characters named by code
+    /// point, so a key holding an escape sequence cannot write one into the report.
+    ///
+    /// A gap since `preflight/v1` shipped in 1.0: the unknown-field fault echoed the key as written.
+    #[test]
+    fn an_unknown_field_holding_an_escape_is_named_without_it() {
+        for (key, found) in [("x\u{1b}[2J", '\u{1b}'), ("y\u{202e}z", '\u{202e}')] {
+            let note = format!(
+                "preflight/v1 {{\"kind\":\"state\",\"check\":\"outside-project\",{}:\"a\"}}",
+                json_escaped(key)
+            );
+            let error = one(&note).expect_err("an unknown field was accepted");
+            let text = error.to_string();
+            assert!(!text.contains(found), "{key:?}: {text}");
+            assert!(
+                text.contains(&format!("U+{:04X}", u32::from(found))),
+                "{key:?} is not named by its code point: {text}"
+            );
+        }
+    }
+
+    /// A remedy of another type is refused and named, beside every other fault in the declaration.
+    #[test]
+    fn a_remedy_of_another_type_is_named_beside_the_forms_own_faults() {
+        let error = one(
+            "preflight/v2 {\"kind\":\"tool\",\"program\":\"/usr/bin/cargo\",\"version\":\"1.90.0\",\
+             \"remedy\":[\"install it\"]}",
+        )
+        .expect_err("two faults");
+        assert!(
+            error.faults().iter().any(|fault| matches!(
+                &fault.fault,
+                DeclarationFault::WrongType { field, .. } if field == "remedy"
+            )),
+            "the remedy's type is not named: {error}"
+        );
+        assert!(
+            error
+                .faults()
+                .iter()
+                .any(|fault| matches!(fault.fault, DeclarationFault::InvalidProgram { .. })),
+            "the form's own fault was dropped: {error}"
+        );
+        assert!(
+            error
+                .faults()
+                .iter()
+                .all(|fault| fault.requirement.is_some()),
+            "a fault lost its requirement: {error}"
+        );
     }
 
     /// A malformed declaration retains the requirement that made it.
@@ -2806,10 +3449,12 @@ mod tests {
             DeclaredCheck {
                 requirement: id.clone(),
                 check: check.clone(),
+                remedy: None,
             },
             DeclaredCheck {
                 requirement: id,
                 check,
+                remedy: None,
             },
         ]);
         assert!(
@@ -3895,6 +4540,159 @@ mod tests {
         assert_eq!(
             payload["checks"][0]["outcome"],
             serde_json::json!("passed"),
+            "{payload}"
+        );
+    }
+
+    /// A report of `observation` against a runbook declaring a remedied tool, a remedied state that
+    /// holds, and a state with no remedy that holds.
+    fn remedied_report(observation: Observation) -> PreflightReport {
+        let contract = contract_of(&[
+            (
+                "tool",
+                &["preflight/v2 {\"kind\":\"tool\",\"program\":\"python3\",\"version\":\"3.13.2\",\
+                   \"remedy\":\"brew install python@3.13\"}"],
+            ),
+            (
+                "outside",
+                &["preflight/v2 {\"kind\":\"state\",\"check\":\"outside-project\",\
+                   \"remedy\":\"cd somewhere else first\"}"],
+            ),
+            (
+                "clean",
+                &["preflight/v1 {\"kind\":\"state\",\"check\":\"clean-git-worktree\"}"],
+            ),
+        ])
+        .expect("parses");
+        let observed = |id: &str, observation: Observation| Observed {
+            requirement: RequirementId::new(id).expect("an identifier"),
+            check: contract
+                .checks()
+                .iter()
+                .find(|declared| declared.requirement.as_str() == id)
+                .expect("declared")
+                .check
+                .clone(),
+            observation,
+        };
+        let observations = Observations::of(
+            &contract,
+            vec![
+                observed("req-tool", observation),
+                observed("req-outside", Observation::Measured(Fact::NoNearestProject)),
+                observed("req-clean", Observation::Measured(Fact::WorktreeClean)),
+            ],
+        )
+        .expect("matched");
+        PreflightReport {
+            runbook: String::from("release"),
+            version: RunbookVersion::parse("0.2.0").expect("parses"),
+            source: PathBuf::from("htmlspec/runbooks/release"),
+            workdir: PathBuf::from("."),
+            assessment: assess(&contract, observations),
+            contract,
+        }
+    }
+
+    /// Each way a check can fail to pass shows the runbook's remedy after the program's own,
+    /// labelled as the runbook's.
+    #[test]
+    fn a_check_that_did_not_pass_shows_its_runbooks_remedy() {
+        for (observation, outcome) in [
+            (
+                Observation::Measured(Fact::ToolAbsent {
+                    program: ProgramName::new("python3").expect("a name"),
+                }),
+                "unmet",
+            ),
+            (
+                Observation::Unavailable {
+                    reason: String::from("the search path could not be read"),
+                    remedy: String::from("set PATH"),
+                },
+                "unavailable",
+            ),
+            (
+                Observation::TimedOut {
+                    bound: Duration::from_secs(10),
+                },
+                "timed-out",
+            ),
+            (
+                Observation::ProbeFailure {
+                    reason: String::from("the probe could not start"),
+                },
+                "probe-failed",
+            ),
+        ] {
+            let human = remedied_report(observation).render_human();
+            assert!(human.starts_with("not ready:"), "{human}");
+            let program = human
+                .find("      remedy: install `python3`")
+                .unwrap_or_else(|| panic!("{outcome}: the program's remedy is missing:\n{human}"));
+            let runbook = human
+                .find("      the runbook says: brew install python@3.13\n")
+                .unwrap_or_else(|| panic!("{outcome}: the runbook's remedy is missing:\n{human}"));
+            assert!(
+                program < runbook,
+                "{outcome}: the runbook's remedy comes before the program's:\n{human}"
+            );
+            assert!(
+                human.contains(&format!("[{outcome}]")),
+                "{outcome}: the outcome is not the one tested:\n{human}"
+            );
+            assert!(
+                !human.contains("cd somewhere else first"),
+                "{outcome}: a passed check's remedy was shown:\n{human}"
+            );
+        }
+    }
+
+    /// The payload carries a declared remedy on every check, passed or not, and none where nothing
+    /// was declared. The human report of a ready machine shows none.
+    #[test]
+    fn the_payload_carries_every_declared_remedy_and_a_ready_report_shows_none() {
+        let refused = remedied_report(Observation::Measured(Fact::ToolAbsent {
+            program: ProgramName::new("python3").expect("a name"),
+        }))
+        .payload();
+        let checks = refused["checks"].as_array().expect("checks");
+        assert_eq!(checks.len(), 3, "{refused}");
+        assert_eq!(checks[0]["outcome"], serde_json::json!("unmet"));
+        assert_eq!(
+            checks[0]["runbookRemedy"],
+            serde_json::json!("brew install python@3.13")
+        );
+        assert_eq!(checks[1]["outcome"], serde_json::json!("passed"));
+        assert_eq!(
+            checks[1]["runbookRemedy"],
+            serde_json::json!("cd somewhere else first"),
+            "a passed check's declared remedy is missing from the payload: {refused}"
+        );
+        assert!(
+            checks[2].get("runbookRemedy").is_none(),
+            "a check declaring no remedy carries one: {refused}"
+        );
+
+        let ready = remedied_report(Observation::Measured(Fact::ToolVersion {
+            program: ProgramName::new("python3").expect("a name"),
+            resolved: PathBuf::from("/usr/bin/python3"),
+            version: ToolVersion::parse("3.13.2").expect("parses"),
+        }));
+        let human = ready.render_human();
+        assert!(human.starts_with("ready:"), "{human}");
+        assert!(
+            !human.contains("the runbook says"),
+            "a ready report showed a remedy:\n{human}"
+        );
+        let payload = ready.payload();
+        assert_eq!(
+            payload["checks"][0]["runbookRemedy"],
+            serde_json::json!("brew install python@3.13"),
+            "{payload}"
+        );
+        assert!(
+            payload["checks"][2].get("runbookRemedy").is_none(),
             "{payload}"
         );
     }

@@ -43,6 +43,7 @@ const SPELLINGS: &[(&[&str], &str, &str)] = &[
     (&["migrate", "survey"], "get", "survey"),
     (&["new", "change"], "post", "change"),
     (&["new", "document"], "post", "document"),
+    (&["new", "runbook"], "post", "runbook"),
     (&["store", "add"], "post", "registration"),
     (&["run"], "post", "run"),
     (&["migrate", "promote"], "post", "promotion"),
@@ -844,6 +845,35 @@ fn new_change_and_post_change_agree() {
 }
 
 #[test]
+fn new_runbook_and_post_runbook_agree() {
+    let fixture = Fixture::new("new-runbook", Area::Project);
+    for arguments in [
+        &["deploy", "--subject", "Deploying the site"][..],
+        &["deploy", "--json"],
+    ] {
+        let ran = fixture.both_spellings(&["new", "runbook"], arguments);
+        assert_eq!(ran.code, SUCCESS, "{}{}", ran.stdout, ran.stderr);
+        for file in [
+            "specification.html",
+            "tasks.html",
+            "VERSION",
+            "CHANGELOG.md",
+        ] {
+            assert!(
+                ran.tree.contains_key(
+                    Path::new("project/htmlspec/runbooks/deploy")
+                        .join(file)
+                        .as_path()
+                ),
+                "the case writes no {file}"
+            );
+        }
+    }
+    let ran = fixture.both_spellings(&["new", "runbook"], &["a..b"]);
+    assert_ne!(ran.code, SUCCESS, "{}{}", ran.stdout, ran.stderr);
+}
+
+#[test]
 fn new_document_and_post_document_agree() {
     let fixture = Fixture::new("new-document", Area::Project);
 
@@ -995,6 +1025,7 @@ fn every_get_operation_leaves_the_project_as_it_was() {
 fn a_withholding_option_writes_nothing_under_the_verb() {
     let project = Fixture::new("withheld-project", Area::Project);
     writes_nothing(&project, &["format"], &["--check"]);
+    writes_nothing(&project, &["format"], &["--check", "--upgrade-assets"]);
     writes_nothing(&project, &["archive"], &["demo", "--check"]);
     writes_nothing(&project, &["run"], &["release", "--check"]);
 

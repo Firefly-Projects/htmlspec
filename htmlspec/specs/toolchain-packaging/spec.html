@@ -202,6 +202,17 @@
                 <dd>the project's own checks fail</dd>
               </dl>
             </article>
+            <article class="scenario" id="scenario-the-shell-runs-its-own-interpreter" data-change="unchanged">
+              <h4>The development shell runs its own interpreter</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a machine whose own <code>python3</code> cannot run inside the development shell, as macOS's cannot</dd>
+                <dt>When</dt>
+                <dd>a contributor runs the project's suite or a runbook's scripts inside the development shell</dd>
+                <dt>Then</dt>
+                <dd>they run the interpreter the shell supplies from the pinned inputs, and not the machine's</dd>
+              </dl>
+            </article>
           </section>
           <section class="requirement" id="req-a-development-environment-is-provided" data-change="unchanged">
             <h3>A development environment is provided <span class="hs-id">req-a-development-environment-is-provided</span></h3>
@@ -290,6 +301,7 @@
           <section class="requirement" id="req-the-program-is-distributable-as-a-standalone-artifact" data-change="unchanged">
             <h3>The program is distributable as a standalone artifact <span class="hs-id">req-the-program-is-distributable-as-a-standalone-artifact</span></h3>
             <p>The toolchain SHALL be packageable as an executable artifact that runs without a source checkout and without the packaging tool present at runtime.</p>
+            <p>Every binary artifact SHALL carry, beside the program, the notices of everything compiled into it: <code>LICENSE</code> for the program itself, <code>THIRD-PARTY-LICENSES</code> for the libraries it embeds, and <code>CRATE-LICENSES</code> for the Rust crates it is built from. <code>CRATE-LICENSES</code> SHALL credit each crate the binary is compiled from for the release targets, procedural macros included, and each crate the workspace's own code generation depends on, and SHALL NOT credit a third-party crate's build or development dependencies. Under <code>OR</code> it SHALL credit the alternative whose least-preferred license comes earliest in the accepted order, MIT, Apache-2.0, BSD-3-Clause, BSD-2-Clause, ISC, Zlib, Unicode-3.0, MIT-0, Unlicense, MPL-2.0, and under <code>AND</code> every part, and a license <code>WITH</code> an exception SHALL be credited as that license. An expression leaving no accepted license SHALL stop the notices. Each text SHALL come from a file the crate ships whose name states its license, or from a reviewed row naming a file the crate ships or a standard text vendored with the program, and never from a path outside either. A crate whose expression names Apache-2.0 SHALL have its <code>NOTICE</code> files reproduced, and an MPL-2.0 crate SHALL say where its source form is.</p>
             <article class="scenario" id="scenario-running-the-packaged-program" data-change="unchanged">
               <h4>Running the packaged program</h4>
               <dl>
@@ -308,6 +320,37 @@
                 <dd>a user asks the program for its version</dd>
                 <dt>Then</dt>
                 <dd>it reports a version identifying the revision it was built from, so a diagnostic can be traced to a specific build</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-version-answers-to-v" data-change="unchanged">
+              <h4>The version answers to <code>-v</code></h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a user runs <code>htmlspec -v</code></dd>
+                <dt>Then</dt>
+                <dd>it prints exactly what <code>htmlspec --version</code> and <code>htmlspec -V</code> print</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-binary-carries-its-notices" data-change="unchanged">
+              <h4>A binary carries its notices</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a release tarball, a Homebrew install, or the Nix package</dd>
+                <dt>When</dt>
+                <dd>a user lists what it installed beside the program</dd>
+                <dt>Then</dt>
+                <dd><code>LICENSE</code>, <code>THIRD-PARTY-LICENSES</code>, and <code>CRATE-LICENSES</code> are there, the Nix package keeping them under <code>share/doc/htmlspec/</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-review-row-reads-from-outside-the-crate" data-change="unchanged">
+              <h4>A reviewed row naming a file outside the crate</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a reviewed row whose source is an absolute path or climbs out with <code>..</code></dd>
+                <dt>When</dt>
+                <dd>the notices are written</dd>
+                <dt>Then</dt>
+                <dd>they stop, naming the row, and read nothing from outside the crate and the vendored texts</dd>
               </dl>
             </article>
           </section>
@@ -436,7 +479,7 @@
             <p><strong>Where an operation corresponds to one OpenSpec provides, it SHALL carry OpenSpec's name for it.</strong> This holds for the subcommand and for the options that select what it acts on. Every plausible adopter arrives from OpenSpec — HTMLSpec is a spinoff and its README says so — and a contributor who has learned one surface SHALL NOT have to learn a second spelling for the same operation. An operation OpenSpec does not provide takes the name this project chooses for it.</p>
             <p>The spellings are therefore fixed rather than left to an implementer: <code>validate</code>, <code>archive</code>, <code>init</code>, <code>new</code>, <code>list</code>, <code>status</code>, <code>sync</code>, <code>show</code>, <code>instructions</code>, and <code>store</code> name the operations OpenSpec also provides. <code>format</code> and <code>assets</code> name operations it does not. The selectors <code>--json</code>, <code>--specs</code>, <code>--change</code>, <code>--store</code>, and <code>--diff</code> carry OpenSpec's spellings for the same reason.</p>
             <p>Fixing a spelling in the contract is not decoration. A requirement that describes an operation by role alone — <em>an operation that enumerates a project's active changes</em> — is satisfied by a subcommand called <code>changes</code>, or <code>ls</code>, and the instructions written against it would then name a command that does not exist. The workflow instructions this project installs invoke these commands by name, so the name is part of the contract they depend on.</p>
-            <p><strong>Each operation SHALL also answer to a request-verb spelling, which says what the operation does to the files it acts on.</strong> The verb is one of htmx's five request keywords without their <code>hx-</code> prefix, <code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, and <code>delete</code>, and it carries the meaning HTTP gives it: <code>get</code> for an operation that never writes, <code>post</code> for one that creates something that was not there, <code>put</code> for one that creates or replaces a whole thing and leaves it as one run did when run again, <code>patch</code> for one that changes something that exists, and <code>delete</code> for one that removes something. The verb is followed by the operation's object. These spellings are fixed as the OpenSpec spellings are: <code>get validity</code>, <code>get list</code>, <code>get status</code>, <code>get sync</code>, <code>get show</code>, <code>get assets</code>, <code>get preflight</code>, <code>get instructions</code>, <code>get registrations</code>, and <code>get survey</code>; <code>post change</code>, <code>post document</code>, <code>post registration</code>, <code>post run</code>, and <code>post promotion</code>; <code>put project</code> and <code>put format</code>; <code>patch archive</code>; and <code>delete registration</code>. The verb names the most the operation writes in any invocation, so <code>get</code> spells only an operation that never writes, and an operation that writes only with an option takes the verb of that write. An option keeps its meaning under both spellings: <code>put format --check</code> writes nothing, as <code>format --check</code> does.</p>
+            <p><strong>Each operation SHALL also answer to a request-verb spelling, which says what the operation does to the files it acts on.</strong> The verb is one of htmx's five request keywords without their <code>hx-</code> prefix, <code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, and <code>delete</code>, and it carries the meaning HTTP gives it: <code>get</code> for an operation that never writes, <code>post</code> for one that creates something that was not there, <code>put</code> for one that creates or replaces a whole thing and leaves it as one run did when run again, <code>patch</code> for one that changes something that exists, and <code>delete</code> for one that removes something. The verb is followed by the operation's object. These spellings are fixed as the OpenSpec spellings are: <code>get validity</code>, <code>get list</code>, <code>get status</code>, <code>get sync</code>, <code>get show</code>, <code>get assets</code>, <code>get preflight</code>, <code>get instructions</code>, <code>get registrations</code>, and <code>get survey</code>; <code>post change</code>, <code>post document</code>, <code>post runbook</code>, <code>post registration</code>, <code>post run</code>, and <code>post promotion</code>; <code>put project</code> and <code>put format</code>; <code>patch archive</code>; and <code>delete registration</code>. The verb names the most the operation writes in any invocation, so <code>get</code> spells only an operation that never writes, and an operation that writes only with an option takes the verb of that write. An option keeps its meaning under both spellings: <code>put format --check</code> writes nothing, as <code>format --check</code> does.</p>
             <table>
               <thead>
                 <tr>
@@ -454,7 +497,7 @@
                 <tr>
                   <td><code>post</code></td>
                   <td>for one that creates something that was not there</td>
-                  <td><code>post change</code>, <code>post document</code>, <code>post registration</code>, <code>post run</code>, and <code>post promotion</code></td>
+                  <td><code>post change</code>, <code>post document</code>, <code>post runbook</code>, <code>post registration</code>, <code>post run</code>, and <code>post promotion</code></td>
                 </tr>
                 <tr>
                   <td><code>put</code></td>
@@ -474,7 +517,7 @@
               </tbody>
             </table>
             <p><strong>A request-verb spelling SHALL be a second spelling of an operation and never its replacement.</strong> It SHALL run the operation its OpenSpec spelling runs, with the same arguments and options, and SHALL produce the same output and exit status. The OpenSpec spellings stay the ones this requirement fixes above, and the program's own messages and the workflow instructions it installs SHALL name them, so a contributor who arrives from OpenSpec still has one spelling to learn. A name says what an operation is about, and a verb says whether it can change the tree, which the names do not say and which differs between the two tools for two of them: OpenSpec's sync and archive write the accepted specifications, and this program's <code>sync</code> and <code>archive</code> never do. The verbs are vocabulary only. No operation sends a request, and none needs a server or a network.</p>
-            <p>The bootstrap subcommand's subject SHALL be a project and it SHALL require no arguments, because the operation a contributor needs first is the one that establishes the project they are standing in. The creation subcommand's subject SHALL be a document or a change.</p>
+            <p>The bootstrap subcommand's subject SHALL be a project and it SHALL require no arguments, because the operation a contributor needs first is the one that establishes the project they are standing in. The creation subcommand's subject SHALL be a document, a change, or a runbook.</p>
             <p>These SHALL be distinct subcommands. One subcommand meaning both "establish this project" and "write this file" would leave a contributor unable to ask for either without also specifying which they meant.</p>
             <p>Creation SHALL take the artifact kind of the document to create, and SHALL produce a document already shaped for that kind. A <code>proposal</code> SHALL be initialized as a page of prose with no unit scaffolding at all, and a <code>specification</code> SHALL be initialized with the units its kind expects.</p>
             <p>The asymmetry is the requirement. A proposal that arrived full of empty requirement scaffolding would push its author toward stating a contract at the stage meant for arguing about one, and the emptiest possible starting point is the correct one for a document whose structure is the author's to choose.</p>
@@ -691,6 +734,15 @@
                 <dd>every operation it lists has one request-verb spelling, and every request-verb spelling runs exactly one operation it lists</dd>
               </dl>
             </article>
+            <article class="scenario" id="scenario-creating-a-runbook" data-change="unchanged">
+              <h4>Creating a runbook</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec new runbook deploy</code>, or <code>htmlspec post runbook deploy</code></dd>
+                <dt>Then</dt>
+                <dd>both write the same runbook, where the project keeps its runbooks, and report its location</dd>
+              </dl>
+            </article>
           </section>
           <section class="requirement" id="req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence" data-change="unchanged">
             <h3>An operation over a directory collects documents and not a change's evidence <span class="hs-id">req-an-operation-over-a-directory-collects-documents-and-not-a-change-s-evidence</span></h3>
@@ -698,6 +750,7 @@
             <p><strong>A path the contributor names SHALL be checked as named.</strong> A file means that file. A directory that is itself a change's evidence directory, or lies beneath one, means that directory, and <code>validate</code> and <code>format --check</code> SHALL check every <code>.html</code> file beneath it. The exclusion applies to what a walk comes across and never to what a contributor asked for. A contributor who wants to know whether a record still conforms can ask, and the answer is the ordinary one.</p>
             <p><strong>Checking is not writing.</strong> <code>format</code> in its writing mode SHALL NOT write a file beneath a change's evidence, including one a contributor names, because artifact-kinds states that no operation rewrites one. Given such a path, it SHALL name each record, write nothing at all, and exit with the status for an operation that could not run. It SHALL NOT write the other documents and skip the records. A partial write would report success for a request it half ignored.</p>
             <p>Where the walked directory is not within a project, no directory is a change's evidence, and every <code>.html</code> file beneath it SHALL be operated on. A conformance fixture and a loose directory of documents keep the behavior they have.</p>
+            <p>Which project a directory belongs to SHALL be decided for each directory the walk enters, as resolving from that directory would decide it, and never once from the walk's root. A walk from a directory above a project, or through a link to one, SHALL pass over that project's changes' evidence exactly as a walk from inside it does.</p>
             <p>The exclusion SHALL be defined once and reached by every such operation. It SHALL NOT be restated per command. A second definition that drifts from the first would have <code>validate</code> and <code>format</code> disagree about which files are documents. That is the fault this requirement exists to remove, arriving by another route.</p>
             <article class="scenario" id="scenario-validating-a-project-that-holds-html-evidence" data-change="unchanged">
               <h4>Validating a project that holds HTML evidence</h4>
@@ -763,6 +816,17 @@
                 <dd>a contributor runs <code>validate</code> naming that directory</dd>
                 <dt>Then</dt>
                 <dd>the file is validated, because outside a project there is no change for it to be the evidence of</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-walking-from-above-a-project" data-change="unchanged">
+              <h4>Walking from above a project</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a directory holding a project whose change has HTML evidence, or a link to that project</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>validate</code>, <code>format --check</code>, or <code>format</code> on that directory</dd>
+                <dt>Then</dt>
+                <dd>each passes over the evidence as it does from inside the project, and <code>format</code> formats the project's documents and writes nothing beneath the evidence</dd>
               </dl>
             </article>
           </section>
@@ -1727,6 +1791,7 @@
             <h3>The command surface checks a runbook's machine prerequisites <span class="hs-id">req-the-command-surface-checks-a-runbook-s-machine-prerequisites</span></h3>
             <p>The command <code>htmlspec preflight &lt;runbook&gt;</code> SHALL report whether the selected runbook can start in the invocation's working environment. It SHALL support the existing <code>--store</code> and <code>--json</code> selectors. Store selection SHALL locate the runbook and its records, while machine requirements SHALL be evaluated against the invocation's working directory and environment, not the store's directory. Names SHALL follow the existing runbook-name rules.</p>
             <p>The report SHALL identify the runbook, carried version, source location, working directory, aggregate readiness, and each checked requirement with its expected condition, observation, outcome, and remedy for a refusal. Results SHALL follow document order. Human output SHALL lead with readiness. JSON output SHALL contain one structured report with no probe output interleaved.</p>
+            <p>Where a check's declaration carries a remedy, the JSON report SHALL carry it as <code>runbookRemedy</code> on that check whatever its outcome, and the human report SHALL show it, labelled as the runbook's words, after the program's own remedy for a check whose outcome is <code>unmet</code>, <code>unavailable</code>, <code>timed-out</code>, or <code>probe-failed</code>, and never for one that passed. A declaration's field name, tool name, and path SHALL reach a report with each character a terminal would not show as itself named by its code point, and the probe SHALL use them as written. The help of <code>preflight</code> and <code>run</code> SHALL point to the operation that lists the project's runbooks.</p>
             <p>A completed preflight with unmet requirements SHALL exit 1, a successful one SHALL exit 0, an invalid invocation, invalid contract, or operational failure SHALL exit 2, and cancellation SHALL exit 3. Unknown observations such as an unavailable manifest environment or a timed-out probe SHALL be reported as unmet readiness rather than as success. An invalid declaration SHALL remain distinguishable from a valid check whose condition is false.</p>
             <p><code>htmlspec run &lt;runbook&gt; --as &lt;record&gt;</code> SHALL apply the same checks and exit distinctions before creating a run. <code>htmlspec run &lt;runbook&gt; --check</code> SHALL continue to report existing run conformance without checking the present machine. Existing JSON fields on successful run creation SHALL be preserved, with version and preflight information added.</p>
             <article class="scenario" id="scenario-an-agent-inspects-readiness" data-change="unchanged">
@@ -1772,6 +1837,39 @@
                 <dd>the operator runs <code>htmlspec run &lt;runbook&gt; --check</code> on a machine missing a prerequisite</dd>
                 <dt>Then</dt>
                 <dd>it reports run conformance under its existing advisory contract</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-failing-check-whose-runbook-names-a-remedy" data-change="unchanged">
+              <h4>A failing check whose runbook names a remedy</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a <code>preflight/v2</code> declaration with a remedy, whose condition does not hold</dd>
+                <dt>When</dt>
+                <dd>an operator runs <code>htmlspec preflight</code></dd>
+                <dt>Then</dt>
+                <dd>the report shows the program's remedy, then <code>the runbook says:</code> and the runbook's text, and with <code>--json</code> the check carries <code>runbookRemedy</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-passing-check-with-a-remedy" data-change="unchanged">
+              <h4>A passing check with a remedy</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a <code>preflight/v2</code> declaration with a remedy, whose condition holds</dd>
+                <dt>When</dt>
+                <dd>an operator runs <code>htmlspec preflight</code></dd>
+                <dt>Then</dt>
+                <dd>the human report shows no remedy for it, and the JSON report still carries <code>runbookRemedy</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-declared-name-holding-an-escape-sequence" data-change="unchanged">
+              <h4>A declared name holding an escape sequence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a declaration whose tool name, path, or unknown field holds an escape sequence</dd>
+                <dt>When</dt>
+                <dd>the report names it</dd>
+                <dt>Then</dt>
+                <dd>each such character is written as its code point, and nothing reaches the terminal as an escape</dd>
               </dl>
             </article>
           </section>
@@ -2017,6 +2115,8 @@
             <p>The project's public repository SHALL receive only trees exported from its private working repository. Each tree SHALL come from a committed ref of the private repository, through the allowlist of paths that may cross, with every rewrite applied at the count it expects, found clean by the scan against the private pattern file, passed by the project's full suite run inside the exported tree, and reviewed by a person as the exact tree that is pushed.</p>
             <p>A tree SHALL reach the public repository only from a commit the private repository's <code>main</code> holds, so that the reads of its paths and the contributor's sign-off it is delivered under are ones a reviewed pull request landed. A read SHALL name the content it covers, so that it survives the squash merge that lands it, and every file under an allowlisted path whose content differs from the content its read names, added or changed since, SHALL be refused, each one named.</p>
             <p>Each export SHALL arrive in a commit whose only parent is the public repository's own <code>main</code>, or with no parent for the first commit of an empty public repository, made by a GitHub noreply identity as author and committer, and naming its source ref and commit. No commit of the private repository's history SHALL reach the public repository, and the private repository SHALL refuse any push of its own to the public one, tags included, under any spelling of the public repository's address.</p>
+            <p>An export's commit subject, which is also its pull request's title, SHALL name the version the exported ref declares and the commit's first twelve characters, and SHALL pass the title rules the ref itself states, the ones the public repository's guard runs from the exported tree, before anything is exported. A ref that states no such rules SHALL be refused. The first commit of an empty public repository opens no pull request and carries a fixed subject, so it needs neither.</p>
+            <p>Every git command the export runs against a GitHub target, a review's included, SHALL reach it over HTTPS with git's credential helper for <code>https://github.com</code> set to <code>gh auth git-credential</code> for that command alone, after any the environment carries, and without prompting for a password. A delivery to a GitHub target SHALL refuse, before it reaches the target, when the addresses git would fetch from or push to, after the machine's rewrites, are not that target on <code>https://github.com</code>, and when <code>gh</code> names no account. It SHALL name the account it pushes as before it reads the target, and SHALL refuse the push when that account has changed since.</p>
             <p>The publishing tooling, its allowlist, rewrites, pattern file, and tests, SHALL stay in the private repository and SHALL be absent from every export, because its tables name the material they guard against.</p>
             <article class="scenario" id="scenario-a-planted-private-string-is-refused" data-change="unchanged">
               <h4>A planted private string is refused at the scan</h4>
@@ -2129,12 +2229,57 @@
                 <dd>it refuses, naming the commit, and nothing reaches the public repository</dd>
               </dl>
             </article>
+            <article class="scenario" id="scenario-an-export-is-titled-within-the-guards-rules" data-change="unchanged">
+              <h4>An export is titled within the public guard's rules</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a ref named by its full commit id, as the publish runbook names it</dd>
+                <dt>When</dt>
+                <dd>the export commits it onto the public repository's <code>main</code> and opens its pull request</dd>
+                <dt>Then</dt>
+                <dd>the subject and the title name the version the ref declares and the commit's first twelve characters, and pass the title rules the ref states, and a subject those rules refuse, or a ref without them, stops the export before anything is exported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-export-names-the-account-it-pushes-as" data-change="unchanged">
+              <h4>An export names the account it pushes as</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd><code>gh</code> signed in to GitHub</dd>
+                <dt>When</dt>
+                <dd>a contributor delivers an export with <code>--push</code> or <code>--bootstrap</code></dd>
+                <dt>Then</dt>
+                <dd>the export prints <code>pushing as</code> and the account before it reads the target, and pushes with that account</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-push-rewritten-to-ssh-is-refused" data-change="unchanged">
+              <h4>A push rewritten to SSH is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>the contributor's git configuration rewriting the target's address to an SSH one, for fetches or for pushes</dd>
+                <dt>When</dt>
+                <dd>a contributor delivers an export</dd>
+                <dt>Then</dt>
+                <dd>the export refuses before it reaches anything, saying the push would not go out as the account <code>gh</code> names</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-account-changes-before-the-push" data-change="unchanged">
+              <h4>The account changes before the push</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a delivery that named its account, after which <code>gh</code> signs in as another</dd>
+                <dt>When</dt>
+                <dd>the export reaches its push</dd>
+                <dt>Then</dt>
+                <dd>it refuses, naming both accounts, and pushes nothing</dd>
+              </dl>
+            </article>
           </section>
           <section class="requirement" id="req-a-release-reaches-every-channel-from-one-tag" data-change="unchanged">
             <h3>A release reaches every channel from one tag <span class="hs-id">req-a-release-reaches-every-channel-from-one-tag</span></h3>
             <p>Every release SHALL be cut from one tag, <code>vX.Y.Z</code>, whose version equals the version the workspace declares, and the binaries, the crates, and the Homebrew formula the release produces SHALL each name that version. The release SHALL refuse a tag that names another version before it builds anything.</p>
             <p>Publication SHALL begin only from a version tag in the public repository, <code>Firefly-Projects/htmlspec</code>, only for a commit that repository's <code>main</code> holds, and only after the check suite has passed on that commit. A tag in any other repository SHALL publish nothing. A release SHALL publish only from a run in which the binary of every target it releases was built and the formula passed its check, though runs elsewhere leave some of those jobs out.</p>
             <p>A publication interrupted partway SHALL finish when run again, and SHALL NOT publish any version twice: the crates publish one at a time, a version the registry already holds is skipped, and a rate limit is waited out within a stated budget, after which the run stops and names the crates that remain. Every request the release makes to crates.io SHALL carry a fixed User-Agent that names the project, and no personal information.</p>
+            <p>Each channel that ships the binary SHALL ship its notices with it: each release tarball holds them beside the program, the Homebrew formula installs them, and the Nix package installs them under <code>share/doc/htmlspec/</code>. The formula SHALL declare exactly the licenses the binary credits. The check suite SHALL fail when <code>CRATE-LICENSES</code> differs from what the lockfile reaches, naming each crate added, removed, or changed, and when the formula's template declares other licenses than the binary credits, so a pull request that changes either meets it, on Linux as well as where the macOS jobs run.</p>
             <article class="scenario" id="scenario-a-tag-naming-another-version" data-change="unchanged">
               <h4>A tag naming another version</h4>
               <dl>
@@ -2211,6 +2356,28 @@
                 <dd>the run reaches the release</dd>
                 <dt>Then</dt>
                 <dd>the release job is skipped, or its first step refuses, and nothing publishes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-dependency-added-without-its-notices" data-change="unchanged">
+              <h4>A dependency added without its notices</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a pull request that adds a crate to the binary's dependencies and leaves <code>CRATE-LICENSES</code> as it was</dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>it fails, naming each crate the lockfile now reaches that the notices do not credit</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-formula-that-drifted-from-the-notices" data-change="unchanged">
+              <h4>A formula that drifted from the notices</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>the formula's template, declaring licenses other than the binary credits</dd>
+                <dt>When</dt>
+                <dd>the check suite runs, on Linux</dd>
+                <dt>Then</dt>
+                <dd>it fails, naming the licenses the template states and the ones the binary credits</dd>
               </dl>
             </article>
           </section>

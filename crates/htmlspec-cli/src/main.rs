@@ -44,6 +44,7 @@ mod store;
 // use for either at runtime.
 #[cfg(test)]
 mod surface;
+mod terminal;
 mod tools;
 mod topology;
 mod version;
@@ -53,7 +54,7 @@ use std::path::PathBuf;
 use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 use htmlspec_validate::Strictness;
 
-use crate::commands::{FallbackRequest, FormatMode};
+use crate::commands::{AssetRequest, FallbackRequest, FormatMode};
 use crate::output::{Form, Streams};
 
 /// The version reported by `--version`.
@@ -86,7 +87,9 @@ const VERSION: &str = concat!(
     // A subcommand is required, and an unknown one produces an error listing the
     // available subcommands — which is what the specs ask for and what clap does by
     // default with `arg_required_else_help`.
-    arg_required_else_help = true
+    arg_required_else_help = true,
+    // The version flag is declared below, so it can take `-v` as well.
+    disable_version_flag = true
 )]
 struct Cli {
     /// Emit a structured JSON payload on standard output instead of a human report.
@@ -104,6 +107,20 @@ struct Cli {
     /// never falls back to the project you are standing in.
     #[arg(long, global = true)]
     store: Option<String>,
+
+    // Declared rather than left to clap, which offers no way to give its own version flag an
+    // alias. `-v` reads as the version too: no operation uses the letter, and a person's first
+    // command against a new tool is often `htmlspec -v`. Shown last, after `--help`, where clap
+    // places the flag it generates, so the help reads as it did.
+    /// Print version
+    #[arg(
+        short = 'V',
+        long,
+        short_alias = 'v',
+        action = clap::ArgAction::Version,
+        display_order = 1000
+    )]
+    version: Option<bool>,
 
     #[command(subcommand)]
     command: Command,
@@ -178,6 +195,9 @@ enum Command {
     /// `--check` writes nothing and reports which requirements each run has recorded nothing for.
     /// It always exits zero: a run under way legitimately has requirements it has not reached, so
     /// the report marks work for attention rather than gating it.
+    ///
+    /// `htmlspec list --runbooks` lists the project's runbooks. Named with no runbook, `run` lists
+    /// them as well, each with its version and title and with how to start one, and exits 2.
     Run(RunArgs),
 
     /// Report whether a runbook can start in this working environment.
@@ -194,6 +214,8 @@ enum Command {
     /// Machine requirements are evaluated against the invocation's working directory and
     /// environment, while `--store` selects where the runbook's documents are read from. The two
     /// differ whenever `--store` is used, and the report names both.
+    ///
+    /// `htmlspec list --runbooks` lists the runbooks this can check.
     Preflight(PreflightArgs),
 
     /// Report which of a change's artifacts exist and how much of its work is done.
@@ -235,7 +257,7 @@ enum Command {
     /// instructions without knowing which tool's directory holds a copy.
     Instructions(InstructionsArgs),
 
-    /// Create a document or a change that validates immediately.
+    /// Create a document, a change, or a runbook that validates immediately.
     ///
     /// References the project's existing asset store, so a new document renders offline
     /// with no further step and the project keeps one copy of its runtime.
@@ -346,6 +368,16 @@ enum NewCommand {
     /// scaffolding, a design with no imposed structure at all, and a specification with
     /// the units its kind expects.
     Document(NewDocumentArgs),
+
+    /// Create a runbook: a directory holding a specification, a tasks document, a VERSION at
+    /// 0.1.0, and a CHANGELOG.md.
+    ///
+    /// Placed where the project keeps its runbooks, and the resolved location is reported. A
+    /// runbook is a procedure run again and again, so it is never archived: `htmlspec run <name>
+    /// --as <record>` starts a run of it. Its documents validate immediately, every unit in them is
+    /// unchanged and every task todo, because a runbook's documents are its canonical procedure,
+    /// and its tasks document draws the order of its steps.
+    Runbook(NewRunbookArgs),
 }
 
 // The objects of each request verb. Each carries the `Args` struct of the operation it runs, so it
@@ -372,6 +404,7 @@ enum GetObject {
 enum PostObject {
     Change(NewChangeArgs),
     Document(NewDocumentArgs),
+    Runbook(NewRunbookArgs),
     Registration(StoreAddArgs),
     Run(RunArgs),
     Promotion(MigratePromoteArgs),
@@ -438,6 +471,21 @@ struct FormatArgs {
     /// --check, reports each document that lacks the current fallback.
     #[arg(long)]
     fallback: bool,
+
+    /// Also rewrite each document's asset references to the store's current
+    /// assets, the stylesheet and scripts this release writes into new documents.
+    ///
+    /// Never downloads anything and makes no network request: the current
+    /// assets are the ones compiled into this program, and any the store lacks
+    /// are written into it from that copy. Adds nothing a document does not
+    /// already load. Leaves archived changes and run records as written, because
+    /// they are history. Without this flag, formatting leaves every reference to
+    /// stored bytes as written, even where the store holds a newer revision.
+    /// Upgrading a runbook changes its canonical documents, so its next archival
+    /// asks for a new runbook version. With --check, reports each document that
+    /// references an asset behind the store's current revision.
+    #[arg(long = "upgrade-assets")]
+    upgrade_assets: bool,
 }
 
 #[derive(Args, Clone, Debug, Eq, PartialEq)]
@@ -519,8 +567,9 @@ struct ListArgs {
 
 #[derive(Args, Clone, Debug, Eq, PartialEq)]
 struct RunArgs {
-    /// The runbook to run, by name.
-    runbook: String,
+    /// The runbook to run, by name. `htmlspec list --runbooks` lists them, and `run` named with
+    /// none lists them too, with how to start one.
+    runbook: Option<String>,
 
     /// What to call this run's record. Required: an operation that invented a name would
     /// choose on your behalf, and a date collides while a sequence number derives an ordering
@@ -535,7 +584,7 @@ struct RunArgs {
 
 #[derive(Args, Clone, Debug, Eq, PartialEq)]
 struct PreflightArgs {
-    /// The runbook to check, by name.
+    /// The runbook to check, by name. `htmlspec list --runbooks` lists them.
     runbook: String,
 }
 
@@ -593,6 +642,16 @@ struct NewChangeArgs {
     name: String,
 
     /// The change's subject, used as each document's title and heading.
+    #[arg(long)]
+    subject: Option<String>,
+}
+
+#[derive(Args, Clone, Debug, Eq, PartialEq)]
+struct NewRunbookArgs {
+    /// The runbook's name, used as its directory name and in every command that runs it.
+    name: String,
+
+    /// The runbook's subject, used as each document's title and heading. Defaults to the name.
     #[arg(long)]
     subject: Option<String>,
 }
@@ -669,6 +728,7 @@ enum Invocation {
     Instructions(InstructionsArgs),
     NewChange(NewChangeArgs),
     NewDocument(NewDocumentArgs),
+    NewRunbook(NewRunbookArgs),
     MigrateSurvey(MigrateSurveyArgs),
     MigratePromote(MigratePromoteArgs),
 }
@@ -755,6 +815,12 @@ impl From<Command> for Invocation {
             | Command::Post {
                 what: PostObject::Document(arguments),
             } => Self::NewDocument(arguments),
+            Command::New {
+                what: NewCommand::Runbook(arguments),
+            }
+            | Command::Post {
+                what: PostObject::Runbook(arguments),
+            } => Self::NewRunbook(arguments),
             Command::Migrate {
                 what: MigrateCommand::Survey(arguments),
             }
@@ -799,6 +865,7 @@ impl Invocation {
             Self::Instructions(_) => Operation::Instructions,
             Self::NewChange(_) => Operation::NewChange,
             Self::NewDocument(_) => Operation::NewDocument,
+            Self::NewRunbook(_) => Operation::NewRunbook,
             Self::MigrateSurvey(_) => Operation::MigrateSurvey,
             Self::MigratePromote(_) => Operation::MigratePromote,
         }
@@ -824,6 +891,7 @@ impl Invocation {
                 path,
                 check,
                 fallback,
+                upgrade_assets,
             }) => commands::format(
                 path.as_deref(),
                 if check {
@@ -835,6 +903,11 @@ impl Invocation {
                     FallbackRequest::Apply
                 } else {
                     FallbackRequest::Leave
+                },
+                if upgrade_assets {
+                    AssetRequest::Upgrade
+                } else {
+                    AssetRequest::Keep
                 },
                 streams,
             ),
@@ -848,8 +921,15 @@ impl Invocation {
             Self::Instructions(InstructionsArgs { stage }) => {
                 commands::instructions(&stage, streams)
             }
+            // Named with no runbook, `run` lists the ones it could start and refuses as a usage
+            // error, whatever else was passed: `--as` or `--check` without a runbook asks about no
+            // runbook in particular. Exit 2, the code clap gave a missing argument before the
+            // argument became optional, so the exit status a script reads does not change.
+            Self::Run(RunArgs { runbook: None, .. }) => {
+                runs::refuse_without_a_runbook(store, streams)
+            }
             Self::Run(RunArgs {
-                runbook,
+                runbook: Some(runbook),
                 record,
                 check,
             }) => match (check, record) {
@@ -924,6 +1004,9 @@ impl Invocation {
                 path,
                 subject,
             }) => commands::new_document(&kind, &path, &subject, streams),
+            Self::NewRunbook(NewRunbookArgs { name, subject }) => {
+                commands::new_runbook(&name, subject.as_deref(), streams)
+            }
             Self::MigrateSurvey(MigrateSurveyArgs { path }) => {
                 commands::migrate_survey(path.as_deref(), streams)
             }
@@ -1040,13 +1123,13 @@ mod tests {
             ("format", &["--check", "--json"]),
             ("assets", &["--json"]),
             ("init", &["--tools", "--root", "--name", "--json"]),
-            ("new", &["change", "document"]),
+            ("new", &["change", "document", "runbook"]),
             ("migrate", &["survey", "promote"]),
             ("preflight", &["--json", "--store"]),
             ("run", &["--as", "--check", "--json"]),
             ("show", &["--diff", "--json", "--store"]),
             ("get", &["validity", "registrations", "survey"]),
-            ("post", &["change", "registration", "promotion"]),
+            ("post", &["change", "runbook", "registration", "promotion"]),
             ("put", &["project", "format"]),
             ("patch", &["archive"]),
             ("delete", &["registration"]),
@@ -1125,7 +1208,7 @@ mod tests {
     fn every_option(operation: Operation) -> &'static [&'static str] {
         match operation {
             Operation::Validate => &["doc.html", "--strict"],
-            Operation::Format => &["doc.html", "--check", "--fallback"],
+            Operation::Format => &["doc.html", "--check", "--fallback", "--upgrade-assets"],
             Operation::Assets => &["root"],
             Operation::Archive => &["a-change", "--check", "--yes"],
             Operation::Init => &[
@@ -1149,6 +1232,7 @@ mod tests {
             Operation::Instructions => &["apply"],
             Operation::NewChange => &["a-change", "--subject", "A subject"],
             Operation::NewDocument => &["proposal", "p.html", "--subject", "A subject"],
+            Operation::NewRunbook => &["a-runbook", "--subject", "A subject"],
             Operation::MigrateSurvey => &["source"],
             Operation::MigratePromote => &[
                 "plan.html",
@@ -1285,7 +1369,8 @@ mod tests {
             Command::Format(FormatArgs {
                 path: None,
                 check: false,
-                fallback: false
+                fallback: false,
+                upgrade_assets: false
             })
         ));
     }
@@ -1352,8 +1437,10 @@ mod tests {
     fn new_creates_a_change_or_a_document() {
         assert!(Cli::try_parse_from(["htmlspec", "new", "change", "add-dark-mode"]).is_ok());
         assert!(Cli::try_parse_from(["htmlspec", "new", "document", "proposal", "p.html"]).is_ok());
-        // A change takes a name, and a document takes both a kind and a path.
+        assert!(Cli::try_parse_from(["htmlspec", "new", "runbook", "deploy"]).is_ok());
+        // A change and a runbook take a name, and a document takes both a kind and a path.
         assert!(Cli::try_parse_from(["htmlspec", "new", "change"]).is_err());
+        assert!(Cli::try_parse_from(["htmlspec", "new", "runbook"]).is_err());
         assert!(Cli::try_parse_from(["htmlspec", "new", "document", "proposal"]).is_err());
         // And `new` alone is not a command.
         assert!(Cli::try_parse_from(["htmlspec", "new"]).is_err());

@@ -1,0 +1,671 @@
+#!/usr/bin/env python3
+"""Write the notices of the Rust crates the `htmlspec` binary is built from.
+
+What it credits
+---------------
+The binary links every Rust crate it depends on, and their licenses (MIT, Apache-2.0, and the
+others below) ask that their notices travel with a binary copy. So each channel that ships the
+binary ships `crates/htmlspec-cli/CRATE-LICENSES` beside it, and this script writes that file.
+
+The credited set is the union, over the four targets a release builds, of two closures, leaving
+out the workspace's own crates:
+
+- `htmlspec-cli`'s normal-dependency closure, procedural macros and their dependencies included,
+  because a macro's output is compiled into the binary;
+- the closure of each workspace crate's own build dependencies, because a workspace build script
+  generates code that is compiled in: `htmlspec-schema`'s turns the schema into Rust types with
+  `typify`, `schemars`, and `prettyplease`.
+
+A third-party crate's build dependencies are left out, because they mostly probe the compiler and
+leave nothing of their own in the binary, and so is every development dependency. Each target is
+read through `cargo metadata --filter-platform`, so a crate only another platform builds is not
+credited, and a crate only one release target builds is.
+
+Which text
+----------
+A crate's SPDX expression decides what it is credited under, with the legacy `/` read as `OR`.
+Under `OR` the first license in `PREFERENCE` is credited, and under `AND` every part. A license `WITH`
+an exception is credited as that license.
+The licenses in `PREFERENCE` are the accepted ones, and a crate that leaves no accepted choice
+stops the script.
+
+The text comes from a file whose name states the license: `LICENSE-X` or `LICENSE.X`, ignoring
+case and optionally ending in `.md` or `.txt`, where X is one of `NAME_KEYS`' spellings; an
+`UNLICENSE` file for the Unlicense; and `LICENSE`, `LICENCE`, or `COPYING` only where the crate's
+expression names one license. Nothing else is matched, and no text is guessed at by its contents.
+A crate whose text the rule cannot find needs a reviewed row in `license-clarifications.tsv`,
+naming its exact version, so an upgrade asks for the review again. A row's source is a file in
+the crate, or a standard text vendored under `crates/htmlspec-cli/licenses/`. A vendored text
+carries a copyright line: the row's own, where a reviewer read one in the crate's repository, or
+otherwise one built from the crate's authors, with every address removed.
+
+An Apache-2.0 crate's NOTICE file is reproduced, as that license's section 4(d) asks, and an
+MPL-2.0 crate's entry says where its source form is, as that license's section 3.2 asks.
+
+The file's header names every credited license, and `scripts/render-formula` reads it, so the
+Homebrew formula declares what the binary credits.
+
+The output is the same bytes for the same lockfile and sources: no date, and every list sorted.
+
+Usage:
+  scripts/crate-notices            write crates/htmlspec-cli/CRATE-LICENSES
+  scripts/crate-notices --check    compare it with what the lockfile reaches, and name each
+                                   crate added, removed, or changed; write nothing
+
+It reads crate sources through `cargo metadata --locked`, which reads what a build has fetched,
+or what the Nix sandbox vendored, and reaches no network then: on a checkout where nothing was
+ever built, cargo fetches the sources first. Standard library only, as
+every script here is.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+import sys
+from dataclasses import dataclass, field
+from pathlib import Path, PurePosixPath
+
+ROOT = Path(__file__).resolve().parent.parent
+CLI = ROOT / "crates" / "htmlspec-cli"
+OUTPUT = CLI / "CRATE-LICENSES"
+CLARIFICATIONS = CLI / "license-clarifications.tsv"
+STANDARD_TEXTS = CLI / "licenses"
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from release_facts import TARGETS  # noqa: E402
+
+# The crate whose normal-dependency closure is the binary.
+BINARY_CRATE = "htmlspec-cli"
+
+# The accepted licenses, in the order one is chosen under OR.
+PREFERENCE = (
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "BSD-2-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "MIT-0",
+    "Unlicense",
+    "MPL-2.0",
+)
+
+# The spellings a `LICENSE-X` or `LICENSE.X` file uses for each license. A license absent here is
+# matched only by a single-license crate's `LICENSE`, `LICENCE`, or `COPYING`.
+NAME_KEYS = {
+    "MIT": ("MIT",),
+    "Apache-2.0": ("APACHE", "APACHE2", "APACHE-2.0"),
+    "BSD-3-Clause": ("BSD",),
+    "BSD-2-Clause": ("BSD",),
+    "Zlib": ("ZLIB",),
+    "Unicode-3.0": ("UNICODE",),
+}
+
+# Licenses whose recipients of an executable must be told where its source form is.
+SOURCE_FORM = {"MPL-2.0"}
+
+SOURCE_FORM_URL = "https://crates.io/crates/{name}/{version}"
+
+CLARIFICATION_COLUMNS = ("crate", "version", "license", "source", "reviewer", "copyright")
+
+# The cells a row must fill. `copyright` may be left empty, or left off the end of the row.
+REQUIRED_CLARIFICATION_CELLS = 5
+
+RULE = "-" * 80
+
+CREDITED_PREFIX = "Credited licenses: "
+
+
+class Refused(Exception):
+    """A reason the notices cannot be written, naming the crate it is about."""
+
+
+@dataclass(frozen=True)
+class Crate:
+    name: str
+    version: str
+    expression: str
+    authors: tuple[str, ...]
+    repository: str
+    directory: Path
+
+
+@dataclass(frozen=True)
+class Clarification:
+    name: str
+    version: str
+    license: str
+    source: str
+    reviewer: str
+    copyright: str = ""
+
+
+@dataclass
+class Entry:
+    crate: Crate
+    licenses: tuple[str, ...]
+    texts: list[tuple[str, str]] = field(default_factory=list)
+
+
+# --- What the binary is built from -------------------------------------------------------------
+
+
+def metadata(target: str) -> dict:
+    """`cargo metadata` for one release target, with the lockfile held as it is."""
+    result = subprocess.run(
+        ["cargo", "metadata", "--locked", "--format-version", "1", "--filter-platform", target],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise Refused(f"cargo metadata for {target} failed: {result.stderr.strip()}")
+    return json.loads(result.stdout)
+
+
+def credited(metadatas: list[dict]) -> list[Crate]:
+    """The crates the binary is built from, over every metadata given, sorted by name and version."""
+    found: dict[tuple[str, str], Crate] = {}
+    for meta in metadatas:
+        packages = {package["id"]: package for package in meta["packages"]}
+        workspace = set(meta["workspace_members"])
+        nodes = {node["id"]: node for node in meta["resolve"]["nodes"]}
+
+        def kinds(dependency: dict) -> set:
+            return {kind["kind"] for kind in dependency["dep_kinds"]}
+
+        def closure(starts: list[str]) -> set[str]:
+            seen: set[str] = set()
+            stack = list(starts)
+            while stack:
+                current = stack.pop()
+                if current in seen:
+                    continue
+                seen.add(current)
+                stack += [d["pkg"] for d in nodes[current]["deps"] if None in kinds(d)]
+            return seen
+
+        roots = [i for i in workspace if packages[i]["name"] == BINARY_CRATE]
+        if not roots:
+            raise Refused(f"the workspace holds no {BINARY_CRATE}")
+        normal = closure(roots)
+        build_roots = [
+            d["pkg"]
+            for member in normal & workspace
+            for d in nodes[member]["deps"]
+            if "build" in kinds(d)
+        ]
+        for package_id in (normal | closure(build_roots)) - workspace:
+            package = packages[package_id]
+            key = (package["name"], package["version"])
+            found[key] = Crate(
+                name=package["name"],
+                version=package["version"],
+                expression=package.get("license") or "",
+                authors=tuple(package.get("authors") or ()),
+                repository=package.get("repository") or "",
+                directory=Path(package["manifest_path"]).parent,
+            )
+    return [found[key] for key in sorted(found)]
+
+
+# --- Which licenses a crate is credited under --------------------------------------------------
+
+TOKEN = re.compile(r"\s*(\(|\)|[A-Za-z0-9.+-]+)")
+
+
+def tokens(expression: str) -> list[str]:
+    text = expression.replace("/", " OR ")
+    found = []
+    position = 0
+    while position < len(text):
+        if text[position:].strip() == "":
+            break
+        match = TOKEN.match(text, position)
+        if not match:
+            raise Refused(f"cannot read the license expression {expression!r}")
+        found.append(match.group(1))
+        position = match.end()
+    return found
+
+
+def choose(expression: str) -> tuple[str, ...]:
+    """The licenses a crate is credited under, in PREFERENCE order, or Refused.
+
+    Precedence is SPDX's: WITH binds tightest, then AND, then OR. Under OR the alternative whose
+    least-preferred license comes earliest is chosen, which for alternatives of one license each
+    is simply the first of them in PREFERENCE.
+    """
+    if not expression.strip():
+        raise Refused("declares no license")
+    parts = tokens(expression)
+    position = 0
+
+    def peek() -> str | None:
+        return parts[position] if position < len(parts) else None
+
+    def take() -> str:
+        nonlocal position
+        token = parts[position]
+        position += 1
+        return token
+
+    def disjunction() -> list[tuple[str, ...]] | None:
+        options = []
+        option = conjunction()
+        if option is not None:
+            options.append(option)
+        while peek() == "OR":
+            take()
+            option = conjunction()
+            if option is not None:
+                options.append(option)
+        if not options:
+            return None
+        return [min(options, key=lambda licenses: sorted(PREFERENCE.index(name) for name in licenses)[::-1])]
+
+    def conjunction() -> tuple[str, ...] | None:
+        licenses = atom()
+        while peek() == "AND":
+            take()
+            more = atom()
+            licenses = None if licenses is None or more is None else licenses + more
+        return licenses
+
+    def atom() -> tuple[str, ...] | None:
+        if peek() == "(":
+            take()
+            inner = disjunction()
+            if peek() != ")":
+                raise Refused(f"cannot read the license expression {expression!r}")
+            take()
+            result = inner[0] if inner else None
+        else:
+            if peek() in (None, ")", "AND", "OR", "WITH"):
+                raise Refused(f"cannot read the license expression {expression!r}")
+            name = take()
+            result = (name,) if name in PREFERENCE else None
+        if peek() == "WITH":
+            take()
+            if peek() is None:
+                raise Refused(f"cannot read the license expression {expression!r}")
+            take()
+        return result
+
+    chosen = disjunction()
+    if position != len(parts):
+        raise Refused(f"cannot read the license expression {expression!r}")
+    if not chosen:
+        raise Refused(
+            f"is licensed {expression}, which leaves no license this project accepts: "
+            f"{', '.join(PREFERENCE)}"
+        )
+    return tuple(sorted(set(chosen[0]), key=PREFERENCE.index))
+
+
+def named_licenses(expression: str) -> set[str]:
+    """Every license identifier an expression names, exceptions left out."""
+    names = set()
+    parts = tokens(expression)
+    for index, token in enumerate(parts):
+        if token in ("(", ")", "AND", "OR", "WITH"):
+            continue
+        if index > 0 and parts[index - 1] == "WITH":
+            continue
+        names.add(token)
+    return names
+
+
+# --- Where each text comes from ------------------------------------------------------------------
+
+
+def text_file(crate: Crate, license: str) -> Path | None:
+    """The crate's file whose name states `license`, by the file-name rule alone."""
+    if not crate.directory.is_dir():
+        return None
+    names = sorted(entry.name for entry in crate.directory.iterdir() if entry.is_file())
+    suffix = r"(\.md|\.txt)?"
+    patterns = []
+    if license in NAME_KEYS:
+        keys = "|".join(re.escape(key) for key in NAME_KEYS[license])
+        patterns.append(re.compile(rf"LICENSE[-.]({keys}){suffix}", re.IGNORECASE))
+    if license == "Unlicense":
+        patterns.append(re.compile(rf"UNLICENSE{suffix}", re.IGNORECASE))
+    if len(named_licenses(crate.expression)) == 1:
+        patterns.append(re.compile(rf"(LICENSE|LICENCE|COPYING){suffix}", re.IGNORECASE))
+    for pattern in patterns:
+        for name in names:
+            if pattern.fullmatch(name):
+                return crate.directory / name
+    return None
+
+
+def notice_files(crate: Crate) -> list[Path]:
+    """An Apache-2.0 crate's NOTICE files, which that license asks to be reproduced."""
+    if "Apache-2.0" not in named_licenses(crate.expression) or not crate.directory.is_dir():
+        return []
+    return sorted(
+        entry
+        for entry in crate.directory.iterdir()
+        if entry.is_file() and re.fullmatch(r"NOTICE(\.md|\.txt)?", entry.name, re.IGNORECASE)
+    )
+
+
+def copyright_line(crate: Crate) -> str:
+    """The copyright line a vendored standard text carries, built from the crate's authors."""
+    authors = [re.sub(r"\s*<[^>]*>", "", author).strip() for author in crate.authors]
+    authors = [author for author in authors if author]
+    if authors:
+        return f"Copyright (c) {', '.join(authors)}"
+    where = crate.repository or SOURCE_FORM_URL.format(name=crate.name, version=crate.version)
+    return f"Copyright the authors of {crate.name}, as {where} names them"
+
+
+def read_text(path: Path, crate: Crate) -> str:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        raise Refused(f"{crate.name} {crate.version}: {path.name} is not UTF-8 text")
+    return text.replace("\r\n", "\n").replace("\r", "\n").rstrip("\n") + "\n"
+
+
+def read_clarifications(text: str) -> dict[tuple[str, str, str], Clarification]:
+    """The reviewed rows, by crate, version, and license. Lines starting with `#` are comments."""
+    rows: dict[tuple[str, str, str], Clarification] = {}
+    header_seen = False
+    for number, line in enumerate(text.splitlines(), start=1):
+        if not line.strip() or line.startswith("#"):
+            continue
+        cells = line.split("\t")
+        if not header_seen:
+            if tuple(cells) != CLARIFICATION_COLUMNS:
+                raise Refused(
+                    f"license-clarifications.tsv line {number} should be the header "
+                    f"{chr(9).join(CLARIFICATION_COLUMNS)!r}"
+                )
+            header_seen = True
+            continue
+        required = cells[:REQUIRED_CLARIFICATION_CELLS]
+        if (
+            not REQUIRED_CLARIFICATION_CELLS <= len(cells) <= len(CLARIFICATION_COLUMNS)
+            or not all(cell.strip() for cell in required)
+        ):
+            raise Refused(
+                f"license-clarifications.tsv line {number} needs tab-separated cells "
+                f"{', '.join(CLARIFICATION_COLUMNS[:REQUIRED_CLARIFICATION_CELLS])}, each filled, "
+                f"and may add {CLARIFICATION_COLUMNS[-1]}"
+            )
+        row = Clarification(*[cell.strip() for cell in cells])
+        # A source is read from the crate's own files or the vendored texts, and from nowhere else:
+        # an absolute path or one climbing out with `..` would read a file the review never saw.
+        for part in (piece.strip() for piece in row.source.split(" + ")):
+            pieces = PurePosixPath(part).parts
+            if not part or "\\" in part or PurePosixPath(part).is_absolute() or ".." in pieces:
+                raise Refused(
+                    f"license-clarifications.tsv line {number} names the source {part!r} for "
+                    f"{row.name}, which is not a path within the crate or under licenses/: a source "
+                    f"is a file the crate ships or a vendored standard text, never a file elsewhere"
+                )
+        if row.copyright and not any(
+            part.strip().startswith("licenses/") for part in row.source.split(" + ")
+        ):
+            raise Refused(
+                f"license-clarifications.tsv line {number} gives {row.name} a copyright line, which "
+                f"only a vendored standard text carries, and its source names none"
+            )
+        key = (row.name, row.version, row.license)
+        if key in rows:
+            raise Refused(f"license-clarifications.tsv names {row.name} {row.version} {row.license} twice")
+        rows[key] = row
+    return rows
+
+
+def entries(crates: list[Crate], rows: dict[tuple[str, str, str], Clarification], standard: Path) -> list[Entry]:
+    """Each crate with its credited licenses and their texts, or Refused naming every crate at fault."""
+    faults = []
+    result = []
+    used = set()
+    for crate in crates:
+        try:
+            licenses = choose(crate.expression)
+        except Refused as refusal:
+            faults.append(f"{crate.name} {crate.version} {refusal}")
+            continue
+        entry = Entry(crate, licenses)
+        for license in licenses:
+            key = (crate.name, crate.version, license)
+            row = rows.get(key)
+            if row is not None:
+                used.add(key)
+                # A source is a file in the crate or a vendored standard text, and a row may join
+                # several with ` + `: a crate whose own file states its copyright and not the
+                # license's text gives both.
+                for source in (part.strip() for part in row.source.split(" + ")):
+                    if source.startswith("licenses/"):
+                        path = standard / source[len("licenses/"):]
+                        if not path.is_file():
+                            faults.append(f"{crate.name} {crate.version}: its row names {source}, which is not vendored")
+                            continue
+                        entry.texts.append(
+                            (f"{license}: the standard text, vendored as {source}, reviewed by {row.reviewer}",
+                             f"{row.copyright or copyright_line(crate)}\n\n{read_text(path, crate)}")
+                        )
+                    else:
+                        path = crate.directory / source
+                        if not path.is_file():
+                            faults.append(f"{crate.name} {crate.version}: its row names {source}, which the crate does not ship")
+                            continue
+                        entry.texts.append(
+                            (f"{license}: {source}, as the crate ships it, reviewed by {row.reviewer}",
+                             read_text(path, crate))
+                        )
+                continue
+            path = text_file(crate, license)
+            if path is None:
+                faults.append(
+                    f"{crate.name} {crate.version} is credited under {license} and ships no file "
+                    f"whose name states it, and license-clarifications.tsv has no row for it"
+                )
+                continue
+            entry.texts.append((f"{license}: {path.name}, as the crate ships it", read_text(path, crate)))
+        for notice in notice_files(crate):
+            entry.texts.append((f"NOTICE: {notice.name}, as the crate ships it", read_text(notice, crate)))
+        result.append(entry)
+    for key in sorted(set(rows) - used):
+        faults.append(
+            f"license-clarifications.tsv has a row for {key[0]} {key[1]} under {key[2]}, which the "
+            f"lockfile no longer credits; review the crate again and change or remove the row"
+        )
+    if faults:
+        raise Refused("\n".join(faults))
+    return result
+
+
+# --- The file ------------------------------------------------------------------------------------
+
+HEADER = """\
+Licenses of the Rust crates the htmlspec binary is built from
+
+The crates listed below are the ones the htmlspec program is compiled from, for the four targets
+a release builds, and every crate the workspace's code generation depends on. Their licenses ask
+that their notices travel with a binary copy, so each one's text follows, as the crate ships it,
+or as license-clarifications.tsv records a reviewed choice where a crate ships no file that names
+its license. The libraries the binary embeds for documents to load, Mermaid and Vega among them,
+have their own notices in THIRD-PARTY-LICENSES.
+
+Generated by scripts/crate-notices from Cargo.lock. Change the script or the table, never this
+file: the suite regenerates it and fails on any difference.
+"""
+
+
+def render(found: list[Entry]) -> str:
+    credited_licenses = sorted({name for entry in found for name in entry.licenses}, key=PREFERENCE.index)
+    width = max([len(entry.crate.name) for entry in found] + [5])
+    version_width = max([len(entry.crate.version) for entry in found] + [7])
+    lines = [HEADER, f"{CREDITED_PREFIX}{' AND '.join(credited_licenses)}", "", f"Crates: {len(found)}", ""]
+    lines.append(f"  {'Crate'.ljust(width)}  {'Version'.ljust(version_width)}  License")
+    for entry in found:
+        lines.append(
+            f"  {entry.crate.name.ljust(width)}  {entry.crate.version.ljust(version_width)}  "
+            f"{' AND '.join(entry.licenses)}"
+        )
+    lines.append("")
+    for entry in found:
+        crate = entry.crate
+        lines += [RULE, "", f"{crate.name} {crate.version}", f"License: {' AND '.join(entry.licenses)}"]
+        if crate.expression.strip() != " AND ".join(entry.licenses):
+            lines.append(f"Licensed by its authors as: {crate.expression}")
+        if SOURCE_FORM & set(entry.licenses):
+            lines.append(f"Source form: {SOURCE_FORM_URL.format(name=crate.name, version=crate.version)}")
+        for label, text in entry.texts:
+            lines += ["", f"--- {label} ---", "", text.rstrip("\n")]
+        lines.append("")
+    return "\n".join(lines).rstrip("\n") + "\n"
+
+
+TABLE_ROW = re.compile(r"  (\S+)\s+(\S+)\s+(.+)")
+
+
+def table(text: str) -> dict[str, tuple[str, str]]:
+    """The crate table of a notices file: each crate's version and licenses, by name and version."""
+    rows = {}
+    inside = False
+    for line in text.splitlines():
+        if line.startswith("  Crate "):
+            inside = True
+            continue
+        if inside:
+            if not line.strip():
+                break
+            match = TABLE_ROW.fullmatch(line)
+            if match:
+                rows[f"{match.group(1)} {match.group(2)}"] = (match.group(2), match.group(3).strip())
+    return rows
+
+
+def differences(committed: str, generated: str) -> list[str]:
+    """Each crate added, removed, or changed between two notices files.
+
+    A crate can be credited at two versions at once, as when one dependency needs `rand` 0.8 and
+    another `rand` 0.9. So a version that appears is an upgrade, "now at", only where the same
+    crate also loses one; where every earlier version stays, it is a second version beside them.
+    """
+    before, after = table(committed), table(generated)
+
+    def versions(rows: dict[str, tuple[str, str]]) -> dict[str, set[str]]:
+        found: dict[str, set[str]] = {}
+        for key in rows:
+            name, version = key.split(" ", 1)
+            found.setdefault(name, set()).add(version)
+        return found
+
+    had, has = versions(before), versions(after)
+    added, removed = [], []
+    for name in sorted(set(had) | set(has)):
+        old, new = had.get(name, set()), has.get(name, set())
+        gained, lost, kept = sorted(new - old), sorted(old - new), sorted(old & new)
+        for version in gained:
+            key = f"{name} {version}"
+            if lost:
+                added.append(f"now at {key}, credited under {after[key][1]}")
+            elif kept:
+                added.append(f"added: {key} (beside {', '.join(kept)}), credited under {after[key][1]}")
+            else:
+                added.append(f"added: {key}, credited under {after[key][1]}")
+        for version in lost:
+            key = f"{name} {version}"
+            if gained:
+                removed.append(f"no longer at {key}")
+            elif kept:
+                removed.append(f"removed: {key} (beside {', '.join(kept)}, which stays)")
+            else:
+                removed.append(f"removed: {key}, which the lockfile no longer reaches")
+    lines = added + removed
+    for key in sorted(set(before) & set(after)):
+        if before[key] != after[key]:
+            lines.append(f"changed: {key} is now credited under {after[key][1]}, not {before[key][1]}")
+    if not lines and committed != generated:
+        lines.append("the crates are the same, and a text differs: a crate's license file changed")
+    return lines
+
+
+def credited_licenses(text: str) -> list[str] | None:
+    """The licenses a notices file's header says it credits, as render-formula reads them."""
+    for line in text.splitlines():
+        if line.startswith(CREDITED_PREFIX):
+            return [name for name in line[len(CREDITED_PREFIX):].split(" AND ") if name]
+    return None
+
+
+def generate(metadatas: list[dict], clarifications: str, standard: Path) -> str:
+    return render(entries(credited(metadatas), read_clarifications(clarifications), standard))
+
+
+def formula_faults(crate_licenses: str, template: str | None = None) -> list[str]:
+    """Where `packaging/homebrew/htmlspec.rb.in`, or `template` when given, disagrees with what the
+    binary credits.
+
+    `scripts/render-formula`'s own `template_faults`, loaded from its path because the script has
+    no `.py` name, so the two checks are one rule and cannot drift apart.
+    """
+    import importlib.machinery
+    import importlib.util
+
+    loader = importlib.machinery.SourceFileLoader("render_formula", str(ROOT / "scripts" / "render-formula"))
+    module = importlib.util.module_from_spec(importlib.util.spec_from_loader(loader.name, loader))
+    loader.exec_module(module)
+    return module.template_faults(
+        template if template is not None else module.TEMPLATE.read_text(encoding="utf-8"),
+        module.ASSETS_MANIFEST.read_text(encoding="utf-8"),
+        crate_licenses,
+    )
+
+
+def check(committed: str, generated: str, template: str | None = None) -> tuple[int, list[str]]:
+    """What `--check` reports, and the status it exits with: the notices against what the lockfile
+    reaches, then the formula's template against what the notices credit."""
+    relative = OUTPUT.relative_to(ROOT)
+    if committed != generated:
+        lines = [f"crate-notices: {relative} does not match what Cargo.lock reaches:"]
+        lines += [f"  {line}" for line in differences(committed, generated)]
+        lines.append("crate-notices: run scripts/crate-notices to write it again, and read what changed")
+        return 1, lines
+    lines = [f"  ok  {relative} credits the {len(table(generated))} crates the lockfile reaches"]
+    # The formula declares what the binary credits, and its own check runs only where the macOS
+    # jobs do. Held here too, so a pull request on Linux alone meets a formula that drifted from
+    # these notices, rather than the release that would ship it.
+    faults = formula_faults(committed, template)
+    if faults:
+        return 1, lines + [f"crate-notices: the Homebrew formula's template: {fault}" for fault in faults]
+    return 0, lines + ["  ok  the Homebrew formula's template declares what the binary credits"]
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="write the notices of the crates the binary is built from")
+    parser.add_argument("--check", action="store_true", help="compare, and write nothing")
+    arguments = parser.parse_args(argv)
+    try:
+        clarifications = CLARIFICATIONS.read_text(encoding="utf-8") if CLARIFICATIONS.exists() else ""
+        text = generate([metadata(target) for target in TARGETS], clarifications, STANDARD_TEXTS)
+    except Refused as refusal:
+        for line in str(refusal).splitlines():
+            print(f"crate-notices: {line}", file=sys.stderr)
+        return 1
+    relative = OUTPUT.relative_to(ROOT)
+    if arguments.check:
+        committed = OUTPUT.read_text(encoding="utf-8") if OUTPUT.exists() else ""
+        status, lines = check(committed, text)
+        for line in lines:
+            print(line, file=sys.stdout if status == 0 else sys.stderr)
+        return status
+    OUTPUT.write_text(text, encoding="utf-8")
+    print(f"wrote {relative}: {len(table(text))} crates, crediting {', '.join(credited_licenses(text) or [])}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -187,6 +187,127 @@ pub fn rewrite(source: &str, store: &Store, prefix: &str) -> RewriteOutcome {
     }
 }
 
+/// One reference [`upgrade`] moved onto the store's current revision of its asset, or would have.
+///
+/// `#[non_exhaustive]`, as [`UpgradeOutcome`] is: this crate is published, and a field added in a
+/// later minor release must not break a caller that built or destructured one.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct UpgradedReference {
+    /// The reference as the document carried it.
+    pub was: String,
+    /// The reference as it now reads.
+    pub now: String,
+    /// The asset's file name, which is what the two forms share.
+    pub name: String,
+}
+
+/// The result of upgrading one document's references.
+///
+/// `#[non_exhaustive]` because this crate is published on crates.io and a later 1.x release may
+/// report more about an upgrade: a field added to an exhaustive struct breaks every caller that
+/// destructures it.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct UpgradeOutcome {
+    /// The document, with every upgradable reference naming the current revision.
+    pub rewritten: String,
+    /// Every reference that moved, in document order.
+    pub upgraded: Vec<UpgradedReference>,
+    /// Every reference left as written because the store holds other bytes at the current
+    /// revision's address, in document order. `now` is that address, and the reference was not
+    /// moved there: it would name bytes the address does not, which `asset/mismatch` reports.
+    pub blocked: Vec<UpgradedReference>,
+}
+
+/// Rewrites every asset reference to the current revision of the asset it names, on request.
+///
+/// **The explicit operation the module's CAUTION reserves.** [`rewrite`] fills only references whose
+/// bytes are absent, because re-pointing a reference at newer bytes changes what a document renders
+/// with and must never be a side effect of tidying. This is that re-pointing, asked for by name:
+/// deterministic-formatting's "Formatting preserves meaning" makes it the third exception, made only
+/// on a contributor's request, beside filling an absent reference and adding the fallback
+/// stylesheet. The caller decides which documents it may touch: never an archived change's, and
+/// never a run's record.
+///
+/// Each reference whose file name is an asset this binary embeds becomes `<prefix>/<address>/<name>`
+/// at the embedded revision's address, so a document moves onto the stylesheet and the scripts the
+/// toolchain writes into every new document. Nothing is added: a script the document does not load
+/// stays unloaded. Three kinds of reference are left as written:
+///
+/// - one naming a file the embedded runtime does not have, which has no current revision;
+/// - one whose stored bytes disagree with its address, because moving it would erase the evidence
+///   that something replaced them, which `asset/mismatch` exists to report;
+/// - anything that is not an asset reference at all.
+///
+/// Nothing is fetched or downloaded. The current revision is the one compiled into this binary, and
+/// the caller writes its bytes into the store before the rewritten document is read. With no store
+/// beside the document there is no provenance to move, so the source is returned unchanged, as
+/// [`rewrite`] returns it.
+pub fn upgrade(source: &str, store: &Store, prefix: &str) -> UpgradeOutcome {
+    if !store.is_present() {
+        return UpgradeOutcome {
+            rewritten: source.to_owned(),
+            upgraded: Vec::new(),
+            blocked: Vec::new(),
+        };
+    }
+    let prefix = prefix.trim_end_matches('/');
+
+    let mut out = String::with_capacity(source.len());
+    let mut upgraded = Vec::new();
+    let mut blocked = Vec::new();
+    let mut copied = 0;
+    for found in asset_references(source) {
+        out.push_str(source.get(copied..found.span.start).unwrap_or_default());
+        let reference = found.value;
+        match current_revision(reference, store, prefix) {
+            Some((replacement, name)) if replacement != reference => {
+                let moved = UpgradedReference {
+                    was: reference.to_owned(),
+                    now: replacement,
+                    name,
+                };
+                // The current address holding other bytes is a fault in the store, and a reference
+                // moved onto it would name bytes it does not render with. Left where it is, and
+                // reported, so the fault is found rather than inherited.
+                if matches!(store.resolve(&moved.now), Resolution::Mismatch { .. }) {
+                    out.push_str(reference);
+                    blocked.push(moved);
+                } else {
+                    out.push_str(&moved.now);
+                    upgraded.push(moved);
+                }
+            }
+            _ => out.push_str(reference),
+        }
+        copied = found.span.end;
+    }
+    out.push_str(source.get(copied..).unwrap_or_default());
+
+    UpgradeOutcome {
+        rewritten: out,
+        upgraded,
+        blocked,
+    }
+}
+
+/// The current revision's reference for `reference`, with the asset's name, or `None` where
+/// [`upgrade`] leaves it as written.
+fn current_revision(reference: &str, store: &Store, prefix: &str) -> Option<(String, String)> {
+    if !reference.contains("assets/") {
+        return None;
+    }
+    if matches!(store.resolve(reference), Resolution::Mismatch { .. }) {
+        return None;
+    }
+    let name = file_name_of(reference)?;
+    let asset = htmlspec_assets::all_assets()
+        .into_iter()
+        .find(|asset| asset.name() == name)?;
+    Some((format!("{prefix}/{}", asset.path), name.to_owned()))
+}
+
 /// What to do with one reference.
 enum Decision {
     Fill { replacement: String, name: String },
@@ -753,5 +874,119 @@ mod tests {
             "the relative prefix was lost: {}",
             outcome.rewritten
         );
+    }
+
+    /// `upgrade` moves a reference to an older stored revision onto the current one, which
+    /// `rewrite` leaves as written: the third exception to "Formatting preserves meaning", made only
+    /// on request.
+    #[test]
+    fn an_upgrade_moves_a_reference_to_an_older_revision_onto_the_current_one() {
+        let project = Project::new("upgrade-older");
+        let older = project.store_bytes("htmlspec.css", b"/* an older revision */");
+        let current = project.store_current("htmlspec.css");
+
+        let source = document(&older);
+        assert_eq!(
+            rewrite(&source, &project.store(), "assets").rewritten,
+            source,
+            "without the request, the older revision must be left as written"
+        );
+
+        let outcome = upgrade(&source, &project.store(), "assets");
+        assert_eq!(outcome.rewritten, document(&current));
+        assert_eq!(
+            outcome.upgraded,
+            vec![UpgradedReference {
+                was: older,
+                now: current,
+                name: "htmlspec.css".into(),
+            }]
+        );
+    }
+
+    /// A second upgrade changes nothing, so the option is idempotent.
+    #[test]
+    fn an_upgrade_is_idempotent() {
+        let project = Project::new("upgrade-twice");
+        let older = project.store_bytes("htmlspec.css", b"/* an older revision */");
+        project.store_current("htmlspec.css");
+
+        let once = upgrade(&document(&older), &project.store(), "assets");
+        let twice = upgrade(&once.rewritten, &project.store(), "assets");
+        assert_eq!(twice.rewritten, once.rewritten);
+        assert!(twice.upgraded.is_empty(), "{:#?}", twice.upgraded);
+    }
+
+    /// An upgrade adds nothing the document does not load, and leaves what it cannot place alone: an
+    /// unknown file, a reference whose stored bytes were replaced, and text outside any reference.
+    #[test]
+    fn an_upgrade_adds_nothing_and_keeps_what_it_cannot_place() {
+        let project = Project::new("upgrade-keeps");
+        project.store_current("htmlspec.css");
+        let replaced = project.store_wrong("htmlspec-print.css", b"addressed", b"actual");
+
+        let source = format!(
+            "{}{}<script src=\"assets/sha256-0000000000000000/not-shipped.js\"></script>\n\
+             <p><code>assets/sha256-0000000000000000/htmlspec.css</code></p>\n",
+            document("assets/sha256-0000000000000000/htmlspec.css"),
+            document(&replaced),
+        );
+        let outcome = upgrade(&source, &project.store(), "assets");
+
+        assert_eq!(outcome.upgraded.len(), 1, "{:#?}", outcome.upgraded);
+        assert_eq!(outcome.upgraded[0].name, "htmlspec.css");
+        assert!(
+            outcome.rewritten.contains(&replaced),
+            "the replaced bytes' evidence moved"
+        );
+        assert!(outcome.rewritten.contains("not-shipped.js"));
+        assert!(
+            outcome
+                .rewritten
+                .contains("<code>assets/sha256-0000000000000000/htmlspec.css</code>"),
+            "text quoting a reference was rewritten"
+        );
+        assert!(
+            !outcome.rewritten.contains("mermaid") && !outcome.rewritten.contains("vega"),
+            "an upgrade added an asset the document does not load"
+        );
+    }
+
+    /// A clean reference is not moved onto a current address whose stored bytes were replaced: it is
+    /// left as written and reported as blocked, so the store's fault stays the store's.
+    #[test]
+    fn an_upgrade_does_not_move_a_reference_onto_replaced_bytes() {
+        let project = Project::new("upgrade-onto-replaced");
+        let older = project.store_bytes("htmlspec.css", b"/* an older revision */");
+        let current = htmlspec_assets::all_assets()
+            .into_iter()
+            .find(|asset| asset.name() == "htmlspec.css")
+            .expect("the stylesheet");
+        let replaced = project.store_wrong("htmlspec.css", current.bytes, b"/* replaced */");
+
+        let source = document(&older);
+        let outcome = upgrade(&source, &project.store(), "assets");
+        assert_eq!(
+            outcome.rewritten, source,
+            "the reference moved onto replaced bytes"
+        );
+        assert!(outcome.upgraded.is_empty(), "{:#?}", outcome.upgraded);
+        assert_eq!(
+            outcome.blocked,
+            vec![UpgradedReference {
+                was: older,
+                now: replaced,
+                name: "htmlspec.css".into(),
+            }]
+        );
+    }
+
+    /// With no store beside the document there is no provenance to move.
+    #[test]
+    fn no_store_means_no_upgrade() {
+        let source = document("assets/sha256-0000000000000000/htmlspec.css");
+        let outcome = upgrade(&source, &Store::Absent, "assets");
+        assert_eq!(outcome.rewritten, source);
+        assert!(outcome.upgraded.is_empty());
     }
 }
