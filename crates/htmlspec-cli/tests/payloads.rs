@@ -453,8 +453,9 @@ fn declare_a_machine_check(runs: &mut Runs, scratch: &Scratch) {
          \x20               <dd>The run records that it was checked.</dd>\n\
          \x20             </dl>\n\
          \x20           </article>\n\
-         \x20           <p data-field=\"note\">preflight/v1 \
-         {&quot;kind&quot;:&quot;state&quot;,&quot;check&quot;:&quot;outside-project&quot;}</p>\n\
+         \x20           <p data-field=\"note\">preflight/v2 \
+         {&quot;kind&quot;:&quot;state&quot;,&quot;check&quot;:&quot;outside-project&quot;,\
+         &quot;remedy&quot;:&quot;start it from a directory outside the project&quot;}</p>\n\
          \x20         </section>\n";
     let written = source.replace(
         "        </section>\n      </main>",

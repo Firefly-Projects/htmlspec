@@ -41,6 +41,7 @@ use super::{
 };
 
 use crate::project::ProjectRoot;
+use crate::terminal::shown;
 use crate::version::ToolVersion;
 
 /// How long one probe may run before it is stopped.
@@ -224,7 +225,7 @@ impl CommandRunner for SystemRunner {
                 return RunResult::NotRun {
                     reason: format!(
                         "{} could not be started: {error}",
-                        request.program.display()
+                        shown(&request.program.display().to_string())
                     ),
                 }
             }
@@ -560,7 +561,7 @@ impl<R: CommandRunner> Host<R> {
                 reason: format!(
                     "{} produced more than {limit} bytes of output, so the answer this probe reads \
                      is not in what it was allowed to keep",
-                    request.program.display()
+                    shown(&request.program.display().to_string())
                 ),
                 remedy: String::from(
                     "the tool's version interface does not fit a bounded probe. It needs an \
@@ -756,7 +757,7 @@ impl<R: CommandRunner> HostProbe for Host<R> {
             return Err(ProbeFault::Unavailable {
                 reason: format!(
                     "no manifest at {}, and this check reads one rather than fetching it",
-                    path.display()
+                    shown(&path.display().to_string())
                 ),
                 remedy: String::from(
                     "the target work environment supplies the manifest. Put it where the \
@@ -773,7 +774,7 @@ impl<R: CommandRunner> HostProbe for Host<R> {
                 reason: format!(
                     "{} has no `flake.lock` beside it, so its inputs are not pinned and reading \
                      them would mean resolving them over the network",
-                    path.display()
+                    shown(&path.display().to_string())
                 ),
                 remedy: String::from(
                     "commit a `flake.lock` for the manifest. A pin nothing recorded is a pin this \
@@ -956,7 +957,7 @@ impl<R: CommandRunner> HostProbe for Host<R> {
         if !canonical.starts_with(&root) {
             return absent(format!(
                 "it resolves to {}, which is outside the {scope} scope at {}",
-                canonical.display(),
+                shown(&canonical.display().to_string()),
                 root.display(),
                 scope = scope.name()
             ));
@@ -1105,7 +1106,7 @@ impl<R: CommandRunner> Host<R> {
             return Err(ProbeFault::Unavailable {
                 reason: format!(
                     "{} is not a UTF-8 path, and the evaluator can only be told a directory as text",
-                    directory.display()
+                    shown(&directory.display().to_string())
                 ),
                 remedy: String::from(
                     "move the manifest to a directory whose path is valid UTF-8, or state the tools \
@@ -2936,6 +2937,7 @@ mod tests {
         DeclaredCheck {
             requirement: RequirementId::new(&format!("req-{id}")).expect("an identifier"),
             check,
+            remedy: None,
         }
     }
 }

@@ -16,8 +16,10 @@ use crate::project::ProjectRoot;
 ///
 /// `assets` holds the vendored runtime, which is third-party JavaScript and not a
 /// document. The rest are build and tool output. Skipping them by name is crude and
-/// correct: a document does not live in `target/`.
-const SKIPPED: &[&str] = &[".git", ".jj", ASSETS, "node_modules", "result", "target"];
+/// correct: a document does not live in `target/`. A new runbook's name is refused when it is one of
+/// these ([`crate::project::ProjectRoot::is_a_new_runbook_name`]), because a runbook there would never
+/// be walked, and one named `assets` would be taken for a store.
+pub(crate) const SKIPPED: &[&str] = &[".git", ".jj", ASSETS, "node_modules", "result", "target"];
 
 /// The directory an asset store occupies, relative to the directory holding it.
 ///
@@ -70,10 +72,19 @@ impl std::error::Error for DiscoveryError {}
 /// promotion refused a migration whose only fault was its evidence.
 ///
 /// **The exclusion is here, not in each caller**, because toolchain-packaging requires it to be
-/// defined once and reached by every operation that walks. The project is resolved from `root`
+/// defined once and reached by every operation that walks. The project is resolved by the walk
 /// rather than passed in: a parameter would make `None` a valid argument, and a caller passing it
-/// would get the old walk with nothing to show the difference. Resolution is from the walk's own
-/// root, so a walk of another project's directory excludes that project's evidence.
+/// would get the old walk with nothing to show the difference.
+///
+/// **Resolved for each directory the walk enters, not once from its root.** A directory belongs to
+/// the project [`ProjectRoot::resolve`] would find from it: the nearest one holding `htmlspec/`, and
+/// none past a `.git`. So the walk starts with the root's project and takes a new one wherever a
+/// directory it enters holds `htmlspec/`, or holds `.git` and so begins a repository of its own.
+/// Until 1.1.0 the project was resolved from the root alone, so a walk from a directory *above* a
+/// project resolved none and descended into that project's evidence: `validate` reported its
+/// records, and `format` met them. That was a gap toolchain-packaging's "An operation over a
+/// directory collects documents and not a change's evidence" did not allow, and the change
+/// `ship-the-crates-notices-and-runbook-affordances` closed it.
 ///
 /// **The root itself is never excluded**, only what the walk comes across beneath it. Naming a
 /// change's evidence directory, or a directory inside it, walks it in full: the exclusion is of
@@ -174,7 +185,16 @@ fn walk(
             if project.is_some_and(|project| project.is_change_evidence(&path)) {
                 continue;
             }
-            walk(&path, project, found)?;
+            // A directory that holds a project, or begins a repository, is judged by what
+            // resolving from it finds, exactly as `ProjectRoot::resolve` would place it.
+            let nested;
+            let within = if ProjectRoot::exists(&path) || path.join(".git").exists() {
+                nested = ProjectRoot::resolve(&path).ok();
+                nested.as_ref()
+            } else {
+                project
+            };
+            walk(&path, within, found)?;
         } else if path.extension().is_some_and(|e| e == "html") {
             found.push(path);
         }

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>A publish run finishes without a hand fix: tasks</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>A publish run finishes without a hand fix: tasks</h1>
+        <p>Put <code>python3</code> in the development shell and declare it in both runbooks' preflight, title the export by the version it publishes within the public guard's rules, show both hold, and release 1.0.1.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>A publish run finishes without a hand fix: tasks</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-tasks">Tasks</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-tasks">
+          <h2>Tasks</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Put <code>pkgs.python3</code> in the development shell <span class="hs-id">task-1-1</span></h3>
+              <p data-field="note">Add it to <code>devShells.default</code>'s packages in <code>flake.nix</code>, with a comment naming the stub it shadows, as the design's first decision states. <code>flake.lock</code> must not change. Inside <code>nix develop</code>, <code>python3</code> resolves into the store and prints its version.</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Declare <code>python3</code> in the publish runbook and release 0.2.0 <span class="hs-id">task-1-2</span></h3>
+              <p data-field="note">Name <code>python3</code> in <code>req-the-pinned-toolchain-is-what-runs</code>'s statement and its <code>toolchain</code> note, replace the paragraph that leaves it to the tasks' prose, and add a scenario for a <code>python3</code> that resolves outside the shell. Move <code>VERSION</code> to 0.2.0 and add its changelog heading.</p>
+              <p data-field="deviation">No paragraph was replaced. The publish runbook's paragraph naming <code>gh</code>, <code>git</code>, <code>nix</code>, and <code>brew</code> as inputs stated in prose never named <code>python3</code>, and it stays true of those four. A paragraph saying why <code>python3</code> is declared was added before it instead.</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Declare <code>python3</code> in the release runbook and release 0.4.0 <span class="hs-id">task-1-3</span></h3>
+              <p data-field="note">The same edit to its <code>req-the-pinned-toolchain-is-what-runs</code>, replacing the paragraph that says <code>python3</code> is deliberately not declared, and its prerequisites list says the shell supplies <code>python3</code>. Move <code>VERSION</code> to 0.4.0 and add its changelog heading.</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Title the export by its version, within the public guard's rules <span class="hs-id">task-1-4</span></h3>
+              <p data-field="note">Build the export commit's subject and its pull request's title from the version <code>Cargo.toml</code> declares at the ref and the commit's first twelve characters, as the design's fifth decision states, and refuse a subject <code>scripts/check-pull-request</code>'s title rules refuse before exporting anything. <code>publish/test</code> exports a full commit id and holds the title it pushes to those rules, and refuses a ref with no version and a version too long to title.</p>
+            </li>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Show both runbooks start inside the shell and are refused outside it <span class="hs-id">task-2-1</span></h3>
+              <p data-field="note"><code>nix develop -c htmlspec preflight publish</code> and <code>… preflight release</code> report ready. Outside the shell, with the pinned Rust toolchain first on the search path, <code>htmlspec preflight publish</code> reports where <code>python3</code> resolved and refuses. <code>nix develop -c publish/export --ref HEAD --dry-run</code>, against an empty local bare repository, runs to its end.</p>
+              <p data-field="note">Measured on 2026-10-20 on macOS. Inside <code>nix develop</code>, <code>htmlspec preflight publish</code> and <code>htmlspec preflight release</code> each reported ready, with <code>python3</code> resolving to the store's Python 3.13.14. Outside it, with the pinned Rust toolchain first on the search path, <code>htmlspec preflight publish</code> reported <code>python3</code> resolving to <code>/usr/bin/python3</code>, "not inside the declared environment", and refused. <code>nix develop -c publish/export --ref HEAD --dry-run</code> against an empty local bare repository ran to its end: every read current, 23 rewrites, the scan clean, and all 14 checks passing inside the exported tree.</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Release 1.0.1 <span class="hs-id">task-2-2</span></h3>
+              <p data-field="note">Run <code>scripts/set-version 1.0.1</code> and add the changelog's 1.0.1 entry, as the release runbook's first two steps say. <code>spec.nix</code> stays at 1.0.0 until archival.</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Run the suite and record the reads <span class="hs-id">task-2-3</span></h3>
+              <p data-field="note">Run <code>scripts/check</code> in full, <code>publish/test</code>, and <code>htmlspec validate</code> with the format check. Record the reads in <code>publish/READINESS.md</code> for every allowlisted path whose content changed, by content, after reading each changed file in full.</p>
+              <p data-field="note">Inside <code>nix develop</code>: <code>scripts/check</code> passed all 14 stages, <code>publish/test</code> ran 48 tests and passed, as it did under the system interpreter outside the shell, <code>scripts/check-publish-crates</code> ran 19 and passed, and <code>scripts/check-release</code> passed with the five pins at <code>=1.0.1</code>. <code>htmlspec validate</code> reported no error in 200 documents, and every document is canonical. The reads are recorded in <code>publish/READINESS.md</code> for <code>.claude</code>, <code>.codex</code>, <code>.pi</code>, <code>.gitignore</code>, <code>Cargo.lock</code>, <code>Cargo.toml</code>, <code>CHANGELOG.md</code>, <code>flake.nix</code>, and <code>htmlspec</code>.</p>
+            </li>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Take the code review, and settle each finding <span class="hs-id">task-3-1</span></h3>
+              <p data-field="note">One review of the pull request, its findings fixed or answered on the branch.</p>
+              <p data-field="deviation">Two reviews ran: the contributor's <code>/code-review</code> at medium depth, and a read-only review agent that reproduced each finding. Every finding is fixed on the branch. The release runbook's hazard that its inputs are prose still said only the toolchain is checked and that the shell lists no <code>python3</code>, and it now counts the interpreter among what preflight checks. The export read the title rules from beside itself rather than at the ref, and now reads them at the ref and refuses a ref without them, which a test with a stricter rule at the ref holds. The publish runbook's list of what it consumes still named <code>python3</code> as the machine's, and now names the shell's. The bootstrap needed a version it never uses, and no longer does. The test helper copied the export's loader, and both now share <code>publishing.title_faults</code>. The second review also noted that the public guard requires <code>CHANGELOG.md</code> in an export's diff, which the export does not check. A release's export always changes it, so that stays outside this change.</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Archive the change <span class="hs-id">task-3-2</span></h3>
+              <p data-field="note">With <code>htmlspec archive</code>, <code>spec.nix</code> at 1.0.1, and the specification restating toolchain-packaging's "The toolchain builds reproducibly from pinned inputs" and "The public repository receives only reviewed exports of the private one", each with the scenario the design's fourth decision names.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

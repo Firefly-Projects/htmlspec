@@ -120,6 +120,21 @@ steps=(
   #
   # A stage rather than a `cargo test` because the subject is a script, as with `prompt`.
   "publish-crates:scripts/check-publish-crates"
+  # The notices of the Rust crates the binary is built from, which every channel ships beside it.
+  #
+  # Two stages, as `release-fixtures` and `release` are, because they answer different questions.
+  # The first holds the generator to its rules on synthetic crates: an OR choice, a refused license,
+  # a crate with no text and no reviewed row, an MPL source line, which build dependencies count.
+  # The second regenerates `crates/htmlspec-cli/CRATE-LICENSES` from Cargo.lock and fails on any
+  # difference, naming each crate added, removed, or changed. A dependency update is an ordinary
+  # pull request, and the notices it makes wrong would otherwise ship at the next release.
+  #
+  # `cargo metadata --locked` reads the sources a build has fetched, or that the Nix sandbox
+  # vendored, and reaches no network then: the stages above have built, so the sources are here.
+  # `notices` also holds the Homebrew formula's template to what the notices credit, so a pull
+  # request on Linux alone meets a template that drifted, not only the macOS-gated formula job.
+  "notices-self-test:scripts/check-crate-notices"
+  "notices:scripts/crate-notices --check"
   # Release hygiene: every archived change records the version it shipped in, every
   # version above the baseline is distinct, and every version has a changelog entry.
   #

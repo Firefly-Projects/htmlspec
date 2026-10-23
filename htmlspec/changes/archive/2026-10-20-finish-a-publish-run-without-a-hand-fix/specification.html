@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Finish a publish run without a hand fix</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Finish a publish run without a hand fix</h1>
+        <p>What this change established. The development shell supplies the interpreter the project's suite and runbooks run, so a script run inside it uses the shell's <code>python3</code> rather than the machine's. An export's commit and its pull request are titled by the version the exported ref declares and a twelve-character commit id, held before anything is exported to the title rules the ref itself states, which are the ones the public repository's guard applies. Both gaps stopped the first run of the publish runbook, the v1.0.0 release, and each needed a fix by hand.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Finish a publish run without a hand fix</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-the-toolchain-builds-reproducibly-from-pinned-inputs" data-change="modified">
+            <h3>The toolchain builds reproducibly from pinned inputs <span class="hs-id">req-the-toolchain-builds-reproducibly-from-pinned-inputs</span></h3>
+            <p>The project SHALL be buildable from fully pinned inputs, including the compiler toolchain, every dependency, and every vendored browser-side library. Building the same revision SHALL produce equivalent results regardless of what is already installed on the machine.</p>
+            <article class="scenario" id="scenario-clean-machine-build" data-change="unchanged">
+              <h4>Clean machine build</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a machine with no project toolchain installed beyond the packaging tool</dd>
+                <dt>When</dt>
+                <dd>a contributor builds the project</dd>
+                <dt>Then</dt>
+                <dd>the build succeeds without installing dependencies by hand</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-machines-agree" data-change="unchanged">
+              <h4>Two machines agree</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>two machines building the same revision</dd>
+                <dt>When</dt>
+                <dd>each runs the toolchain against the same document</dd>
+                <dt>Then</dt>
+                <dd>the validation results and formatted output are identical</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unpinned-dependency-rejected" data-change="unchanged">
+              <h4>Unpinned dependency rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a dependency is introduced without a pinned version and integrity hash</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks fail</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-shell-runs-its-own-interpreter" data-change="added">
+              <h4>The development shell runs its own interpreter</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a machine whose own <code>python3</code> cannot run inside the development shell, as macOS's cannot</dd>
+                <dt>When</dt>
+                <dd>a contributor runs the project's suite or a runbook's scripts inside the development shell</dd>
+                <dt>Then</dt>
+                <dd>they run the interpreter the shell supplies from the pinned inputs, and not the machine's</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-public-repository-receives-only-reviewed-exports" data-change="modified">
+            <h3>The public repository receives only reviewed exports of the private one <span class="hs-id">req-the-public-repository-receives-only-reviewed-exports</span></h3>
+            <p>The project's public repository SHALL receive only trees exported from its private working repository. Each tree SHALL come from a committed ref of the private repository, through the allowlist of paths that may cross, with every rewrite applied at the count it expects, found clean by the scan against the private pattern file, passed by the project's full suite run inside the exported tree, and reviewed by a person as the exact tree that is pushed.</p>
+            <p>A tree SHALL reach the public repository only from a commit the private repository's <code>main</code> holds, so that the reads of its paths and the contributor's sign-off it is delivered under are ones a reviewed pull request landed. A read SHALL name the content it covers, so that it survives the squash merge that lands it, and every file under an allowlisted path whose content differs from the content its read names, added or changed since, SHALL be refused, each one named.</p>
+            <p>Each export SHALL arrive in a commit whose only parent is the public repository's own <code>main</code>, or with no parent for the first commit of an empty public repository, made by a GitHub noreply identity as author and committer, and naming its source ref and commit. No commit of the private repository's history SHALL reach the public repository, and the private repository SHALL refuse any push of its own to the public one, tags included, under any spelling of the public repository's address.</p>
+            <ins>
+              <p>An export's commit subject, which is also its pull request's title, SHALL name the version the exported ref declares and the commit's first twelve characters, and SHALL pass the title rules the ref itself states, the ones the public repository's guard runs from the exported tree, before anything is exported. A ref that states no such rules SHALL be refused. The first commit of an empty public repository opens no pull request and carries a fixed subject, so it needs neither.</p>
+            </ins>
+            <p>The publishing tooling, its allowlist, rewrites, pattern file, and tests, SHALL stay in the private repository and SHALL be absent from every export, because its tables name the material they guard against.</p>
+            <article class="scenario" id="scenario-a-planted-private-string-is-refused" data-change="unchanged">
+              <h4>A planted private string is refused at the scan</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an allowlisted file holding a string the private pattern file names</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the scan refuses, naming the file and the line, and nothing is committed or pushed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-vanished-rewrite-is-refused" data-change="unchanged">
+              <h4>A rewrite whose text is gone is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a rewrite whose expected text no longer appears the number of times it states</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the export stops, naming the file and the text it expected</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-failing-suite-is-refused" data-change="unchanged">
+              <h4>A failing suite is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an exported tree in which the project's suite fails</dd>
+                <dt>When</dt>
+                <dd>the export runs the suite inside it</dd>
+                <dt>Then</dt>
+                <dd>the export stops before anything is committed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unreviewed-tree-is-refused" data-change="unchanged">
+              <h4>An unreviewed tree is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a push or a bootstrap is asked for without naming the tree a person reviewed, or names a different one</dd>
+                <dt>Then</dt>
+                <dd>it refuses, and nothing reaches the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unread-path-or-changed-image-is-refused" data-change="unchanged">
+              <h4>An unread path, a newly added file, or a changed image is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an allowlisted path nobody recorded as read, a file added or changed beneath an allowlisted path since the content its read names, or an image whose bytes differ from the blob a person read</dd>
+                <dt>When</dt>
+                <dd>the private repository exports a ref</dd>
+                <dt>Then</dt>
+                <dd>the export refuses, naming each one, however many there are</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-personal-identity-is-refused" data-change="unchanged">
+              <h4>A commit identity that is not a GitHub noreply address is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the export is to commit with an author or committer that is not a GitHub noreply address</dd>
+                <dt>Then</dt>
+                <dd>it refuses before anything reaches the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-no-private-history-reaches-the-public-repository" data-change="unchanged">
+              <h4>No commit of the private history reaches the public repository</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a first commit is bootstrapped into an empty public repository and a later export is pushed</dd>
+                <dt>Then</dt>
+                <dd>the first commit has no parent, the later one has only the public repository's main as its parent, and no commit or blob that only the private history holds is in the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-tooling-never-crosses" data-change="unchanged">
+              <h4>The publishing tooling never crosses</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>any tree is exported</dd>
+                <dt>Then</dt>
+                <dd>it holds nothing of the publishing tooling or of the workflow that tests it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-push-from-the-private-repository-is-refused" data-change="unchanged">
+              <h4>A push from the private repository to the public one is refused</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the private working repository pushes anything, a branch or a tag, to the public repository, under any spelling of its address</dd>
+                <dt>Then</dt>
+                <dd>its pre-push hook refuses, because the push would carry the private history</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-read-survives-the-squash-merge-that-lands-it" data-change="unchanged">
+              <h4>A read survives the squash merge that lands it</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a read recorded on a branch, naming the content it read</dd>
+                <dt>When</dt>
+                <dd>the branch is squash-merged into <code>main</code> and deleted, and its commits are gone</dd>
+                <dt>Then</dt>
+                <dd>the export of <code>main</code> accepts the read, because <code>main</code> holds the content it names</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-delivery-of-a-commit-main-does-not-hold-is-refused" data-change="unchanged">
+              <h4>A delivery of a commit main does not hold is refused</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a commit the private repository's <code>main</code> does not hold, carrying a signed readiness record</dd>
+                <dt>When</dt>
+                <dd>a push or a bootstrap exports it</dd>
+                <dt>Then</dt>
+                <dd>it refuses, naming the commit, and nothing reaches the public repository</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-export-is-titled-within-the-guards-rules" data-change="added">
+              <h4>An export is titled within the public guard's rules</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a ref named by its full commit id, as the publish runbook names it</dd>
+                <dt>When</dt>
+                <dd>the export commits it onto the public repository's <code>main</code> and opens its pull request</dd>
+                <dt>Then</dt>
+                <dd>the subject and the title name the version the ref declares and the commit's first twelve characters, and pass the title rules the ref states, and a subject those rules refuse, or a ref without them, stops the export before anything is exported</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-the-first-publish-run" data-change="added" data-refs="req-the-toolchain-builds-reproducibly-from-pinned-inputs req-the-public-repository-receives-only-reviewed-exports">
+            <h3>The first publish run needed two fixes by hand <span class="hs-id">evidence-the-first-publish-run</span></h3>
+            <p>The first run of the publish runbook, the v1.0.0 release on 2026-10-20, passed its preflight inside <code>nix develop</code> and stopped at its second step. <code>publish/export</code> exited with "error: tool 'python3' not found": on macOS, <code>/usr/bin/python3</code> asks the developer tools at <code>DEVELOPER_DIR</code> for the interpreter, and the shell points that at the Nix SDK, which has none. The run continued outside the shell. Its export then opened <a href="https://github.com/Firefly-Projects/htmlspec/pull/1">Firefly-Projects/htmlspec#1</a> titled <code>Export htmlspec from 7983c4a9003176c8a2483cb03e6efb599d82d2ab at 7983c4a90031</code>, 77 characters, and the public repository's guard refused it as over 72. The title was edited by hand to <code>Export htmlspec 1.0.0 from 7983c4a90031</code>, and the guard passed. GitHub took the squash commit's subject from the commit message, so the public history keeps the long one.</p>
+          </section>
+          <section class="evidence" id="evidence-the-shells-interpreter" data-change="added" data-refs="scenario-the-shell-runs-its-own-interpreter">
+            <h3>Which interpreter runs, inside the shell and outside it <span class="hs-id">evidence-the-shells-interpreter</span></h3>
+            <p>Inside <code>nix develop</code> on macOS, <code>python3</code> resolves to <code>/nix/store/76pkfxf6miplkp915lgi5kk4qlc2wav9-python3-3.13.14/bin/python3</code> and prints <code>Python 3.13.14</code>. Outside it, <code>python3</code> resolves to <code>/usr/bin/python3</code> and prints <code>Python 3.9.6</code>, and <code>htmlspec preflight publish</code> reports the runbook not ready. With <code>pkgs.python3</code> taken out of the shell again, the code review saw "error: tool 'python3' not found" return inside it.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-the-shell-runs-its-own-interpreter" data-change="added" data-outcome="passed" data-refs="req-the-toolchain-builds-reproducibly-from-pinned-inputs scenario-the-shell-runs-its-own-interpreter">
+            <h3>The suite and the publishing scripts run inside the shell <span class="hs-id">verify-the-shell-runs-its-own-interpreter</span></h3>
+            <p data-field="method">On macOS, <code>nix develop -c scripts/check</code> passed all 14 stages, its Python stages included, and <code>nix develop -c publish/export --ref HEAD --dry-run</code> against an empty local bare repository ran to the end with every check passing inside the exported tree. <code>publish/test</code> passed 51 tests under the shell's Python 3.13.14 and under the system's 3.9.6. Inside the shell, <code>htmlspec preflight publish</code> reports the runbook ready.</p>
+          </section>
+          <section class="verification" id="verify-an-export-is-titled-within-the-guards-rules" data-change="added" data-outcome="partial" data-refs="req-the-public-repository-receives-only-reviewed-exports scenario-an-export-is-titled-within-the-guards-rules">
+            <h3>An export's title is held to the ref's title rules <span class="hs-id">verify-an-export-is-titled-within-the-guards-rules</span></h3>
+            <p data-field="method"><code>publish/test</code>'s <code>test_an_export_of_a_full_commit_id_is_titled_within_the_guards_rules</code> pushes an export of a full commit id and finds its subject and the pull request it would open titled <code>Export htmlspec 1.2.3 from</code> and twelve characters, with no fault under <code>scripts/check-pull-request</code>'s rules. <code>test_a_title_the_guard_refuses_stops_the_export_before_anything_is_exported</code>, <code>test_the_title_rules_are_the_refs_and_not_the_checkouts</code>, and <code>test_a_ref_without_the_title_rules_stops_the_export</code> see a subject over the limit, a ref whose rules are stricter than the checkout's, and a ref without the rules each refused before the export starts. <code>test_a_bootstrap_needs_no_version_and_its_subject_keeps_the_title_rules</code> bootstraps a ref with no version. With the rules read from beside the export rather than at the ref, the stricter-rules test fails. A dry run of this repository's export onto a target that has a <code>main</code> passed the title check with the subject <code>Export htmlspec 1.0.1 from 7f92d68cb10f</code>.</p>
+            <p data-field="unchecked">No export has yet opened a pull request in the public repository under the new title, so the public repository's guard itself has not judged one.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

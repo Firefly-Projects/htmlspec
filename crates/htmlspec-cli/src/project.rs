@@ -114,6 +114,54 @@ impl std::fmt::Display for NotAName {
 
 impl std::error::Error for NotAName {}
 
+/// Why a string could not be used as a runbook's name.
+///
+/// A second type rather than [`NotAName`] with a flag, because the report names a runbook and says
+/// where the project keeps runbooks, and because a runbook's name is held to more than a change's:
+/// see [`ProjectRoot::named_runbook`].
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NotARunbookName {
+    /// The string as given.
+    pub given: String,
+    /// Which rule refused it.
+    pub fault: RunbookNameFault,
+}
+
+/// Which rule refused a runbook's name.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RunbookNameFault {
+    /// The name is a path, which every operation naming a runbook refuses, as 1.0 did.
+    Path,
+    /// The name is one a new runbook may not take, which only `new runbook` refuses.
+    NotForANewRunbook,
+}
+
+impl std::fmt::Display for NotARunbookName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.fault {
+            RunbookNameFault::Path => write!(
+                f,
+                "{:?} is a path rather than a runbook name. A runbook lives where the project \
+                 keeps runbooks, so pass the name alone. To see what the project holds, run \
+                 `htmlspec list --runbooks`",
+                self.given
+            ),
+            RunbookNameFault::NotForANewRunbook => write!(
+                f,
+                "{:?} is not a name a new runbook can take. A new runbook's name holds no `..` \
+                 and no character a terminal would not show as itself (a control character, \
+                 whitespace but the plain space, or an invisible character), does not start with \
+                 a dot, and is not one the \
+                 project's layout already uses: `assets`, `target`, `node_modules`, or `result`. \
+                 To see what the project holds, run `htmlspec list --runbooks`",
+                self.given
+            ),
+        }
+    }
+}
+
+impl std::error::Error for NotARunbookName {}
+
 /// A directory known to hold a project.
 ///
 /// Construction is the proof: a value of this type exists only where an `htmlspec/`
@@ -308,6 +356,70 @@ impl ProjectRoot {
             && !name.contains('\\')
             && name != "."
             && name != ".."
+    }
+
+    /// The directory a runbook of this name occupies, refusing a name that is not a plain name.
+    ///
+    /// The checked counterpart to [`Self::runbook`], for the operations that act on a runbook a
+    /// contributor names: `run`, `run --check`, and `preflight`. [`Self::runbook`] stays infallible
+    /// for callers composing from a name the program read from a directory entry.
+    ///
+    /// **Exactly the rule 1.0 applied, [`Self::is_a_name`], and no more.** toolchain-packaging's "The
+    /// command surface is stable within a major version" keeps every runbook 1.0 ran runnable in
+    /// 1.x, and 1.0.0 ran runbooks named `result`, `target`, `.ops`, `v1..2`, and one holding a tab,
+    /// measured against the released binary when PR #80's re-verification found this refusing
+    /// them. Only the shapes of a path are refused, because they reach outside the runbooks
+    /// directory. [`Self::new_runbook`] holds a name being created to more.
+    pub fn named_runbook(&self, name: &str) -> Result<PathBuf, NotARunbookName> {
+        if Self::is_a_name(name) {
+            Ok(self.runbook(name))
+        } else {
+            Err(NotARunbookName {
+                given: name.to_owned(),
+                fault: RunbookNameFault::Path,
+            })
+        }
+    }
+
+    /// The directory a runbook being created under `name` would occupy, refusing a name a new
+    /// runbook may not take.
+    ///
+    /// [`Self::named_runbook`]'s rule, and [`Self::is_a_new_runbook_name`]'s. Only `new runbook`
+    /// asks, so the stricter rule reaches no runbook that already exists.
+    pub fn new_runbook(&self, name: &str) -> Result<PathBuf, NotARunbookName> {
+        let directory = self.named_runbook(name)?;
+        if Self::is_a_new_runbook_name(name) {
+            Ok(directory)
+        } else {
+            Err(NotARunbookName {
+                given: name.to_owned(),
+                fault: RunbookNameFault::NotForANewRunbook,
+            })
+        }
+    }
+
+    /// Whether a new runbook can take `name`, beyond its being a name at all.
+    ///
+    /// No `..` anywhere in it, and no character a terminal would not show as itself
+    /// ([`crate::terminal::hidden`]): a control character, whitespace but the plain space, a
+    /// non-breaking space included, or an invisible character, the bidirectional ones and the zero-width
+    /// space among them. A runbook's name becomes a directory, a row in a listing, and a word in every
+    /// command that names it, and a name that reads as one name and holds another is one nobody can
+    /// type back. New in 1.1, so held to the remedy's rule now, before 1.x freezes it; `run` and
+    /// `preflight` keep 1.0's rule for the runbooks that already exist.
+    ///
+    /// **And no name the project's own layout gives a meaning.** A runbook named `assets` is
+    /// `htmlspec/runbooks/assets/`, which the store walk takes for the asset store of every runbook
+    /// beside it: PR #80's review created one, and every runbook in the project stopped validating.
+    /// So the store's directory name is refused, and so is every name the document walk skips
+    /// ([`crate::discover::SKIPPED`]), because a runbook there would never be validated, and every
+    /// name starting with a dot, which tools and listings hide.
+    pub fn is_a_new_runbook_name(name: &str) -> bool {
+        !name.contains("..")
+            && crate::terminal::first_hidden(name).is_none()
+            && !name.starts_with('.')
+            && name != htmlspec_assets::store::DIRECTORY
+            && !crate::discover::SKIPPED.contains(&name)
     }
 
     /// The directory a change of this name occupies, refusing a name that is a path.
@@ -642,6 +754,94 @@ mod tests {
                     .contains("is a path rather than a change name"),
                 "the report does not name the problem: {error}"
             );
+        }
+    }
+
+    /// An existing runbook is named as 1.0 named it: only the shapes of a path are refused.
+    ///
+    /// `run`, `run --check`, and `preflight` take a runbook's name through
+    /// [`ProjectRoot::named_runbook`], whose rule is the one 1.0 applied. toolchain-packaging's "The
+    /// command surface is stable within a major version" keeps the names 1.0.0 ran runnable, and
+    /// each name accepted below is one it ran, measured against the released binary.
+    #[test]
+    fn an_existing_runbook_is_named_as_1_0_named_it() {
+        let scratch = Scratch::new("named-runbook");
+        let project = ProjectRoot::establish(&scratch.0).expect("established");
+
+        for given in [
+            "release", "result", "target", ".ops", "v1..2", "a\tb", "assets",
+        ] {
+            assert_eq!(
+                project.named_runbook(given).unwrap_or_else(|error| panic!(
+                    "1.0 ran {given:?}, and it is refused: {error}"
+                )),
+                project.runbook(given)
+            );
+        }
+        for given in ["", ".", "..", "a/b", "a\\b", "/absolute", "../escape"] {
+            let error = project
+                .named_runbook(given)
+                .expect_err("a path was accepted as a runbook name");
+            assert_eq!(error.given, given);
+            assert_eq!(error.fault, RunbookNameFault::Path);
+            assert!(
+                error
+                    .to_string()
+                    .contains("is a path rather than a runbook name"),
+                "the report does not name the problem: {error}"
+            );
+        }
+    }
+
+    /// A new runbook's name is held to more: no `..`, no character a terminal would not show as
+    /// itself, no leading dot, and no name the project's layout already uses.
+    #[test]
+    fn a_new_runbook_takes_only_a_plain_name_the_layout_leaves_free() {
+        let scratch = Scratch::new("new-runbook-name");
+        let project = ProjectRoot::establish(&scratch.0).expect("established");
+
+        assert_eq!(
+            project
+                .new_runbook("publish-v2")
+                .expect("a hyphenated name"),
+            project.runbook("publish-v2")
+        );
+        // A plain space, a letter beyond ASCII, and an emoji with its presentation selector are
+        // shown as themselves, so a name may hold them.
+        for given in ["release notes", "d\u{E9}ploiement", "ship-\u{2764}\u{FE0F}"] {
+            assert_eq!(
+                project.new_runbook(given).expect("a name shown as itself"),
+                project.runbook(given),
+                "{given:?}"
+            );
+        }
+        for (given, fault) in [
+            ("", RunbookNameFault::Path),
+            ("..", RunbookNameFault::Path),
+            ("a/b", RunbookNameFault::Path),
+            ("a\\b", RunbookNameFault::Path),
+            ("a..b", RunbookNameFault::NotForANewRunbook),
+            ("a\nb", RunbookNameFault::NotForANewRunbook),
+            ("a\tb", RunbookNameFault::NotForANewRunbook),
+            ("\u{7}", RunbookNameFault::NotForANewRunbook),
+            ("de\u{202E}ploy", RunbookNameFault::NotForANewRunbook),
+            ("de\u{200B}ploy", RunbookNameFault::NotForANewRunbook),
+            ("de\u{00A0}ploy", RunbookNameFault::NotForANewRunbook),
+            ("de\u{3164}ploy", RunbookNameFault::NotForANewRunbook),
+            ("\u{FE0F}deploy", RunbookNameFault::NotForANewRunbook),
+            ("assets", RunbookNameFault::NotForANewRunbook),
+            ("target", RunbookNameFault::NotForANewRunbook),
+            ("node_modules", RunbookNameFault::NotForANewRunbook),
+            ("result", RunbookNameFault::NotForANewRunbook),
+            (".git", RunbookNameFault::NotForANewRunbook),
+            (".jj", RunbookNameFault::NotForANewRunbook),
+            (".hidden", RunbookNameFault::NotForANewRunbook),
+        ] {
+            let error = project
+                .new_runbook(given)
+                .expect_err("a name a new runbook may not take was accepted");
+            assert_eq!(error.given, given);
+            assert_eq!(error.fault, fault, "{given:?}");
         }
     }
 

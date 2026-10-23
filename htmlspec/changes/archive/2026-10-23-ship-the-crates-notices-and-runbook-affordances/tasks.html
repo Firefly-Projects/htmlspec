@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Ship the crates' notices and runbook affordances (1.1.0): tasks</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Ship the crates' notices and runbook affordances (1.1.0): tasks</h1>
+        <p>Six groups. The opening group moves the workspace to 1.1.0 and merges first. The four workstreams then build in parallel worktrees, each taking its own review. The closing group passes over the README, takes the review, archives, records the readiness reads, and rehearses the export.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Ship the crates' notices and runbook affordances (1.1.0): tasks</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-tasks">Tasks</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-tasks">
+          <h2>Tasks</h2>
+          <p>Group 1 merges first. Groups 2 to 5 then build in parallel worktrees, one pull request each, in any order, and each takes its own code review before it merges. Group 6 merges last. A task's prerequisites are the earlier tasks of its own group, and group 1. Each workstream settles only its own tasks' states and amends only its own section of the design, by the design's decision 16.</p>
+        </section>
+        <section id="group-open">
+          <h2>1. Open 1.1.0</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Move the workspace to 1.1.0 <span class="hs-id">task-1-1</span></h3>
+              <p data-field="note">Run <code>scripts/set-version 1.1.0</code>, which moves the workspace version, the five pins, and the lockfile. Leave <code>spec.nix</code> at 1.0.1 for archival. <code>scripts/check-release</code> passes.</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Give the changelog a 1.1.0 heading with one subheading per workstream <span class="hs-id">task-1-2</span></h3>
+              <p data-field="note">Add <code>## 1.1.0</code> to <code>CHANGELOG.md</code>, with subheadings for the notices, runbooks, install hints, and small additions. Each workstream writes under its own subheading, so their pull requests touch different lines.</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Record the 1.1 surface, equal to 1.0's except its version <span class="hs-id">task-1-3</span></h3>
+              <p data-field="note">Write <code>crates/htmlspec-cli/tests/surface/1.1.json</code> with the surface writer, <code>write_the_current_minors_surface</code>, never by hand. It equals <code>1.0.json</code> except its <code>version</code>, because nothing has been added yet. The surface tests pass with the version at 1.1.0.</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Regenerate the installed instruction files <span class="hs-id">task-1-4</span></h3>
+              <p data-field="note">All 45 change only their <code>generatedBy</code> line, to 1.1.0, and the suite's <code>installed</code> stage passes. Open the pull request with its title checked by <code>scripts/check-pull-request</code>. Take its review and merge it before any workstream branches.</p>
+              <p data-field="note">The 45 files carry <code>generatedBy: htmlspec 1.1.0</code> and nothing else changed in them, and the opening pull request is open. The task is done when that pull request merges.</p>
+              <p data-field="deviation">The opening pull request, #77, merged as <code>5a7ee1f</code>. The workstreams branched from its head, <code>b6df53e</code>, before it merged, rather than from <code>main</code> after it, so the four could build while its last checks ran. Each merged <code>main</code> into its branch once #77 had landed, before its own pull request merged.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="group-notices">
+          <h2>2. License notices for the linked crates</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Write <code>scripts/crate-notices</code> <span class="hs-id">task-2-1</span></h3>
+              <p data-field="note">Implement the design's decisions 1 to 4:</p>
+              <ul>
+                <li><code>cargo metadata --locked --filter-platform</code> over the four release targets;</li>
+                <li>the credited set: <code>htmlspec-cli</code>'s normal-dependency closure, procedural macros included, plus the closure of the workspace crates' own build dependencies, with no third-party build or development dependency;</li>
+                <li>the SPDX choice order and accepted list, and the file-name rule;</li>
+                <li>every Apache-2.0 <code>NOTICE</code>, and the MPL-2.0 source line;</li>
+                <li>copyright lines for vendored standard texts, from <code>authors</code> with every <code>&lt;…&gt;</code> address removed, or <code>Copyright the authors of NAME, as REPOSITORY names them</code> where a crate names no authors;</li>
+                <li>the credited licenses written into the file's header.</li>
+              </ul>
+              <p data-field="note">Output is byte-stable for one lockfile. <code>--check</code> names each crate added, removed, or changed, and each refused license. Today the set measures 170 crates: 158 in the normal closure and 12 reached only through the workspace's build scripts. Tests cover:</p>
+              <ul>
+                <li>an <code>OR</code> choice, an <code>AND</code>, and a refused license;</li>
+                <li>a crate with no file and no row, and a row for an exact version the lockfile has moved past;</li>
+                <li>the MPL line;</li>
+                <li>a build-only crate, which is credited, and a third-party build dependency, which is not;</li>
+                <li>an author's address, which is removed, and a crate with no authors.</li>
+              </ul>
+              <p data-field="note">Done on 2026-10-22. It measures 170 crates, 158 in the normal closure and 12 reached only through the workspace's build scripts, and writes about 379 KB. Its 25 tests, in <code>scripts/check-crate-notices</code>, cover every case above, and also <code>WITH</code>, an Apache-2.0 <code>NOTICE</code>, a row joining two sources, a row's own copyright line, a second version beside one that stays, the union over targets, and <code>render-formula</code> reading the header.</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Review every crate whose text the script cannot find, and record a row <span class="hs-id">task-2-2</span></h3>
+              <p data-field="note">Fifteen crates need a row today. Thirteen ship no license file: <code>fxhash</code>, <code>inquire</code>, <code>jsonschema-regex</code>, <code>jsonschema-value</code>, <code>mac</code>, <code>match_token</code>, <code>newline-converter</code>, <code>selectors</code>, <code>typify</code>, <code>typify-impl</code>, <code>typify-macro</code>, <code>uuid-simd</code>, and <code>vsimd</code>. <code>num-cmp</code> and <code>siphasher</code> each ship one file for a two-license expression. For each crate, read its repository's license, choose the text, and add a row to <code>crates/htmlspec-cli/license-clarifications.tsv</code>. The row names the crate, the version, the license, the text's source, and the reviewer. Vendor any SPDX standard text a row uses under <code>crates/htmlspec-cli/licenses/</code>. Re-measure first, because the lockfile can move before this lands.</p>
+              <p data-field="note">Done on 2026-10-22, re-measured first: the same fifteen. The reason for each row is a comment in the table. <code>num-cmp</code>'s row names its own <code>LICENSE.txt</code>, which reproduces the MIT text. <code>siphasher</code>'s joins its <code>COPYING</code> with the standard MIT text, the case design decision 3's note records. The vendored texts are MIT, Apache-2.0, and MPL-2.0.</p>
+              <p data-field="note">Each row had two reviews, as the user decided on 2026-10-22 is enough (design decision 3). First, Claude, the agent that wrote the rows, reviewed each one on 2026-10-22, as the rows' <code>reviewer</code> column records. Second, the review of pull request #78 read each row against the crate and its repository. It corrected <code>selectors</code>' reason and the copyright lines of <code>uuid-simd</code>, <code>vsimd</code>, <code>newline-converter</code>, and <code>inquire</code>.</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Commit <code>crates/htmlspec-cli/CRATE-LICENSES</code> <span class="hs-id">task-2-3</span></h3>
+              <p data-field="note">Generate it and read it. Every credited crate is named, with its version, its license, and its text, and nothing else is.</p>
+              <p data-field="note">Done on 2026-10-22: 170 crates, crediting MIT, Apache-2.0, Zlib, Unicode-3.0, MIT-0, and MPL-2.0. The one address in it is in <code>strsim</code>'s own <code>LICENSE</code>, reproduced as the crate ships it.</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Ship it through every binary channel, and declare what the binary credits <span class="hs-id">task-2-4</span></h3>
+              <p data-field="note">Ship the file through each channel:</p>
+              <ul>
+                <li>add it to <code>scripts/pack-release</code>'s <code>NOTICES</code>;</li>
+                <li>add it to the formula template's <code>prefix.install</code>;</li>
+                <li>have the flake's package install <code>LICENSE</code>, <code>THIRD-PARTY-LICENSES</code>, and <code>CRATE-LICENSES</code> under <code>$out/share/doc/htmlspec/</code>;</li>
+                <li>include it in <code>htmlspec-cli</code>'s published crate.</li>
+              </ul>
+              <p data-field="note">Set the formula template's <code>license all_of</code> to the union of the assets crate's <code>license</code> field and the credited licenses. <code>scripts/render-formula</code> refuses any other set. In <code>flake.nix</code>, the source filter keeps <code>license-clarifications.tsv</code> and the extensionless texts under <code>crates/htmlspec-cli/licenses/</code>. <code>scripts/check-formula</code> and <code>nix build</code> show the files where a user gets them.</p>
+              <p data-field="note">On 2026-10-22, each channel was changed and checked as follows:</p>
+              <ul>
+                <li><code>nix build</code> put <code>LICENSE</code>, <code>THIRD-PARTY-LICENSES</code>, and <code>CRATE-LICENSES</code> under <code>share/doc/htmlspec/</code>.</li>
+                <li><code>cargo package --list -p htmlspec-cli</code> lists <code>CRATE-LICENSES</code>, the table, and the vendored texts.</li>
+                <li><code>scripts/render-formula</code> rendered the template with the nine licenses and the three files.</li>
+                <li><code>scripts/check-formula</code> cannot run on the machine that built this, because its Homebrew's <code>Library/Taps</code> is a read-only Nix store path. The pull request's <code>formula</code> job runs it on a macOS runner, with the <code>release-check</code> label. The task is done when that job passes.</li>
+              </ul>
+              <p data-field="deviation">The formula's check ran in continuous integration, not on the machine that built the change. The <code>formula</code> job of the continuous-integration run 39879625320, on the pull request's commit <code>2feb1ac</code>, passed <code>brew audit --strict</code>. It installed the formula, 7 files in the Cellar, and its test printed <code>htmlspec 1.1.0 (ed3f2836ceb7)</code>. All four builds passed in the same run.</p>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done">
+              <h3>2.5 Fail the suite when the notices fall behind <span class="hs-id">task-2-5</span></h3>
+              <p data-field="note">Add a <code>notices</code> stage to <code>scripts/check</code>. Add <code>scripts/crate-notices</code>, and its test script if that is a stage of its own, to <code>checkSuite</code>'s <code>patchShebangs</code> line in <code>flake.nix</code>. Run the stage inside <code>nix flake check</code> before merging, and settle the design's sandbox risk by what that run shows. Show it failing for a dependency added without regenerating, then restore.</p>
+              <p data-field="deviation">Two stages, not one: <code>notices-self-test</code> runs the generator's tests in <code>scripts/check-crate-notices</code>, and <code>notices</code> runs <code>scripts/crate-notices --check</code>. Both scripts are on the <code>patchShebangs</code> line. <code>nix flake check</code> ran all 16 stages in the sandbox and passed, so the design's sandbox risk did not happen. Adding <code>insta</code> to <code>htmlspec-cli</code>'s dependencies without regenerating made <code>notices</code> fail, naming the seven crates it brought in. The manifest and lockfile were then restored.</p>
+            </li>
+            <li class="task" id="task-2-6" data-change="added" data-state="done">
+              <h3>2.6 Say so in the changelog and the README <span class="hs-id">task-2-6</span></h3>
+              <p data-field="note">Under the notices subheading, and in the README's install section, which names the three files a binary ships with.</p>
+              <p data-field="note">Done on 2026-10-22. The install section had not named the files, so it gains a paragraph that does and says where each channel puts them.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="group-runbooks">
+          <h2>3. Runbooks get a way in</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Add <code>htmlspec new runbook &lt;name&gt;</code> <span class="hs-id">task-3-1</span></h3>
+              <p data-field="note">Implement the design's decision 7, in both spellings, <code>new runbook</code> and <code>post runbook</code>:</p>
+              <ul>
+                <li>the two runbook templates under <code>crates/htmlspec-assets/assets/</code>, in a new <code>RUNBOOK_TEMPLATES</code> list that <code>example_identifiers()</code> and <code>example_placeholders()</code> also scan;</li>
+                <li><code>ProjectRoot::named_runbook</code>, which <code>run</code> and <code>preflight</code> also use;</li>
+                <li>the operation itself, which resolves the project from the working directory as <code>new change</code> does, writes <code>VERSION</code> at 0.1.0 and <code>CHANGELOG.md</code>, and refuses an existing directory.</li>
+              </ul>
+              <p data-field="note">Tests:</p>
+              <ul>
+                <li>what it writes validates, is canonical, and passes <code>htmlspec preflight</code> with zero checks, and <code>htmlspec list --runbooks</code> names it;</li>
+                <li>every unit in both documents is <code>unchanged</code>, and every task is <code>todo</code>;</li>
+                <li>validating a fresh runbook reports the example-identifier and placeholder-summary warnings;</li>
+                <li>each of these names is refused: an empty one, <code>.</code>, <code>..</code>, <code>a/b</code>, <code>a\b</code>, <code>a..b</code>, and one with a control character.</li>
+              </ul>
+              <p data-field="note">Record the operation and its verb spelling in <code>1.1.json</code> with the writer, and add a payload schema if it writes one.</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Add <code>htmlspec format --upgrade-assets</code> <span class="hs-id">task-3-2</span></h3>
+              <p data-field="note">As the design's decision 8 states. It is the third exception to deterministic-formatting's "Formatting preserves meaning", made only on request, with <code>--check</code>. It never touches an archived change or a run's record, whether reached directly or through a symbolic link. Its help says plainly that it rewrites references to the store's current assets and never downloads anything. Tests:</p>
+              <ul>
+                <li>a document on an older stylesheet moves onto the current one;</li>
+                <li>assets a document does not load stay unreferenced;</li>
+                <li>without the flag, a reference to an older stored revision is left as written;</li>
+                <li>an archived document and a run's record are untouched, including through a link;</li>
+                <li>the run is idempotent;</li>
+                <li>a store missing the current bytes is filled from the binary with no network access.</li>
+              </ul>
+              <p data-field="note">Record the flag in <code>1.1.json</code>.</p>
+              <p data-field="deviation">Two kinds of reference stay as written rather than every one being rewritten: one naming a file the binary embeds no revision of, and one whose stored bytes disagree with its address, which <code>asset/mismatch</code> reports. Decision 8's note records why. The rewrite is a new function, <code>htmlspec_format::upgrade</code>, beside <code>rewrite</code>, so the published <code>ReferenceChange</code> enum gains no variant.</p>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Move the release runbook onto the current runtime, draw its order, and release 0.5.0 <span class="hs-id">task-3-3</span></h3>
+              <p data-field="note">Run the new option over <code>htmlspec/runbooks/release/</code>, add the flowchart to its tasks document, move <code>VERSION</code> to 0.5.0, and add a changelog heading. <code>htmlspec preflight release</code> still reports ready inside the shell.</p>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 List the runbooks from <code>run</code>, and show each one's version and title <span class="hs-id">task-3-4</span></h3>
+              <p data-field="note">As the design's decision 18 states:</p>
+              <ul>
+                <li><code>htmlspec run</code> with no runbook lists the project's runbooks with version, title, and how to start one, then exits 2. <code>--as</code> or <code>--check</code> without a runbook is refused the same way.</li>
+                <li><code>list --runbooks</code> shows each runbook's version and title. Its <code>--json</code> entries gain <code>version</code> and <code>title</code>, declared in <code>list.schema.json</code>.</li>
+                <li><code>run --help</code> and <code>preflight --help</code> name <code>htmlspec list --runbooks</code>.</li>
+              </ul>
+              <p data-field="note">Tests cover the bare <code>run</code>'s output and exit code, a runbook with no <code>VERSION</code>, which is listed without a version, and the payload coverage test reaching both new properties. Record <code>run</code>'s optional argument and both properties in <code>1.1.json</code>.</p>
+            </li>
+            <li class="task" id="task-3-5" data-change="added" data-state="done">
+              <h3>3.5 Teach the <code>new</code> instruction about runbooks <span class="hs-id">task-3-5</span></h3>
+              <p data-field="note">Add one paragraph to <code>crates/htmlspec-assets/instructions/new.md</code> on when to create a runbook instead of a change, then regenerate the installed files.</p>
+            </li>
+            <li class="task" id="task-3-6" data-change="added" data-state="done">
+              <h3>3.6 Say so in the changelog and the README <span class="hs-id">task-3-6</span></h3>
+              <p data-field="note">Under the runbooks subheading, and in the README's runbooks section and its verb table, which gains <code>post runbook</code>. Both say that <code>--upgrade-assets</code> rewrites references and downloads nothing, and that <code>htmlspec run</code> alone lists the runbooks.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="group-hints">
+          <h2>4. Install hints in preflight</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Read <code>preflight/v2</code> and its <code>remedy</code> <span class="hs-id">task-4-1</span></h3>
+              <p data-field="note">Every v1 form with an optional <code>remedy</code>, as the design's decisions 10 and 11 state: 1 to 200 characters, and no control characters. A v1 declaration still refuses <code>remedy</code>. Tests: v1 and v2 both read, a remedy at each limit, one over, one carrying an escape character, and a v2 declaration with no remedy.</p>
+              <p data-field="deviation">More than the words ask, as decision 11's notes settle. Beside the control characters, the remedy refuses whitespace other than the plain space, U+2028 and U+2029 included, and the invisible formatting characters of Unicode's Cf category, the bidirectional ones included, keeping only the two joiners. It trims the spaces around it, and refuses one with no visible character as empty. The tests cover each class, the joiners kept, trimming, a remedy of another type named beside the form's own fault, and a limit counted in characters after trimming, with 200 two-byte characters accepted and 201 refused. An unknown field's name is now shown with such characters as code points, closing a gap 1.0.1 shipped.</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Carry a remedy in <code>--json</code> always, and show it in human output when its check did not pass <span class="hs-id">task-4-2</span></h3>
+              <p data-field="note">The rule is the design's decision 11:</p>
+              <ul>
+                <li><code>runbookRemedy</code> is on every check object whose declaration carries a remedy, whatever its outcome;</li>
+                <li>human output shows <code>the runbook says: TEXT</code> after preflight's own remedy, only for a check whose outcome is <code>unmet</code>, <code>unavailable</code>, <code>timed-out</code>, or <code>probe-failed</code>.</li>
+              </ul>
+              <p data-field="note">Declare the property in <code>preflight.schema.json</code> and in <code>run.schema.json</code>'s <code>preflightReport</code>, and record it in <code>1.1.json</code>. The payload coverage test reaches it, a passed check carries it in JSON and not in human output, and <code>run --as</code>'s refusal carries it.</p>
+              <p data-field="note">Tested in <code>preflight.rs</code>, across all four outcomes and a ready report, and end to end in <code>tests/preflight.rs</code>, where <code>preflight</code>, <code>--json preflight</code>, and <code>--json run --as</code> each carry the remedy and a v1 declaration with one exits 2. The coverage fixture in <code>tests/payloads.rs</code> now declares its check under v2 with a remedy. The surface writer recorded the two properties in <code>1.1.json</code>.</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Document the remedy, and parse the README's v2 example <span class="hs-id">task-4-3</span></h3>
+              <p data-field="note">The README's "Carrying a runbook to another machine" gains <code>preflight/v2</code> and a declaration with a remedy. It also says a remedy is text, never run, and that 1.0 refuses v2. <code>every_declared_example_in_the_readme_parses</code> in <code>crates/htmlspec-cli/tests/preflight.rs</code> splits only on <code>preflight/v1 </code> today. Extend it so each example keeps its own marker, v1 or v2, and the v2 example parses. Add the changelog lines under the hints subheading.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="group-small">
+          <h2>5. Two small additions</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Accept <code>-v</code> for the version <span class="hs-id">task-5-1</span></h3>
+              <p data-field="note">Add a short alias on the version flag in <code>crates/htmlspec-cli/src/main.rs</code>, recorded in <code>1.1.json</code>'s <code>program</code> with the writer. A test in <code>tests/cli.rs</code> runs <code>htmlspec -v</code> and gets what <code>--version</code> prints.</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Push a GitHub export with <code>gh</code>'s credentials, naming the account first <span class="hs-id">task-5-2</span></h3>
+              <p data-field="note">As the design's decision 13 states. <code>publish/test</code> covers three targets:</p>
+              <ul>
+                <li>a GitHub target with a stub <code>gh</code> that names the account;</li>
+                <li>a stub that reports no sign-in, which refuses before any push;</li>
+                <li>a local target, which is pushed as before with no <code>gh</code> call.</li>
+              </ul>
+              <p data-field="note">No test reaches the network.</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Say so in the publish runbook and release 0.2.1 <span class="hs-id">task-5-3</span></h3>
+              <p data-field="note">Steps 3 and 4 say that the export prints the account it pushes as, and that the run records it. Move <code>VERSION</code> to 0.2.1, add its changelog heading, and add the changelog lines under the small additions subheading.</p>
+              <p data-field="deviation">Also adds a sentence to what the procedure consumes: the export pushes as the account <code>gh</code> is signed in as, with its credentials, so <code>git</code> needs none of its own for GitHub.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="group-close">
+          <h2>6. Close 1.1.0</h2>
+          <p>In this order, so the readiness reads describe the archived tree and the dry run checks them.</p>
+          <ul>
+            <li class="task" id="task-6-1" data-change="added" data-state="done">
+              <h3>6.1 Make one pass over the README and the changelog <span class="hs-id">task-6-1</span></h3>
+              <p data-field="note">Read both whole, now that every workstream has written its part, for consistency and for anything a workstream left stale. Edit <code>CHANGELOG.md</code>'s 1.1.0 entry as a whole, so the closing pull request carries no <code>skip-changelog</code> label.</p>
+              <p data-field="note">Done in the closing pull request. The changelog's 1.1.0 entry opens with what the release adds, and its runbooks section now states the name rules as built (<code>run</code> and <code>preflight</code> keep 1.0's), the history <code>--upgrade-assets</code> keeps from outside the project and through a link, the <code>--fallback</code> gap 1.0 shipped and this release closed, and the escaped listing. The README gains <code>-v</code>, the runbook name rule, what <code>--upgrade-assets</code> keeps, and a project status that names 1.1.0 and both surface files. The duplicated bidirectional set became one predicate, <code>hides_itself</code> in <code>crates/htmlspec-cli/src/terminal.rs</code>, as the design's decision 18 records.</p>
+            </li>
+            <li class="task" id="task-6-2" data-change="added" data-state="done">
+              <h3>6.2 Take the code review, and settle each finding <span class="hs-id">task-6-2</span></h3>
+              <p data-field="note">One review of the whole 1.1.0 diff against 1.0.1, from the opening pull request's base to the closing pull request's head. Settle every finding before archival.</p>
+              <p data-field="note">The pre-archival review read the whole 1.1.0 diff against 1.0.1, on the closing pull request's first head, and found these, each settled in the closing pull request before archival:</p>
+              <p data-field="note">The export scan refused three lines naming this private repository: two links in this document, now plain words, and one in the v1.0.0 publish run's record, which cannot be edited, so <code>publish/rewrites.tsv</code> rewrites it in the export at a count of one. A walk from above a project read its evidence, a gap 1.0 shipped: the walk now resolves the project of each directory it enters. A remedy and a new runbook's name accepted default-ignorable characters such as variation selectors and the Hangul fillers: one predicate, <code>crates/htmlspec-cli/src/terminal.rs</code>'s <code>hidden</code>, now refuses them, keeping one emoji presentation selector after a visible character, and the listing escapes the same set. A declared tool name and path reached preflight's reports raw: they are shown by code point. A reviewed license row could name a source outside the crate: it is refused. The formula's licenses were checked only where the macOS jobs run: the <code>notices</code> stage checks them too.</p>
+              <p data-field="note">It also found stale text, corrected in the design and the changelog: a <code>WITH</code> rule the code does not follow, a function's old name, the help lines that differ from 1.0.1, mixed dates, and nine behaviours no contract row named, each decided in the design's section on them and stated in the specification.</p>
+            </li>
+            <li class="task" id="task-6-3" data-change="added" data-state="done">
+              <h3>6.3 Archive at 1.1.0 <span class="hs-id">task-6-3</span></h3>
+              <p data-field="note">Write the specification from what was built, and move <code>spec.nix</code> to 1.1.0. Every command names this change, because main holds a second active change, <code>release-a-windows-build</code>, and <code>htmlspec archive</code> with no change refuses when there are several:</p>
+              <ul>
+                <li>
+                  <code>htmlspec archive ship-the-crates-notices-and-runbook-affordances --check</code>
+                  <p data-field="note">Archived at 1.1.0. The specification restates eleven accepted requirements as modified, each whole with the words it moved marked, the walk's requirement among them, and records two evidence units and eleven verifications, two of them partial because no release has run since. <code>htmlspec show ship-the-crates-notices-and-runbook-affordances --diff</code> found the marks account for every difference from the accepted text, and <code>htmlspec sync</code> found the contract applied in full.</p>
+                </li>
+                <li><code>htmlspec show ship-the-crates-notices-and-runbook-affordances --diff</code>, for every modified requirement</li>
+                <li><code>htmlspec archive ship-the-crates-notices-and-runbook-affordances</code></li>
+              </ul>
+            </li>
+            <li class="task" id="task-6-4" data-change="added" data-state="done">
+              <h3>6.4 Record every readiness read at the content the archived tree holds <span class="hs-id">task-6-4</span></h3>
+              <p data-field="note">For each allowlisted path whose content changed since its read, read what changed and record the read in <code>publish/READINESS.md</code>. The read of <code>crates</code> says that the third-party license texts in <code>CRATE-LICENSES</code> are copied verbatim, addresses included, as <code>strsim</code>'s <code>LICENSE</code> is.</p>
+              <p data-field="note">Recorded after archival, in the closing pull request, for every allowlisted path whose content changed since 1.0.1's reads: 1.0.1 itself, the v1.0.0 publish run's record, the unscheduled Windows change, all of 1.1.0, and this archival. <code>publish/READINESS.md</code> holds the read and the content each row names. This note is written before the reads, because the reads name the content of <code>htmlspec</code>, which holds it.</p>
+            </li>
+            <li class="task" id="task-6-5" data-change="added" data-state="done">
+              <h3>6.5 Rehearse the export <span class="hs-id">task-6-5</span></h3>
+              <p data-field="note">Run <code>publish/export --ref HEAD --dry-run</code> inside <code>nix develop</code>, against an empty local bare repository. Every read is current, the scan is clean, and every check passes inside the exported tree.</p>
+              <p data-field="note">Rehearsed after the reads, in the closing pull request, as <code>publish/export --ref HEAD --dry-run</code> against an empty local bare repository and against one holding an unrelated <code>main</code>, so the bootstrap path and the titled export's path both ran. The results are in the closing pull request's description rather than here, because writing them here would change the content the reads in 6.4 name.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

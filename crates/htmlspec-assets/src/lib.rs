@@ -117,6 +117,52 @@ pub const TEMPLATES: &[Template] = &[
     },
 ];
 
+/// One of a runbook's two documents, as `new runbook` writes it.
+///
+/// A second shape beside [`Template`] rather than two more entries in [`TEMPLATES`], because
+/// [`template_for`] maps one kind to one template and a runbook's specification is a second
+/// specification. A runbook's documents differ from a change's in what they are for: every unit is
+/// `unchanged` and every task `todo`, as runbook-authority's "The canonical procedure carries no
+/// completion state" requires of a runbook, where a change's template writes `added`.
+///
+/// `#[non_exhaustive]` because this crate is published, and a later minor release may say more
+/// about a template: a field added to an exhaustive struct breaks a caller that destructures it.
+#[non_exhaustive]
+pub struct RunbookTemplate {
+    /// The file name the document takes inside the runbook's directory.
+    pub file: &'static str,
+    /// The artifact kind it declares.
+    pub kind: &'static str,
+    /// The template text, with its placeholders unsubstituted.
+    pub text: &'static str,
+}
+
+/// The two documents `new runbook` writes, in the order a reader opens them.
+///
+/// Scanned by [`example_identifiers`] and [`example_placeholders`] beside [`TEMPLATES`], so
+/// contract-authority's "Generated example content is non-normative and its survival is reported"
+/// reaches a runbook straight from these templates.
+pub const RUNBOOK_TEMPLATES: &[RunbookTemplate] = &[
+    RunbookTemplate {
+        file: "specification.html",
+        kind: "specification",
+        text: include_str!("../assets/template-runbook-specification.html"),
+    },
+    RunbookTemplate {
+        file: "tasks.html",
+        kind: "tasks",
+        text: include_str!("../assets/template-runbook-tasks.html"),
+    },
+];
+
+/// The text of every template the binary writes documents from, a change's and a runbook's.
+fn every_template_text() -> impl Iterator<Item = &'static str> {
+    TEMPLATES
+        .iter()
+        .map(|template| template.text)
+        .chain(RUNBOOK_TEMPLATES.iter().map(|template| template.text))
+}
+
 /// The artifact kind `init` produces when the caller names none.
 ///
 /// A proposal, because that is the artifact a change begins with: it depends on
@@ -158,9 +204,8 @@ pub const EXAMPLE_SUFFIX: &str = "-example";
 pub fn example_identifiers() -> &'static [&'static str] {
     static IDENTIFIERS: OnceLock<Vec<&'static str>> = OnceLock::new();
     IDENTIFIERS.get_or_init(|| {
-        let mut found: Vec<&'static str> = TEMPLATES
-            .iter()
-            .flat_map(|template| identifiers_in(template.text))
+        let mut found: Vec<&'static str> = every_template_text()
+            .flat_map(identifiers_in)
             .filter(|id| id.ends_with(EXAMPLE_SUFFIX))
             .collect();
         found.sort_unstable();
@@ -213,9 +258,8 @@ pub fn is_example_identifier(id: &str) -> bool {
 pub fn example_placeholders() -> &'static [String] {
     static PLACEHOLDERS: OnceLock<Vec<String>> = OnceLock::new();
     PLACEHOLDERS.get_or_init(|| {
-        let mut found: Vec<String> = TEMPLATES
-            .iter()
-            .flat_map(|template| masthead_paragraphs(template.text))
+        let mut found: Vec<String> = every_template_text()
+            .flat_map(masthead_paragraphs)
             .collect();
         found.sort_unstable();
         found.dedup();
@@ -625,13 +669,24 @@ pub fn render_template(subject: &str, assets: &str) -> String {
 /// for arguing about one, and a specification's shape is not the author's to invent.
 pub fn render_kind(kind: &str, subject: &str, assets: &str) -> Option<String> {
     let template = template_for(kind)?;
-    let document = resolve_asset_placeholders(template.text);
-    Some(
-        document
-            .replace(FALLBACK_PLACEHOLDER, fallback::ELEMENT)
-            .replace(SUBJECT_PLACEHOLDER, &escape_text(subject))
-            .replace(ASSETS_PLACEHOLDER, &escape_attribute(assets)),
-    )
+    Some(render_text(template.text, subject, assets))
+}
+
+/// Renders one of a runbook's two documents for `subject`, with `assets` as [`render_template`]
+/// takes it.
+///
+/// The same substitution [`render_kind`] performs, so a runbook's documents carry the fallback
+/// stylesheet and the current runtime as every other document the toolchain writes does.
+pub fn render_runbook(template: &RunbookTemplate, subject: &str, assets: &str) -> String {
+    render_text(template.text, subject, assets)
+}
+
+/// Substitutes every placeholder in a template's text.
+fn render_text(text: &str, subject: &str, assets: &str) -> String {
+    resolve_asset_placeholders(text)
+        .replace(FALLBACK_PLACEHOLDER, fallback::ELEMENT)
+        .replace(SUBJECT_PLACEHOLDER, &escape_text(subject))
+        .replace(ASSETS_PLACEHOLDER, &escape_attribute(assets))
 }
 
 /// Replaces every `{{ASSET:<name>}}` with that asset's stored path.
@@ -970,8 +1025,16 @@ mod tests {
     /// Every template is pinned as well, though none is stored at an address.
     #[test]
     fn every_template_matches_its_recorded_hash() {
-        for template in TEMPLATES {
-            let path = format!("template-{}.html", template.kind);
+        let pinned = TEMPLATES
+            .iter()
+            .map(|template| (format!("template-{}.html", template.kind), template.text))
+            .chain(RUNBOOK_TEMPLATES.iter().map(|template| {
+                (
+                    format!("template-runbook-{}.html", template.kind),
+                    template.text,
+                )
+            }));
+        for (path, text) in pinned {
             let entry = lockfile()
                 .own
                 .iter()
@@ -982,7 +1045,7 @@ mod tests {
                 "{path} is the document init produces, not an asset stored beside it"
             );
             assert_eq!(
-                sha256_hex(template.text.as_bytes()),
+                sha256_hex(text.as_bytes()),
                 entry.sha256,
                 "{path} does not match its recorded hash"
             );
@@ -997,8 +1060,14 @@ mod tests {
                 .unwrap_or_else(|| {
                     panic!("{} is pinned unstored and is not a template", entry.path)
                 });
+            let embedded = match kind.strip_prefix("runbook-") {
+                Some(kind) => RUNBOOK_TEMPLATES
+                    .iter()
+                    .any(|template| template.kind == kind),
+                None => template_for(kind).is_some(),
+            };
             assert!(
-                template_for(kind).is_some(),
+                embedded,
                 "{} is pinned and no template produces the {kind} kind",
                 entry.path
             );
@@ -1055,10 +1124,21 @@ mod tests {
                 "{id} is not an example identifier"
             );
             assert!(
-                TEMPLATES
-                    .iter()
-                    .any(|template| template.text.contains(&format!("id=\"{id}\""))),
+                every_template_text().any(|text| text.contains(&format!("id=\"{id}\""))),
                 "{id} is reported as example content and no template writes it"
+            );
+        }
+
+        // A runbook's templates are scanned too, so a runbook `new runbook` just wrote reports its
+        // example units: its requirement and its steps, by the identifiers its templates write.
+        for template in RUNBOOK_TEMPLATES {
+            let written = identifiers_in(template.text);
+            assert!(
+                written
+                    .iter()
+                    .any(|id| id.ends_with(EXAMPLE_SUFFIX) && found.contains(id)),
+                "the runbook {} template writes no example identifier the scan finds",
+                template.kind
             );
         }
 
@@ -1192,21 +1272,27 @@ mod tests {
     /// What is asserted is that each derived string is one its template really contains.
     #[test]
     fn every_template_yields_exactly_one_placeholder_summary() {
-        for template in TEMPLATES {
-            let found = masthead_paragraphs(template.text);
+        let named = TEMPLATES
+            .iter()
+            .map(|template| (template.kind.to_owned(), template.text))
+            .chain(
+                RUNBOOK_TEMPLATES
+                    .iter()
+                    .map(|template| (format!("runbook {}", template.kind), template.text)),
+            );
+        for (kind, text) in named {
+            let found = masthead_paragraphs(text);
             assert_eq!(
                 found.len(),
                 1,
-                "the {} template yields {} masthead paragraph(s) rather than one, so the check \
-                 is either inert for that kind or reporting prose that is not the summary",
-                template.kind,
+                "the {kind} template yields {} masthead paragraph(s) rather than one, so the \
+                 check is either inert for that kind or reporting prose that is not the summary",
                 found.len()
             );
             assert!(
                 !found[0].is_empty(),
-                "the {} template's placeholder summary scanned as empty, so the diagnostic can \
-                 never fire for that kind",
-                template.kind
+                "the {kind} template's placeholder summary scanned as empty, so the diagnostic \
+                 can never fire for that kind"
             );
         }
 
@@ -1220,14 +1306,12 @@ mod tests {
         // set is not deduplicated down — but the assertion is derived rather than the number 4.
         assert_eq!(
             placeholders.len(),
-            TEMPLATES.len(),
+            TEMPLATES.len() + RUNBOOK_TEMPLATES.len(),
             "two templates share a placeholder summary word for word, or one yields none"
         );
         for placeholder in placeholders {
             assert!(
-                TEMPLATES
-                    .iter()
-                    .any(|template| masthead_paragraphs(template.text).contains(placeholder)),
+                every_template_text().any(|text| masthead_paragraphs(text).contains(placeholder)),
                 "{placeholder:?} is reported as a template's placeholder and no template's \
                  masthead writes it"
             );

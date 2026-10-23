@@ -102,18 +102,22 @@ pub fn start<O: Write, E: Write>(
     // a `join` — so without this, `--as ../../../sneaky` would write a document outside the
     // project. `AGENTS.md` §2: the invariant lives in the constructor rather than in a caller's
     // memory, which is where the previous change put it after re-litigating it three times.
-    for (label, name) in [("runbook", runbook), ("record", record)] {
-        if !ProjectRoot::is_a_name(name) {
-            let _ = streams.failure(&format!(
-                "{name:?} is a path rather than a {label} name. A runbook lives where the project \
-                 keeps runbooks and its records live beneath it, so a name carrying `/` or `..` \
-                 would put the record somewhere the project does not keep one. Pass the name alone"
-            ));
+    let directory = match project.named_runbook(runbook) {
+        Ok(directory) => directory,
+        Err(error) => {
+            let _ = streams.failure(&error.to_string());
             return Outcome::OperationalFailure;
         }
+    };
+    if !ProjectRoot::is_a_name(record) {
+        let _ = streams.failure(&format!(
+            "{record:?} is a path rather than a record name. A runbook's records live beneath it, \
+             so a name carrying `/` or `..` would put the record somewhere the project does not \
+             keep one. Pass the name alone"
+        ));
+        return Outcome::OperationalFailure;
     }
 
-    let directory = project.runbook(runbook);
     if !directory.is_dir() {
         let _ = streams.failure(&format!(
             "no runbook named {runbook} in {}. To see what the project holds, run \
@@ -893,6 +897,28 @@ fn nothing_is_at(path: &Path) -> Result<(), String> {
     }
 }
 
+/// Refuses `run` named with no runbook, listing the runbooks it could start and how.
+///
+/// The change's design, decision 18: a contributor who typed `htmlspec run` wanted a runbook and
+/// did not know which. The refusal names the candidates, as `archive` with no change names the
+/// active ones, and exits as a usage error, so `run` alone never starts or reports anything.
+pub fn refuse_without_a_runbook<O: Write, E: Write>(
+    store: Option<&str>,
+    streams: &mut Streams<O, E>,
+) -> Outcome {
+    let project = match crate::store::project_for(store) {
+        Ok(project) => project,
+        Err(report) => {
+            let _ = streams.failure(&format!(
+                "run needs a runbook, and it looks for them in a project. {report}"
+            ));
+            return Outcome::OperationalFailure;
+        }
+    };
+    let _ = streams.failure(&crate::commands::runbooks_to_start(&project));
+    Outcome::OperationalFailure
+}
+
 /// Reports what a runbook's runs recorded against what the runbook states they must.
 ///
 /// Writes nothing, and **exits zero whatever it finds**. The rule is `review/*`, which never gates,
@@ -915,14 +941,13 @@ pub fn check<O: Write, E: Write>(
             return Outcome::OperationalFailure;
         }
     };
-    if !ProjectRoot::is_a_name(runbook) {
-        let _ = streams.failure(&format!(
-            "{runbook:?} is a path rather than a runbook name. Pass the name alone"
-        ));
-        return Outcome::OperationalFailure;
-    }
-
-    let directory = project.runbook(runbook);
+    let directory = match project.named_runbook(runbook) {
+        Ok(directory) => directory,
+        Err(error) => {
+            let _ = streams.failure(&error.to_string());
+            return Outcome::OperationalFailure;
+        }
+    };
     if !directory.is_dir() {
         let _ = streams.failure(&format!(
             "no runbook named {runbook} in {}. To see what the project holds, run \

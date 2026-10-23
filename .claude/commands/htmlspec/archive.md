@@ -2,7 +2,7 @@
 description: Archive an html-spec change — produce its specification artifact from the completed change, advance the project version, validate, apply its contract changes to the project's accepted specifications, and archive the directory intact. Use when a change's tasks are complete and it is ready to be archived.
 allowed-tools: Bash(htmlspec:*), Read, Write, Edit, Glob, Grep
 argument-hint: [the change to archive, or nothing to infer it]
-generatedBy: htmlspec 1.0.0
+generatedBy: htmlspec 1.1.0
 ---
 
 Archive an html-spec change.

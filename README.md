@@ -124,6 +124,8 @@ A runbook is two ordinary documents. Its specification states what the procedure
   <img src="img/runbook.png" width="520" alt="This repository's release runbook as the change that established it drew it: four steps in a flowchart, with the hazard that puts the version bump first written on the edge between steps one and two.">
 </p>
 
+`htmlspec new runbook <name>` starts one. It writes both documents, a `VERSION` at 0.1.0, and a changelog, so the runbook validates, passes preflight, and can run straight away. The tasks document holds the steps and a figure of their order, and a runbook can carry any figure, chart, or formula a specification can. `htmlspec list --runbooks` lists the runbooks a project holds, each with its version and title, and `htmlspec run` named with no runbook lists them too. A new runbook's name is a plain directory name: `new runbook` refuses a path, a leading dot, `assets`, and the names a project's walk passes over, such as `target`.
+
 Runbooks carry their own discipline:
 
 - **Versioned.** A runbook has its own `VERSION` and `CHANGELOG.md`. Archival refuses changed steps that kept the old version.
@@ -143,7 +145,9 @@ brew install Firefly-Projects/tap/htmlspec      # Homebrew, on macOS and Linux
 cargo install --locked htmlspec-cli             # crates.io; the binary is named htmlspec
 ```
 
-Or download a binary for macOS or Linux from the [releases page](https://github.com/Firefly-Projects/htmlspec/releases), where `SHA256SUMS` lists each file's digest. `--locked` makes `cargo install` build with the dependency versions the release was tested with, rather than the newest ones each requirement allows.
+Or download a binary for macOS or Linux from the [releases page](https://github.com/Firefly-Projects/htmlspec/releases), where `SHA256SUMS` lists each file's digest. `htmlspec --version`, or `-v`, prints the release you installed and the commit it was built from. `--locked` makes `cargo install` build with the dependency versions the release was tested with, rather than the newest ones each requirement allows.
+
+A binary ships with three license files. `LICENSE` is htmlspec's own MIT license. `THIRD-PARTY-LICENSES` holds the notices of the JavaScript libraries the binary embeds, Mermaid and Vega among them. `CRATE-LICENSES` holds those of the Rust crates it is built from. Each release tarball holds them beside the binary, Homebrew installs them in the formula's prefix, and the Nix package installs them under `share/doc/htmlspec/`.
 
 To build from source instead, use [Nix](https://nixos.org/) or a Rust toolchain matching `rust-toolchain.toml`:
 
@@ -193,21 +197,26 @@ It creates `htmlspec/` with `specs/`, `changes/`, `changes/archive/`, and `runbo
 
 ```sh
 htmlspec new change add-dark-mode                # a change: proposal, design, and tasks
+htmlspec new runbook deploy                      # a runbook: specification, tasks, VERSION, changelog
 htmlspec new document specification s.html       # or one document of a given kind
 htmlspec validate                                # every document in the project
 htmlspec validate proposal.html --strict         # one document, warnings fatal
 htmlspec format                                  # rewrite documents into canonical form
 htmlspec format --check                          # report without writing; nonzero if any would change
 htmlspec format --fallback                       # also give each document the fallback stylesheet
+htmlspec format --upgrade-assets                 # also move documents onto the store's current assets
 htmlspec assets                                  # check the project stores each asset once
-htmlspec list --runbooks                         # the runbooks the project holds
+htmlspec list --runbooks                         # the runbooks the project holds, with versions and titles
 htmlspec preflight release                       # can this runbook start on this machine?
 htmlspec show add-dark-mode --diff               # each requirement it modifies, beside the accepted one
 htmlspec archive add-dark-mode                   # check a change before archiving it
 htmlspec validate --json                         # structured diagnostics on stdout
+htmlspec -v                                      # the version, as --version and -V print it
 ```
 
-Every project-wide command finds its project by walking up from where you run it, so each one works from any directory inside the project. A new change goes where the project keeps changes, and the command reports the resolved path.
+Every project-wide command finds its project by walking up from where you run it, so each one works from any directory inside the project. A new change or runbook goes where the project keeps it, and the command reports the resolved path.
+
+`format --upgrade-assets` rewrites each document's references to the stylesheet and scripts this release writes into new documents. It never downloads anything: the current assets are compiled into the program, and any the store lacks are written into it from that copy. It adds nothing a document does not already load, and it leaves archived changes and run records as written, judging each document by the project it belongs to wherever you run it from, a link's target included. `--fallback` keeps history the same way. Where a stored file no longer matches its address, it leaves the reference as written and says how to restore the file. Without the flag, formatting leaves every reference to stored bytes as written, so a document keeps rendering with the bytes it was reviewed against until someone asks to move it.
 
 Every operation also has a request-verb spelling, borrowed from htmx's request keywords. `get` never writes. `post` creates something that was not there. `put` creates or replaces a whole thing, and running it again leaves the same result. `patch` changes something that exists. `delete` removes something. Both spellings run the same operation, with the same arguments, options, output, and exit status.
 
@@ -227,6 +236,7 @@ The verb names the most an operation writes in any invocation, so `put format --
 | Survey an OpenSpec project | `migrate survey` | `get survey` |
 | Create a change | `new change` | `post change` |
 | Create a document | `new document` | `post document` |
+| Create a runbook | `new runbook` | `post runbook` |
 | Register a store | `store add` | `post registration` |
 | Start a run of a runbook | `run` | `post run` |
 | Promote a staged migration | `migrate promote` | `post promotion` |
@@ -275,6 +285,19 @@ The note's projected text begins `preflight/v1 ` followed by one JSON object. Th
 | `state` | `check` | `outside-project`, or `clean-git-worktree` |
 
 Paths are relative, and they cannot be absolute or climb out with `..`. Executable names are bare: no separator, no leading hyphen. A requirement holds one declaration, and every declared check must pass. A note that begins `preflight/` and names a version this program does not read is an error, not prose. Skipping it would report a runbook ready when it asked for checks nothing performed.
+
+A runbook can also say where to get what a check needs. `preflight/v2` reads every form `preflight/v1` reads, plus one optional field, `remedy`:
+
+```html
+<section class="requirement" id="req-the-login-skill-is-installed" data-change="unchanged">
+  <h3>The login skill is installed <span class="hs-id">req-the-login-skill-is-installed</span></h3>
+  <p>A run MUST have the login skill installed.</p>
+  <p data-field="note">preflight/v2 {"kind":"skill","scope":"home","path":".claude/skills/login/SKILL.md","remedy":"copy skills/login from the team's skills repository into ~/.claude/skills"}</p>
+  <!-- a scenario, as any requirement carries -->
+</section>
+```
+
+A remedy is one line of 1 to 200 characters, and every character in it is shown as what it is. It holds no control character, no whitespace but the plain space (so no tab, no non-breaking space, and no line or paragraph separator), and no invisible character: none of Unicode's format characters or default-ignorable characters, the bidirectional ones and the variation selectors included, and not the braille pattern blank, which draws as a space. The zero-width joiner and non-joiner are the exceptions, because scripts and emoji need them, and so is one emoji presentation selector directly after the character it is for. Spaces around it are trimmed, and a remedy with no visible character is refused as empty. When a check does not pass, the report shows the program's own remedy and then `the runbook says:` with the runbook's text, so you can tell the two apart. With `--json`, every check whose declaration carries a remedy has `runbookRemedy`, passed or not. A remedy is text. Preflight never runs it, never opens an address in it, and never counts it as satisfying anything: the skill still has to be installed. htmlspec 1.0 refuses `preflight/v2` as a format it does not read, so a runbook that declares a remedy needs 1.1 or later. A runbook with no remedy keeps writing `preflight/v1`, which every version reads.
 
 What the checks are, and what they are not:
 
@@ -476,7 +499,7 @@ The public contract is three pieces, not one: `crates/htmlspec-schema/schema/doc
 
 ## Project status
 
-HTMLSpec 1.0.0 is the first release that makes promises. This repository runs on it: its own specifications, changes, and runbooks are the HTML documents in [`htmlspec/`](htmlspec/). It migrated itself out of OpenSpec at 0.29.0.
+HTMLSpec 1.0.0 is the first release that makes promises, and 1.1.0 keeps them. This repository runs on it: its own specifications, changes, and runbooks are the HTML documents in [`htmlspec/`](htmlspec/). It migrated itself out of OpenSpec at 0.29.0.
 
 Release 1.0.0 implements:
 
@@ -486,12 +509,19 @@ Release 1.0.0 implements:
 - **runbooks:** versions, preflight, runs and their records, and portability
 - **migration from an OpenSpec project**
 
+Release 1.1.0 adds:
+
+- **the notices of the Rust crates** the binary is built from, in every channel that ships it
+- **`htmlspec new runbook`** and **`htmlspec format --upgrade-assets`**, and a runbook listing from `run` and `list --runbooks`
+- **install hints:** `preflight/v2` lets a runbook say where to get what a check needs
+- **`htmlspec -v`**, and an export that pushes as the account `gh` is signed in as
+
 **What 1.0 promises.** Two requirements state it:
 
 - **The document contract follows semantic versioning.** document-schema's "The contract's version is a semantic version" states it. Within a major version, a document one version accepts gains no error under any later version. A minor release adds vocabulary and can add warnings. Contract `1.0.0` is the `0.7.0` vocabulary, unchanged, so every document that declares `0.1.0` to `0.7.0` still validates. The suite checks that each conformance fixture gains no error under `1.0.0` that it lacked under the version it declares. It cannot check that a rule added later leaves a valid document valid, so review holds that line: a change to what a fixture expects is a change to the contract.
 - **The command surface is stable within 1.x.** toolchain-packaging's "The command surface is stable within a major version" states it. Every operation keeps its name in both spellings. Every flag keeps its name and meaning, every exit code its value, and every `--json` field its name and type. A minor release can add any of them, and only 2.0 removes or renames one. The suite fails when the program loses any of them. The wording of human-readable output can still change, so a script that needs an answer reads `--json`.
 
-The suite holds the surface to [`crates/htmlspec-cli/tests/surface/1.0.json`](crates/htmlspec-cli/tests/surface/1.0.json), read from the program's own parser. Each payload has a published JSON Schema under [`crates/htmlspec-cli/schema/payload/`](crates/htmlspec-cli/schema/payload/). A published schema admits a field it does not declare, so output from a later 1.x release still validates against it. The suite reads the same schemas strictly, so the program writes only what its schema declares.
+The suite holds the surface to one file per released minor, [`1.0.json`](crates/htmlspec-cli/tests/surface/1.0.json) and [`1.1.json`](crates/htmlspec-cli/tests/surface/1.1.json), each read from the program's own parser: the program keeps everything an earlier file of its major records, and the current minor's file records exactly what it does. Each payload has a published JSON Schema under [`crates/htmlspec-cli/schema/payload/`](crates/htmlspec-cli/schema/payload/). A published schema admits a field it does not declare, so output from a later 1.x release still validates against it. The suite reads the same schemas strictly, so the program writes only what its schema declares.
 
 One piece of the original proposal is not built yet: **portable single-file exports**. An export would inline the runtime into one document that travels alone, for email, archival, or an external review.
 

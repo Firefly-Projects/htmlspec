@@ -40,6 +40,7 @@ pub enum Operation {
     Instructions,
     NewChange,
     NewDocument,
+    NewRunbook,
     MigrateSurvey,
     MigratePromote,
 }
@@ -112,7 +113,7 @@ const THE_VERBS_SEND_NOTHING: &str = "Both spellings run the same operation, wit
 
 impl Operation {
     /// Every operation, in the order the command line's help lists them.
-    pub const ALL: [Self; 19] = [
+    pub const ALL: [Self; 20] = [
         Self::Validate,
         Self::Format,
         Self::Assets,
@@ -130,6 +131,7 @@ impl Operation {
         Self::Instructions,
         Self::NewChange,
         Self::NewDocument,
+        Self::NewRunbook,
         Self::MigrateSurvey,
         Self::MigratePromote,
     ];
@@ -154,6 +156,7 @@ impl Operation {
             Self::Instructions => &["instructions"],
             Self::NewChange => &["new", "change"],
             Self::NewDocument => &["new", "document"],
+            Self::NewRunbook => &["new", "runbook"],
             Self::MigrateSurvey => &["migrate", "survey"],
             Self::MigratePromote => &["migrate", "promote"],
         }
@@ -180,6 +183,7 @@ impl Operation {
             Self::MigrateSurvey => (Verb::Get, "survey"),
             Self::NewChange => (Verb::Post, "change"),
             Self::NewDocument => (Verb::Post, "document"),
+            Self::NewRunbook => (Verb::Post, "runbook"),
             Self::StoreAdd => (Verb::Post, "registration"),
             Self::Run => (Verb::Post, "run"),
             // With `--staged` it puts a project where there was none.
@@ -354,15 +358,16 @@ mod tests {
                 Operation::Instructions => 14,
                 Operation::NewChange => 15,
                 Operation::NewDocument => 16,
-                Operation::MigrateSurvey => 17,
-                Operation::MigratePromote => 18,
+                Operation::NewRunbook => 17,
+                Operation::MigrateSurvey => 18,
+                Operation::MigratePromote => 19,
             };
             assert_eq!(
                 placed, index,
                 "{operation:?} is out of its place in the list"
             );
         }
-        assert_eq!(Operation::ALL.len(), 19);
+        assert_eq!(Operation::ALL.len(), 20);
     }
 
     /// No two operations share an OpenSpec spelling, so each spelling runs one operation.
@@ -419,6 +424,7 @@ mod tests {
                 Operation::MigrateSurvey => (Verb::Get, "survey"),
                 Operation::NewChange => (Verb::Post, "change"),
                 Operation::NewDocument => (Verb::Post, "document"),
+                Operation::NewRunbook => (Verb::Post, "runbook"),
                 Operation::StoreAdd => (Verb::Post, "registration"),
                 Operation::Run => (Verb::Post, "run"),
                 Operation::MigratePromote => (Verb::Post, "promotion"),

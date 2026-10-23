@@ -63,18 +63,30 @@
         # A dot-prefixed name needs no special case: the pattern matches on the extension, and
         # `.openspec.yaml` ends in one.
         #
-        # `LICENSE` and `THIRD-PARTY-LICENSES` carry no extension either. The release check
-        # compares each published crate's `LICENSE` with the root's, so without them every
-        # crate reads as unlicensed here while passing locally.
+        # `LICENSE`, `THIRD-PARTY-LICENSES`, and `CRATE-LICENSES` carry no extension either. The
+        # release check compares each published crate's `LICENSE` with the root's, so without them
+        # every crate reads as unlicensed here while passing locally, and the package installs all
+        # three beside the binary.
+        #
+        # The notices stage regenerates `CRATE-LICENSES` from two more inputs no pattern above
+        # reaches: `license-clarifications.tsv`, the reviewed table, and the standard license texts
+        # vendored without an extension under `crates/htmlspec-cli/licenses/`. Without them the
+        # stage reports each reviewed crate as having no file and no row, here and nowhere else.
+        # It also holds the Homebrew formula's template to what `CRATE-LICENSES` credits, so the
+        # template, `packaging/homebrew/htmlspec.rb.in`, is kept as well.
         srcFilter = path: type:
           let
             keep =
               builtins.match ".*\\.(json|html|css|js|md|yaml|txt|py|schema\\.json)$" path != null;
             isScript = builtins.match ".*/scripts(/.*)?" path != null;
             isVersion = builtins.match ".*/VERSION$" path != null;
-            isLicense = builtins.match ".*/(LICENSE|THIRD-PARTY-LICENSES)$" path != null;
+            isLicense = builtins.match ".*/(LICENSE|THIRD-PARTY-LICENSES|CRATE-LICENSES)$" path != null;
+            isNoticeInput =
+              builtins.match ".*/crates/htmlspec-cli/(license-clarifications\\.tsv|licenses(/.*)?)" path != null
+              || builtins.match ".*/packaging(/homebrew(/htmlspec\\.rb\\.in)?)?" path != null;
           in
-          keep || isScript || isVersion || isLicense || craneLib.filterCargoSources path type;
+          keep || isScript || isVersion || isLicense || isNoticeInput
+          || craneLib.filterCargoSources path type;
 
         src = pkgs.lib.cleanSourceWith {
           src = ./.;
@@ -104,10 +116,18 @@
           else if self ? dirtyRev then "${builtins.substring 0 12 self.dirtyRev}-dirty"
           else null;
 
+        # The binary's notices go where a Nix user's documentation goes, as every other channel
+        # ships them beside the binary: htmlspec's own license, the JavaScript libraries' it embeds,
+        # and the Rust crates' it is built from.
         htmlspec = craneLib.buildPackage (commonArgs // {
           inherit cargoArtifacts;
           doCheck = false;
           meta.mainProgram = "htmlspec";
+          postInstall = ''
+            install -Dm644 LICENSE "$out/share/doc/htmlspec/LICENSE"
+            install -Dm644 crates/htmlspec-assets/THIRD-PARTY-LICENSES "$out/share/doc/htmlspec/THIRD-PARTY-LICENSES"
+            install -Dm644 crates/htmlspec-cli/CRATE-LICENSES "$out/share/doc/htmlspec/CRATE-LICENSES"
+          '';
         } // pkgs.lib.optionalAttrs (revision != null) {
           HTMLSPEC_REVISION = revision;
         });
@@ -131,7 +151,8 @@
           # must be added here in the same change.
           buildPhaseCargoCommand = ''
             patchShebangs scripts/check scripts/check-prompt scripts/check-release scripts/check-installed \
-              scripts/check-publish-crates scripts/publish-crates
+              scripts/check-publish-crates scripts/publish-crates scripts/crate-notices \
+              scripts/check-crate-notices
             ./scripts/check
           '';
           # `python3` for the prompt, release, and publisher checks, all standard library
@@ -235,11 +256,18 @@
           assetProvenance = assetProvenance;
         };
 
+        # `python3` because the suite's Python stages, `publish/export`, and the scripts both
+        # runbooks run are Python, and a runbook's preflight requires this shell. On macOS the
+        # `python3` a shell would otherwise find is `/usr/bin/python3`, a stub that asks the
+        # developer tools where the real one is, and inside this shell `DEVELOPER_DIR` names the
+        # Nix SDK, which holds none: the stub resolves and then fails with "tool 'python3' not
+        # found". The suite's derivation above supplies the same interpreter for the same scripts.
         devShells.default = craneLib.devShell {
           packages = [
             rustToolchain
             pkgs.cargo-nextest
             pkgs.jq
+            pkgs.python3
           ];
         };
 

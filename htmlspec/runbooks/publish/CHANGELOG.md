@@ -5,6 +5,40 @@ What this runbook's releases are. A release is the pair of canonical documents â
 identifies one such pair. Nothing else moves it: a run's record is history rather than procedure, so
 adding or editing one is not a release.
 
+## 0.2.1
+
+Published with the project's 1.1.0 release.
+
+**The export names the account it pushes as, and a run records it.** For a GitHub target,
+`publish/export --bootstrap` and `--push` now print `pushing as LOGIN`, the account `gh` is signed
+in as, before they reach the target, and refuse when `gh` names none, when it names another account
+just before the push, or when this machine's url rewrites would send git over SSH rather than
+`https://github.com`. Their git commands reach GitHub with `gh`'s credentials, so the credential
+helper the v1.0.0 run had to set by hand, after its first bootstrap push found none, is no longer
+needed. Steps 3 and 4 say the export prints the account, and that the run records it. What the
+procedure consumes says the export pushes as the account `gh` is signed in as.
+
+**What this release does not do.** The nine steps, their order, and the six requirements are
+unchanged, so this is a patch.
+
+## 0.2.0
+
+Published with the project's 1.0.1 release.
+
+**A run's preflight checks the interpreter its steps run.** `req-the-pinned-toolchain-is-what-runs`
+names `python3` beside `cargo` and `rustc`, and the development shell supplies it. The first run of
+0.1.0, the v1.0.0 release, passed its preflight and then stopped at its second step: inside
+`nix develop` on macOS, `python3` resolved to `/usr/bin/python3`, a stub that asks the developer
+tools at `DEVELOPER_DIR` for the interpreter, and the shell points that at the Nix SDK, which has
+none. `publish/export` exited with "error: tool 'python3' not found". Now that machine is refused
+before the run starts, with where `python3` resolved, and inside the shell it runs the shell's
+interpreter. The specification gains the scenario of an interpreter that resolves outside the shell,
+and the list of what the procedure consumes says the shell supplies `python3`.
+
+**What this release does not do.** The nine steps and their order are unchanged, and so are the
+other five requirements. `gh`, `git`, `nix`, and `brew` stay undeclared, because each runs inside
+the shell from where the machine installed it.
+
 ## 0.1.0
 
 The first release of this runbook, published with the project's 0.34.0 release.

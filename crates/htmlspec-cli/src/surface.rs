@@ -65,7 +65,8 @@ fn payload(operation: Operation) -> Option<&'static str> {
         | Operation::StoreAdd
         | Operation::StoreRemove
         | Operation::NewChange
-        | Operation::NewDocument => None,
+        | Operation::NewDocument
+        | Operation::NewRunbook => None,
     }
 }
 

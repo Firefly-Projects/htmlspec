@@ -2,7 +2,7 @@
 description: Create an html-spec change and carry it through every artifact in one pass, checking each before the next. Use when the work is well understood and the shape of the change is settled.
 allowed-tools: Bash(htmlspec:*), Read, Write, Edit, Glob, Grep
 argument-hint: [a description of the work]
-generatedBy: htmlspec 1.0.0
+generatedBy: htmlspec 1.1.0
 ---
 
 Create an html-spec change and carry it through every artifact in one pass.

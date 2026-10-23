@@ -27,7 +27,8 @@ use std::fmt;
 use htmlspec_parse::parse_document;
 
 pub use references::{
-    asset_references, rewrite, KeptReason, ReferenceChange, RewriteOutcome, SourceReference,
+    asset_references, rewrite, upgrade, KeptReason, ReferenceChange, RewriteOutcome,
+    SourceReference, UpgradeOutcome, UpgradedReference,
 };
 pub use relocate::{relocate, Move, NotAbsolute, Relocated, Rewritten};
 pub use serialize::LINE_ENDING;

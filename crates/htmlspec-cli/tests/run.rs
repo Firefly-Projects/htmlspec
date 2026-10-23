@@ -1910,6 +1910,26 @@ fn preflight_refuses_a_name_that_is_not_a_runbook() {
         err.contains("is a path rather than a runbook name"),
         "a path was accepted as a name:\n{err}"
     );
+
+    // `run` and its `--check` take the name through the same constructor, which refuses the shapes
+    // of a path and nothing 1.0 ran: `a..b` is looked for, and reported as not there.
+    for arguments in [
+        &["run", "a/b", "--as", "first"][..],
+        &["run", "../escape", "--check"],
+    ] {
+        let (code, out, err) = run_in(&project, arguments);
+        assert_eq!(code, 2, "{arguments:?}: {out}{err}");
+        assert!(
+            err.contains("is a path rather than a runbook name"),
+            "{arguments:?} accepted a path as a name:\n{err}"
+        );
+    }
+    let (code, out, err) = run_in(&project, &["run", "a..b", "--check"]);
+    assert_eq!(code, 2, "{out}{err}");
+    assert!(
+        err.contains("no runbook named a..b"),
+        "a name 1.0 accepted was refused as a name:\n{err}"
+    );
 }
 
 /// Runs the binary with the store registry pointed at a scratch directory.

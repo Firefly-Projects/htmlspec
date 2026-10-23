@@ -15,8 +15,8 @@
         .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
       }
     </style>
-    <link href="../../assets/sha256-e4f5de7cecc4f691/htmlspec.css" rel="stylesheet">
-    <link href="../../assets/sha256-0350261bb5666167/htmlspec-print.css" media="print" rel="stylesheet">
+    <link href="../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
   </head>
   <body>
     <a class="hs-skip-link" href="#hs-content">Skip to content</a>
@@ -37,6 +37,7 @@
         <h2>Contents</h2>
         <ul>
           <li><a href="#hs-what-this-consumes">What this procedure consumes</a></li>
+          <li><a href="#hs-order">The order of the steps</a></li>
           <li><a href="#hs-tasks">Tasks</a></li>
         </ul>
       </nav>
@@ -46,11 +47,26 @@
           <p><strong>This section is here because there is nowhere else to put it, and that is a recorded finding rather than a design.</strong> None of the following is a step somebody performs, so none of them is a task unit — but a runbook has no notion of an input, so they are prose.</p>
           <ul>
             <li><code>cargo</code>, at the version <code>rust-toolchain.toml</code> pins. Note that <code>~/.cargo/bin/cargo</code> may be a broken symlink; the rustup toolchain's own <code>bin</code> directory works, and so does running inside <code>nix develop</code>.</li>
-            <li><code>python3</code>, standard library only. <code>scripts/set-version</code>, <code>scripts/check-release</code>, and <code>scripts/check-installed</code> are all Python.</li>
+            <li><code>python3</code>, standard library only. <code>scripts/set-version</code>, <code>scripts/check-release</code>, and <code>scripts/check-installed</code> are all Python. <code>nix develop</code> supplies it, and the specification beside this document declares it, because on macOS the system <code>python3</code> cannot run inside that shell.</li>
             <li><code>git</code>, for staging. A file no commit has staged is invisible to the build sandbox, which receives a filtered snapshot of git-tracked files rather than the working tree.</li>
             <li>A working tree whose change is finished. This procedure ships work; it does not decide whether the work is done.</li>
             <li><strong>A repository whose project is in place.</strong> <code>htmlspec/</code> holds this repository's project and <code>spec.nix</code> declares its version, and this procedure regenerates inside it. Until 0.29.0 the procedure assumed the opposite, and the second hazard in the specification beside this document is what changed.</li>
           </ul>
+        </section>
+        <section id="hs-order">
+          <h2>The order of the steps</h2>
+          <p>The order the change that established this runbook drew in its design, with the hazard that puts the version ahead of regeneration on the edge between them. The project's <code>VERSION</code> is written later, at archival, which is outside this procedure.</p>
+          <figure id="figure-the-order-of-the-steps">
+            <figcaption>The release runbook's four steps in the order a run works them. Advancing the version restales every installed file, so regeneration follows it. Its source is visible below, so the order is readable with scripting disabled.</figcaption>
+            <details>
+              <summary>Diagram source</summary>
+              <pre class="mermaid">flowchart TD
+  A["1. Advance the workspace version and relock offline"] --&gt;|"advancing the version restales every installed file"| B["2. Regenerate the installed instruction files"]
+  B --&gt; C["3. Write the changelog entry"]
+  C --&gt; D["4. Confirm scripts/check-release passes"]
+  D --&gt; E["The project's VERSION is written at archival"]</pre>
+            </details>
+          </figure>
         </section>
         <section id="hs-tasks">
           <h2>Tasks</h2>

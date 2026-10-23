@@ -1,0 +1,353 @@
+#!/usr/bin/env python3
+"""The notices generator's tests, on synthetic crates.
+
+`scripts/crate-notices` writes `crates/htmlspec-cli/CRATE-LICENSES`, which every channel ships
+beside the binary, and the suite's `notices` stage compares it with what Cargo.lock reaches. That
+stage can only say the file matches the generator. These tests say the generator follows its
+rules, on crates built for each case in a scratch directory, with metadata shaped as `cargo
+metadata` writes it:
+
+- under OR the first accepted license is credited, and under AND every part;
+- a license outside the accepted list stops the run, naming the crate;
+- a crate with no file whose name states its license, and no reviewed row, stops the run, and so
+  does a row for an exact version the lockfile has moved past;
+- an MPL-2.0 crate's entry says where its source form is;
+- a crate a workspace build script uses is credited, and a third-party crate's build or
+  development dependency is not;
+- a vendored text's copyright line carries the crate's authors with every address removed, or
+  names the repository where a crate names no authors;
+- the output is the same bytes whatever order the metadata lists crates in, and a comparison
+  names each crate added, removed, or changed;
+- `scripts/render-formula` reads the credited licenses from the file's header.
+
+Standard library only, and nothing here reaches cargo or a network.
+"""
+
+from __future__ import annotations
+
+import importlib.machinery
+import importlib.util
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+
+
+def load(name: str):
+    """A script with no `.py` name, as a module. It is registered before it runs, because a
+    dataclass reads its own module from `sys.modules` while it is being defined."""
+    loader = importlib.machinery.SourceFileLoader(name.replace("-", "_"), str(HERE / name))
+    module = importlib.util.module_from_spec(importlib.util.spec_from_loader(loader.name, loader))
+    sys.modules[loader.name] = module
+    loader.exec_module(module)
+    return module
+
+
+notices = load("crate-notices")
+formula = load("render-formula")
+
+MIT_TEXT = "Permission is hereby granted, free of charge.\n"
+
+
+class Workspace:
+    """Crates on disk, and `cargo metadata` describing them."""
+
+    def __init__(self, root: Path):
+        self.root = root
+        self.packages: dict[str, dict] = {}
+        self.edges: list[tuple[str, str, str | None]] = []
+        self.members: list[str] = []
+
+    def crate(self, name, version="1.0.0", license="MIT", files=None, authors=(), repository="",
+              member=False):
+        directory = self.root / f"{name}-{version}"
+        directory.mkdir(parents=True)
+        (directory / "Cargo.toml").write_text(f'[package]\nname = "{name}"\n')
+        for file_name, text in (files or {}).items():
+            (directory / file_name).write_text(text)
+        package_id = f"{name} {version}"
+        self.packages[package_id] = {
+            "id": package_id,
+            "name": name,
+            "version": version,
+            "license": license,
+            "authors": list(authors),
+            "repository": repository,
+            "manifest_path": str(directory / "Cargo.toml"),
+        }
+        if member:
+            self.members.append(package_id)
+        return package_id
+
+    def depends(self, dependent, dependency, kind=None):
+        self.edges.append((dependent, dependency, kind))
+
+    def metadata(self, reverse=False):
+        nodes = {package_id: {"id": package_id, "deps": []} for package_id in self.packages}
+        for dependent, dependency, kind in self.edges:
+            nodes[dependent]["deps"].append({"pkg": dependency, "dep_kinds": [{"kind": kind, "target": None}]})
+        packages = list(self.packages.values())
+        node_list = list(nodes.values())
+        if reverse:
+            packages.reverse()
+            node_list.reverse()
+        return {
+            "packages": packages,
+            "workspace_members": list(self.members),
+            "resolve": {"nodes": node_list},
+        }
+
+
+class Case(unittest.TestCase):
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        root = Path(self.scratch.name)
+        self.workspace = Workspace(root / "registry")
+        self.standard = root / "licenses"
+        self.standard.mkdir()
+        (self.standard / "MIT").write_text(MIT_TEXT)
+        (self.standard / "MPL-2.0").write_text("Mozilla Public License Version 2.0\n")
+        self.cli = self.workspace.crate("htmlspec-cli", member=True)
+
+    def tearDown(self):
+        self.scratch.cleanup()
+
+    def generate(self, clarifications="", reverse=False):
+        return notices.generate([self.workspace.metadata(reverse)], clarifications, self.standard)
+
+    def refusal(self, clarifications=""):
+        with self.assertRaises(notices.Refused) as raised:
+            self.generate(clarifications)
+        return str(raised.exception)
+
+
+def table(*rows):
+    lines = ["\t".join(notices.CLARIFICATION_COLUMNS)]
+    lines += ["\t".join(row) for row in rows]
+    return "\n".join(lines) + "\n"
+
+
+class Choice(unittest.TestCase):
+    def test_under_or_the_first_accepted_license_is_credited(self):
+        for expression in ("Apache-2.0 OR MIT", "MIT/Apache-2.0", "MIT / Apache-2.0", "Unlicense OR MIT",
+                           "BSD-2-Clause OR Apache-2.0 OR MIT"):
+            self.assertEqual(notices.choose(expression), ("MIT",), expression)
+        self.assertEqual(notices.choose("Apache-2.0 OR MPL-2.0"), ("Apache-2.0",))
+
+    def test_under_and_every_part_is_credited(self):
+        self.assertEqual(notices.choose("(MIT OR Apache-2.0) AND Unicode-3.0"), ("MIT", "Unicode-3.0"))
+        self.assertEqual(notices.choose("Zlib AND MIT"), ("MIT", "Zlib"))
+
+    def test_with_credits_the_license_it_qualifies(self):
+        self.assertEqual(notices.choose("Apache-2.0 WITH LLVM-exception"), ("Apache-2.0",))
+
+    def test_a_license_outside_the_accepted_list_is_refused(self):
+        for expression in ("GPL-3.0-only", "GPL-3.0-only AND MIT", ""):
+            with self.assertRaises(notices.Refused):
+                notices.choose(expression)
+        self.assertEqual(notices.choose("GPL-3.0-only OR MIT"), ("MIT",))
+
+
+class Texts(Case):
+    def test_a_file_whose_name_states_the_license_is_its_text(self):
+        dual = self.workspace.crate("dual", license="MIT OR Apache-2.0",
+                                    files={"LICENSE-APACHE": "apache\n", "LICENSE-MIT": "the MIT text\n"})
+        single = self.workspace.crate("single", license="Zlib", files={"LICENSE.md": "the zlib text\n"})
+        self.workspace.depends(self.cli, dual)
+        self.workspace.depends(self.cli, single)
+        text = self.generate()
+        self.assertIn("--- MIT: LICENSE-MIT, as the crate ships it ---\n\nthe MIT text\n", text)
+        self.assertIn("--- Zlib: LICENSE.md, as the crate ships it ---\n\nthe zlib text\n", text)
+        self.assertNotIn("apache", text)
+
+    def test_a_plain_license_file_does_not_name_one_of_two_licenses(self):
+        dual = self.workspace.crate("dual", license="MIT OR Apache-2.0", files={"LICENSE": "which one?\n"})
+        self.workspace.depends(self.cli, dual)
+        message = self.refusal()
+        self.assertIn("dual 1.0.0 is credited under MIT and ships no file whose name states it", message)
+
+    def test_a_crate_with_no_file_and_no_row_is_refused(self):
+        bare = self.workspace.crate("bare", license="MIT")
+        self.workspace.depends(self.cli, bare)
+        self.assertIn("bare 1.0.0 is credited under MIT", self.refusal())
+
+    def test_a_refused_license_names_the_crate(self):
+        gpl = self.workspace.crate("copyleft", license="GPL-3.0-only", files={"LICENSE": "GPL\n"})
+        self.workspace.depends(self.cli, gpl)
+        message = self.refusal()
+        self.assertIn("copyleft 1.0.0 is licensed GPL-3.0-only", message)
+
+    def test_a_row_supplies_a_vendored_text(self):
+        bare = self.workspace.crate("bare", license="MIT", authors=("Ann Author",))
+        self.workspace.depends(self.cli, bare)
+        text = self.generate(table(("bare", "1.0.0", "MIT", "licenses/MIT", "a reviewer")))
+        self.assertIn("vendored as licenses/MIT, reviewed by a reviewer ---\n\nCopyright (c) Ann Author\n\n" + MIT_TEXT, text)
+
+    def test_a_row_for_a_version_the_lockfile_has_moved_past_is_refused(self):
+        bare = self.workspace.crate("bare", version="1.0.1", license="MIT")
+        self.workspace.depends(self.cli, bare)
+        message = self.refusal(table(("bare", "1.0.0", "MIT", "licenses/MIT", "a reviewer")))
+        self.assertIn("a row for bare 1.0.0 under MIT, which the lockfile no longer credits", message)
+        self.assertIn("bare 1.0.1 is credited under MIT", message)
+
+    def test_a_row_may_join_a_crate_file_and_a_vendored_text(self):
+        bare = self.workspace.crate("bare", license="MIT/Apache-2.0", files={"COPYING": "Copyright 2016 Ann.\n"},
+                                    authors=("Ann",))
+        self.workspace.depends(self.cli, bare)
+        text = self.generate(table(("bare", "1.0.0", "MIT", "COPYING + licenses/MIT", "a reviewer")))
+        self.assertLess(text.index("Copyright 2016 Ann."), text.index("Copyright (c) Ann\n"))
+
+    def test_an_authors_address_is_removed_from_the_copyright_line(self):
+        bare = self.workspace.crate("bare", license="MIT", authors=("Ann Author <ann@example.org>", "Bo <bo@example.org>"))
+        self.workspace.depends(self.cli, bare)
+        text = self.generate(table(("bare", "1.0.0", "MIT", "licenses/MIT", "a reviewer")))
+        self.assertIn("Copyright (c) Ann Author, Bo\n", text)
+        self.assertNotIn("@example.org", text)
+
+    def test_a_crate_with_no_authors_names_its_repository(self):
+        bare = self.workspace.crate("bare", license="MIT", repository="https://example.org/bare")
+        self.workspace.depends(self.cli, bare)
+        text = self.generate(table(("bare", "1.0.0", "MIT", "licenses/MIT", "a reviewer")))
+        self.assertIn("Copyright the authors of bare, as https://example.org/bare names them\n", text)
+
+    def test_a_rows_copyright_line_replaces_the_one_built_from_authors(self):
+        bare = self.workspace.crate("bare", license="MIT", authors=("Ann <ann@example.org>",))
+        self.workspace.depends(self.cli, bare)
+        row = ("bare", "1.0.0", "MIT", "licenses/MIT", "a reviewer", "Copyright (c) 2021 Ann Author")
+        text = self.generate(table(row))
+        self.assertIn("reviewed by a reviewer ---\n\nCopyright (c) 2021 Ann Author\n\n" + MIT_TEXT, text)
+        self.assertNotIn("Copyright (c) Ann\n", text)
+
+    def test_a_row_may_leave_the_copyright_cell_empty(self):
+        bare = self.workspace.crate("bare", license="MIT", authors=("Ann",))
+        self.workspace.depends(self.cli, bare)
+        text = self.generate(table(("bare", "1.0.0", "MIT", "licenses/MIT", "a reviewer", "")))
+        self.assertIn("Copyright (c) Ann\n", text)
+
+    def test_a_copyright_line_without_a_vendored_text_is_refused(self):
+        bare = self.workspace.crate("bare", license="MIT", files={"COPYING": "Copyright Ann.\n"})
+        self.workspace.depends(self.cli, bare)
+        message = self.refusal(table(("bare", "1.0.0", "MIT", "COPYING", "a reviewer", "Copyright (c) Ann")))
+        self.assertIn("only a vendored standard text carries", message)
+
+    def test_a_source_outside_the_crate_and_the_vendored_texts_is_refused(self):
+        bare = self.workspace.crate("bare", license="MIT", files={"COPYING": "Copyright Ann.\n"})
+        self.workspace.depends(self.cli, bare)
+        for source in ("/etc/passwd", "../other/LICENSE", "licenses/../../LICENSE", "COPYING + ../LICENSE",
+                       "sub\\..\\LICENSE"):
+            with self.subTest(source=source):
+                message = self.refusal(table(("bare", "1.0.0", "MIT", source, "a reviewer")))
+                self.assertIn("which is not a path within the crate or under licenses/", message)
+
+    def test_the_check_fails_on_a_formula_that_drifted_from_the_notices(self):
+        committed = notices.OUTPUT.read_text(encoding="utf-8")
+        template = (notices.ROOT / "packaging" / "homebrew" / "htmlspec.rb.in").read_text(encoding="utf-8")
+        status, lines = notices.check(committed, committed, template)
+        self.assertEqual(status, 0, lines)
+        drifted = template.replace('"MPL-2.0", ', "").replace(', "MPL-2.0"', "")
+        self.assertNotEqual(drifted, template, "the template names MPL-2.0")
+        status, lines = notices.check(committed, committed, drifted)
+        self.assertEqual(status, 1)
+        self.assertTrue(any("the Homebrew formula's template" in line and "MPL-2.0" in line for line in lines), lines)
+
+    def test_the_check_fails_on_notices_the_lockfile_no_longer_matches(self):
+        committed = notices.OUTPUT.read_text(encoding="utf-8")
+        status, lines = notices.check(committed, committed + "\n")
+        self.assertEqual(status, 1)
+        self.assertIn("does not match what Cargo.lock reaches", lines[0])
+
+    def test_an_mpl_crate_says_where_its_source_form_is(self):
+        mpl = self.workspace.crate("mozilla", version="0.3.0", license="MPL-2.0", files={"LICENSE": "MPL\n"})
+        self.workspace.depends(self.cli, mpl)
+        self.assertIn("Source form: https://crates.io/crates/mozilla/0.3.0\n", self.generate())
+
+    def test_an_apache_crates_notice_is_reproduced(self):
+        apache = self.workspace.crate("apache", license="Apache-2.0",
+                                      files={"LICENSE-APACHE": "apache\n", "NOTICE": "Made by Ann.\n"})
+        self.workspace.depends(self.cli, apache)
+        self.assertIn("--- NOTICE: NOTICE, as the crate ships it ---\n\nMade by Ann.\n", self.generate())
+
+
+class Set(Case):
+    def test_a_workspace_build_dependency_is_credited_and_a_third_partys_is_not(self):
+        schema = self.workspace.crate("htmlspec-schema", member=True)
+        generator = self.workspace.crate("typify", license="Apache-2.0", files={"LICENSE-APACHE": "apache\n"})
+        its_dependency = self.workspace.crate("prettyplease", license="MIT", files={"LICENSE-MIT": "mit\n"})
+        library = self.workspace.crate("library", license="MIT", files={"LICENSE-MIT": "mit\n"})
+        compiler_probe = self.workspace.crate("cc", license="MIT", files={"LICENSE-MIT": "mit\n"})
+        test_only = self.workspace.crate("proptest", license="MIT", files={"LICENSE-MIT": "mit\n"})
+        self.workspace.depends(self.cli, schema)
+        self.workspace.depends(schema, generator, "build")
+        self.workspace.depends(generator, its_dependency)
+        self.workspace.depends(self.cli, library)
+        self.workspace.depends(library, compiler_probe, "build")
+        self.workspace.depends(self.cli, test_only, "dev")
+        credited = {crate.name for crate in notices.credited([self.workspace.metadata()])}
+        self.assertEqual(credited, {"typify", "prettyplease", "library"})
+
+    def test_the_output_does_not_depend_on_the_order_of_the_metadata(self):
+        for name in ("zeta", "alpha", "mid"):
+            package_id = self.workspace.crate(name, files={"LICENSE-MIT": f"{name}\n"})
+            self.workspace.depends(self.cli, package_id)
+        self.assertEqual(self.generate(), self.generate(reverse=True))
+
+    def test_the_union_over_targets_credits_each_targets_crates(self):
+        linux = Workspace(Path(self.scratch.name) / "linux")
+        linux_cli = linux.crate("htmlspec-cli", member=True)
+        linux.depends(linux_cli, linux.crate("linux-only", files={"LICENSE-MIT": "mit\n"}))
+        mac = self.workspace.crate("mac-only", files={"LICENSE-MIT": "mit\n"})
+        self.workspace.depends(self.cli, mac)
+        credited = {crate.name for crate in notices.credited([self.workspace.metadata(), linux.metadata()])}
+        self.assertEqual(credited, {"mac-only", "linux-only"})
+
+
+class Comparison(Case):
+    def test_a_comparison_names_each_crate_added_removed_or_changed(self):
+        kept = self.workspace.crate("kept", files={"LICENSE-MIT": "mit\n"})
+        gone = self.workspace.crate("gone", files={"LICENSE-MIT": "mit\n"})
+        self.workspace.depends(self.cli, kept)
+        self.workspace.depends(self.cli, gone)
+        before = self.generate()
+        self.workspace.edges = [edge for edge in self.workspace.edges if edge[1] != gone]
+        self.workspace.depends(self.cli, self.workspace.crate("new", files={"LICENSE-MIT": "mit\n"}))
+        after = self.generate()
+        lines = notices.differences(before, after)
+        self.assertIn("added: new 1.0.0, credited under MIT", lines)
+        self.assertIn("removed: gone 1.0.0, which the lockfile no longer reaches", lines)
+        self.assertEqual(len(lines), 2)
+
+    def test_a_second_version_beside_one_that_stays_is_not_an_upgrade(self):
+        old = self.workspace.crate("rand", version="0.8.7", files={"LICENSE-MIT": "mit\n"})
+        self.workspace.depends(self.cli, old)
+        before = self.generate()
+        self.workspace.depends(self.cli, self.workspace.crate("rand", version="0.9.5", files={"LICENSE-MIT": "mit\n"}))
+        self.assertEqual(notices.differences(before, self.generate()),
+                         ["added: rand 0.9.5 (beside 0.8.7), credited under MIT"])
+        self.assertEqual(notices.differences(self.generate(), before),
+                         ["removed: rand 0.9.5 (beside 0.8.7, which stays)"])
+
+    def test_a_version_replaced_by_another_is_an_upgrade(self):
+        old = self.workspace.crate("rand", version="0.8.7", files={"LICENSE-MIT": "mit\n"})
+        self.workspace.depends(self.cli, old)
+        before = self.generate()
+        self.workspace.edges = []
+        self.workspace.depends(self.cli, self.workspace.crate("rand", version="0.9.5", files={"LICENSE-MIT": "mit\n"}))
+        self.assertEqual(notices.differences(before, self.generate()),
+                         ["now at rand 0.9.5, credited under MIT", "no longer at rand 0.8.7"])
+
+    def test_render_formula_reads_the_credited_licenses(self):
+        self.workspace.depends(self.cli, self.workspace.crate("zlib", license="Zlib", files={"LICENSE-ZLIB": "z\n"}))
+        text = self.generate()
+        self.assertEqual(formula.credited_licenses(text), ["Zlib"])
+        assets = '[package]\nlicense = "MIT AND ISC"\n'
+        targets = "".join(f'url "@BASE_URL@/htmlspec-@VERSION@-{target}.tar.gz"\n' for target in formula.TARGETS)
+        right = targets + 'license all_of: ["MIT", "ISC", "Zlib"]\n'
+        wrong = targets + 'license all_of: ["MIT", "ISC"]\n'
+        self.assertEqual(formula.template_faults(right, assets, text), [])
+        self.assertTrue(formula.template_faults(wrong, assets, text))
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

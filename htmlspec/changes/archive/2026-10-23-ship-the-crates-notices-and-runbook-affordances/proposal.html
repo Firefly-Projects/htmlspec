@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Ship the crates' notices and runbook affordances (1.1.0)</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Ship the crates' notices and runbook affordances (1.1.0)</h1>
+        <p>Ship 1.1.0 as one change with four workstreams. Every binary channel carries the notices of the Rust crates the binary is built from. Runbooks get a template, a way onto the current runtime, and a listing that is easy to find, and preflight can show where to get what is missing. The release also adds a lowercase -v alias, and the export pushes with gh's credentials.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Ship the crates' notices and runbook affordances (1.1.0)</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>1.0.0 is public, and the first public run exposed four things a minor release can fix. The user decided they ship together, as one version, 1.1.0. project-bootstrap's "Archival requires the project version to advance" allows one archive per version, so they are one change with four workstreams.</p>
+          <ol>
+            <li><strong>The released binary leaves out the notices of the Rust crates linked into it.</strong> Each tarball ships <code>LICENSE</code> and <code>THIRD-PARTY-LICENSES</code>, and that file covers only the four JavaScript libraries <code>crates/htmlspec-assets</code> embeds. The static binary is also built from 170 Rust crates on the four release targets: 158 it links, procedural macros included, and 12 whose generated code the workspace's build scripts compile into it. They carry MIT, Apache-2.0, Unicode-3.0, MPL-2.0, BSD-2-Clause, Zlib, MIT-0, and Unlicense terms. Most of those licenses ask that their notice travel with a binary copy. The tarballs, the Homebrew formula, and the Nix package each distribute that binary, and the Nix package ships no license file at all.</li>
+            <li><strong>Runbooks have the vocabulary specifications have, and nothing helps an author use it.</strong> A runbook document already accepts a Mermaid or Vega-Lite figure and MathML: a copy of this repository's publish runbook with both added validates with no diagnostics. What a runbook lacks is a way in. <code>htmlspec new</code> creates a proposal, a design, a tasks document, a specification, or a change, and no runbook, so an author assembles one by hand from two templates that show neither a procedure nor a figure. Its documents also stay on whatever runtime they were written with: this repository's release runbook still references an older stylesheet, one that styles neither a partial outcome nor a change's inserted and deleted words, because nothing moves a document onto the store's current one. And the runbooks are hard to find: <code>htmlspec run</code> with no runbook says only that an argument is missing, and <code>list --runbooks</code> shows names and documents but no version or title.</li>
+            <li><strong>A refused preflight cannot say where to get what is missing.</strong> A colleague carried one of the user's runbooks to another machine, and the run correctly refused to start without its skills and tools. Preflight names the missing skill, but the runbook has no way to say which repository holds it or which command installs it, so the person running it had to ask. runbook-portability's "A carried runbook does not require its source project's history" requires tools and skills from the receiving machine, and that stays. What is missing is the hint.</li>
+            <li><strong>Two small things the first run and its users hit.</strong> A colleague typed <code>htmlspec -v</code>, which is refused: the flag is <code>--version</code> or <code>-V</code>. And <code>publish/export</code> pushes over plain HTTPS git, which on the contributor's machine had no GitHub credentials, so the v1.0.0 run needed a hand-set credential helper. The archived change <code>2026-10-20-finish-a-publish-run-without-a-hand-fix</code> recorded that as an open question.</li>
+          </ol>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <h3>License notices for the linked crates</h3>
+          <p>A committed, generated file names every Rust crate the binary is built from on the four release targets, with the license text the crate ships, or a reviewed substitute where it ships none. Every channel that distributes the binary carries it beside <code>LICENSE</code> and <code>THIRD-PARTY-LICENSES</code>: the tarballs, the formula's install, and the Nix package. The formula declares the licenses the binary credits. A suite stage regenerates it and fails when the lockfile reaches a crate the file does not credit, or a license the project has not accepted.</p>
+          <h3>Runbooks get a way in</h3>
+          <p><code>htmlspec new runbook &lt;name&gt;</code> creates a runbook that validates immediately: a specification with a requirement and its scenario, a tasks document whose steps sit beside a figure of their order, its <code>VERSION</code>, and a <code>CHANGELOG.md</code> heading. <code>htmlspec format --upgrade-assets</code> rewrites a document's references to the store's current assets, as <code>--fallback</code> adds the current fallback, and leaves archived changes and run records as written. Despite its name it downloads nothing: the bytes come from the copy the binary embeds. This repository's release runbook moves onto the current stylesheet with it, at a new runbook version. <code>htmlspec run</code> with no runbook lists the project's runbooks and how to start one, <code>list --runbooks</code> shows each one's version and title, and <code>run --help</code> and <code>preflight --help</code> point to it.</p>
+          <h3>Install hints in preflight</h3>
+          <p>A machine requirement can carry a remedy: one line of text the runbook's author writes, naming a repository, a command, or an address. Preflight shows it beside its own remedy when the check is refused, in the human report and in <code>--json</code>. It is text and nothing else. Preflight never runs it, and it never satisfies a check.</p>
+          <h3>Two small additions</h3>
+          <p><code>htmlspec -v</code> prints the version, as <code>-V</code> and <code>--version</code> do. <code>publish/export</code> authenticates its HTTPS push to a GitHub target with <code>gh</code>'s credentials, and prints the account <code>gh</code> is signed in as before it pushes.</p>
+        </section>
+        <section id="hs-what-working-looks-like">
+          <h2>What working looks like</h2>
+          <ol>
+            <li>Someone unpacks <code>htmlspec-1.1.0-aarch64-apple-darwin.tar.gz</code> and finds <code>LICENSE</code>, <code>THIRD-PARTY-LICENSES</code>, and <code>CRATE-LICENSES</code> beside the binary. <code>CRATE-LICENSES</code> names <code>clap</code>, <code>serde</code>, <code>html5ever</code>, and every other linked crate with its license text. <code>brew install</code> and <code>nix profile install</code> put the same files on disk.</li>
+            <li>A contributor adds a dependency and pushes. The suite fails, naming the crate the notices do not cover, until the regenerated file is committed.</li>
+            <li>An author runs <code>htmlspec new runbook rotate-the-keys</code>, opens <code>htmlspec/runbooks/rotate-the-keys/tasks.html</code> in a browser, and sees steps beside a flowchart of their order, styled as a specification is. Later a colleague types <code>htmlspec run</code>, and it lists <code>rotate-the-keys 0.1.0</code> with its title and the command that starts it.</li>
+            <li>A colleague runs <code>htmlspec preflight onboard</code> on a fresh machine. It refuses, names the missing skill, and adds the author's line: <code>the runbook says: clone github.com/example-corp/skills and run ./install</code>.</li>
+            <li><code>htmlspec -v</code> prints <code>htmlspec 1.1.0 (…)</code>. The next publish run pushes the export with no credential helper set by hand, and its output names the account it pushed as.</li>
+          </ol>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <ul>
+            <li><strong>Four changes at 1.1.0, 1.1.1, 1.1.2, and 1.1.3.</strong> The user chose one version. Separate changes would each need their own archive and version.</li>
+            <li><strong>Change the version gate so several changes share a version.</strong> That's cleaner over time, but it puts a contract change in front of all the real work. Not now.</li>
+            <li><strong>Vendor a runbook's skills beside it.</strong> runbook-portability forbids it, and a copy bundled beside the runbook does not satisfy a <code>home</code>-scope skill check. A hint tells a person where to get the skill without moving it.</li>
+            <li><strong>Leave the notices to <code>cargo install</code> users.</strong> crates.io ships source, and each dependency's source carries its own license, so a person building from crates.io makes their own distribution. That covers crates.io and no other channel, because the other three ship a built binary.</li>
+          </ul>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <ul>
+            <li><strong>Not a license audit.</strong> The change credits what the binary links and refuses licenses the project has not accepted. It does not change any dependency.</li>
+            <li><strong>Not crates.io.</strong> A published crate is source. The notices file ships in <code>htmlspec-cli</code>'s crate as an ordinary file, and crates.io's role is unchanged.</li>
+            <li><strong>No new vocabulary.</strong> Runbooks already accept figures and math. This change gives authors a template, a way onto the current runtime, and an easier listing, and adds no unit, field, or attribute to the document contract.</li>
+            <li><strong>Preflight still never installs.</strong> A remedy is text to show, and the check it accompanies decides readiness as before.</li>
+            <li><strong>No Windows build.</strong> A separate change drafts that.</li>
+            <li><strong>No publish run.</strong> Publishing 1.1.0 follows archival, as a run of the publish runbook with the user's go at each public step.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

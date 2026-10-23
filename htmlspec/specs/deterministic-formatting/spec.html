@@ -73,7 +73,8 @@
             <p>Formatting SHALL NOT change a document's semantic content. It SHALL preserve every semantic unit, every identifier, every attribute value, every cross-reference, and the document order of content. It SHALL NOT add, remove, or reorder semantic units.</p>
             <p>One kind of attribute value is excepted. Where an asset reference names bytes the project's store does not hold, formatting SHALL fill it with the address of the bytes the toolchain ships. A reference that names bytes the store holds SHALL be left as written, even when the store also holds a newer revision, because the reference records what the document was authored against.</p>
             <p>An asset reference SHALL be the value of an attribute through which an element loads an asset. These are the same attributes that document-validation's "An asset reference must match the bytes it names" judges, so the formatter and the validator SHALL NOT disagree about which values are references. A hyperlink is a citation, not something the document loads, and SHALL NOT be filled. Text SHALL NOT be read as an asset reference. Prose that quotes one, whether as characters in a code element or escaped in an example, is content, and formatting SHALL leave it as the author wrote it.</p>
-            <p>A second exception is made only on a contributor's request. Where the request is made, formatting SHALL add the fallback stylesheet that "A document stays readable when its stylesheet cannot load" describes to a document that lacks one, SHALL replace a fallback whose text differs from the current one, and SHALL change nothing else. It SHALL NOT do so for a document of an archived change or a run's record, which are history, whether reached directly or through a symbolic link. Without the request, formatting SHALL leave a document's fallback present, absent, or stale as written.</p>
+            <p>A second exception is made only on a contributor's request. Where the request is made, formatting SHALL add the fallback stylesheet that "A document stays readable when its stylesheet cannot load" describes to a document that lacks one, SHALL replace a fallback whose text differs from the current one, and SHALL change nothing else. It SHALL NOT do so for a document of an archived change or a run's record, which are history, judged by the project the document resolves into wherever formatting is run from, whether reached directly or through a symbolic link. Without the request, formatting SHALL leave a document's fallback present, absent, or stale as written.</p>
+            <p>A third exception is made only on a contributor's request as well. Where the request is made, formatting SHALL rewrite each asset reference a document carries to the store location of the bytes the toolchain ships for the same asset, SHALL write those bytes into the store where it lacks them, from the copy the toolchain carries, and SHALL make no network request. It SHALL add no reference the document does not already carry. It SHALL leave as written a reference to an asset the toolchain ships no revision of, one whose stored bytes disagree with its address, and one the store holds other bytes for at the current revision's address, and SHALL say how to restore that file. It SHALL NOT rewrite a document of an archived change or a run's record, judged as the second exception judges them. Checking with the request SHALL name each document it would rewrite and write nothing, and SHALL succeed where it would write nothing, blocked references included.</p>
             <article class="scenario" id="scenario-identifiers-survive-formatting" data-change="unchanged">
               <h4>Identifiers survive formatting</h4>
               <dl>
@@ -185,6 +186,50 @@
                 <dd>the project is formatted on the request</dd>
                 <dt>Then</dt>
                 <dd>that document is left as written, and the request reports it as skipped</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-upgrade-request-moves-a-document" data-change="unchanged">
+              <h4>The upgrade request moves a document onto the current assets</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a document referencing an earlier revision of the stylesheet the store holds</dd>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec format --upgrade-assets</code> on it</dd>
+                <dt>Then</dt>
+                <dd>its references name the revisions the toolchain ships, and nothing else in it changes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-upgrade-writes-missing-bytes-and-downloads-nothing" data-change="unchanged">
+              <h4>The upgrade writes missing bytes and downloads nothing</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a store lacking the current revision's bytes</dd>
+                <dt>When</dt>
+                <dd>the upgrade request is made</dd>
+                <dt>Then</dt>
+                <dd>the bytes are written into the store from the toolchain's own copy, and no network request is made</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-upgrade-leaves-history-as-written" data-change="unchanged">
+              <h4>The upgrade leaves history as written</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a project's archived change and a run's record on an earlier stylesheet</dd>
+                <dt>When</dt>
+                <dd>the upgrade request is made from inside the project, from a directory above it, or through a link to either document</dd>
+                <dt>Then</dt>
+                <dd>neither document changes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-upgrade-does-not-move-onto-replaced-bytes" data-change="unchanged">
+              <h4>The upgrade does not move a reference onto replaced bytes</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a store holding other bytes at the current revision's address</dd>
+                <dt>When</dt>
+                <dd>the upgrade request is made</dd>
+                <dt>Then</dt>
+                <dd>the reference stays as written, and the report says the stored file was edited or replaced and how to restore it</dd>
               </dl>
             </article>
           </section>

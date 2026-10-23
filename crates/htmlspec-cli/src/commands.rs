@@ -25,6 +25,7 @@ use serde::Serialize;
 use crate::exit::Outcome;
 use crate::output::Streams;
 use crate::project::ProjectRoot;
+use crate::terminal::printable;
 use crate::tools::ToolId;
 
 /// The version recorded in generated instruction files.
@@ -671,6 +672,67 @@ pub enum FallbackRequest {
     Apply,
 }
 
+/// Whether `format` moves documents onto the store's current assets.
+///
+/// Asked for, never assumed: deterministic-formatting's "Formatting preserves meaning" leaves a
+/// reference to stored bytes as written, "even when the store also holds a newer revision", and
+/// makes re-pointing it the third exception, on a contributor's request. The reasons are on
+/// [`htmlspec_format::upgrade`].
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AssetRequest {
+    /// Leave each reference to stored bytes as written.
+    Keep,
+    /// Rewrite each reference to the store's current revision of its asset, except in history.
+    Upgrade,
+}
+
+/// One document a walk found, placed where it resolves.
+struct Placed {
+    /// The path as the walk found it, which is how every report names the document.
+    path: PathBuf,
+    /// Where the document resolves: the walked path with every symbolic link followed. Read,
+    /// judged, and written there, so a link to a document is never judged by the link's place.
+    real: PathBuf,
+    /// Whether the resolved document is history: in an archived change, or a run's record.
+    is_history: bool,
+    /// Whether the resolved document is within a change's evidence, which no operation rewrites.
+    is_evidence: bool,
+}
+
+/// The project each directory resolves into, asked once per directory.
+#[derive(Default)]
+struct Places {
+    projects: std::collections::HashMap<PathBuf, Option<ProjectRoot>>,
+}
+
+impl Places {
+    /// Places the document at `path`, judging it by the project its resolved directory belongs to.
+    ///
+    /// A document that cannot be resolved, or resolves into no project, is placed by its path as
+    /// given and has no history to leave alone, as a walk outside any project always had.
+    fn place(&mut self, path: &Path) -> Placed {
+        let real = path.canonicalize().unwrap_or_else(|_| path.to_owned());
+        let directory = crate::project::directory_of(&real);
+        let project = self
+            .projects
+            .entry(directory.clone())
+            .or_insert_with(|| ProjectRoot::resolve(&directory).ok());
+        let (is_history, is_evidence) = match project {
+            Some(project) => (
+                project.is_history(&real),
+                project.is_within_change_evidence(&real),
+            ),
+            None => (false, false),
+        };
+        Placed {
+            path: path.to_owned(),
+            real,
+            is_history,
+            is_evidence,
+        }
+    }
+}
+
 /// Formats documents, or checks whether they are canonical.
 ///
 /// `root` is a file or a directory; `None` means the project, resolved upward, on the
@@ -689,13 +751,11 @@ pub fn format<O: Write, E: Write>(
     root: Option<&Path>,
     mode: FormatMode,
     fallback: FallbackRequest,
+    assets: AssetRequest,
     streams: &mut Streams<O, E>,
 ) -> Outcome {
     let root = subject(root);
     let root = root.as_path();
-    // Resolved once, for the one question the fallback request asks of each document: whether it is
-    // history. A walk outside any project has no history to leave alone.
-    let project = ProjectRoot::resolve(root).ok();
     let documents = match crate::discover::documents(root) {
         Ok(found) => found,
         Err(error) => {
@@ -703,15 +763,21 @@ pub fn format<O: Write, E: Write>(
             return Outcome::OperationalFailure;
         }
     };
+    // Each document is judged where it resolves, by the project it resolves into. **Not by the
+    // project the walk's root resolves into**, which is what this did until PR #80's review: a root
+    // above a project resolves into none, so `format --upgrade-assets` and `format --fallback` given
+    // the directory holding a project rewrote its archived changes and run records, and a link to an
+    // archived document from a living directory was judged as living. Resolving per document closes
+    // both, and the `--fallback` half was a gap before this change.
+    let mut places = Places::default();
+    let placed: Vec<Placed> = documents.iter().map(|path| places.place(path)).collect();
 
     if mode == FormatMode::Write {
-        let records: Vec<&PathBuf> = match &project {
-            Some(project) => documents
-                .iter()
-                .filter(|path| project.is_within_change_evidence(path))
-                .collect(),
-            None => Vec::new(),
-        };
+        let records: Vec<&PathBuf> = placed
+            .iter()
+            .filter(|document| document.is_evidence)
+            .map(|document| &document.path)
+            .collect();
         if !records.is_empty() {
             for record in &records {
                 let _ = streams.failure(&format!(
@@ -729,9 +795,17 @@ pub fn format<O: Write, E: Write>(
     let mut changed: Vec<PathBuf> = Vec::new();
     let mut refused = 0usize;
     let mut failed = 0usize;
+    // The stores this run has already given the current assets, so each is written once.
+    let mut established: Vec<PathBuf> = Vec::new();
 
-    for path in &documents {
-        let source = match std::fs::read_to_string(path) {
+    for Placed {
+        path,
+        real,
+        is_history,
+        ..
+    } in &placed
+    {
+        let source = match std::fs::read_to_string(real) {
             Ok(source) => source,
             Err(error) => {
                 failed += 1;
@@ -740,6 +814,86 @@ pub fn format<O: Write, E: Write>(
             }
         };
 
+        // The store and the prefix are the resolved file's, so a link formats the document it
+        // points at as that document's own references read.
+        let mut store = store_for(real);
+        let prefix = assets_prefix(real, &store);
+        let mut current = source.clone();
+        // Whether `--check` found the document behind the store's current assets. Reported apart
+        // from canonical form, because a canonical document can be behind and the reverse.
+        let mut behind = false;
+
+        // The upgrade, only when asked for and never in history: an archived change renders with
+        // what it was reviewed against, and a run's record is history rather than contract. Before
+        // the fill below, so a reference the upgrade moved is one the fill then finds present.
+        if assets == AssetRequest::Upgrade {
+            if *is_history {
+                let _ = streams.progress(&format!(
+                    "{}: history, so its asset references are left as written",
+                    path.display()
+                ));
+            } else {
+                let upgraded = htmlspec_format::upgrade(&source, &store, &prefix);
+                for blocked in &upgraded.blocked {
+                    let _ = streams.progress(&format!(
+                        "{}: {} is left as written, because the store holds other bytes at {} \
+                         than the bytes that address names: that file was edited or replaced. \
+                         Restore it from version control, or delete it and run `htmlspec format \
+                         --upgrade-assets` again, which writes this program's own copy there",
+                        path.display(),
+                        blocked.was,
+                        blocked.now
+                    ));
+                }
+                if !upgraded.upgraded.is_empty() {
+                    for moved in &upgraded.upgraded {
+                        let _ = streams.progress(&match mode {
+                            FormatMode::Write => format!(
+                                "{}: {} now names the store's current revision, {}",
+                                path.display(),
+                                moved.name,
+                                moved.now
+                            ),
+                            FormatMode::Check => format!(
+                                "{}: {} names {}, and the store's current revision is {}",
+                                path.display(),
+                                moved.name,
+                                moved.was,
+                                moved.now
+                            ),
+                        });
+                    }
+                    match mode {
+                        // The bytes the document now names come from this binary and are written
+                        // into the store, never downloaded.
+                        FormatMode::Write => {
+                            if let Store::Present(contents) = &store {
+                                if !established.contains(&contents.root) {
+                                    if let Err(error) = establish_assets(&contents.root, streams) {
+                                        failed += 1;
+                                        let _ = streams.failure(&error);
+                                        continue;
+                                    }
+                                    established.push(contents.root.clone());
+                                }
+                            }
+                            store = store_for(real);
+                            current = upgraded.rewritten;
+                        }
+                        // Check mode writes nothing, the store included. It reports the document
+                        // as behind and judges its canonical form on what is on disk.
+                        FormatMode::Check => {
+                            behind = true;
+                            let _ = streams.report(&format!(
+                                "{}: references an asset behind the store's current revision\n",
+                                path.display()
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
         // Asset references are filled before canonicalization, so a document that is
         // both unformatted and referencing absent bytes is settled in one pass.
         //
@@ -747,9 +901,7 @@ pub fn format<O: Write, E: Write>(
         // is reported and left alone, because re-pointing an archived document at newer
         // bytes would change what a reviewed artifact renders with — a side effect no
         // contributor asked for by running the formatter.
-        let store = store_for(path);
-        let prefix = assets_prefix(path, &store);
-        let rewritten = htmlspec_format::rewrite(&source, &store, &prefix);
+        let rewritten = htmlspec_format::rewrite(&current, &store, &prefix);
         for change in rewritten.filled() {
             if let htmlspec_format::ReferenceChange::Filled { name, now, .. } = change {
                 let _ = streams.progress(&format!(
@@ -764,10 +916,7 @@ pub fn format<O: Write, E: Write>(
         // canonicalization, which the request's output already satisfies.
         let mut settled = rewritten.rewritten;
         if fallback == FallbackRequest::Apply {
-            if project
-                .as_ref()
-                .is_some_and(|project| project.is_history(path))
-            {
+            if *is_history {
                 let _ = streams.progress(&format!(
                     "{}: history, so its fallback stylesheet is left as written",
                     path.display()
@@ -820,7 +969,11 @@ pub fn format<O: Write, E: Write>(
         };
 
         if outcome.is_canonical {
-            let _ = streams.progress(&format!("{} is canonical", path.display()));
+            if behind {
+                changed.push(path.clone());
+            } else {
+                let _ = streams.progress(&format!("{} is canonical", path.display()));
+            }
             continue;
         }
 
@@ -831,7 +984,8 @@ pub fn format<O: Write, E: Write>(
                 let _ = streams.report(&format!("{}: not canonically formatted\n", path.display()));
             }
             FormatMode::Write => {
-                if let Err(error) = std::fs::write(path, &outcome.canonical) {
+                // Written where the document resolves, which is where it was read from.
+                if let Err(error) = std::fs::write(real, &outcome.canonical) {
                     failed += 1;
                     let _ = streams.failure(&format!("cannot write {}: {error}", path.display()));
                     continue;
@@ -965,6 +1119,35 @@ fn write_document<O: Write, E: Write>(
         return Outcome::OperationalFailure;
     }
 
+    write_rendered(
+        path,
+        kind,
+        |reference| htmlspec_assets::render_kind(kind, subject, reference),
+        assets_root,
+        streams,
+    )
+}
+
+/// Writes one document rendered by `render`, which takes the reference from the document to the
+/// store, then validates what it wrote.
+///
+/// The part of [`write_document`] that does not depend on which template renders the document, so
+/// a runbook's two documents are written, stored against, and checked exactly as a change's are.
+fn write_rendered<O: Write, E: Write>(
+    path: &Path,
+    kind: &str,
+    render: impl FnOnce(&str) -> Option<String>,
+    assets_root: Option<&Path>,
+    streams: &mut Streams<O, E>,
+) -> Outcome {
+    if path.exists() {
+        let _ = streams.failure(&format!(
+            "{} already exists; new will not overwrite a document",
+            path.display()
+        ));
+        return Outcome::OperationalFailure;
+    }
+
     // Where the shared assets live, and how the new document refers to them. The
     // reference is relative, because an absolute one would break the moment the
     // project moved and the whole premise is a file that opens anywhere.
@@ -1000,13 +1183,10 @@ fn write_document<O: Write, E: Write>(
         }
     }
 
-    let document = match htmlspec_assets::render_kind(kind, subject, &reference) {
-        Some(document) => document,
-        None => {
-            // Unreachable: the kind was checked above, before anything was written.
-            let _ = streams.failure(&format!("no template produces the {kind} kind"));
-            return Outcome::OperationalFailure;
-        }
+    let Some(document) = render(&reference) else {
+        // Unreachable for `write_document`, which checked the kind before anything was written.
+        let _ = streams.failure(&format!("no template produces the {kind} kind"));
+        return Outcome::OperationalFailure;
     };
     if let Err(error) = std::fs::write(path, &document) {
         let _ = streams.failure(&format!("cannot write {}: {error}", path.display()));
@@ -2334,6 +2514,52 @@ struct Runbook {
     /// A `Vec` of the kinds found rather than two booleans: the pair is what gets printed and
     /// what goes in the payload, and two flags would each need a name at every use site.
     documents: Vec<&'static str>,
+    /// The release its `VERSION` declares, or `None` where it has none a version can be read from.
+    ///
+    /// runbook-authority's "The project enumerates the runbooks it holds" requires each entry to
+    /// carry what a selector needs, and a version and a title are what a person chooses by. `None`
+    /// rather than a placeholder version, because a runbook predating `VERSION` has no release to
+    /// name, and the payload omits the field rather than inventing one.
+    version: Option<crate::version::RunbookVersion>,
+    /// Its tasks document's title, or its specification's where the tasks document has none.
+    title: Option<String>,
+}
+
+impl Runbook {
+    /// The runbook named `name` in `project`, as an enumeration reports it.
+    fn read(project: &ProjectRoot, name: String) -> Self {
+        // The directory comes from `ProjectRoot::runbook` rather than from a directory entry's own
+        // path: the accessor is the one statement of where a runbook lives, so a location read from
+        // an entry would be a second one, and the two would agree until the day the layout moved.
+        let directory = project.runbook(&name);
+        let documents = RUNBOOK_DOCUMENTS
+            .iter()
+            .filter(|(file, _kind)| directory.join(file).is_file())
+            .map(|(_file, kind)| *kind)
+            .collect();
+        let version = crate::runbook_release::read_version(&directory).ok();
+        // The procedure's title first, because the procedure is what a person runs, and a runbook
+        // without one still has a name its specification states.
+        let title = ["tasks.html", CHANGE_SPECIFICATION]
+            .iter()
+            .find_map(|file| document_title(&directory.join(file)));
+        Self {
+            name,
+            documents,
+            version,
+            title,
+        }
+    }
+}
+
+/// The title a document at `path` projects, or `None` where it is unreadable or has none.
+fn document_title(path: &Path) -> Option<String> {
+    let source = std::fs::read_to_string(path).ok()?;
+    let parsed = htmlspec_parse::parse_document(&source);
+    htmlspec_parse::project(&parsed.document)
+        .model
+        .subject
+        .filter(|title| !title.is_empty())
 }
 
 /// The two documents a runbook holds, and the artifact kind each declares.
@@ -2415,22 +2641,86 @@ fn runbooks(project: &ProjectRoot) -> Vec<Runbook> {
         .flatten()
         .filter(|entry| entry.path().is_dir())
         .map(|entry| entry.file_name().to_string_lossy().into_owned())
-        .map(|name| Runbook {
-            // The directory comes from `ProjectRoot::runbook` rather than from the entry's own
-            // path, which `active_changes` and its callers already do. The difference is not
-            // stylistic: the accessor is the one statement of where a runbook lives, so a
-            // location read from a directory entry here would be a second one — and the two
-            // would agree until the day the layout moved.
-            documents: RUNBOOK_DOCUMENTS
-                .iter()
-                .filter(|(file, _kind)| project.runbook(&name).join(file).is_file())
-                .map(|(_file, kind)| *kind)
-                .collect(),
-            name,
-        })
+        .map(|name| Runbook::read(project, name))
         .collect();
     found.sort_by(|left, right| left.name.cmp(&right.name));
     found
+}
+
+/// The project's runbooks as rows a person chooses between: name, version, documents, and title.
+///
+/// Shared by `list --runbooks` and by `run` named with no runbook, so the two print one table and
+/// cannot disagree about what a runbook is called or which release it is at.
+fn runbook_rows(runbooks: &[Runbook]) -> Vec<String> {
+    let cells: Vec<[String; 4]> = runbooks
+        .iter()
+        .map(|runbook| {
+            [
+                printable(&runbook.name),
+                // Said rather than left blank, as `no documents` is: a gap reads as a rendering
+                // fault, and a runbook with no version is one `run` refuses to start.
+                runbook
+                    .version
+                    .map_or_else(|| String::from("no version"), |version| version.to_string()),
+                if runbook.documents.is_empty() {
+                    // The column says so rather than being blank, exactly as `no tasks` does for a
+                    // change. A directory holding neither document is not a procedure anybody can
+                    // run.
+                    String::from("no documents")
+                } else {
+                    runbook.documents.join(", ")
+                },
+                runbook.title.as_deref().map(printable).unwrap_or_default(),
+            ]
+        })
+        .collect();
+    // Widened to each column's widest cell, for the reason the change table already is: a column
+    // is read down, and a ragged one is read wrong.
+    let widths: [usize; 3] = std::array::from_fn(|column| {
+        cells
+            .iter()
+            .map(|row| row[column].chars().count())
+            .max()
+            .unwrap_or(0)
+    });
+    cells
+        .iter()
+        .map(|[name, version, documents, title]| {
+            format!(
+                "{name:<name_width$}  {version:<version_width$}  {documents:<documents_width$}  {title}",
+                name_width = widths[0],
+                version_width = widths[1],
+                documents_width = widths[2],
+            )
+            .trim_end()
+            .to_owned()
+        })
+        .collect()
+}
+
+/// What `run` prints when it is named with no runbook: the runbooks it could start, and how.
+///
+/// The change's design, decision 18. A refusal that names the candidates, as `archive` with no
+/// change names the active ones, not a second listing command: runbook-authority's "The project
+/// enumerates the runbooks it holds" keeps the listing in `list --runbooks`.
+pub fn runbooks_to_start(project: &ProjectRoot) -> String {
+    let found = runbooks(project);
+    if found.is_empty() {
+        return format!(
+            "run needs a runbook, and {} holds none. Create one with `htmlspec new runbook <name>`",
+            project.runbooks().display()
+        );
+    }
+    let rows: Vec<String> = runbook_rows(&found)
+        .into_iter()
+        .map(|row| format!("  {row}"))
+        .collect();
+    format!(
+        "run needs a runbook. This project's runbooks:\n{}\nStart a run with `htmlspec run \
+         <runbook> --as <record>`, or report on a runbook's runs with `htmlspec run <runbook> \
+         --check`",
+        rows.join("\n")
+    )
 }
 
 /// Enumerates what a project holds.
@@ -2600,13 +2890,24 @@ fn list_in<O: Write, E: Write>(
             // to guess at the field. `documents` is always present, empty where a runbook
             // directory holds neither — an empty array is the fact, unlike the omitted
             // completion above, which distinguishes an unwritten document from finished work.
+            // `version` and `title` are present where the runbook has them and omitted where it
+            // does not, as `completion` is for a change: an absent field says the runbook has no
+            // VERSION, where a placeholder would be a version nobody released.
             Enumerated::Runbooks(runbooks) => serde_json::json!({
                 "runbooks": runbooks
                     .iter()
-                    .map(|runbook| serde_json::json!({
-                        "name": runbook.name,
-                        "documents": runbook.documents,
-                    }))
+                    .map(|runbook| {
+                        let mut entry = serde_json::Map::new();
+                        entry.insert("name".into(), runbook.name.clone().into());
+                        entry.insert("documents".into(), runbook.documents.clone().into());
+                        if let Some(version) = runbook.version {
+                            entry.insert("version".into(), version.to_string().into());
+                        }
+                        if let Some(title) = &runbook.title {
+                            entry.insert("title".into(), title.clone().into());
+                        }
+                        serde_json::Value::Object(entry)
+                    })
                     .collect::<Vec<_>>(),
             }),
         };
@@ -2628,32 +2929,13 @@ fn list_in<O: Write, E: Write>(
             }
         }
         Enumerated::Runbooks(runbooks) => {
-            // Widened to the widest name, for the reason the change table already is: the second
-            // column is read down, and a ragged one is read wrong.
-            let widest_name = runbooks
-                .iter()
-                .map(|runbook| runbook.name.chars().count())
-                .max()
-                .unwrap_or(0);
-            for runbook in runbooks {
-                let row = format!(
-                    "{:<widest_name$}  {}",
-                    runbook.name,
-                    if runbook.documents.is_empty() {
-                        // The column says so rather than being blank, exactly as `no tasks`
-                        // does for a change: a gap reads as a rendering fault, and this is a
-                        // fact about the runbook. A directory holding neither document is not a
-                        // procedure anybody can run.
-                        String::from("no documents")
-                    } else {
-                        runbook.documents.join(", ")
-                    }
-                );
-                // No completion fraction, deliberately. A canonical procedure's tasks stay
-                // `todo` because nobody works them — a run copies the document and advances the
-                // copy — so the column would read `0/9` on every runbook at every moment, and a
-                // column that never moves teaches a reader to ignore it.
-                let _ = streams.report(&format!("{}\n", row.trim_end()));
+            // No completion fraction, deliberately. A canonical procedure's tasks stay `todo`
+            // because nobody works them — a run copies the document and advances the copy — so
+            // the column would read `0/9` on every runbook at every moment, and a column that
+            // never moves teaches a reader to ignore it. A version and a title are what a person
+            // chooses by instead.
+            for row in runbook_rows(runbooks) {
+                let _ = streams.report(&format!("{row}\n"));
             }
         }
         Enumerated::Changes(changes) => {
@@ -5512,6 +5794,161 @@ fn new_change_in<O: Write, E: Write>(
         CHANGE_DOCUMENTS.len()
     ));
     Outcome::Success
+}
+
+/// The version a runbook `new runbook` writes is released at, until its first change.
+const FIRST_RUNBOOK_VERSION: &str = "0.1.0";
+
+/// Creates a runbook: its specification, its tasks document, its `VERSION`, and its changelog.
+///
+/// The change's design, decision 7. The project is resolved from the working directory, as
+/// [`new_change`] resolves it, because the runbook's location is the project's to decide, and the
+/// name goes through [`ProjectRoot::named_runbook`], which refuses anything but a plain name.
+///
+/// Every unit the two documents hold is `unchanged` and every task `todo`: runbook-authority's "The
+/// canonical procedure carries no completion state" requires it of a runbook, and this operation is
+/// the second exception that requirement names beside the one that starts a run. The templates'
+/// example identifiers and placeholder summaries are reported by validation, as every template's are.
+pub fn new_runbook<O: Write, E: Write>(
+    name: &str,
+    subject: Option<&str>,
+    streams: &mut Streams<O, E>,
+) -> Outcome {
+    let project = match ProjectRoot::resolve(Path::new(".")) {
+        Ok(project) => project,
+        Err(error) => {
+            let _ = streams.failure(&format!(
+                "{error}. A runbook belongs to a project, because that is where its documents find \
+                 the asset store they render against and where its runs are recorded"
+            ));
+            return Outcome::OperationalFailure;
+        }
+    };
+    new_runbook_in(&project, name, subject, streams)
+}
+
+/// Creates a runbook in a named project, for the reason [`new_change_in`] takes its project.
+fn new_runbook_in<O: Write, E: Write>(
+    project: &ProjectRoot,
+    name: &str,
+    subject: Option<&str>,
+    streams: &mut Streams<O, E>,
+) -> Outcome {
+    let directory = match project.new_runbook(name) {
+        Ok(directory) => directory,
+        Err(error) => {
+            let _ = streams.failure(&error.to_string());
+            return Outcome::OperationalFailure;
+        }
+    };
+    // Refused whole, for the reason `new change` refuses an existing directory: a runbook half
+    // written into a directory that held something is half created and half refused. Asked of the
+    // entry itself rather than of what it points at: `exists` follows a link, so a dangling one read
+    // as nothing there, and the cleanup below once removed the contributor's link.
+    if std::fs::symlink_metadata(&directory).is_ok() {
+        let _ = streams.failure(&format!(
+            "{} already exists; new will not write into an existing runbook directory",
+            directory.display()
+        ));
+        return Outcome::OperationalFailure;
+    }
+
+    let subject = subject.unwrap_or(name);
+
+    // **All four files, or none.** Both documents are rendered and validated before the runbook's
+    // directory exists, against the store they will render with, and a failure after that removes
+    // the directory. PR #80's review found the earlier order, writing each document and then
+    // validating it, left a directory holding one document after the second failed, and that
+    // directory was a runbook nothing could run or create again.
+    let assets = project.assets();
+    let Some(reference) = relative_reference(&directory, &assets) else {
+        let _ = streams.failure(&format!(
+            "cannot express {} relative to {}",
+            assets.display(),
+            directory.display()
+        ));
+        return Outcome::OperationalFailure;
+    };
+    if let Err(error) = establish_assets(&assets, streams) {
+        let _ = streams.failure(&error);
+        return Outcome::OperationalFailure;
+    }
+    let mut files: Vec<(PathBuf, String)> = Vec::new();
+    for template in htmlspec_assets::RUNBOOK_TEMPLATES {
+        let path = directory.join(template.file);
+        let document = htmlspec_assets::render_runbook(template, subject, &reference);
+        let report = validate_source(&document, &path, &mut Reach::default(), Strictness::Default);
+        if !report.is_accepted() {
+            let _ = streams.failure(&format!(
+                "the runbook's {} would not validate, so nothing was written:\n{}",
+                template.file,
+                htmlspec_validate::render_human(&report)
+            ));
+            return Outcome::OperationalFailure;
+        }
+        files.push((path, document));
+    }
+    // The pair a carried runbook identifies its release by: runbook-authority's "A runbook carries
+    // an independently checked release version". Without both, `preflight` and `run` refuse it.
+    files.push((
+        directory.join(crate::runbook_release::VERSION_FILE),
+        format!("{FIRST_RUNBOOK_VERSION}\n"),
+    ));
+    files.push((
+        directory.join(crate::runbook_release::CHANGELOG_FILE),
+        first_runbook_changelog(),
+    ));
+
+    // The runbook's own directory is made with `create_dir`, which fails rather than reusing an
+    // entry that appeared since the check above, so a directory removed below is one this run made.
+    if let Err(error) =
+        std::fs::create_dir_all(project.runbooks()).and_then(|()| std::fs::create_dir(&directory))
+    {
+        let _ = streams.failure(&format!(
+            "cannot create {}: {error}. Nothing was written",
+            directory.display()
+        ));
+        return Outcome::OperationalFailure;
+    }
+    let written = files
+        .iter()
+        .try_for_each(|(path, contents)| std::fs::write(path, contents));
+    if let Err(error) = written {
+        let _ = std::fs::remove_dir_all(&directory);
+        let _ = streams.failure(&format!(
+            "cannot write {}: {error}. Nothing was left behind",
+            directory.display()
+        ));
+        return Outcome::OperationalFailure;
+    }
+    for template in htmlspec_assets::RUNBOOK_TEMPLATES {
+        let _ = streams.report(&format!(
+            "{}: created a {}\n",
+            directory.join(template.file).display(),
+            template.kind
+        ));
+    }
+
+    let _ = streams.report(&format!(
+        "{}: created a runbook at {FIRST_RUNBOOK_VERSION}. Replace its example content, check it \
+         with `htmlspec preflight {name}`, and start a run with `htmlspec run {name} --as \
+         <record>`.\n",
+        directory.display()
+    ));
+    Outcome::Success
+}
+
+/// The changelog a new runbook starts with: what a release is, and a heading for the first one.
+fn first_runbook_changelog() -> String {
+    format!(
+        "# Changelog\n\n\
+         What this runbook's releases are. A release is the pair of canonical documents, \
+         `specification.html` and `tasks.html`, as they stood when the project archived them, and \
+         a version identifies one such pair. A run's record is history rather than procedure, so \
+         adding or editing one is not a release.\n\n\
+         ## {FIRST_RUNBOOK_VERSION}\n\n\
+         The first release of this runbook.\n"
+    )
 }
 
 /// What a bootstrap does, as plain data.
@@ -9628,7 +10065,13 @@ mod tests {
         let path = scratch.write("doc.html", unformatted);
 
         let (outcome, out, _) = run(Form::Human, |s| {
-            format(Some(&path), FormatMode::Check, FallbackRequest::Leave, s)
+            format(
+                Some(&path),
+                FormatMode::Check,
+                FallbackRequest::Leave,
+                AssetRequest::Keep,
+                s,
+            )
         });
         assert_eq!(outcome, Outcome::DocumentViolation);
         assert!(out.contains("not canonically formatted"), "{out}");
@@ -9645,7 +10088,13 @@ mod tests {
         let scratch = Scratch::new("format-check-clean");
         let path = scratch.write("doc.html", &valid_document());
         let (outcome, _, _) = run(Form::Human, |s| {
-            format(Some(&path), FormatMode::Check, FallbackRequest::Leave, s)
+            format(
+                Some(&path),
+                FormatMode::Check,
+                FallbackRequest::Leave,
+                AssetRequest::Keep,
+                s,
+            )
         });
         assert_eq!(outcome, Outcome::Success);
     }
@@ -9669,6 +10118,7 @@ mod tests {
                 Some(&scratch.0),
                 FormatMode::Write,
                 FallbackRequest::Leave,
+                AssetRequest::Keep,
                 s,
             )
         });
@@ -9701,7 +10151,13 @@ mod tests {
         let path = scratch.write("doc.html", ambiguous);
 
         let (outcome, _, err) = run(Form::Human, |s| {
-            format(Some(&path), FormatMode::Write, FallbackRequest::Leave, s)
+            format(
+                Some(&path),
+                FormatMode::Write,
+                FallbackRequest::Leave,
+                AssetRequest::Keep,
+                s,
+            )
         });
         assert_eq!(outcome, Outcome::OperationalFailure);
         assert!(err.contains("refusing to format"), "{err}");

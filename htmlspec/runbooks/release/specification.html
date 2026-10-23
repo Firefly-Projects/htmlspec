@@ -15,8 +15,8 @@
         .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
       }
     </style>
-    <link href="../../assets/sha256-e4f5de7cecc4f691/htmlspec.css" rel="stylesheet">
-    <link href="../../assets/sha256-0350261bb5666167/htmlspec-print.css" media="print" rel="stylesheet">
+    <link href="../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
   </head>
   <body>
     <a class="hs-skip-link" href="#hs-content">Skip to content</a>
@@ -215,11 +215,23 @@
           </section>
           <section class="requirement" id="req-the-pinned-toolchain-is-what-runs" data-change="unchanged">
             <h3>The toolchain the flake pins is the one the run uses <span class="hs-id">req-the-pinned-toolchain-is-what-runs</span></h3>
-            <p>A run MUST start with <code>cargo</code> and <code>rustc</code> resolving to the development shell <code>flake.nix</code> pins, and MUST NOT start from a toolchain installed beside it.</p>
-            <p data-field="note">preflight/v1 {"kind":"toolchain","manifest":"flake.nix","shell":"default","tools":["cargo","rustc"]}</p>
+            <p>A run MUST start with <code>cargo</code>, <code>rustc</code>, and <code>python3</code> resolving to the development shell <code>flake.nix</code> pins, and MUST NOT start from a toolchain or an interpreter installed beside it.</p>
+            <p data-field="note">preflight/v1 {"kind":"toolchain","manifest":"flake.nix","shell":"default","tools":["cargo","rustc","python3"]}</p>
             <p>The declaration names the manifest rather than a version, and that is the point of it: <code>rust-toolchain.toml</code> already pins the compiler, and a version restated here would be a second pin that drifts from the first. What the check establishes is provenance — that the executables this run invokes are the ones the pin selects.</p>
             <p><strong>This is stricter than the procedure strictly needs, and the cost is named rather than discovered at step three.</strong> A contributor whose <code>cargo</code> comes from rustup reading the same <code>rust-toolchain.toml</code> has a working toolchain and will be refused, because nothing observable from outside distinguishes it from an unpinned one. The remedy the refusal names is to enter the shell; the alternative was a check that accepts any <code>cargo</code> and therefore establishes nothing about the pin. The <code>~/.cargo/bin/cargo</code> broken symlink this procedure has met is the case that makes the distinction worth paying for: it resolves, and it does not run.</p>
-            <p><code>python3</code> and <code>git</code> are deliberately not declared. A tool check states an exact version, and this procedure needs any <code>python3</code> whose standard library reads a file — pinning one here would be a second dependency language beside the flake, for a constraint the procedure does not have. They stay obligations of the run, stated in the procedure's own prose and recorded by whoever runs it.</p>
+            <p><code>python3</code> is declared beside the compiler because the shell supplies it and a step cannot run without it. On macOS the <code>python3</code> outside the shell is <code>/usr/bin/python3</code>, a stub that runs the interpreter the developer tools at <code>DEVELOPER_DIR</code> hold, and the shell points <code>DEVELOPER_DIR</code> at the Nix SDK, which holds none. The stub resolves and then exits with "error: tool 'python3' not found". This runbook's 0.2.0 changelog records the release check failing that way, and the publish runbook's first run met it at its second step. The <code>toolchain</code> form states no version, so declaring <code>python3</code> in it pins nothing the flake does not already pin.</p>
+            <p><code>git</code> is deliberately not declared. A tool check states an exact version, and this procedure needs any <code>git</code> that stages a file, and the shell does not supply one, so the <code>toolchain</code> form would refuse every run. It stays an obligation of the run, stated in the procedure's own prose and recorded by whoever runs it.</p>
+            <article class="scenario" id="scenario-an-interpreter-outside-the-shell" data-change="unchanged">
+              <h4>An interpreter that resolves outside the shell</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A macOS machine whose search path resolves <code>python3</code> to <code>/usr/bin/python3</code>, the developer-tools stub, because the run was started outside <code>nix develop</code>.</dd>
+                <dt>When</dt>
+                <dd>The prerequisites are checked before the run starts.</dd>
+                <dt>Then</dt>
+                <dd>The check reports that <code>python3</code> resolves to <code>/usr/bin/python3</code>, which is not inside the declared environment, and the run does not start.</dd>
+              </dl>
+            </article>
             <article class="scenario" id="scenario-a-shadowed-toolchain" data-change="unchanged">
               <h4>A toolchain installed beside the pinned one</h4>
               <dl>
@@ -266,8 +278,8 @@
           </section>
           <section class="risk" id="risk-the-inputs-are-prose" data-change="unchanged">
             <h3>The inputs are prose that nothing checks <span class="hs-id">risk-the-inputs-are-prose</span></h3>
-            <p>This procedure requires a toolchain, an interpreter, a clean working tree, and a repository whose project is in place. Only the first is checked before a run starts. The other three are prose in the tasks document, so a run on a machine missing one discovers it partway through — at the step that needs it, with the version already advanced.</p>
-            <p data-field="mitigation">Partly held down. The toolchain is a machine requirement, <code>req-the-pinned-toolchain-is-what-runs</code>, which preflight checks and which gates starting a run. A runbook has no notion of an input, which is an open finding of the change that established runbooks, so the other three stay prose. The pinned development shell supplies the toolchain and not the interpreter: <code>flake.nix</code>'s shell lists no <code>python3</code>, so a run inside it uses whatever <code>python3</code> the machine provides.</p>
+            <p>This procedure requires a toolchain, an interpreter, a clean working tree, and a repository whose project is in place. The first two are checked before a run starts. The other two are prose in the tasks document, so a run on a machine missing one discovers it partway through — at the step that needs it, with the version already advanced.</p>
+            <p data-field="mitigation">Partly held down. The toolchain and the interpreter are a machine requirement, <code>req-the-pinned-toolchain-is-what-runs</code>, which preflight checks and which gates starting a run. The pinned development shell supplies both, and preflight refuses a <code>python3</code> from outside it, because on macOS the system's cannot run inside that shell. A runbook has no notion of an input, which is an open finding of the change that established runbooks, so the other two stay prose.</p>
           </section>
         </section>
         <section id="hs-evidence">

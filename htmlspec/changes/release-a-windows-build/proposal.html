@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Release a native Windows build of htmlspec</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Release a native Windows build of htmlspec</h1>
+        <p>htmlspec 1.0 builds for macOS and Linux, and reaches Windows only through WSL, where the static Linux build runs unchanged. This change would add a native Windows build: a fifth release target, the few places the code assumes Unix made to work on Windows, and Windows install instructions beside the others. It is not scheduled. It was drafted on 2026-10-21 because the contributor asked for the proposal and set the work aside, and it waits until someone needs htmlspec on Windows outside WSL.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Release a native Windows build of htmlspec</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-status">
+          <h2>Status: not scheduled</h2>
+          <p>This change is a proposal on file, not planned work. Nothing in it is implemented, and no release is waiting for it. It records what a Windows build would take, so the decision to schedule it can be made on its cost rather than on a guess. Schedule it when a reader needs htmlspec on Windows without WSL, and not before: until then, every target added is a target to keep green.</p>
+        </section>
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>The documents htmlspec writes are platform-neutral: HTML, a stylesheet, and scripts, read in any browser. The program that writes and checks them is not yet. A release builds four targets, <code>aarch64-apple-darwin</code>, <code>x86_64-apple-darwin</code>, <code>x86_64-unknown-linux-musl</code>, and <code>aarch64-unknown-linux-musl</code>, and the README's install section offers Nix, Homebrew, crates.io, and a binary for macOS or Linux.</p>
+          <p>A reader on Windows has one route today: WSL, where the Linux musl binary runs as it is, because it is statically linked and needs nothing from the system. That route works, and it was the answer given when the question first came up. It is also a second operating system to install before a first command, and the coding agents htmlspec serves increasingly run on Windows itself, outside WSL. An agent in a Windows terminal cannot run a Linux binary.</p>
+          <p>The need is not yet measured. One person asked, and WSL answered them. That is the reason this proposal is on file rather than scheduled.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <ul>
+            <li><strong>A fifth release target.</strong> <code>x86_64-pc-windows-msvc</code>, built on a Windows runner and statically linked against the C runtime, packed as <code>htmlspec-X.Y.Z-x86_64-pc-windows-msvc.zip</code> with the binary, <code>LICENSE</code>, and <code>THIRD-PARTY-LICENSES</code>, and listed in <code>SHA256SUMS</code> beside the four tarballs.</li>
+            <li><strong>The code builds and its tests pass on Windows.</strong> The runtime code already gives each of its two Unix-only operations a fallback. The tests do not: four call sites use <code>std::os::unix</code> without a guard, so two test binaries do not compile on Windows, the preflight tests fake a tool with a shell script, and one test makes a move fail with a lock Windows ignores on a directory.</li>
+            <li><strong>Preflight finds a Windows program.</strong> Its search of <code>PATH</code> looks for the bare name, so it would miss <code>git.exe</code>, and on Windows it treats every file as executable. It would learn <code>PATHEXT</code>.</li>
+            <li><strong>One home and configuration lookup.</strong> Preflight's home scope reads only <code>HOME</code>, and the store registry only <code>XDG_CONFIG_HOME</code> or <code>HOME</code>, so on Windows a skill in the home scope is not found, and <code>htmlspec store</code> and every <code>--store</code> find no registry. Both would read one lookup that knows Windows.</li>
+            <li><strong>Line endings cannot corrupt the asset store.</strong> A stored asset is named by the digest of its bytes, and git on Windows converts line endings on checkout by default, which changes those bytes. This repository gains a <code>.gitattributes</code>, and the design decides whether <code>htmlspec init</code> writes one for every project.</li>
+            <li><strong>Windows in the checks.</strong> The workspace tests run on a Windows runner, in a workflow of their own, because the check workflow runs only the one suite command a contributor runs and that command does not run on Windows. They run always in the public repository, and in the private one only on a pull request labelled <code>release-check</code>.</li>
+            <li><strong>Install instructions.</strong> The README gains the zip, how to check it against <code>SHA256SUMS</code> in PowerShell, and <code>cargo install</code> on Windows, and keeps WSL as the route that needs nothing new.</li>
+          </ul>
+        </section>
+        <section id="hs-working">
+          <h2>What working looks like</h2>
+          <p>On a Windows machine with no WSL, a reader downloads the zip from the release, checks it with <code>Get-FileHash</code> against <code>SHA256SUMS</code>, and runs <code>htmlspec.exe --version</code>, which prints <code>htmlspec X.Y.Z (revision)</code>. In an empty folder, <code>htmlspec init --tools claude</code>, then <code>htmlspec new change add-dark-mode</code>, then <code>htmlspec validate</code>, reports no errors. The new proposal opens in Edge from disk, styled, with its figures drawn. A runbook whose preflight declares a <code>tool</code> check for <code>git</code> finds <code>git.exe</code>, and <code>htmlspec store add portable &lt;path&gt;</code> registers a store that <code>htmlspec --store portable preflight release</code> then finds. <code>cargo install --locked htmlspec-cli</code> builds the same program from crates.io.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <ul>
+            <li><strong>WSL only, written down.</strong> Keep four targets and say in the README that Windows means WSL and the Linux build. This costs nothing and is the right answer until the need is measured, which is why this change is not scheduled.</li>
+            <li><strong>crates.io only.</strong> Make the code compile and pass on Windows, and let <code>cargo install</code> be the channel. It needs a Rust toolchain on the reader's machine, which most Windows readers do not have.</li>
+            <li><strong>Cross-compile from Linux.</strong> Build the Windows binary on a Linux runner with a cross toolchain. It saves the Windows runner's cost, but the binary is then never run where it was built, and the release workflow runs each binary on its own platform before packing it.</li>
+          </ul>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <p>In scope: the <code>x86_64-pc-windows-msvc</code> target, the zip, the code and test changes that target needs, the gated Windows checks, and the README.</p>
+          <p>Not in scope:</p>
+          <ul>
+            <li><strong>Nix and Homebrew on Windows.</strong> Neither runs natively there. The Nix development shell, the <code>toolchain</code> preflight check that reads it, and the Homebrew formula stay Unix channels. On Windows, the <code>toolchain</code> check refuses with an explanation rather than pretending.</li>
+            <li><strong>Windows on ARM</strong> (<code>aarch64-pc-windows-msvc</code>), until the x86_64 build has a reader.</li>
+            <li><strong>An installer and code signing.</strong> An unsigned executable draws a SmartScreen warning. Signing costs a certificate and a secret, and is an open question in the design.</li>
+            <li><strong>winget and Scoop.</strong> Each is a channel of its own, with its own repository and review, and belongs in a follow-up once a reader asks for one.</li>
+            <li><strong>The suite on Windows.</strong> <code>scripts/check</code> is a shell script around Nix, and stays the Linux definition of a healthy revision. Windows runs the workspace tests, which is what can differ there.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>
