@@ -1,0 +1,367 @@
+#!/usr/bin/env python3
+"""The README's install and upgrade blocks, checked offline, and printed for the jobs that run them.
+
+What it holds the blocks to
+---------------------------
+The README installs and upgrades htmlspec with commands a reader pastes. They are its own words
+and not the contract, but a reader who pastes a broken one blames themselves, so the commands are
+checked. Each block a reader runs is marked by a comment on the line before its fence, `install:`
+for a block that installs and `upgrade:` for one that upgrades, and the two share one set of names:
+
+    <!-- install: linux-release -->
+    ```sh
+    ...
+    ```
+
+This script fails when:
+
+  - an install block is missing: `linux-release` and `linux-homebrew`, which the release workflow
+    runs, and `cargo` and `macos-homebrew`, the routes the README gives beside them;
+  - an upgrade block is missing: `upgrade-homebrew`, `upgrade-cargo`, `upgrade-nix`, and
+    `upgrade-project`, or one of them is marked as an install block. The upgrade blocks are parsed
+    and never run, because running them would upgrade the machine the check runs on;
+  - a name marks two blocks, or a marker has no fenced block after it;
+  - `bash -n` refuses a marked block;
+  - the Linux block unpacks or installs before it checks the download, that is, it has no
+    `sha256sum --check … SHA256SUMS` line ahead of its `tar -x` and `install` lines;
+  - the Linux block could pick a target the release does not build, read from
+    `scripts/release_facts.py`, where the release reads it;
+  - the Linux block's reading of `SHA256SUMS` no longer finds each Linux tarball in the file
+    `scripts/pack-release --sums` writes.
+
+The last check writes a `SHA256SUMS` the way a release does, over empty tarballs named for every
+target, and runs the block's own line that picks a name out of it, for each Linux architecture.
+It needs no network, so it runs on every pull request and inside the Nix sandbox. What only a
+published release can show, the downloads, is the release workflow's `install` job, which prints
+the block with `--print` and runs it verbatim. `--print` prints only an install block: an upgrade
+block upgrades whatever machine runs it, so it is checked here and never handed to a job.
+
+Usage:
+  scripts/check-readme-install               check README.md
+  scripts/check-readme-install --print NAME  print the body of the install block marked NAME
+  scripts/check-readme-install --self-test   prove each check refuses what it should
+  scripts/check-readme-install --readme P    check, or print from, another file
+
+Exit 0 when every check passes, 1 when one fails, 2 on a usage error.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from release_facts import TARGETS  # noqa: E402
+
+# Every route the README gives. The release workflow extracts and runs the first two, so a README
+# without them breaks the release. The other two are what a reader on cargo or macOS pastes, and a
+# route that quietly vanished from the README is the gap this script exists to catch.
+REQUIRED = ("linux-release", "linux-homebrew", "cargo", "macos-homebrew")
+
+# The upgrade route of each channel the README installs from, apart from the Linux release block,
+# which is its own upgrade: running it again installs the newer release. And the steps a project
+# takes once its binary is newer.
+REQUIRED_UPGRADE = ("upgrade-homebrew", "upgrade-cargo", "upgrade-nix", "upgrade-project")
+
+# What `uname -m` prints on the machines the Linux builds are for.
+LINUX_MACHINES = ("x86_64", "aarch64")
+
+MARKER = re.compile(r"^<!-- (install|upgrade): ([a-z0-9][a-z0-9-]*) -->\s*$")
+FENCE = re.compile(r"^```(sh|bash)\s*$")
+TARGET_LINE = re.compile(r'target="\$\(uname -m\)-([a-z0-9_]+(?:-[a-z0-9_]+)+)"')
+CHECKSUM_LINE = re.compile(r"^\s*sha256sum --check\b.*\bSHA256SUMS\b", re.MULTILINE)
+UNPACK_LINE = re.compile(r"^\s*(tar\s+-[a-z]*x|install\s)", re.MULTILINE)
+PICK_LINE = re.compile(r'^\s*file="\$\(grep .*SHA256SUMS.*\)"\s*$', re.MULTILINE)
+
+
+class Fault(Exception):
+    """A check that failed, with the sentence that says why."""
+
+
+def marked(text: str) -> dict[str, tuple[str, str]]:
+    """Every marked block, by name, with its kind, `install` or `upgrade`, and its body.
+
+    A marker must sit on the line just before a sh fence. Install and upgrade blocks share one set
+    of names, so a name marks one block whichever kind it is.
+    """
+    found: dict[str, tuple[str, str]] = {}
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        marker = MARKER.match(line)
+        if not marker:
+            continue
+        kind, name = marker.group(1), marker.group(2)
+        if name in found:
+            raise Fault(f"`{kind}: {name}` marks two blocks; each name marks one")
+        if index + 1 >= len(lines) or not FENCE.match(lines[index + 1]):
+            raise Fault(f"`{kind}: {name}` is not followed by a ```sh fence on the next line")
+        body: list[str] = []
+        for following in lines[index + 2:]:
+            if following.startswith("```"):
+                break
+            body.append(following)
+        else:
+            raise Fault(f"`{kind}: {name}` opens a fence that never closes")
+        found[name] = (kind, "\n".join(body) + "\n")
+    return found
+
+
+def blocks(text: str) -> dict[str, str]:
+    """Every marked block's body, by name."""
+    return {name: body for name, (_, body) in marked(text).items()}
+
+
+def check_syntax(label: str, body: str) -> None:
+    result = subprocess.run(["bash", "-n"], input=body, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise Fault(f"`{label}` is refused by bash -n: {result.stderr.strip()}")
+
+
+def check_targets(body: str) -> str:
+    """The suffix the Linux block appends to `uname -m`, held to the targets a release builds."""
+    match = TARGET_LINE.search(body)
+    if not match:
+        raise Fault('`install: linux-release` sets no target="$(uname -m)-…", so nothing checks it')
+    suffix = match.group(1)
+    for machine in LINUX_MACHINES:
+        if f"{machine}-{suffix}" not in TARGETS:
+            raise Fault(
+                f"`install: linux-release` would ask for {machine}-{suffix}, "
+                f"and the release builds {', '.join(TARGETS)}"
+            )
+    return suffix
+
+
+def check_checksum_first(body: str) -> None:
+    """The Linux block checks the download against SHA256SUMS before it unpacks or installs it."""
+    checksum = CHECKSUM_LINE.search(body)
+    if not checksum:
+        raise Fault("`install: linux-release` has no `sha256sum --check … SHA256SUMS` line, "
+                    "so it would install a download nobody checked")
+    unpack = UNPACK_LINE.search(body)
+    if unpack and unpack.start() < checksum.start():
+        raise Fault("`install: linux-release` unpacks or installs before its `sha256sum --check` line")
+
+
+def check_sums(body: str, suffix: str) -> None:
+    """The block's own line that reads SHA256SUMS finds each Linux tarball pack-release lists."""
+    pick = PICK_LINE.search(body)
+    if not pick:
+        raise Fault('`install: linux-release` has no file="$(grep … SHA256SUMS …)" line to check')
+    with tempfile.TemporaryDirectory() as scratch:
+        out = Path(scratch)
+        for target in TARGETS:
+            (out / f"htmlspec-0.0.0-{target}.tar.gz").write_bytes(target.encode())
+        packed = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "pack-release"), "--sums", str(out)],
+            capture_output=True, text=True,
+        )
+        if packed.returncode != 0:
+            raise Fault(f"pack-release --sums failed: {packed.stderr.strip()}")
+        for machine in (*LINUX_MACHINES, "riscv64"):
+            target = f"{machine}-{suffix}"
+            script = f'set -eu\ntarget="{target}"\n{pick.group(0).strip()}\nprintf %s "$file"\n'
+            ran = subprocess.run(["bash", "-c", script], cwd=out, capture_output=True, text=True)
+            picked = ran.stdout
+            expected = f"htmlspec-0.0.0-{target}.tar.gz" if target in TARGETS else ""
+            if picked != expected:
+                raise Fault(
+                    f"`install: linux-release` picks {picked!r} out of SHA256SUMS for {machine}, "
+                    f"where pack-release lists {expected!r}"
+                )
+
+
+def block_to_print(text: str, name: str) -> str:
+    """The body of the install block marked NAME, for a job that runs it verbatim.
+
+    Only an install block is printed. An upgrade block upgrades whatever machine runs it, so
+    nothing that runs what this prints may be handed one.
+    """
+    every = marked(text)
+    if name not in every:
+        raise LookupError(f"no block is marked `install: {name}`")
+    kind, body = every[name]
+    if kind != "install":
+        raise Fault(f"`{kind}: {name}` is an upgrade block, and --print prints only install "
+                    "blocks: an upgrade block is checked and never run")
+    return body
+
+
+def check(text: str) -> list[str]:
+    """Every fault in a README's install blocks, or none."""
+    try:
+        every = marked(text)
+    except Fault as fault:
+        return [str(fault)]
+    found = {name: body for name, (_, body) in every.items()}
+    faults = []
+    for kind, required in (("install", REQUIRED), ("upgrade", REQUIRED_UPGRADE)):
+        for name in required:
+            if name not in every:
+                faults.append(f"no block is marked `{kind}: {name}`")
+            elif every[name][0] != kind:
+                faults.append(f"`{name}` is marked `{every[name][0]}:`, and it is one of the "
+                              f"README's {kind} blocks: mark it `{kind}: {name}`")
+    for name, (kind, body) in every.items():
+        try:
+            check_syntax(f"{kind}: {name}", body)
+        except Fault as fault:
+            faults.append(str(fault))
+    if "linux-release" in found:
+        try:
+            check_checksum_first(found["linux-release"])
+            suffix = check_targets(found["linux-release"])
+            check_sums(found["linux-release"], suffix)
+        except Fault as fault:
+            faults.append(str(fault))
+    return faults
+
+
+GOOD = """# A README
+<!-- install: linux-release -->
+```sh
+(
+  set -eu
+  target="$(uname -m)-unknown-linux-musl"
+  file="$(grep -- "-$target.tar.gz\\$" SHA256SUMS | cut -d' ' -f3)"
+  sha256sum --check --ignore-missing SHA256SUMS
+  tar -xzf "$file"
+  install -m 755 htmlspec "$HOME/.local/bin/htmlspec"
+)
+```
+<!-- install: linux-homebrew -->
+```sh
+brew install example/tap/htmlspec
+```
+<!-- install: cargo -->
+```sh
+cargo install --locked htmlspec-cli
+```
+<!-- install: macos-homebrew -->
+```sh
+brew install example/tap/htmlspec
+```
+<!-- upgrade: upgrade-homebrew -->
+```sh
+brew upgrade htmlspec
+```
+<!-- upgrade: upgrade-cargo -->
+```sh
+cargo install --locked htmlspec-cli
+```
+<!-- upgrade: upgrade-nix -->
+```sh
+nix profile upgrade htmlspec
+```
+<!-- upgrade: upgrade-project -->
+```sh
+htmlspec init --tools claude
+htmlspec validate
+```
+"""
+
+
+def self_test() -> list[str]:
+    """Each check refuses the README it exists for, and the good README passes."""
+    cases = {
+        "a good README passes": (GOOD, None),
+        "a missing Homebrew block": (GOOD.replace("<!-- install: linux-homebrew -->", ""), "linux-homebrew"),
+        "a missing cargo block": (GOOD.replace("<!-- install: cargo -->", ""), "`install: cargo`"),
+        "a missing macOS block": (GOOD.replace("<!-- install: macos-homebrew -->", ""), "macos-homebrew"),
+        "a syntax error": (GOOD.replace("tar -xzf \"$file\"", "if then fi"), "bash -n"),
+        "no checksum line": (GOOD.replace("  sha256sum --check --ignore-missing SHA256SUMS\n", ""),
+                             "nobody checked"),
+        "unpacking before the checksum": (
+            GOOD.replace("  sha256sum --check --ignore-missing SHA256SUMS\n  tar -xzf \"$file\"\n",
+                         "  tar -xzf \"$file\"\n  sha256sum --check --ignore-missing SHA256SUMS\n"),
+            "before its"),
+        "a target the release does not build": (GOOD.replace("unknown-linux-musl", "unknown-linux-gnu"),
+                                                "unknown-linux-gnu"),
+        "a wrong field of SHA256SUMS": (GOOD.replace("-f3", "-f1"), "picks"),
+        "a marker with no fence": (GOOD.replace("```sh\ncargo", "cargo", 1), "fence"),
+        "a name marking two blocks": (GOOD + "<!-- install: linux-homebrew -->\n```sh\ntrue\n```\n",
+                                      "two blocks"),
+        "a missing upgrade block": (GOOD.replace("<!-- upgrade: upgrade-nix -->", ""), "`upgrade: upgrade-nix`"),
+        "a missing project upgrade": (GOOD.replace("<!-- upgrade: upgrade-project -->", ""),
+                                      "`upgrade: upgrade-project`"),
+        "an upgrade block bash refuses": (GOOD.replace("brew upgrade htmlspec", "brew upgrade <entry>"),
+                                          "`upgrade: upgrade-homebrew` is refused by bash -n"),
+        "an upgrade block marked as an install block": (
+            GOOD.replace("<!-- upgrade: upgrade-cargo -->", "<!-- install: upgrade-cargo -->"),
+            "mark it `upgrade: upgrade-cargo`"),
+        "a name shared by an install and an upgrade block": (
+            GOOD + "<!-- upgrade: cargo -->\n```sh\ntrue\n```\n", "two blocks"),
+        "an install block marked as an upgrade block": (
+            GOOD.replace("<!-- install: cargo -->", "<!-- upgrade: cargo -->"), "mark it `install: cargo`"),
+    }
+    failures = []
+    for name, (text, expected) in cases.items():
+        faults = check(text)
+        if expected is None and faults:
+            failures.append(f"{name}: expected no fault, got {faults}")
+        elif expected is not None and not any(expected in fault for fault in faults):
+            failures.append(f"{name}: expected a fault naming {expected!r}, got {faults}")
+        else:
+            print(f"  ok  {name}")
+    printing = {
+        "printing an install block": ("linux-homebrew", "brew install example/tap/htmlspec\n"),
+        "printing an upgrade block is refused": ("upgrade-homebrew", "never run"),
+    }
+    for name, (block, expected) in printing.items():
+        try:
+            outcome = block_to_print(GOOD, block)
+        except (Fault, LookupError) as fault:
+            outcome = str(fault)
+        if expected in outcome:
+            print(f"  ok  {name}")
+        else:
+            failures.append(f"{name}: expected {expected!r}, got {outcome!r}")
+    return failures
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="check the README's install and upgrade blocks")
+    parser.add_argument("--readme", type=Path, default=ROOT / "README.md")
+    parser.add_argument("--print", dest="print_name", metavar="NAME")
+    parser.add_argument("--self-test", action="store_true")
+    arguments = parser.parse_args()
+    if shutil.which("bash") is None:
+        print("check-readme-install: bash is required", file=sys.stderr)
+        return 2
+    if arguments.self_test:
+        failures = self_test()
+        for failure in failures:
+            print(f"!!! {failure}", file=sys.stderr)
+        return 1 if failures else 0
+    try:
+        text = arguments.readme.read_text(encoding="utf-8")
+    except OSError as error:
+        print(f"check-readme-install: cannot read {arguments.readme}: {error}", file=sys.stderr)
+        return 2
+    if arguments.print_name:
+        try:
+            sys.stdout.write(block_to_print(text, arguments.print_name))
+        except LookupError as missing:
+            print(f"check-readme-install: {missing.args[0]}", file=sys.stderr)
+            return 2
+        except Fault as fault:
+            print(f"check-readme-install: {fault}", file=sys.stderr)
+            return 1
+        return 0
+    faults = check(text)
+    for fault in faults:
+        print(f"!!! {fault}", file=sys.stderr)
+    if faults:
+        return 1
+    print(f"  ok  the README's install and upgrade blocks: {', '.join(sorted(blocks(text)))}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

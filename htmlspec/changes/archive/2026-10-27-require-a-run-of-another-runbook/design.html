@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Let a runbook require a passed run of another runbook before its own run starts: design</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Let a runbook require a passed run of another runbook before its own run starts: design</h1>
+        <p>A prerequisite run is a preflight check of a new kind, <code>run</code>, declared in a new format, <code>preflight/v3</code>, in a requirement of the dependent runbook's specification. Preflight matches the declared name exactly against the project's runbooks and reads that runbook's records, and the declaration is met by any finished tasks record that did work and passed every requirement, at or above an optional release. Records gain a release value the program writes and reads back, the start path refuses an unmet prerequisite as it refuses a missing tool, and a self-reference or a cycle through the runbook is an invalid contract. The runbook listing shows each prerequisite's state in text, in JSON, and with <code>--graph</code> as a Mermaid diagram. It ships as 1.2.0, after <code>install-through-wsl-without-nix</code> archives at 1.1.1, with the contract's vocabulary unchanged.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Let a runbook require a passed run of another runbook before its own run starts: design</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="overview">
+          <h2>The shape of it</h2>
+          <p>The start path already refuses a run whose machine prerequisites are unmet, and preflight already reports each declared check with its expectation, observation, outcome, and remedy. A prerequisite run is one more thing a run needs before it starts, so this change gives preflight one more kind of check rather than building a second gate beside it. Everything a preflight check already does follows for free: the refusal before any record is created, the exit codes, the human and JSON reports, the runbook's own remedy text, and the verification the new record carries for each check that passed.</p>
+          <p>What is new is narrow: a declaration form that names a runbook, a rule for when a record satisfies it, a release value in each new record so a version constraint has something structured to compare, prerequisite fields in the runbook listing, and a drawn form of that listing.</p>
+          <figure id="figure-example-chain">
+            <figcaption>The example this document uses. Each arrow points from a prerequisite to the runbook that declares it, and each runbook declares only its own prerequisites.</figcaption>
+            <details>
+              <summary>Diagram source</summary>
+              <pre class="mermaid">flowchart LR
+  A["create-account"] --&gt; P["provision-database"] --&gt; D["deploy-service"]
+  B["backup"] --&gt; M["migrate"]</pre>
+            </details>
+          </figure>
+          <figure id="figure-check">
+            <figcaption>How preflight decides a run check, for the declaration in migrate's specification. A self-reference or a cycle through migrate is an invalid contract, exit 2. Every other case is a report outcome.</figcaption>
+            <details>
+              <summary>Diagram source</summary>
+              <pre class="mermaid">flowchart TD
+  S["preflight/v3 run check in migrate: runbook backup, atLeast 1.4.0"] --&gt; E{"a runbook directory named exactly backup?"}
+  E -- no --&gt; U1["unmet: this project has no runbook named backup"]
+  E -- yes --&gt; T{"every specification reached from backup can be read and validates?"}
+  T -- no --&gt; U0["unavailable: names the runbook whose specification cannot be read"]
+  T -- yes --&gt; C{"does a chain of declarations lead from backup back to migrate?"}
+  C -- yes --&gt; F["invalid contract, exit 2: the cycle, named in order"]
+  C -- no --&gt; R{"a record under backup/runs/ that is a finished, passed tasks document at 1.4.0 or later in major 1?"}
+  R -- no --&gt; U2["unmet: each record and the first reason it does not count"]
+  R -- yes --&gt; P["passed: up to three satisfying records and a count of the rest"]</pre>
+            </details>
+          </figure>
+        </section>
+        <section id="contract">
+          <h2>What the contract says, and where it is silent</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Accepted requirement</th>
+                <th>Effect at archival</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>runbook-portability's <a href="../../../specs/runbook-portability/spec.html#req-machine-requirements-are-explicit-and-mechanically-checkable">"Machine requirements are explicit and mechanically checkable"</a></td>
+                <td>Modified. A third declaration format, <code>preflight/v3</code>, reads every <code>preflight/v2</code> form, with its remedy, and one more kind, <code>run</code>, whose need is a passed run of another runbook in the same project. <code>preflight/v1</code> and <code>preflight/v2</code> keep refusing <code>run</code> as an unknown kind. The malformed cases gain two: a run check naming its own runbook, and one whose declarations lead back to its own runbook through others. Both prevent starting a run, as every malformed declaration does. The rule that arbitrary commands are not accepted stands, and so does every rule about remedies.</td>
+              </tr>
+              <tr>
+                <td><em>Added</em>, in runbook-portability: "A prerequisite run is met by a finished, passed record"</td>
+                <td>Added. It states what decisions 3 and 4 settle, as obligations. The named runbook is the runbook directory whose name equals the declared name byte for byte, and no such directory means the check is unmet. A record satisfies the check when it is a tasks document, has at least one task done and every task done or dropped, and records a <code>passed</code> outcome for every requirement it carries. Where <code>atLeast</code> is declared, the record's stated release must be at or above it within the same major. Any satisfying record meets the check, and a record that does not satisfy it is named with its reason. A record that is a symbolic link, or resolves outside the runbook's <code>runs/</code> folder, does not satisfy it. Its scenarios cover a linked record besides a finished passed record, an open record, a failed outcome, an unrecorded requirement, a vacuous record, a release below the bound, a release in another major, a record that states no release, a missing runbook, and several satisfying records.</td>
+              </tr>
+              <tr>
+                <td>runbook-portability's <a href="../../../specs/runbook-portability/spec.html#req-preflight-gates-the-creation-of-a-run">"Preflight gates the creation of a run"</a></td>
+                <td>Modified. A run check reads the records of the runbook it names, in the declaring runbook's project, and reads nothing else. A record states the runbook release it ran in a form the program reads back (decision 4). The verification a new record carries for a passed run check names up to three satisfying records and how many more there are. "There SHALL be no force or skip-preflight option" already covers this check, so no override is added.</td>
+              </tr>
+              <tr>
+                <td>runbook-portability's <a href="../../../specs/runbook-portability/spec.html#req-a-carried-runbook-does-not-require-its-source-project-s-history">"A carried runbook does not require its source project's history"</a></td>
+                <td>Modified. It says a carried runbook is usable "in a minimal receiving project layout" and that the absence of old run records at the destination "SHALL NOT … prevent a new run". Both stay true of a runbook with no run check, and of the carried runbook's own records. A runbook with a run check also needs, in the receiving project, the runbook it names and a passed run of it: a prerequisite is required from where the runbook is used, as a tool is. The scenarios "The source project is absent" and "A carried runbook has no prior records" are restated to say they hold for a runbook with no run check, and a scenario is added for a carried runbook whose prerequisite has no passed run in the receiving project.</td>
+              </tr>
+              <tr>
+                <td>runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-a-project-keeps-its-procedures-in-a-fourth-place">"A project keeps its procedures in a fourth place"</a></td>
+                <td>Modified. It says "The runbook's name SHALL NOT be recorded anywhere but in its directory name". A declaration names another runbook to address it, as a change's <code>FOLLOWS</code> file names another change. The sentence gains that exception, and keeps its point: nothing derives an ordering, a version, or a history from the name itself. The order comes from the declarations.</td>
+              </tr>
+              <tr>
+                <td>runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-the-project-enumerates-the-runbooks-it-holds">"The project enumerates the runbooks it holds"</a></td>
+                <td>Modified. Each entry also carries the runbook's prerequisites, each with its state (met, unmet, missing, self, cycle, or unavailable), the records that satisfy it, the names of the runs of it still open, whether met or not, and whether all are met, plus whether the runbook's declarations could be read. The listing also names every prerequisite cycle in the project. The bare <code>run</code> listing shows the same rows. <code>list --runbooks --graph</code> draws the enumeration as a Mermaid diagram. <code>--graph</code> without <code>--runbooks</code> is refused as a usage error, exit 2, and with <code>--json</code> the payload is the listing's, unchanged (decision 8).</td>
+              </tr>
+              <tr>
+                <td>runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-a-machine-requirement-is-still-an-obligation-of-the-run">"A machine requirement is still an obligation of the run"</a></td>
+                <td>Unchanged. A run check is declared on an ordinary requirement, so the run still records its outcome, as with any declared check.</td>
+              </tr>
+              <tr>
+                <td>runbook-execution's <a href="../../../specs/runbook-execution/spec.html#req-a-run-s-conformance-to-its-runbook-s-contract-is-reported-and-never-gated">"A run's conformance to its runbook's contract is reported and never gated"</a></td>
+                <td>Modified, by one sentence. Whether a record satisfies another runbook's prerequisite is a separate question, answered from its task states and recorded outcomes. A record that does not satisfy one is not thereby at fault, and the conformance report stays advisory and never gates the run it describes.</td>
+              </tr>
+              <tr>
+                <td>runbook-execution's <a href="../../../specs/runbook-execution/spec.html#req-a-run-is-one-record-from-start-to-finish">"A run is one record from start to finish"</a></td>
+                <td>Unchanged. A record states no time, so no record is "the latest", and decision 3 does not pretend one is.</td>
+              </tr>
+              <tr>
+                <td>runbook-execution's <a href="../../../specs/runbook-execution/spec.html#req-a-run-s-record-is-history-rather-than-contract">"A run's record is history rather than contract"</a></td>
+                <td>Unchanged. A run check reads a record as evidence that a run happened and how it ended, which is what a record is for. It reads no obligation from it.</td>
+              </tr>
+              <tr>
+                <td>document-schema's <a href="../../../specs/document-schema/spec.html#req-cross-references-address-units-by-identifier">"Cross-references address units by identifier"</a></td>
+                <td>Unchanged. A declaration names a runbook as data in a note, and is not a reference. A runbook's documents still reach only themselves.</td>
+              </tr>
+              <tr>
+                <td>document-schema's <a href="../../../specs/document-schema/spec.html#req-the-contract-s-version-is-a-semantic-version">"The contract's version is a semantic version"</a></td>
+                <td>Unchanged. The release value a record carries is written and read by the program, and is not part of the projected model (decision 4), so the contract stays at 1.0.0.</td>
+              </tr>
+              <tr>
+                <td>toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-the-command-surface-checks-a-runbook-s-machine-prerequisites">"The command surface checks a runbook's machine prerequisites"</a></td>
+                <td>Modified. A report entry for a run check carries the runbook it names, the lowest release it accepts if any, up to three satisfying records with a count of the rest, or each record that does not satisfy it with its reason, and any open run of the named runbook. With <code>--json</code>, each run check carries a <code>run</code> object: <code>runbook</code>, <code>atLeast</code>, <code>state</code> (one of four, <code>met</code>, <code>unmet</code>, <code>missing</code>, or <code>unavailable</code>), <code>satisfiedBy</code>, <code>satisfying</code>, <code>notSatisfying</code>, and <code>openRuns</code>, in <code>preflight</code> and <code>run</code> alike. A report that is not ready still names a met run check's open runs. A runbook typed in another case, or under a link's name beside its target, is reported under the name it resolves to. The escaping sentence, which today covers "A declaration's field name, tool name, and path", also covers runbook names and record names. A self-reference or a cycle through the declaring runbook joins the scenario "The contract is malformed": exit 2, identifying the requirement and the cycle. Store selection already "SHALL locate the runbook and its records", which is where a run check reads.</td>
+              </tr>
+              <tr>
+                <td>toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-the-command-surface-is-stable-within-a-major-version">"The command surface is stable within a major version"</a></td>
+                <td>Unchanged. Every addition is one a minor release may make: the <code>preflight/v3</code> format, the report and listing fields, and the <code>--graph</code> option on <code>list</code>, in both its spellings. The 1.2 surface is recorded in <code>tests/surface/1.2.json</code>.</td>
+              </tr>
+              <tr>
+                <td>toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-output-is-available-in-human-and-machine-forms">"Output is available in human and machine forms"</a></td>
+                <td>Unchanged. <code>--graph</code> chooses a human rendering. With <code>--json</code>, the structured payload is the listing's, which expresses every node, edge, state, and cycle the graph draws, so a request for structured output is still answered (decision 8).</td>
+              </tr>
+              <tr>
+                <td>artifact-kinds' <a href="../../../specs/artifact-kinds/spec.html#req-a-change-states-the-change-it-follows">"A change states the change it follows"</a></td>
+                <td>Unchanged. <code>FOLLOWS</code> stays a change's, and orders archival: this change itself follows <code>install-through-wsl-without-nix</code> (decision 12). Decision 1 says why a runbook's prerequisite is a preflight check instead.</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>The contract is silent on three points this design settles under that silence: what makes a record satisfy a check (decision 3), how a version constraint compares (decision 4), and what the listing and its graph show (decision 8). The user decided decisions 4 and 8 on 2026-10-27. Decision 3 is my choice. Archival states all three as the added requirement and the modified ones above.</p>
+        </section>
+        <section id="decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-a-run-is-a-preflight-kind-in-v3" data-change="added" data-status="accepted">
+            <h3>1. A prerequisite run is a preflight check of kind <code>run</code>, in a new format, <code>preflight/v3</code></h3>
+            <p>The declaration lives where every other prerequisite lives: in the note of a requirement in the runbook's specification, read by preflight from the projected note, never inferred from prose.</p>
+            <pre><code>preflight/v3 {"kind":"run","runbook":"backup","atLeast":"1.4.0"}</code></pre>
+            <p data-field="note"><code>preflight/v3</code> reads every form <code>preflight/v2</code> reads, with its optional <code>remedy</code>, and one more kind, <code>run</code>, with the fields <code>runbook</code> (required) and <code>atLeast</code> (optional). Both earlier formats keep refusing the new kind as unknown, because the forms table is closed and that is how it should stay.</p>
+            <p data-field="rationale">The start path already refuses a run whose declared prerequisites are unmet, and preflight already reports, records, and explains each check. A second mechanism beside it would duplicate all of that and give a runbook two places to state what it needs. A new format, not a new kind inside <code>preflight/v2</code>, decides what an older program says. I checked 1.1.0 against a <code>preflight/v3</code> note, and it refuses with "is not a format this program reads; it reads preflight/v1 and preflight/v2", which tells the reader to upgrade. A <code>run</code> kind inside v2 would instead be refused as an unknown kind, which blames the runbook. This is the same reasoning that made install hints a new format in 1.1.0.</p>
+            <p data-field="note">Built on 2026-10-27, with one addition the decision did not give. A <code>run</code> check under <code>preflight/v1</code> or <code>preflight/v2</code> is still refused, and the fault names the note's format and the forms it reads and says to begin the note with <code>preflight/v3</code>, so the author is told the fix rather than only the refusal. A declaration with no <code>kind</code> is told the forms of its own format, and an empty <code>runbook</code> is refused as empty rather than as the shape of a path. A test that used <code>preflight/v3</code> as its example of a format this program does not read now uses <code>preflight/v4</code>.</p>
+          </section>
+          <section class="decision" id="decision-the-runbook-is-named-as-data" data-change="added" data-status="accepted">
+            <h3>2. The declaration names a runbook as data, matched byte for byte against the project's runbook directories</h3>
+            <p>The <code>runbook</code> field holds a runbook's name, as the listing prints it. It must pass the name rule <code>run</code> and <code>preflight</code> apply, so a declaration cannot name a path. It names a runbook only when it equals, byte for byte, the name of a directory the project's runbook enumeration finds. Self-references and cycles are found on that same identity.</p>
+            <p data-field="note">Today <code>htmlspec preflight PUBLISH</code> finds the <code>publish</code> runbook on a case-insensitive filesystem, because the lookup asks the filesystem whether a directory of that name exists. A run check must not inherit that. A declaration naming <code>Backup</code> beside a <code>backup</code> directory names no runbook on every filesystem, and is unmet as missing. So the check never resolves a name through a path test such as <code>named_runbook(..).is_dir()</code>. It compares against the enumerated names. The existing lookup for <code>run</code> and <code>preflight</code> on the command line is left as it is.</p>
+            <p data-field="rationale">A cross-reference reaches a unit, and a runbook's documents may reach only themselves. A name in a declaration is not a reference: it is a value preflight resolves against the project's runbooks at check time, the way <code>FOLLOWS</code> names a change. Matching it exactly makes a declaration mean the same thing on every machine. A filesystem-dependent match would let a runbook pass preflight on one laptop and fail on a Linux server, and would make two spellings count as one runbook for a self-reference on one machine and not on another. Renaming a runbook is moving its directory, and a declaration naming the old name then reports "no runbook named …" until it is corrected, which the listing makes visible across the project.</p>
+            <p data-field="note">Built on 2026-10-27. The check compares against the names <code>runs.rs</code>'s enumeration of <code>runbooks/</code> finds, and never asks the filesystem whether a path exists. Disabling that comparison in favour of a path test makes the case test fail on this macOS filesystem, so the test guards the decision where it matters. A declared name must pass the same name rule as a command-line runbook name, and reaches human output through the terminal escaping.</p>
+            <p data-field="note">Settled after the review of 2026-10-27. The command line's lookup is left as it is, so on a filesystem that folds case <code>preflight MIGRATE</code> still finds the <code>migrate</code> directory. From loading on, that runbook is known by its enumerated name: the one name the enumeration finds for the same directory, by device and inode. Before this, the typed name reached the cycle check, so <code>preflight MIGRATE</code> exited 1 where <code>preflight migrate</code> exited 2, and <code>run TWO</code> was not refused inside a cycle. A typed name that reaches a directory listed under no one name, as a symbolic link beside its target would, is refused with exit 2. The report, the payload, and the new record all name the runbook as the listing does.</p>
+            <p data-field="note">Settled in the pre-archival review, 2026-10-27: every name 1.1.1 ran must still run, and the first resolution refused a runbook with a symbolic link beside it, because two enumerated names reached its directory. A typed name now resolves in order: to itself, when it is an enumerated name; else, among the enumerated names for the same directory, to the one equal to it ignoring case, so <code>OUTSIDE</code> beside <code>outside</code> and a link <code>outside-link</code> is <code>outside</code>; else to the directory's only name. Only a directory with several names, none equal to the typed one even ignoring case, is refused as ambiguous. The cycle check reads the resolved name, and the report's source path and the record's location carry it.</p>
+          </section>
+          <section class="decision" id="decision-what-satisfies-a-declaration" data-change="added" data-status="accepted">
+            <h3>3. A record satisfies the declaration when it is a finished tasks document that did work and passed every requirement, and any such record counts</h3>
+            <p>Preflight reads every <code>.html</code> file under the named runbook's <code>runs/</code>. A record satisfies the declaration when all of these hold:</p>
+            <ul>
+              <li>it can be read, and parses without error recovery;</li>
+              <li>it declares the <code>tasks</code> kind;</li>
+              <li>it has at least one task, at least one task is <code>done</code>, and every task is <code>done</code> or <code>dropped</code>, so the run finished and did something;</li>
+              <li>every requirement it carries has a verification, and every verification's outcome is <code>passed</code>, so nothing is unrecorded and nothing failed, was blocked, was not run, or was only partly checked;</li>
+              <li>its release meets <code>atLeast</code>, where the declaration has one (decision 4).</li>
+            </ul>
+            <p data-field="note">Any record that satisfies it meets the declaration. When none does, the check names each file and the first reason it fails, in this order:</p>
+            <ul>
+              <li>cannot be read;</li>
+              <li>needs error recovery to parse;</li>
+              <li>is not a tasks document, which covers an empty or stray file;</li>
+              <li>has no task done;</li>
+              <li>still open, with N of M steps done;</li>
+              <li>an outcome other than <code>passed</code> on a named requirement;</li>
+              <li>a requirement with no recorded outcome;</li>
+              <li>a release problem from decision 4.</li>
+            </ul>
+            <p data-field="note">Naming is bounded. The report, the new record's method, and the listing name at most three satisfying records, the first three in name order, and say how many more there are. Name order is used only to choose which three are printed, and says nothing about which run was first. Every non-satisfying file is named when none satisfies, because each one is a reason the check is unmet. The report also names any open run of the named runbook, even when the check is met, so a backup in progress beside an older finished one is in view (see the risks).</p>
+            <p data-field="note">The implementation decides from the projected model, in a new module, <code>prerequisites.rs</code>. It reuses <code>runs.rs</code>'s <code>gather()</code> to find and read the files, and the recovery check <code>runs.rs</code> already applies on its read path. It does not reuse or widen <code>RecordedRun</code> in <code>htmlspec-validate</code>. That type is a public struct with public fields in a crate published on crates.io, so adding a field to it would break any downstream code that constructs it, and it is deliberately reduced to the one set of identifiers the conformance rule needs.</p>
+            <p data-field="rationale">The rule uses only what a record already holds: its kind, its task states, and the verifications <code>htmlspec run --check</code> already reads. "Finished" excludes a run under way, because a backup half taken is no backup. "At least one task done" excludes a vacuous pass: a tasks document with no tasks, or with every task dropped, records no work, and an empty or stray file under <code>runs/</code> is not a run at all. "Every outcome passed" is strict on purpose. A partial verification states that part of its requirement went unchecked, and a dependent run that starts on a partly checked prerequisite is the mistake this change exists to prevent. "Any satisfying record" follows from the contract: records state no time, so there is no latest record to prefer, and choosing one by its name would derive an order from a name. A procedure that needs a recent prerequisite says so in its own steps, where a person can judge it.</p>
+            <p data-field="note">Built on 2026-10-27, with two details the decision did not state. An empty or whitespace-only file is decided as not a tasks document before the recovery check, because the parser recovers an empty input, and the decision's own list puts an empty file under "is not a tasks document". A verification whose outcome is not <code>passed</code> is named by the first requirement it references, and one with no outcome at all reads as "no outcome".</p>
+          </section>
+          <section class="decision" id="decision-records-carry-their-release" data-change="added" data-status="accepted">
+            <h3>4. Each new record carries its runbook release in a head <code>meta</code>, and <code>atLeast</code> compares within one major</h3>
+            <p><code>htmlspec run --as</code> writes <code>&lt;meta content="1.4.2" name="htmlspec-runbook-release"&gt;</code>, in the canonical form the formatter writes, into each new record's head, beside the two metas every document carries. A run check with <code>atLeast</code> reads it. The declaration is met by a release at or above <code>atLeast</code> whose major equals <code>atLeast</code>'s, so <code>"atLeast":"1.4.0"</code> accepts 1.4.0 and 1.9.2 and refuses 1.3.0 and 2.0.0.</p>
+            <p data-field="note">A declaration without <code>atLeast</code> does not read the meta. Under a declaration with <code>atLeast</code>, a record whose meta is a problem is non-satisfying, with one of three reasons. "States no release": the meta is absent, which is true of every record written before this change, though the program cannot know when a record was written. "States a release that is not three dot-separated integers": its content is malformed. "States more than one release": the head holds two such metas.</p>
+            <p data-field="rationale">A record today states its release only in its masthead's prose ("at the 0.2.1 release of that runbook"), and the project refuses to read a version out of display text: runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-a-runbook-carries-an-independently-checked-release-version">"A runbook carries an independently checked release version"</a> says a version "SHALL NOT be inferred from a directory name or an HTML schema-version declaration", and the reasoning applies to prose too. So a version constraint needs a structured value. A head meta the program writes and reads is the smallest one. It is outside the projected model, so the contract's vocabulary does not move. I checked that 1.1.0's validation and formatting both keep such a meta as written, and the build task proves it again before relying on it. Comparing within one major follows the project's own reading of a major release, a change that breaks what came before.</p>
+            <p data-field="note">The user decided on 2026-10-27 to keep <code>atLeast</code> and the record's release meta in 1.2.0, as drafted. The version-free alternative, which would have shipped the declaration without <code>atLeast</code> and added the meta later, was set aside.</p>
+            <p data-field="note">Built on 2026-10-27. <code>run --as</code> writes the meta directly after the <code>htmlspec-kind</code> meta, and a new record validates under <code>--strict</code> and passes <code>format --check</code> with it in place, so neither drops nor refuses it.</p>
+            <p data-field="note">Settled after the review of 2026-10-27. Only a meta in the record's <code>head</code> states its release. One written in the body states nothing, so it can neither stand in for the head's nor make a second one. A check without <code>atLeast</code> does not read the release for its verdict. Its report still names what a satisfying record states: a release, no release, one that is not three dot-separated integers, or more than one. It does not show a malformed or duplicated meta as no release.</p>
+            <p data-field="note">A known looseness, older than this change and left as it is: the version parser that reads both the meta and <code>atLeast</code> accepts surrounding whitespace, a leading <code>+</code>, and leading zeros, so <code>" +00.1.0 "</code> reads as 0.1.0. Tightening it would change what a 1.1 program accepted as a runbook's <code>VERSION</code>, so it belongs to a change of its own.</p>
+          </section>
+          <section class="decision" id="decision-records-are-read-from-one-project" data-change="added" data-status="accepted">
+            <h3>5. Records are read from the declaring runbook's project only</h3>
+            <p>A run check resolves the named runbook in the project that holds the declaring runbook: the current project, or the registered project <code>--store</code> selects. It reads that runbook's <code>runs/</code> there and nowhere else. No flag points it at another project, branch, or worktree.</p>
+            <p data-field="rationale">toolchain-packaging already says store selection "SHALL locate the runbook and its records", and a run check is exactly a question about records. Reading a second location would need a new selector and a rule for when two locations disagree, and a run recorded somewhere else is one nobody has landed. The way to make it count is to land it, and that is the project's own policy about where history lives. Machine checks keep being evaluated against the invocation's working directory, as today.</p>
+            <p data-field="note">Settled in the pre-archival review, 2026-10-27: a record under <code>runs/</code> that is a symbolic link, or resolves outside the runbook's <code>runs/</code> folder, does not satisfy a run check, because the run it records may have happened in another project, and only this project's runs count. It is named among the records that do not, with its own reason, "is a link", decided before the file is read. The rule lives in the run check, not in <code>gather</code>, so <code>run --check</code> still reviews such a file as 1.1.1 did.</p>
+          </section>
+          <section class="decision" id="decision-the-gate-and-the-record" data-change="added" data-status="accepted">
+            <h3>6. An unmet run check refuses the start, standalone preflight reports it, and a passed one is recorded</h3>
+            <p><code>htmlspec run RUNBOOK --as RECORD</code> refuses before creating anything, exits 1, and names each unmet run check and why, exactly as it does for a missing tool. <code>htmlspec preflight RUNBOOK</code> reports the same checks. When every check passes, the new record carries a verification for the requirement holding the run check, with outcome <code>passed</code> and a method naming up to three satisfying records with their releases and a count of the rest, which is what the start path already writes for a passed machine check. There is no override.</p>
+            <p data-field="rationale">This is what a declared check already does, so a run check inherits it rather than inventing it. Naming the satisfying records in the new record answers the question a reader asks later: which backup did this migration rely on. It is the one place that link is written down.</p>
+            <p data-field="note">Built on 2026-10-27, with two texts the decision did not give. The method recorded for a passed run check ends "which reads this project's runs afresh", where a machine check's ends "which observes the machine afresh". The refusal's last line on standard error, which said the machine does not satisfy every prerequisite, now says not every prerequisite is satisfied here, because a run check is about the project's records. In <code>--json</code>, each run check carries a <code>run</code> object: <code>runbook</code>, <code>atLeast</code> when declared, <code>state</code> (<code>met</code>, <code>unmet</code>, <code>missing</code>, or <code>unavailable</code>), <code>satisfiedBy</code> with at most three names, <code>satisfying</code> as the count, <code>notSatisfying</code> with each record and its reason, and <code>openRuns</code>. A met run check in a report that is not ready still carries its satisfying records, so the not-ready payload keeps every passed check's observation.</p>
+            <p data-field="note">Settled after the review of 2026-10-27:</p>
+            <ul>
+              <li>The human report that is not ready names a met run check whose required runbook has a run still under way, as decision 3 asks, under "met run check(s) have a run still under way". Its closing line says how to supply what is missing "here", not "on this machine".</li>
+              <li>A missing runbook's remedy says to add it or correct the name. An unavailable check's remedy is the one its observation gives, naming the specification to repair. Only records found wanting are told to run the required runbook again.</li>
+              <li>The line <code>run --as</code> prints counts "check(s) passed", and a new record's opening counts "prerequisite(s)", because both include run checks.</li>
+              <li><code>preflight --help</code> names the run check, and says it reads the runbooks and records of the project the runbook is read from, the store's under <code>--store</code>.</li>
+              <li>Every runbook name the loading, the report's header, and the started line print is shown through the terminal escaping. The fault for a contract this program cannot read printed the name raw in 1.1.1 too, and that gap is closed.</li>
+            </ul>
+            <p data-field="note">Settled in the closing pull request, 2026-10-27: a parse recovery's message quoted the character the parser stopped at raw. A run started for a runbook whose directory name holds an escape sequence composes a record the formatter refuses, because the name reaches its markup, and the refusal printed the escape to the terminal. A document holding one did the same through the formatter and validation, in 1.1.1 too. The message is now escaped where it is made, in <code>htmlspec-parse</code>, through the same rule the listing and the preflight report read. That rule moved from the command-line program's <code>terminal</code> module into <code>htmlspec-parse</code>'s <code>visible</code> module, because the parser's crate cannot depend on the program, and a second copy of the set of characters a terminal hides could drift from the first. The program's <code>terminal</code> module re-exports it and keeps the listing's own rendering. The parse diagnostic's code is still read from the parser's own text, before it is escaped. The gap is closed.</p>
+          </section>
+          <section class="decision" id="decision-faults" data-change="added" data-status="accepted">
+            <h3>7. A missing runbook is unmet, an unreadable specification on the way is unavailable, and a self-reference or a cycle through the declaring runbook is an invalid contract</h3>
+            <p>A run check that cannot be met as written makes the contract invalid, a check whose answer cannot be established is unavailable, and one that is not met yet is unmet. Each case is one of the three:</p>
+            <ul>
+              <li><strong>No runbook directory of that exact name in the project:</strong> unmet, with the observation "this project has no runbook named NAME". The declaration is well-formed, and the project may simply not have that runbook yet, which matters most for a carried runbook (decision 10).</li>
+              <li><strong>A runbook that names itself:</strong> an invalid contract. Preflight and <code>run --as</code> exit 2 with a fault on standard error identifying the requirement, as the scenario "The contract is malformed" already requires for an invalid declaration. No report is written.</li>
+              <li><strong>A cycle through the declaring runbook</strong>, where migrate requires backup and backup, directly or through others, requires migrate: an invalid contract. It exits 2, and the fault names the requirement and the whole cycle in order, starting from the declaring runbook. Only cycles that pass through the runbook being checked are looked for. A cycle elsewhere in the project, among runbooks this one does not reach, is not this runbook's fault, and the listing reports it there.</li>
+              <li><strong>A runbook reached on the way whose specification cannot be read, needs error recovery, or does not validate:</strong> the check is <code>unavailable</code>, naming that runbook and the fault. Whether its declarations lead back cannot be established, and preflight already reports an observation it cannot make as unavailable, never as met.</li>
+              <li><strong>An unknown field, a missing <code>runbook</code>, an <code>atLeast</code> that is not three dot-separated integers, or a name that fails the name rule:</strong> an invalid declaration, exit 2, as for every form.</li>
+            </ul>
+            <p data-field="note">"Malformed" is not a new report outcome. The report's outcomes stay as they are, and an invalid contract is reported, as today, by refusing with exit 2 before any report.</p>
+            <p data-field="rationale">Invalid and unmet stay distinguishable, as toolchain-packaging requires: an invalid contract means the runbook can never start as written, and unmet means it cannot start yet. A cycle is invalid because its declarations cannot all hold as an order: whichever runbook runs first breaks one of them. Records made before the declarations were written can exist for some runbooks in the cycle, so a check of records alone might even pass. That would hide the contradiction, not settle it, which is why the cycle is refused before records are read. <code>htmlspec validate</code> does not check another runbook's existence or a cycle, because validation looks at one document, and runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-a-machine-requirement-is-still-an-obligation-of-the-run">"A machine requirement is still an obligation of the run"</a> keeps project and machine inspection in preflight and run creation.</p>
+            <p data-field="note">Built on 2026-10-27. Self-references and cycles are refused when the runbook is loaded, before any check runs, so <code>preflight</code> and <code>run --as</code> both exit 2 with the fault and write no report. A cycle is named from the declaring runbook, as "<code>two</code> requires a run of <code>three</code> requires a run of <code>one</code> requires a run of <code>two</code>". An unreadable specification on the way refuses nothing when the runbook is loaded: the search goes on through the other declarations, so a cycle it can still see is refused, and otherwise the check reports the unreadable runbook as unavailable when it runs. The check is made on the runbook's enumerated name, whatever case the command line typed (decision 2's note).</p>
+          </section>
+          <section class="decision" id="decision-the-listing-shows-the-order" data-change="added" data-status="accepted">
+            <h3>8. The runbook listing shows each runbook's prerequisites and their state, and <code>--graph</code> draws the same as a Mermaid diagram</h3>
+            <p><code>htmlspec list --runbooks</code> and the bare <code>run</code> listing gain, per runbook, the runbooks it requires and the state of each now, with the records that meet it, and <code>htmlspec list --runbooks --graph</code> draws the same facts as a Mermaid flowchart.</p>
+            <p data-field="note"><strong>The JSON</strong> follows the precedent the change listing set for <code>follows</code>: a resolution per edge, and the project's cycles at the top level.</p>
+            <ul>
+              <li>
+                Each runbook entry gains
+                <code>prerequisites</code>
+                , one object per declaration with:
+                <ul>
+                  <li><code>requirement</code>: the requirement holding it;</li>
+                  <li><code>runbook</code>: the name it declares;</li>
+                  <li><code>atLeast</code>, where declared;</li>
+                  <li><code>state</code>: one of <code>met</code>, <code>unmet</code>, <code>missing</code>, <code>self</code>, <code>cycle</code>, or <code>unavailable</code>;</li>
+                  <li><code>satisfiedBy</code>: an array of up to three record names;</li>
+                  <li><code>satisfying</code>: how many records satisfy it in all;</li>
+                  <li><code>openRuns</code>: the names of the named runbook's records still open, as in <code>preflight</code> and <code>run</code>.</li>
+                </ul>
+              </li>
+              <li>Each runbook entry gains <code>declarations</code>, one of <code>readable</code>, <code>malformed</code>, or <code>unreadable</code>. A runbook whose specification cannot be read, needs recovery, or holds a malformed declaration lists no edges it cannot know.</li>
+              <li>Each runbook entry gains <code>prerequisitesMet</code>, which is true only when <code>declarations</code> is <code>readable</code> and every entry's <code>state</code> is <code>met</code>. A runbook with no prerequisites and readable declarations is met.</li>
+              <li>The payload gains <code>prerequisiteCycles</code> at the top level: every cycle in the project, each as the list of its runbook names in order, starting from the least name. It is empty when there are none.</li>
+            </ul>
+            <p data-field="note">Human output shows the same, with names escaped as the listing already escapes them. A runbook's declarations fault and a cycle are shown in its rows. The help says "met" covers prerequisite runs only, and not machine checks.</p>
+            <p data-field="note"><strong>The graph.</strong> For the example project, with one passed <code>backup</code> run at 1.4.2 and no runs of the others, <code>htmlspec list --runbooks --graph</code> prints:</p>
+            <pre><code>flowchart LR
+  r1["backup"]
+  r2["create-account"]
+  r3["deploy-service"]
+  r4["migrate"]
+  r5["provision-database"]
+  r1 --&gt;|"met, at least 1.4.0"| r4
+  r2 --&gt;|"unmet"| r5
+  r5 --&gt;|"unmet"| r3
+  linkStyle 0 stroke:#2e6b3a,stroke-width:2px
+  linkStyle 1,2 stroke:#a33333,stroke-width:2px,stroke-dasharray:5 4</code></pre>
+            <p data-field="note"><strong>Its layout, line by line:</strong></p>
+            <ol>
+              <li><code>flowchart LR</code>.</li>
+              <li>One node line per name, sorted byte for byte. The names are the project's runbooks together with every declared name that matches no runbook, so a missing runbook's node takes its place in name order. Nodes are numbered <code>r1</code>, <code>r2</code>, and so on, in that order.</li>
+              <li>One edge line from each prerequisite to the runbook that declares it, sorted by prerequisite and then by runbook. Two declarations in one runbook naming the same prerequisite make one edge. Its label lists each distinct <code>atLeast</code> in ascending order, and it is met only when both declarations are met.</li>
+              <li><code>classDef</code> lines for the classes the diagram uses, in this fixed order: <code>missing</code>, drawn with a dashed border, then <code>malformed</code>, drawn with a red border.</li>
+              <li><code>class</code> lines, one per class in that same order, each listing its node identifiers ascending.</li>
+              <li><code>linkStyle</code> lines, one per style used, in this fixed order: met, unmet, then cycle. Each lists its edge indices ascending, separated by commas.</li>
+            </ol>
+            <p data-field="note"><strong>Edge cases in the graph.</strong></p>
+            <ul>
+              <li>An isolated runbook is a node with no edges.</li>
+              <li>A declared name matching no runbook gets a node labelled with the name and "(no such runbook)", in the <code>missing</code> class, and its edge is unmet.</li>
+              <li>A self-reference is a loop labelled "requires itself", in the cycle style.</li>
+              <li>Every edge of a cycle is labelled "cycle" and drawn in the cycle style.</li>
+              <li>A runbook whose declarations are malformed or unreadable is labelled with its name and "(declarations cannot be read)", in the <code>malformed</code> class, and has no incoming edges, because its declarations cannot be known.</li>
+              <li>A project with no runbooks prints <code>flowchart LR</code> alone.</li>
+            </ul>
+            <p data-field="note"><strong>Escaping in the graph.</strong> A runbook name never becomes a Mermaid identifier: the name appears only as a node's quoted label. A label is built in two steps. First, each character a terminal would not show as itself is written in <code>shown</code>'s code-point form, <code>&lt;U+001B&gt;</code>. That covers every control character, so a newline, a carriage return, or a tab can never reach a label as a line break. Then the characters Mermaid or HTML would read are written as Mermaid entity codes: <code>"</code> as <code>#quot;</code>, <code>#</code> as <code>#35;</code>, <code>%</code> as <code>#37;</code>, <code>`</code> as <code>#96;</code>, <code>&lt;</code> as <code>#lt;</code>, <code>&gt;</code> as <code>#gt;</code>, and <code>&amp;</code> as <code>#amp;</code>. So a name holding ESC comes out as <code>#lt;U+001B#gt;</code>, and one holding <code>%%</code> cannot begin a Mermaid directive. The characters Mermaid uses inside its parser to carry an entity code, <code>ﬂ</code>, <code>°</code>, <code>¶</code>, and <code>ß</code>, are written in the code-point form, so a name holding them cannot render as another name. Titles are not shown, so the diagram stays one short label per runbook. The output never contains a raw <code>&lt;</code> or <code>&amp;</code>.</p>
+            <p data-field="note"><strong>Output, exit, and options.</strong> The diagram goes to standard output with nothing before or after it, so it can be pasted into a document's <code>&lt;pre class="mermaid"&gt;</code> as it stands, and <code>htmlspec format</code> then writes the arrows' <code>&gt;</code> as <code>&amp;gt;</code>, as for every diagram. The exit code is the listing's: the graph reports and never gates. <code>--graph</code> without <code>--runbooks</code> is refused as a usage error, exit 2, and the bare <code>run</code> listing has no graph form. With <code>--json</code>, <code>--graph</code> changes nothing: the payload is the listing's, which expresses every node, edge, state, and cycle the graph draws. Refusing the combination would leave a request for structured output unanswered, against toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-output-is-available-in-human-and-machine-forms">"Output is available in human and machine forms"</a>. A second schema for the same facts would be a second place to keep them right.</p>
+            <p data-field="note">Determinism: nodes and edges are sorted as above, by bytes, never by directory listing order, so the same project gives the same bytes on every run and every machine.</p>
+            <p data-field="note">The user decided on 2026-10-27 to add <code>--graph</code> to 1.2.0, where the draft had left it for a later minor.</p>
+            <p data-field="note">Settled on 2026-10-27, in group 2's review: a run check whose answer cannot be established is reported with <code>state</code> <code>unavailable</code>. That covers a specification on the way that cannot be read, needs recovery, or does not validate. The word is the outcome preflight already reports for an observation it cannot make. It is the value in the preflight and run payloads, and the listing uses the same word when group 3 merges group 2's work. Group 2's draft called it <code>unknown</code>, and 1.2.0 never shipped that word.</p>
+            <p data-field="rationale">The listing answers both of the user's questions, what must run first and what can start now, and the graph answers them at a glance for a project with more than a few runbooks. It also gives a document a picture of the order that the program drew, rather than one a person drew and has to keep in step. Putting it on <code>list --runbooks</code>, rather than a new command, keeps it inside the operation that enumerates runbooks, as runbook-authority requires. Giving the JSON every state the graph draws is what lets <code>--json --graph</code> equal <code>--json</code> honestly.</p>
+            <p data-field="note">Built on 2026-10-27, group 3. Three things this decision left open are settled, each in the task it affects. The listing's <code>state</code> also reads <code>unavailable</code> (first built as <code>unknown</code>, renamed when group 2's review renamed it in preflight), as group 2's preflight payload does, so that <code>prerequisitesMet</code> is never true where a start would report a check unavailable (task 3.1). The graph labels such an edge <code>cannot be checked</code>, draws it unmet, joins two <code>atLeast</code> values with "and", and draws the cycle style as <code>stroke:#7a3fa3,stroke-width:3px</code> (task 3.3). The schema's <code>runbooks</code> branch keeps <code>runbooks</code> as its only required field, because the surface keys a branch by its required set (task 3.1). Human rows read <code>requires NAME at least X.Y.Z:</code> followed by the state in words.</p>
+            <p data-field="note">Settled on 2026-10-27, after PR #89's review, which found five things the first build got wrong and the coordinator decided one more.</p>
+            <ul>
+              <li><strong><code>%</code> is escaped.</strong> <code>%%</code> begins a Mermaid directive or comment even inside a quoted label, so a name holding <code>%%{init: …}%%</code> restyled or broke the diagram. It is written <code>#37;</code>. The characters Mermaid uses internally to carry an entity code, <code>ﬂ</code>, <code>°</code>, <code>¶</code>, and <code>ß</code>, are written in <code>shown</code>'s code-point form, so a name holding them cannot render as a different name. Both were rendered once in headless Chrome: each label read as written and the diagram kept its theme.</li>
+              <li><strong>Only <code>met</code> and <code>unmet</code> carry records.</strong> The first build read the named runbook's records for every state, so a self-reference or a cycle could list a satisfying record that preflight, refusing the contract, never reads. The state is now a type whose <code>met</code> and <code>unmet</code> variants alone hold records, so that combination cannot be built. The other four write an empty <code>satisfiedBy</code>, zero <code>satisfying</code>, and an empty <code>openRuns</code>.</li>
+              <li><strong><code>openRuns</code> is an array of record names everywhere</strong>, by the coordinator's decision. It was a count in the listing and an array in the <code>run</code> object <code>preflight</code> and <code>run</code> write. Preflight names every open run, with no bound, so the listing does too. The human listing still prints a count.</li>
+              <li><strong>Cycles are searched for only within strongly connected components.</strong> Walking every path from every runbook was exponential even with no cycle: 51 runbooks in 17 layers took seconds. A cycle lies inside one component, so a path leaving its start's component is never followed. The cycles found, and their order, are unchanged. The start path's <code>refuse_cycles</code> in group 2 walks with a visited set and is linear, so it does not share the problem.</li>
+              <li><strong><code>prerequisiteCycles</code> stays optional in the schema.</strong> The program writes it on every runbook listing from 1.2.0 on. Requiring it would change the required set the surface keys the <code>runbooks</code> branch by, which reads as the 1.0 branch withdrawn. A consumer of 1.x reads it where present, which is every 1.2.0 listing.</li>
+            </ul>
+            <p data-field="note">Settled in the pre-archival review, 2026-10-27: <code>prerequisiteCycles</code> lists one cycle per group of runbooks that lead back to one another, a strongly connected component, and not every elementary cycle, which grows factorially: nine runbooks that each require all the others held 125,664 cycles, a 14 MB payload. The representative is the shortest cycle through the component's least runbook, found breadth first over names in order, and components are listed by their least runbook, so the output is the same everywhere. The human listing names a met prerequisite's open runs too, ", 1 run still open", as the JSON's <code>openRuns</code> already did.</p>
+          </section>
+          <section class="decision" id="decision-parents-need-nothing" data-change="added" data-status="accepted">
+            <h3>9. A parent runbook needs nothing special</h3>
+            <p>A runbook that walks other runbooks in order is an ordinary runbook. Its steps say to start each child, and each child declares its own prerequisites, so each start is checked where it happens. A parent that must not start before a child has passed declares that child as a prerequisite like any other.</p>
+            <p data-field="rationale">The downstream project's sketch of a parent was a ledger: it starts children and records which runs it started. Both are already possible. What it lacked was a check that the order held, and that is now each child's own declaration. Giving parents a special kind would add a concept to solve a problem the declarations already solve.</p>
+          </section>
+          <section class="decision" id="decision-a-carried-runbook" data-change="added" data-status="accepted">
+            <h3>10. A carried runbook's prerequisite is required from the receiving project</h3>
+            <p>A runbook carried to another project and run there with <code>--store</code> checks its prerequisites against the runbooks and records of that project. If the prerequisite runbook was not carried, or has no passed run there, the check is unmet with that reason.</p>
+            <p data-field="rationale">runbook-portability already requires tools and skills "from the receiving machine rather than vendor them". A prerequisite run is the same kind of need, met where the work happens. Carrying old records to satisfy it would be a run that did not happen in that place. The contract table says which of that requirement's sentences and scenarios change.</p>
+            <p data-field="note">Built on 2026-10-27. Under <code>--store</code>, the run check reads the selected project's runbooks and records, and machine checks still read the invocation's working directory, which the existing test for that keeps proving.</p>
+          </section>
+          <section class="decision" id="decision-what-is-out-of-scope" data-change="added" data-status="accepted">
+            <h3>11. Per-item verdicts, freshness, other locations, and starting runs on the user's behalf are out of scope</h3>
+            <p>htmlspec checks that a run of a runbook finished and passed. It does not know which items inside that run passed: a run over many hosts or accounts whose items each have a verdict keeps those verdicts in the project's own files, and deciding which items go on to the next runbook is the project's business. It does not check how recent a run is, read records outside the project, or start a prerequisite run itself.</p>
+            <p data-field="rationale">Each of these needs a fact htmlspec does not have (an item's verdict, a run's time, another location) or an action it does not take (starting work). Stating them as boundaries keeps a reader from assuming the check covers more than it does.</p>
+          </section>
+          <section class="decision" id="decision-the-release" data-change="added" data-status="accepted">
+            <h3>12. It ships as 1.2.0, after <code>install-through-wsl-without-nix</code> archives at 1.1.1</h3>
+            <p>This change follows <code>install-through-wsl-without-nix</code>, and its <code>FOLLOWS</code> file says so. That change archives at 1.1.1 first. This one opens after it: the workspace moves from 1.1.1 to 1.2.0, and <code>spec.nix</code> stays at 1.1.1 until this change archives at 1.2.0. As in 1.1.0, the opening work records <code>tests/surface/1.2.json</code>, equal to 1.1's except its version, before any surface addition lands, because the current minor's surface file must equal the program exactly. The contract's vocabulary stays 1.0.0.</p>
+            <p data-field="rationale">The order is what keeps the versions straight. <code>scripts/set-version</code> has no guard against moving a version backwards. If this change opened at 1.2.0 while the other was still open, archiving the other at 1.1.1 afterwards would need <code>spec.nix</code> to go back from 1.2.0, or would put 1.1.1 after 1.2.0 in the history, and archival's version gate refuses the latter. Branching only after 1.1.1 has archived avoids both. The surface tests forbid adding to a released minor's file, so the version moves to 1.2.0 first, and each addition then regenerates 1.2.json with the writer as it lands.</p>
+          </section>
+          <section class="decision" id="decision-the-build-order" data-change="added" data-status="accepted">
+            <h3>13. One agent can build it in order, or groups 3 and 4 can run in parallel after group 2</h3>
+            <p>The tasks run in five groups:</p>
+            <ol>
+              <li>Open 1.2.0, once <code>install-through-wsl-without-nix</code> has archived at 1.1.1.</li>
+              <li>Build the check: the format, the release meta, the satisfaction rule, the faults, the gate, and the record.</li>
+              <li>Show the order: the listing, the bare <code>run</code> listing, the graph, and the README's runbooks section, which describes those.</li>
+              <li>Document the declaration: the README's preflight documentation, the agent instructions, and the changelog.</li>
+              <li>Close: the README and changelog pass, the review, archival, the readiness reads, and the export dry run.</li>
+            </ol>
+            <p data-field="note">Groups 3 and 4 depend on group 2 and not on each other. Everything group 4 documents comes from group 2, and the listing and graph documentation belongs to group 3.</p>
+            <p data-field="note">Files more than one group touches:</p>
+            <ul>
+              <li><code>CHANGELOG.md</code>, one subheading per group.</li>
+              <li><code>crates/htmlspec-cli/tests/surface/1.2.json</code>, groups 1 to 3. It is always regenerated with the writer, never merged by hand.</li>
+              <li><code>crates/htmlspec-cli/schema/payload/</code>: group 2 owns the preflight and run schemas, and group 3 the list schema.</li>
+              <li><code>README.md</code>: group 3 owns the runbooks section, and group 4 the preflight documentation under "Carrying a runbook to another machine".</li>
+              <li>This change's design and tasks: each group owns its own section and tasks.</li>
+            </ul>
+            <p data-field="rationale">Group 2 is the core and must land whole before anything reads its results. Splitting it would leave a format with no gate, or a gate with no format. After it, the listing and graph, and the documentation of the declaration, touch different files and different sections of one file.</p>
+          </section>
+        </section>
+        <section id="risks">
+          <h2>Risks</h2>
+          <section class="risk" id="risk-a-stale-run-satisfies" data-change="added" data-response="accepted">
+            <h3>An old passed run satisfies a declaration that meant a recent one</h3>
+            <p>Records state no time, so a backup from last month satisfies <code>migrate</code>'s declaration as well as one from this morning.</p>
+            <p data-field="mitigation">Accepted as a stated boundary (decision 11). A runbook that needs a recent run says so in a step, and its record carries the operator's judgment. <code>atLeast</code> at least excludes runs of a release the dependent runbook no longer trusts.</p>
+          </section>
+          <section class="risk" id="risk-an-open-run-beside-a-passed-one" data-change="added" data-response="mitigated">
+            <h3>A dependent run starts while a newer prerequisite run is still under way</h3>
+            <p>An older finished backup run satisfies the check even while a new backup run is open, so a migration can start in the middle of a backup.</p>
+            <p data-field="mitigation">The report and the listing name every open run of the named runbook, even when the check is met. The JSON carries <code>openRuns</code>, so the person starting the migration sees the backup in progress. Refusing while any run is open was set aside, because one abandoned open record would block every dependent run until someone edited it. A runbook that must not start during its prerequisite says so in a step.</p>
+          </section>
+          <section class="risk" id="risk-the-rule-invites-a-false-pass" data-change="added" data-response="mitigated">
+            <h3>The strict rule tempts an operator to record a pass</h3>
+            <p>A prerequisite run with one <code>failed</code> or <code>partial</code> outcome blocks every dependent run, so an operator in a hurry can be tempted to change the outcome to <code>passed</code>. runbook-execution warns against exactly this: a report that treats a recorded failure as a fault "would teach an operator to record a pass".</p>
+            <p data-field="mitigation">The refusal names the record, the requirement, and the outcome, so the way forward is plain: run the prerequisite again and let a new record pass. The README says so beside the check: a failed run is a correct record, and the fix is a new run, never an edited outcome. The rule stays strict, because a softer one would let a dependent run start on a prerequisite that is known to have failed.</p>
+          </section>
+          <section class="risk" id="risk-a-record-edited-to-pass" data-change="added" data-response="accepted">
+            <h3>A record edited by hand reads as passed</h3>
+            <p>A record is an editable document, so its task states and outcomes can be changed to satisfy a check.</p>
+            <p data-field="mitigation">Accepted. A record is a person's account of a run, and runbook-authority already says a copied version "does not attest that the copy is authentic". The check makes the order visible and refuses honest mistakes. It is not a security boundary, and the README says so.</p>
+          </section>
+          <section class="risk" id="risk-the-meta-is-dropped" data-change="added" data-response="mitigated">
+            <h3>A formatter or validator drops or refuses the release meta</h3>
+            <p>If <code>htmlspec format</code> or a future validation rule removed an unknown head meta, records would lose their release and fail every <code>atLeast</code>.</p>
+            <p data-field="mitigation">Task 2.2 proves that validation and formatting keep the meta, with a test that fails if either drops it. Version 1.1.0 already keeps it, which I checked on a copy of a real record.</p>
+          </section>
+          <section class="risk" id="risk-many-records" data-change="added" data-response="accepted">
+            <h3>A runbook with many records makes preflight slow</h3>
+            <p>A run check parses every record of the runbook it names, and reads specifications to find cycles through the declaring runbook.</p>
+            <p data-field="mitigation">Accepted. A record is one document, and parsing a few hundred takes well under a second at the speeds the suite measures. Naming is already bounded to three satisfying records. If it ever matters, the check can stop counting once it no longer needs a total.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

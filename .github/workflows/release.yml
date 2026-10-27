@@ -20,6 +20,11 @@
 #
 # The Nix flake is the fourth channel, and it needs no job: `nix run
 # github:Firefly-Projects/htmlspec` builds from the tag's source.
+#
+# After the release, two jobs install it the way the README tells a reader to: `install` runs the
+# README's Linux block on both Linux targets, and `install-homebrew` runs its Homebrew-on-Linux block
+# once the formula is in the tap. They come after publication because the block fetches the published
+# release, so they find a broken README at the release rather than at a reader's first try.
 
 name: release
 
@@ -277,6 +282,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      latest: ${{ steps.latest.outputs.latest }}
     steps:
       - uses: actions/checkout@v4
 
@@ -301,22 +308,42 @@ jobs:
       - name: Write the notes from the version's changelog entry
         run: scripts/release-notes "${GITHUB_REF_NAME#v}" > notes.md
 
+      # GitHub marks a new release "Latest" unless told otherwise, and `releases/latest` is where the
+      # README's Linux block downloads from. A patch on an older line, 1.0.2 after 1.1.0, must not
+      # become the latest, or every reader of the README would install the older line. So the tag is
+      # the latest only when it is the highest version among the published releases and itself. The
+      # answer is this job's output, which `tap` reads too: the formula holds one version, and an
+      # older line's formula would downgrade every Homebrew install.
+      - name: Decide whether this tag is the newest release
+        id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tags="$(gh release list --limit 1000 --exclude-drafts --exclude-pre-releases --json tagName --jq '.[].tagName')"
+          newest="$(printf '%s\n%s\n' "$tags" "$GITHUB_REF_NAME" | sed -n 's/^v\([0-9][0-9.]*\)$/\1/p' | sort -V | tail -n 1)"
+          if [ "$newest" = "${GITHUB_REF_NAME#v}" ]; then latest=true; else latest=false; fi
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "the newest release is v$newest, so $GITHUB_REF_NAME is the latest: $latest"
+
       # A rerun finishes what a run before left. A release that exists, whole or with some of its
       # files, or still a draft because the run stopped while uploading, gets every file again,
       # replacing any of the same name, and is published with this run's notes.
       - name: Create the release, or finish the one a run before began
         env:
           GH_TOKEN: ${{ github.token }}
+          LATEST: ${{ steps.latest.outputs.latest }}
         run: |
           set -euo pipefail
           title="htmlspec ${GITHUB_REF_NAME#v}"
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             echo "release $GITHUB_REF_NAME exists; uploading its files again"
             gh release upload "$GITHUB_REF_NAME" --clobber dist/*.tar.gz dist/SHA256SUMS
-            gh release edit "$GITHUB_REF_NAME" --draft=false --title "$title" --notes-file notes.md
+            gh release edit "$GITHUB_REF_NAME" --draft=false --latest="$LATEST" --title "$title" --notes-file notes.md
           else
             gh release create "$GITHUB_REF_NAME" \
               --verify-tag \
+              --latest="$LATEST" \
               --title "$title" \
               --notes-file notes.md \
               dist/*.tar.gz dist/SHA256SUMS
@@ -345,9 +372,12 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: scripts/publish-crates
 
+  # Only the latest release reaches the tap. Its formula holds one version, so a patch on an older
+  # line would replace the newer formula and downgrade every Homebrew install. On an older line this
+  # job is skipped, and so is `install-homebrew`, which needs it.
   tap:
     needs: release
-    if: github.repository == 'Firefly-Projects/htmlspec' && startsWith(github.ref, 'refs/tags/v')
+    if: github.repository == 'Firefly-Projects/htmlspec' && startsWith(github.ref, 'refs/tags/v') && needs.release.outputs.latest == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -393,3 +423,107 @@ jobs:
           fi
           git commit -m "htmlspec ${GITHUB_REF_NAME#v}"
           git push origin HEAD
+
+  # The README's Linux install block, run verbatim against the release it describes, on both Linux
+  # targets. The block is what a reader on Linux or WSL pastes, and it always installs the latest
+  # release, so it can be tested only once the release is public. That is also why this job is not
+  # a stage of `scripts/check`: it needs the network and a published release. `scripts/check`
+  # holds the block's syntax, its targets, and its reading of SHA256SUMS offline.
+  #
+  # It comes after `release`, beside `crates` and `tap`, so it never holds up a publish. A failure
+  # here says the README's commands are broken for this release, and the publish runbook's step 8
+  # records it and stays open until a patch release's run of this job passes.
+  install:
+    needs: release
+    if: github.repository == 'Firefly-Projects/htmlspec' && startsWith(github.ref, 'refs/tags/v')
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # GitHub moves `releases/latest` to a new release a moment after creating it, and the block
+      # reads `latest`. So wait, about five minutes at most, for `latest` to name this tag, rather
+      # than test the release before. A tag older than the latest release is a patch on an older
+      # line, which the block, installing the latest, cannot test: that ends with a notice, and the
+      # steps after it are skipped. A `latest` that names an older release after five minutes fails.
+      - name: Wait for the latest release to be this tag
+        id: latest
+        run: |
+          set -euo pipefail
+          want="$GITHUB_REF_NAME"
+          latest=""
+          for _ in $(seq 1 30); do
+            location="$(curl -fsSI -o /dev/null -w '%{redirect_url}' \
+              https://github.com/Firefly-Projects/htmlspec/releases/latest || true)"
+            case "$location" in
+              */tag/*) latest="${location##*/tag/}" ;;
+              *) latest="" ;;
+            esac
+            if [ "$latest" = "$want" ]; then
+              echo "ready=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if [ -n "$latest" ]; then
+              newest="$(printf '%s\n%s\n' "${latest#v}" "${want#v}" | sort -V | tail -n 1)"
+              if [ "$newest" = "${latest#v}" ]; then
+                echo "::notice::the latest release is $latest, newer than $want: a patch on an older line, which the README's block cannot test, because it installs the latest"
+                echo "ready=false" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+            sleep 10
+          done
+          echo "latest is not $want: after five minutes the latest release is ${latest:-unknown}" >&2
+          exit 1
+
+      # The block is printed from the README at this tag by the same script `scripts/check` uses,
+      # and run with `bash -x`, so a failure names the line it stopped at. HOME is an empty
+      # directory, as on a machine that never had htmlspec.
+      - name: Run the README's Linux block verbatim, in an empty HOME
+        if: steps.latest.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          block="$RUNNER_TEMP/linux-release.sh"
+          scripts/check-readme-install --print linux-release > "$block"
+          home="$RUNNER_TEMP/home"
+          mkdir -p "$home"
+          HOME="$home" bash -x "$block"
+          installed="$("$home/.local/bin/htmlspec" --version)"
+          echo "installed: $installed"
+          case "$installed" in
+            "htmlspec ${GITHUB_REF_NAME#v} ("*) ;;
+            *) echo "the README's block installed $installed, not ${GITHUB_REF_NAME#v}" >&2; exit 1 ;;
+          esac
+          project="$RUNNER_TEMP/project"
+          mkdir -p "$project"
+          cd "$project"
+          HOME="$home" "$home/.local/bin/htmlspec" init --tools none
+          HOME="$home" "$home/.local/bin/htmlspec" new change smoke
+          HOME="$home" "$home/.local/bin/htmlspec" validate
+
+  # The README's Homebrew-on-Linux block, run verbatim once the formula is in the tap. It needs
+  # `tap` rather than `release`, so it never races the formula's push, and an expired tap token
+  # fails `tap` and this job and nothing else. The runner image carries Homebrew under
+  # /home/linuxbrew, off the PATH, which is the case the block's first line exists for.
+  install-homebrew:
+    needs: tap
+    if: github.repository == 'Firefly-Projects/htmlspec' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run the README's Homebrew-on-Linux block verbatim
+        run: |
+          set -euo pipefail
+          block="$RUNNER_TEMP/linux-homebrew.sh"
+          scripts/check-readme-install --print linux-homebrew > "$block"
+          bash -x "$block"
+          installed="$(/home/linuxbrew/.linuxbrew/bin/htmlspec --version)"
+          echo "installed: $installed"
+          case "$installed" in
+            "htmlspec ${GITHUB_REF_NAME#v} ("*) ;;
+            *) echo "Homebrew installed $installed, not ${GITHUB_REF_NAME#v}" >&2; exit 1 ;;
+          esac

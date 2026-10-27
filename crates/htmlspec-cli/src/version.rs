@@ -137,6 +137,14 @@ impl RunbookVersion {
     pub fn is_released(self) -> bool {
         self > Self::unreleased()
     }
+
+    /// The major component, which a run check's `atLeast` compares within.
+    ///
+    /// The change `require-a-run-of-another-runbook` (its design's decision 4): a release counts
+    /// only inside the bound's major, because a major release is one that breaks what came before.
+    pub const fn major(self) -> u64 {
+        self.0.major
+    }
 }
 
 impl std::fmt::Display for RunbookVersion {

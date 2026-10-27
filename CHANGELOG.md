@@ -7,6 +7,222 @@ find it. That check also requires every archived change to record the version it
 in, in a `VERSION` file beside its documents. Prose inside an entry is not parsed — a
 changelog exists to be read by a person.
 
+## 1.2.1 — tell users how to upgrade
+
+A patch release: the program does not change. Until now nothing told a person how to move to a new
+release. The README installed one, and said once that running its Linux block again upgrades, but
+it never said how to upgrade on Homebrew, cargo, or Nix, or what to do in a project once the binary
+is newer. Now it does.
+
+- **The README has an Upgrading section,** after "Getting started". It gives each channel's own
+  upgrade command, then the steps for a project, from its root: `htmlspec init` to refresh the agent
+  instructions, an optional `htmlspec format --upgrade-assets`, and `htmlspec validate`. It says
+  what 1.x promises and cites the requirement behind each promise, and lists what each release
+  from 1.1 on lets a project adopt.
+- **Each entry from 1.1.0 on says what upgrading to it asks,** in a short "Upgrading" part. The
+  parts of 1.1.0, 1.1.1, and 1.2.0 were written for this release and say so. Older entries are
+  left as they were. The notes are cumulative, and the README says to read every one between the
+  release you are on and the one you are moving to.
+- **The README's upgrade commands are checked** as its install commands are. Each upgrade block is
+  marked `upgrade:`, and `scripts/check-readme-install` refuses one that is missing, is marked as an
+  install block, or that `bash -n` refuses. The blocks are parsed and never run.
+
+### Upgrading
+
+From 1.2.0, nothing in the program changed. Upgrading the binary is enough, and `htmlspec init` in
+a project only moves its instructions' recorded release to 1.2.1.
+
+From 1.1.x, follow 1.2.0's and 1.1.1's notes too. 1.1.1 and 1.2.0 were not published on their own,
+so every channel moves from 1.1.0 straight to this release. In practice `htmlspec init` then also
+brings 1.2.0's new instruction text, a passage on declaring a runbook's order in the `new`
+workflow, into each tool's copy of it and into the marked region of `AGENTS.md`. And before a
+project declares a `preflight/v3` run check, every machine that runs its runbooks needs 1.2.
+
+## 1.2.0 — let a runbook require a passed run of another runbook
+
+A runbook can now require that another runbook has run first. One requirement in its specification
+declares the prerequisite as a `preflight/v3` run check, `htmlspec run --as` refuses to start until
+a finished, passed run of that runbook is recorded in the project, and there is no override. The
+order is shown, too: `htmlspec list --runbooks` and a bare `htmlspec run` show what each runbook
+requires and whether it is met now, and `list --runbooks --graph` draws the same as a Mermaid
+flowchart. Every 1.1 runbook, record, command, flag, and `--json` field keeps working as it did.
+The release also closes gaps 1.1 shipped, where a runbook's name, or a character the parser quoted
+from a document, reached the terminal raw.
+
+### The prerequisite check
+
+A runbook can require a finished, passed run of another runbook before its own run starts. The
+declaration is a preflight check, in the note of a requirement in the runbook's specification:
+
+```
+preflight/v3 {"kind":"run","runbook":"backup","atLeast":"0.2.0"}
+```
+
+- `preflight/v3` reads every `preflight/v2` form, with its `remedy`, and one more kind, `run`,
+  with `runbook` and an optional `atLeast`. `preflight/v1` and `preflight/v2` refuse `run` as an
+  unknown kind, and the fault says it is declared in `preflight/v3`. A program before 1.2.0 refuses
+  a v3 note as a format it does not read.
+- A record satisfies the check when it parses without recovery, declares the `tasks` kind, has a
+  task done and every task done or dropped, and records every requirement it carries as `passed`.
+  Any such record counts. With `atLeast`, its release must be at or above that one, within the same
+  major. When none satisfies, each record is named with the first reason it does not. Up to three
+  satisfying records are named, with a count of the rest, and a run still under way is named even
+  when the check is met, in a report that is not ready too.
+- `htmlspec run --as` writes each new record's runbook release in a head meta,
+  `<meta content="0.1.0" name="htmlspec-runbook-release">`, which is what `atLeast` reads. Only a
+  meta in the head counts. A record written before 1.2.0 states no release, so it satisfies only a
+  check without `atLeast`. A satisfying record's release is named as it is stated, a malformed or
+  duplicated one included.
+- The declared name is matched byte for byte against the project's runbook directories, whatever
+  the filesystem, so `Backup` beside `backup` names no runbook and the check is unmet as missing. A
+  runbook that requires itself, or a cycle that leads back to it, is an invalid contract:
+  `preflight` and `run --as` exit 2 and name the cycle in order, under whatever case the command
+  line typed the runbook's name in. A specification reached on the way that cannot be read makes
+  the check unavailable. A missing runbook and an unavailable check each have a remedy of their own.
+- An unmet run check refuses `run --as` with exit 1 before anything is written, as an unmet machine
+  check does, and there is no override. A met one is recorded in the new record as a passed
+  verification naming the runs that satisfied it with their releases.
+- Under `--store`, the check reads the selected project's runbooks and records. Machine checks
+  still read the working directory.
+- `preflight --json` and `run --json` carry a `run` object on each run check: `runbook`, `atLeast`,
+  `state` (`met`, `unmet`, `missing`, or `unavailable`), `satisfiedBy`, `satisfying`,
+  `notSatisfying`, and `openRuns`. Runbook and record names reach human output through the terminal
+  escaping.
+- A runbook named on the command line is known by one of the project's runbook directory names, so
+  every name 1.1 ran still runs: the typed name itself when it is one; else, among the names for
+  the same directory, the one equal to it ignoring case, so `OUTSIDE` beside `outside` and a link
+  `outside-link` is `outside`; else the directory's only name. Only a directory with several names,
+  none equal to the typed one even ignoring case, is refused as ambiguous. The run is started,
+  reported, and recorded under that name, and the report's source path carries it.
+- A record under `runs/` that is a symbolic link, or resolves outside the runbook's `runs/` folder,
+  does not satisfy a run check, because the run it records may have happened in another project. It
+  is named among the records that do not, as one that "is a link". `run --check` still reviews it,
+  as 1.1 did.
+- Wording that said "machine" now covers run checks: the last line `run --as` writes to standard
+  error when it refuses says not every prerequisite is satisfied here, the started line counts
+  "check(s) passed", a new record's opening counts "prerequisite(s)", and `preflight --help`
+  describes the run check and what `--store` reads. An unavailable run check states its remedy once.
+- Fixed: the fault for a runbook whose contract this program cannot read, and the other faults of
+  loading a runbook, printed the runbook's name raw, and now show it through the terminal escaping,
+  as the report's header does.
+- Fixed: a parse recovery's message quotes the character the parser stopped at, which is the
+  document's own, and wrote it raw. So a document holding an escape sequence's opening wrote it
+  into the formatter's refusal and validation's report, and so did a run started for a runbook
+  whose directory name holds one, because the name reaches the record it composes. The message now
+  names each character a terminal would not show as itself by its code point, `<U+001B>`, through
+  the same rule the listing and preflight use, which now lives in `htmlspec-parse` as its `visible`
+  module so every crate reads one set. So `validate --json` gives a different `message` for a
+  document holding such a character; its diagnostic codes are unchanged.
+- For users of the crates on crates.io: `htmlspec-parse` gains a public `visible` module, with
+  `hidden`, `first_hidden`, and `shown`, and `RecoveredError::message` now holds the parser's message
+  with each character a terminal would not show as itself written as its code point.
+
+### The listing and the graph
+
+`htmlspec list --runbooks` shows, beneath each runbook, the runs of other runbooks it requires and
+whether each is met now, and the listing `htmlspec run` prints with no runbook shows the same rows.
+
+- Each prerequisite reads `met by` the records that satisfy it, up to three, with a count of the
+  rest. Or it reads `unmet`, with how many runs of it are still open, or `missing`, `self`,
+  `cycle`, or `unavailable`, where a runbook it reaches cannot have its declarations read, the
+  word `preflight` uses for the same check. A runbook whose own declarations cannot be read says so in
+  place of its prerequisites.
+- `list --runbooks --json` gains, per runbook, `declarations` (`readable`, `malformed`, or
+  `unreadable`), `prerequisitesMet`, and `prerequisites`, each with `requirement`, `runbook`,
+  `atLeast`, `state`, `satisfiedBy`, `satisfying`, and `openRuns`, the names of the runs still
+  under way, as in `preflight` and `run`. Only a `met` or `unmet` prerequisite names records,
+  because only those are decided from records. It gains `prerequisiteCycles`
+  at the top level: one cycle for each group of runbooks that lead back to one another, the
+  shortest through the group's least runbook, from that name in the order the runbooks require one
+  another. Every elementary cycle would grow factorially, nine mutually requiring runbooks holding
+  125,664 of them. `prerequisitesMet` is never true for a runbook whose declarations
+  cannot be read. "Met" covers runs of other runbooks only, never a machine check.
+- `htmlspec list --runbooks --graph` draws the same as a Mermaid flowchart, ready to paste into a
+  document's `<pre class="mermaid">`. Each arrow points from a prerequisite to the runbook that
+  requires it, styled met, unmet, or cycle. Nodes are numbered in name order and edges sorted, so
+  the output is the same on every machine. A missing runbook is a dashed node, and one whose
+  declarations cannot be read is marked. Names reach a label by code point and Mermaid entity code,
+  `%` included, so no name breaks the diagram or a line, and a name holding `%%` cannot act as a
+  Mermaid directive. The characters Mermaid carries entity codes in internally, `ﬂ`, `°`, `¶`, and
+  `ß`, are written by code point too, so a name holding them does not render as another name.
+- `--graph` without `--runbooks` is refused as a usage error, exit 2. With `--json` it changes
+  nothing, because the listing's payload holds everything the graph draws.
+
+### Documentation
+
+- The README's "Carrying a runbook to another machine" documents `preflight/v3` and the `run`
+  kind with an example: what satisfies it, `atLeast` and the release a record carries, matching
+  names byte for byte, reading only this project's records, why a record states no time, the
+  cycle and self-reference refusal, what the refusal reports, that the way forward after a failed
+  run is a new run and never an edited outcome, that a hand-edited record is not a security
+  boundary, and that a carried runbook checks the project it was carried to. The forms table gains
+  the `run` row, and "every start observes the machine afresh" now also says it reads the
+  project's runs afresh.
+- The README test that parses each documented declaration under its own marker now requires a
+  `preflight/v3` example beside the v1 and v2 ones.
+- The `new` workflow's instructions tell an agent to declare a runbook's order with a
+  `preflight/v3` run check rather than in prose, and, when a start is refused for an unmet
+  prerequisite, to run the prerequisite and never edit its record. The installed copies are
+  regenerated.
+
+### Upgrading (added in 1.2.1)
+
+Upgrade the binary, then run `htmlspec init --tools …` in each project to refresh its instructions.
+Nothing else is required. Before a project declares a `preflight/v3` run check, upgrade every
+machine that runs its runbooks: 1.1 refuses that format and names the ones it reads.
+
+A run started by 1.2 writes its runbook's release into the record's head. 1.1 reads such a record
+and ignores that line. A parse message that quoted a hidden character from a document now names it
+by its code point, so `validate --json` reports different `message` text for such a document, with
+the same codes.
+
+## 1.1.1 — install through WSL, without Nix
+
+A patch release: the program does not change. What changes is how a person reaches it. Windows is
+served through WSL 2 and the Linux build, and every route that needs no Nix is now written out in
+full and checked.
+
+- **Windows means WSL.** Native Windows is not supported, and the README says so: everything around
+  htmlspec, the check scripts, the git hooks, the Nix shell, and the way preflight finds programs,
+  assumes a POSIX shell. The unscheduled native-build proposal is withdrawn. The README's Windows
+  part gives `wsl --install`, says to keep projects in the Linux file system rather than `/mnt/c`,
+  where Windows' line-ending conversion breaks the asset store's digests, and gives the
+  `python3 -m http.server` route for reading documents from a Windows browser.
+- **"Getting started" installs by platform.** Linux and WSL come first, with a pasteable block that
+  reads the latest release's `SHA256SUMS`, picks the tarball for the machine, checks it, and
+  installs `htmlspec` and its license files under `~/.local`; running it again upgrades. Homebrew
+  on Linux gets the `brew shellenv` line that puts it on `PATH`, and `cargo install` names rustup
+  and the C linker Ubuntu lacks. macOS and Nix follow, and Nix is optional everywhere.
+- **"Building" has two equal parts.** Without Nix, rustup, a C linker, Python 3, bash, and git run
+  every stage of `scripts/check`, and the README names what only the Nix sandbox checks.
+  `scripts/check-prompt` now finds the binary under `CARGO_TARGET_DIR` when that is set.
+- **The install commands are checked.** A new stage, `readme-install`, requires the four marked
+  install blocks and holds each to `bash -n`, the Linux block to checking its download against
+  `SHA256SUMS` before it unpacks it and to the targets a release builds, and its reading of
+  `SHA256SUMS` to what `pack-release --sums` writes. After every release, the release workflow's new
+  `install` job runs the README's Linux block verbatim on both Linux targets, once `latest` names
+  the tag, and requires the tag's version; `install-homebrew` runs the Homebrew-on-Linux block once
+  the formula is in the tap. A weekly `check-without-nix` workflow runs `scripts/check` with rustup
+  and Ubuntu's Python and no Nix.
+- **A patch on an older line no longer becomes the latest release.** The release job passes
+  `--latest=false` unless the tag is the highest published version, so `releases/latest`, where the
+  README's block downloads from, keeps pointing at the newest line. Only the latest release reaches
+  the Homebrew tap, whose formula holds one version, so an older line's run skips `tap` and
+  `install-homebrew`.
+- **The export scan excuses Homebrew's Linux prefix,** `/home/linuxbrew`, beside `/home/operator`,
+  so the README can name it. The excuse ends where the directory name does, so a home directory
+  whose name only begins with either is still refused.
+- **The publish runbook is 0.3.0.** Step 6 carries an install job's failure to step 8 rather than
+  stopping the run, and step 8 records both jobs. When the README's commands were broken at the
+  tag, step 8 stays open until the fixing patch release's run of the job that failed passes, and a
+  job that failed for another reason is run again and its rerun recorded.
+
+### Upgrading (added in 1.2.1)
+
+Nothing in the program changed. Upgrading the binary is enough, and `htmlspec init` in a project
+only moves its instructions' recorded release to 1.1.1. On Linux and WSL, the README's new install
+block is also the way to upgrade: running it again installs the newest release.
+
 ## 1.1.0 — ship the crates' notices and runbook affordances
 
 The first minor release keeps every 1.0 promise and adds to it. The binary now carries the
@@ -144,6 +360,14 @@ that helper by hand after its first push found no credentials. Nothing prints th
 configuration file is written. A target off GitHub is reached as before, without `gh`. The publish
 runbook moves to 0.2.1: steps 3 and 4 say the export prints the account, and that the run records
 it.
+
+### Upgrading (added in 1.2.1)
+
+Upgrade the binary, then run `htmlspec init --tools …` in each project to refresh its instructions.
+Nothing else is required. `htmlspec format --upgrade-assets`, new in this release, moves a
+project's documents onto the stylesheet and scripts this release writes. Documents that keep the
+older ones still validate. Before a project gives a preflight check a `remedy`, which needs
+`preflight/v2`, upgrade every machine that runs its runbooks: 1.0 refuses that format.
 
 ## 1.0.1 — finish a publish run without a hand fix
 

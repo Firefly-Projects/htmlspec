@@ -466,6 +466,66 @@ fn declare_a_machine_check(runs: &mut Runs, scratch: &Scratch) {
     runs.ok(&scratch.0, &["format", &path.to_string_lossy()]);
 }
 
+/// Declares two run checks on `release`: one of `backup` at 0.1.0 or later, met by a finished,
+/// passed run beside an open one, and one of `cleanup`, unmet because its only run is open. Between
+/// them a report carries every field of a run check's `run` object.
+fn declare_run_checks(runs: &mut Runs, scratch: &Scratch) {
+    for runbook in ["backup", "cleanup"] {
+        runs.ok(&scratch.0, &["new", "runbook", runbook]);
+        runs.payload(&scratch.0, &["run", runbook, "--as", "open"]);
+    }
+    runs.payload(&scratch.0, &["run", "backup", "--as", "finished"]);
+    let finished = scratch.path("htmlspec/runbooks/backup/runs/finished.html");
+    let source = std::fs::read_to_string(&finished).expect("the record reads");
+    std::fs::write(
+        &finished,
+        source
+            .replace("data-state=\"todo\"", "data-state=\"done\"")
+            .replace("data-outcome=\"not-run\"", "data-outcome=\"passed\""),
+    )
+    .expect("the record is finished");
+
+    let path = scratch.path("htmlspec/runbooks/release/specification.html");
+    let source = std::fs::read_to_string(&path).expect("the specification reads");
+    let mut units = String::new();
+    for (id, declaration) in [
+        (
+            "after-backup",
+            "{&quot;kind&quot;:&quot;run&quot;,&quot;runbook&quot;:&quot;backup&quot;,\
+             &quot;atLeast&quot;:&quot;0.1.0&quot;}",
+        ),
+        (
+            "after-cleanup",
+            "{&quot;kind&quot;:&quot;run&quot;,&quot;runbook&quot;:&quot;cleanup&quot;}",
+        ),
+    ] {
+        units.push_str(&format!(
+            "          <section class=\"requirement\" id=\"req-{id}\" data-change=\"unchanged\">\n\
+             \x20           <h3>The {id} prerequisite <span class=\"hs-id\">req-{id}</span></h3>\n\
+             \x20           <p>A run MUST follow the run this declares.</p>\n\
+             \x20           <article class=\"scenario\" id=\"scenario-{id}\" \
+             data-change=\"unchanged\">\n\
+             \x20             <h4>The prerequisite ran</h4>\n\
+             \x20             <dl>\n\
+             \x20               <dt>When</dt>\n\
+             \x20               <dd>A run starts.</dd>\n\
+             \x20               <dt>Then</dt>\n\
+             \x20               <dd>The run it requires has finished and passed.</dd>\n\
+             \x20             </dl>\n\
+             \x20           </article>\n\
+             \x20           <p data-field=\"note\">preflight/v3 {declaration}</p>\n\
+             \x20         </section>\n"
+        ));
+    }
+    let written = source.replace(
+        "        </section>\n      </main>",
+        &format!("{units}        </section>\n      </main>"),
+    );
+    assert_ne!(written, source, "the runbook has no requirements section");
+    std::fs::write(&path, written).expect("rewritten");
+    runs.ok(&scratch.0, &["format", &path.to_string_lossy()]);
+}
+
 /// A migration plan whose gate finds an unknown disposition, a derivation it cannot read, and two
 /// sources deriving one identifier in one destination.
 const PLAN_ITEMS: &str = r#"
@@ -555,8 +615,32 @@ fn every_field_a_payload_schema_declares_is_produced() {
     runs.payload(&runbook.0, &["run", "release", "--check"]);
     runs.payload(&runbook.0, &["list", "--runbooks"]);
     declare_a_machine_check(&mut runs, &runbook);
+    declare_run_checks(&mut runs, &runbook);
+    // The listing again, now that release requires a met backup run and an unmet cleanup run.
+    let ordered = runs.payload(&runbook.0, &["list", "--runbooks"]);
+    let release = ordered["runbooks"]
+        .as_array()
+        .expect("runbooks")
+        .iter()
+        .find(|entry| entry["name"] == "release")
+        .expect("release is listed");
+    let listed_states: Vec<&serde_json::Value> = release["prerequisites"]
+        .as_array()
+        .expect("prerequisites")
+        .iter()
+        .map(|prerequisite| &prerequisite["state"])
+        .collect();
+    assert_eq!(listed_states, ["met", "unmet"], "{ordered:#}");
     let preflight = runs.payload(&runbook.0, &["preflight", "release"]);
     assert_eq!(preflight["ready"], false, "{preflight:#}");
+    let states: Vec<&serde_json::Value> = preflight["checks"]
+        .as_array()
+        .expect("checks")
+        .iter()
+        .filter_map(|check| check.get("run"))
+        .map(|run| &run["state"])
+        .collect();
+    assert_eq!(states, ["met", "unmet"], "{preflight:#}");
     // A run the machine cannot start writes the preflight report in place of a run, and run's
     // schema states that shape.
     let refused = runs.payload(&runbook.0, &["run", "release", "--as", "second"]);

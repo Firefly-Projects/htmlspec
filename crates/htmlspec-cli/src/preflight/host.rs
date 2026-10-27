@@ -464,6 +464,10 @@ pub struct Host<R> {
     search_path: Vec<PathBuf>,
     runner: R,
     cancellation: Cancellation,
+    /// The runbooks directory of the project a run check reads records from: the project the
+    /// runbook was read from, which is the store's under `--store`. `None` for a host that was not
+    /// given one, where a run check is unavailable rather than read from anywhere else.
+    runbooks: Option<PathBuf>,
 }
 
 impl Host<SystemRunner> {
@@ -479,6 +483,7 @@ impl Host<SystemRunner> {
             search_path: environment_search_path(),
             runner: SystemRunner,
             cancellation: Cancellation::new(),
+            runbooks: None,
         }
     }
 
@@ -533,7 +538,20 @@ impl<R: CommandRunner> Host<R> {
             search_path,
             runner,
             cancellation: Cancellation::new(),
+            runbooks: None,
         }
+    }
+
+    /// This host, reading run checks' records from the project whose runbooks directory is
+    /// `runbooks`.
+    ///
+    /// A separate place from the working directory on purpose. `--store` selects where a runbook
+    /// and its records are read from, and a run check is a question about records, so it reads
+    /// there; a machine check judges the working directory (the change
+    /// `require-a-run-of-another-runbook`, its design's decisions 5 and 10).
+    pub fn with_runbooks(mut self, runbooks: PathBuf) -> Self {
+        self.runbooks = Some(runbooks);
+        self
     }
 
     /// The handle that cancels this host's probes.
@@ -671,6 +689,28 @@ fn environment_search_path() -> Vec<PathBuf> {
 impl<R: CommandRunner> HostProbe for Host<R> {
     fn cancelled(&self) -> bool {
         self.cancellation.is_cancelled()
+    }
+
+    /// Decides a run check against the records of the project this host was given.
+    ///
+    /// Reads documents and runs no process, so it spends none of a probe's budget.
+    fn prerequisite(
+        &mut self,
+        runbook: &super::RunbookName,
+        at_least: Option<crate::version::RunbookVersion>,
+    ) -> Result<Fact, ProbeFault> {
+        let Some(runbooks) = &self.runbooks else {
+            return Err(ProbeFault::Unavailable {
+                reason: String::from(
+                    "this check was not given a project to read the runs of another runbook from",
+                ),
+                remedy: String::from(
+                    "check it with `htmlspec preflight` or `htmlspec run`, which read the \
+                     runbook's own project",
+                ),
+            });
+        };
+        crate::prerequisites::observe(runbooks, runbook, at_least)
     }
 
     /// Resolves the executable once and asks *that path* for its version.

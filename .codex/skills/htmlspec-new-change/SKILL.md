@@ -5,7 +5,7 @@ allowed-tools: Bash(htmlspec:*), Read, Write, Edit, Glob, Grep
 argument-hint: [a description of the work]
 license: MIT
 metadata:
-  generatedBy: htmlspec 1.1.0
+  generatedBy: htmlspec 1.2.1
 ---
 
 Start an html-spec change.
@@ -83,8 +83,33 @@ htmlspec new runbook <name> --subject "<subject>"
 
 It writes a specification of what every run must record, a tasks document holding the steps
 and a figure of their order, a `VERSION`, and a changelog, every unit `unchanged` and every
-step `todo`. `htmlspec run <name> --as <record>` starts a run of it. Work that changes what
-the project does, including work that changes a runbook, is a change.
+step `todo`. `htmlspec run <name> --as <record>` starts a run of it.
+
+**Where one runbook must run only after another has run, declare it; do not write the order as
+prose.** A sentence saying "run the backup first" is read by nobody but a person. Declare it
+instead on a requirement in the later runbook's specification, as a note: in a runbook you are
+creating, write it there now, and for a runbook that already exists, add it through a change.
+
+```html
+<p data-field="note">preflight/v3 {"kind":"run","runbook":"backup","atLeast":"1.4.0"}</p>
+```
+
+`htmlspec preflight <name>` and every `htmlspec run <name> --as <record>` then check it: the
+start is refused, with nothing written, until the project holds a finished, passed run of the
+named runbook. `atLeast` is optional. With it, that run's runbook release must be at or above
+it, within the same major.
+
+**When a start is refused for an unmet prerequisite, run the prerequisite; never edit its
+record.** The report names each record of that runbook and the first reason it does not count,
+in this order: it cannot be read, it needs error recovery, it is not a tasks document, it has no
+task done, it is still open, it recorded an outcome other than `passed`, it records no outcome
+for a requirement, or, under `atLeast`, its release is missing, malformed, stated twice, or
+misses `atLeast`. A record that recorded a failure is a correct record of a failed run, and the
+way forward is a new run, never an edited outcome. There is no option that skips the check. A
+refusal that names a cycle, or a runbook requiring itself, is a mistake in the declarations, and
+the fix is a change to those specifications.
+
+Work that changes what the project does, including work that changes a runbook, is a change.
 
 ```bash
 htmlspec new change <name> --subject "<subject>"

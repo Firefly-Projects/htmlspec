@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Let a runbook require a passed run of another runbook before its own run starts</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Let a runbook require a passed run of another runbook before its own run starts</h1>
+        <p>A runbook cannot say that another runbook must have run first. Today the order lives in prose that no program reads, so nothing stops a migration starting before its backup, and nothing shows a reader which procedure comes next. This change lets a runbook declare, in its specification, that a passed run of another runbook in the same project must exist before its own run starts. <code>htmlspec run --as</code> and <code>htmlspec preflight</code> check the declaration and refuse a start that has not met it, and <code>htmlspec list --runbooks</code> shows each runbook's prerequisites and whether they are met.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Let a runbook require a passed run of another runbook before its own run starts</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>A project that keeps more than a few runbooks soon has an order among them. A database is backed up before it is migrated. An account exists before a database is provisioned for it, and the database exists before a service is deployed onto it. The procedures are separate, because each has its own hazards, its own grants, and its own history, and merging them into one runbook would lose all three. Yet the order between them is real, and getting it wrong is the expensive kind of mistake.</p>
+          <p>htmlspec 1.1.0 has no way to say so. Its one ordering link, a change's <code>FOLLOWS</code> file, joins changes and orders their archival, never runs. Preflight checks only what a machine holds: a tool, a toolchain, a skill, and the state of the working directory. And a runbook's documents reach only themselves, by document-schema's <a href="../../../specs/document-schema/spec.html#req-cross-references-address-units-by-identifier">"Cross-references address units by identifier"</a>. So the prerequisite is written as prose in the procedure's "What this procedure consumes" section, and a comment in <code>runs.rs</code> says that prose is the only place a prerequisite can live. Prose is read by a person, and only when the person remembers to.</p>
+          <p>A downstream project's runbooks showed the cost. One chain of procedures carries each item through eight runbooks, and every prerequisite between them was a sentence in a consumes section that a person checked by eye before each start. The project's question, which procedure must run first and which one can start now, had no answer except reading every record by hand.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <p>A runbook states a prerequisite the way it already states a machine requirement: as a requirement in its specification, with a scenario, and a declaration in the requirement's note that preflight reads. The declaration names another runbook in the same project, and optionally the lowest release of it that counts.</p>
+          <pre><code>preflight/v3 {"kind":"run","runbook":"backup","atLeast":"1.4.0"}</code></pre>
+          <p>What working looks like, for a project with a <code>backup</code> runbook and a <code>migrate</code> runbook whose specification carries that declaration:</p>
+          <ol>
+            <li><code>htmlspec list --runbooks</code> shows that <code>migrate</code> runs after <code>backup</code>, and whether that prerequisite is met now, naming the backup run that meets it.</li>
+            <li>With no finished backup run, <code>htmlspec run migrate --as 2026-11-02</code> refuses, creates no record, and says why: no record of <code>backup</code>, or its run <code>2026-11-01-nightly</code> is still open with three of seven steps done, or that run recorded <code>failed</code> for one of its requirements, or it ran release 1.3.0, below 1.4.0.</li>
+            <li>Once a backup run has finished and passed, the same command starts the migration. Its record carries a verification saying which backup run satisfied the prerequisite, and at which release.</li>
+            <li><code>htmlspec preflight migrate</code> reports the same check without starting anything, as it does for a missing tool.</li>
+            <li><code>htmlspec list --runbooks --graph</code> prints the project's runbooks and the order among them as a Mermaid diagram, ready to paste into a document. Each arrow says whether that prerequisite is met now, and shows its lowest accepted release.</li>
+          </ol>
+          <p>A chain of three works the same way: <code>deploy-service</code> requires <code>provision-database</code>, which requires <code>create-account</code>. Each runbook declares only its own prerequisites, and the listing shows the whole order. A runbook that names itself, or whose prerequisites lead back to it, is refused as an invalid contract, because no order could satisfy it.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <ul>
+            <li><strong>Keep it downstream.</strong> A project can write its own tool that reads its records and refuses an early start, and the downstream project above planned exactly that. It works, but every project writes the same tool again, and htmlspec keeps calling a run ready that its own author knows is not. The start path in <code>runs.rs</code> already refuses a run whose prerequisites are unmet. This change gives it one more kind of prerequisite to check.</li>
+            <li><strong>Merge the runbooks into one.</strong> One procedure with stages loses each runbook's own version, history, and records, and every change to one stage becomes a release of all of them. The order would be enforced, but at the price of the reasons the procedures were separate.</li>
+            <li><strong>A <code>FOLLOWS</code> file for runbooks.</strong> <code>FOLLOWS</code> orders archival between changes, and it names one predecessor. A runbook's prerequisite gates a run, which preflight already gates, can name several runbooks, and is a requirement a run records an outcome for. A file beside the documents would be a second place a runbook states what it needs.</li>
+            <li><strong>A cross-reference from one runbook to another.</strong> A reference reaches a unit, and a runbook's documents reach only themselves. The declaration names a runbook as data, which the rule does not touch, and asks about its runs rather than its units.</li>
+          </ul>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <p>The change checks runbook-level runs, and only within one project.</p>
+          <ul>
+            <li><strong>No per-item verdicts.</strong> A run that handles many items, such as hosts or accounts, can pass for some and not others. Whether a particular item may go on to the next runbook is the downstream project's business, stated in its own files. htmlspec asks only whether a run of the prerequisite runbook finished and passed.</li>
+            <li><strong>No freshness.</strong> A run's record does not state when the run happened, by runbook-execution's <a href="../../../specs/runbook-execution/spec.html#req-a-run-is-one-record-from-start-to-finish">"A run is one record from start to finish"</a>. So "a backup from today" cannot be checked, and any finished, passed run of the named runbook satisfies the declaration. A procedure that needs a recent run says so in its own steps.</li>
+            <li><strong>No other projects or worktrees.</strong> Records are read from the project the declaring runbook belongs to. A run recorded in another worktree counts once its record lands there.</li>
+            <li><strong>No override.</strong> There is no flag to start a run whose prerequisite is unmet, as runbook-portability's <a href="../../../specs/runbook-portability/spec.html#req-preflight-gates-the-creation-of-a-run">"Preflight gates the creation of a run"</a> already rules out any skip-preflight option.</li>
+            <li><strong>No orchestration.</strong> htmlspec never starts a prerequisite run on its own. A parent runbook that walks its children in order is an ordinary runbook, and needs nothing new.</li>
+            <li><strong>No new command for the graph.</strong> The drawn order is an option of the listing, <code>list --runbooks --graph</code>, not a command of its own. The user decided on 2026-10-27 to include it in 1.2.0.</li>
+          </ul>
+          <p>It ships as 1.2.0, because it adds to the command surface and introduces a new declaration format. The contract's vocabulary does not change. It follows <code>install-through-wsl-without-nix</code>, which archives at 1.1.1 first, so this change opens only after that one has archived.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

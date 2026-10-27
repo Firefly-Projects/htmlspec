@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Install htmlspec on Windows through WSL, without Nix: design</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Install htmlspec on Windows through WSL, without Nix: design</h1>
+        <p>Windows is served through WSL 2 and the Linux build, and native Windows is not a goal. The README installs htmlspec on Linux and WSL without Nix, using a block that names no version and checks the binary against <code>SHA256SUMS</code>, and it names what a contributor without Nix needs. The block is run verbatim against every release on both Linux architectures, and the publish runbook records the result. There is no install script: the README block is the installer, by the user's decision.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Install htmlspec on Windows through WSL, without Nix: design</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="today">
+          <h2>What a person without Nix meets today</h2>
+          <p>Measured on 2026-10-26 against main at <code>246cf19</code> and the published v1.1.0.</p>
+          <ul>
+            <li>README.md's "Getting started" puts <code>nix run github:Firefly-Projects/htmlspec</code> first, then <code>brew install</code> and <code>cargo install --locked htmlspec-cli</code> in the same block. It follows with one sentence: "Or download a binary for macOS or Linux from the releases page". It gives no commands for that, and no word on Windows, WSL, or Homebrew on Linux's <code>PATH</code> step.</li>
+            <li>"Building" gives four Nix commands, then <code>cargo build --release</code> and <code>cargo run</code> "without Nix". It does not say that <code>scripts/check</code> runs without Nix, or what it needs.</li>
+            <li>Each release publishes <code>htmlspec-X.Y.Z-x86_64-unknown-linux-musl.tar.gz</code> and <code>htmlspec-X.Y.Z-aarch64-unknown-linux-musl.tar.gz</code>, static binaries, beside <code>SHA256SUMS</code>. Each tarball holds one directory of its own name, with <code>htmlspec</code>, <code>LICENSE</code>, <code>THIRD-PARTY-LICENSES</code>, and <code>CRATE-LICENSES</code>.</li>
+            <li><code>https://github.com/Firefly-Projects/htmlspec/releases/latest/download/SHA256SUMS</code> answers with the latest release's sums. Each line is a digest, two spaces, and a tarball's name, so the name of the right tarball can be read out of it without knowing the version. Run against v1.1.0's file, <code>grep -- "-$target.tar.gz\$" SHA256SUMS | cut -d' ' -f3</code> printed the expected name for both Linux targets.</li>
+            <li><code>scripts/check</code> needs <code>cargo</code> with <code>rustfmt</code> and <code>clippy</code>, a C linker for <code>cargo</code> to link with, <code>bash</code>, <code>python3</code> with the standard library only, and <code>git</code>, the last for the prompt stage. The flake's <code>checkSuite</code> supplies the toolchain, <code>bash</code>, <code>python3</code>, and <code>git</code> in the sandbox (<code>flake.nix</code>, its <code>nativeBuildInputs</code>), and its standard environment supplies the linker. <code>scripts/check --list</code> prints the stages. Throughout 1.1.0 this repository's suite ran outside <code>nix develop</code>, with the pinned Rust toolchain first on the path and macOS's own <code>/usr/bin/python3</code> 3.9.6, and passed every stage each time. The Nix shell's Python is 3.13.14. Those two versions are what was checked. Nothing in continuous integration holds a lower bound.</li>
+            <li><code>scripts/check-prompt</code> drives <code>target/debug/htmlspec</code> unless it is given <code>--binary</code> (its line 243). It does not read <code>CARGO_TARGET_DIR</code>, so a contributor who sets it builds the binary elsewhere and the prompt stage drives a stale one or none.</li>
+          </ul>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-no-native-windows" data-change="added" data-status="accepted">
+            <h3>1. Native Windows is not a goal. Windows means WSL 2</h3>
+            <p>The user decided on 2026-10-26 not to support native Windows, and withdrew the unscheduled <code>release-a-windows-build</code> proposal in this change's branch. A person on Windows installs WSL 2, opens a Linux distribution (Ubuntu is the default), and runs htmlspec there like any Linux user.</p>
+            <p data-field="rationale">Everything around the program assumes a POSIX shell: <code>scripts/check</code> and the other bash and Python scripts, the git hooks, the Nix development shell, and preflight's model of <code>PATH</code>, executables, and process groups. A native build would be the binary alone, and every one of those would need a Windows counterpart or an exception. WSL 2 runs a Linux kernel, so the Linux build and every one of those tools work there unchanged.</p>
+          </section>
+          <section class="decision" id="decision-install-by-platform" data-change="added" data-status="accepted">
+            <h3>2. The README installs by platform, and Nix is one route among several</h3>
+            <p>"Getting started" opens with a short "Installing" part in three places. Each route there has its own commands:</p>
+            <ul>
+              <li><strong>Linux, and Windows through WSL:</strong> the release block (decision 3), Homebrew on Linux with the line that puts it on <code>PATH</code> (<code>eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"</code>, added to the shell's start-up file), and <code>cargo install --locked htmlspec-cli</code> after rustup, naming <code>build-essential</code> for the linker Ubuntu lacks.</li>
+              <li><strong>macOS:</strong> Homebrew, and the release tarballs for the two macOS targets.</li>
+              <li><strong>Nix, anywhere:</strong> <code>nix run</code> and <code>nix profile install</code>, stated as optional.</li>
+            </ul>
+            <p data-field="note">The Windows part sits at the top of the Linux one: install WSL with <code>wsl --install</code>, then follow the Linux route inside it.</p>
+            <p data-field="note">Homebrew's Linux prefix, <code>/home/linuxbrew</code>, is a home directory by shape, and <code>publish/patterns.tsv</code> row 36 refuses every <code>/home/&lt;name&gt;</code> except <code>/home/operator</code>. Left as it is, the README's Homebrew lines would stop the 1.1.1 export at its scan. Task 1.3 widens that row's allowance to <code>/home/(operator|linuxbrew)\b</code>, with a <code>publish/test</code> case, before the README gains the lines.</p>
+            <p data-field="rationale">A reader looks for their platform, not for a package manager they might not have. Placing Nix first told a reader on Ubuntu or Windows that Nix was expected. The colleague who could not run a Homebrew install shows the cost of leaving out a route's last step. The README is non-normative, so these are its own words. The commands in them are held to the release by decision 7.</p>
+            <p data-field="note">Built on 2026-10-27, with one shape the decision did not give. The Homebrew-on-Linux block's first line is <code>eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"</code>, so the block runs as written in a terminal where <code>brew</code> is not on <code>PATH</code> yet. That is the state of a fresh install, and of the runner the <code>install-homebrew</code> job uses. The line that adds it to the start-up file follows in a block of its own. The cargo route runs <code>rustup toolchain install stable</code>, because a reader installing htmlspec has no <code>rust-toolchain.toml</code> for the bare form to read. The README also gained a short "After installing" part, which keeps the license paragraph and the first commands "Getting started" held.</p>
+            <p data-field="note">Settled after the review on 2026-10-27. Row 36's allowance is <code>/home/(operator|linuxbrew)(?![A-Za-z0-9._-])</code>, not <code>\b</code>: a word boundary ends at a dash or a dot, so it excused a home directory whose name merely began with an excused one. <code>publish/test</code> now refuses both shapes. The Ubuntu commands run <code>apt-get update</code> before <code>apt-get install</code>, and the <code>PATH</code> advice says the change takes effect in a new login shell, names <code>~/.bash_profile</code>, and says what to do in a desktop Ubuntu terminal. The Windows-browser route is stated as resting on WSL 2's localhost forwarding and as not tried here.</p>
+          </section>
+          <section class="decision" id="decision-the-block-names-no-version" data-change="added" data-status="accepted">
+            <h3>3. The Linux block reads the latest release's sums and names no version</h3>
+            <p>The block, as the README will hold it:</p>
+            <pre><code>(
+  set -eu
+  target="$(uname -m)-unknown-linux-musl"
+  base=https://github.com/Firefly-Projects/htmlspec/releases/latest/download
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' EXIT
+  cd "$tmp"
+  curl -fsSLO --retry 3 "$base/SHA256SUMS"
+  file="$(grep -- "-$target.tar.gz\$" SHA256SUMS | cut -d' ' -f3)"
+  [ -n "$file" ] || { echo "no htmlspec build for $(uname -m)" &gt;&amp;2; exit 1; }
+  curl -fsSLO --retry 3 "$base/$file"
+  sha256sum --check --ignore-missing SHA256SUMS
+  tar -xzf "$file"
+  mkdir -p "$HOME/.local/bin" "$HOME/.local/share/doc/htmlspec"
+  install -m 755 "${file%.tar.gz}/htmlspec" "$HOME/.local/bin/htmlspec"
+  cp "${file%.tar.gz}"/*LICENSE* "$HOME/.local/share/doc/htmlspec/"
+  "$HOME/.local/bin/htmlspec" --version
+)</code></pre>
+            <p data-field="note">It needs <code>curl</code> with <code>ca-certificates</code>, and GNU coreutils, whose <code>sha256sum</code> has <code>--ignore-missing</code> (BusyBox's does not). Ubuntu under WSL has all three, and the README names them for a minimal image, where <code>apt-get install curl ca-certificates</code> adds what is missing. It runs in a subshell, so a failure stops the block without closing the reader's terminal, and its temporary directory is removed whichever way it ends. Each download is retried three times. It checks the tarball before unpacking it, and it installs the three license files where the Nix package puts its own. Running it again installs the newest release over the old one. That is the upgrade, and the README says so. A reader who wants a particular version replaces <code>latest/download</code> with <code>download/vX.Y.Z</code>. If <code>~/.local/bin</code> is not on the reader's <code>PATH</code>, the README gives the one line that adds it. Ubuntu's own <code>~/.profile</code> adds it at the next login once the directory exists, so the README says to open a new terminal first.</p>
+            <p data-field="rationale">A block that names a version is wrong from the next release until someone edits it, and the public README changes only when a release is exported. Reading the name from <code>SHA256SUMS</code> keeps the block true for every release with no edit. It also makes checking the digest part of finding the file rather than an extra step a reader can skip. <code>uname -m</code> prints <code>x86_64</code> or <code>aarch64</code> on the machines the release builds for. Any other machine finds no line, and the block says so rather than downloading nothing.</p>
+            <p data-field="note">Settled after the review on 2026-10-27. Two things the block relies on are now held, not just stated. <code>scripts/check-readme-install</code> refuses a Linux block with no <code>sha256sum --check … SHA256SUMS</code> line, or with one that comes after its <code>tar -x</code> or <code>install</code> line. And the release workflow keeps a patch on an older line from becoming the latest: the <code>release</code> job compares the tag with the published releases and passes <code>--latest=false</code> unless it is the highest version, on the create path and on a rerun's edit path. Without that, GitHub would mark the older patch Latest, and the block would install it for every reader.</p>
+          </section>
+          <section class="decision" id="decision-install-script" data-change="added" data-status="accepted">
+            <h3>4. No install script: the README block is the installer</h3>
+            <p>The user decided on 2026-10-26: there is no <code>install.sh</code>, only the README block. No release asset is added, and the README offers no <code>curl … | sh</code> form. The block is the installer, and decision 7 runs it against every release.</p>
+            <p data-field="rationale">An install script would turn the block into one line, <code>curl -fsSL …/install.sh | sh</code>, and it could also cover macOS. It would cost:</p>
+            <ul>
+              <li>a release asset, listed in <code>SHA256SUMS</code> and built by <code>scripts/pack-release</code>;</li>
+              <li>a script in POSIX <code>sh</code> that has to run on every distribution's shell, unlike a block a reader runs in their own;</li>
+              <li>the trust question every <code>curl | sh</code> asks: people would run it unread, and the README would have to show how to read it first.</li>
+            </ul>
+            <p data-field="rationale">The block asks for none of that, and a reader sees every command before running it.</p>
+            <p data-field="note">Proposed as a recommendation when this design was written, and accepted by the user's decision of 2026-10-26.</p>
+          </section>
+          <section class="decision" id="decision-wsl-guidance" data-change="added" data-status="accepted">
+            <h3>5. The Windows part says where projects live, how documents open, and where agents run</h3>
+            <p>The Windows part of the README gives three pieces of WSL guidance, each in a line or two.</p>
+            <ul>
+              <li><strong>Where a project lives.</strong> Keep it in the Linux file system, under <code>~</code>, not under <code>/mnt/c</code>, and use git from inside WSL. Under <code>/mnt/c</code> every file access crosses into Windows and is slow, and Windows' git is the one that would check the project out. With its common <code>core.autocrlf</code> setting it rewrites line endings, including in the asset store. Those files are named by their digests, so validation then reports <code>asset/mismatch</code>.</li>
+              <li><strong>How documents open.</strong> <code>explorer.exe .</code> opens the project's folder in Windows, and a Windows browser can open a document from there, at a <code>\\wsl.localhost\…</code> path. The route known to work is the one the README already gives for Safari: <code>python3 -m http.server</code> in the project, then <code>http://localhost:8000/htmlspec/specs/</code> in the Windows browser. It rests on WSL 2's documented forwarding of <code>localhost</code> from Windows to the Linux side, which is on by default. Whether a browser loads the store above a document over <code>file://wsl.localhost/…</code> is checked as decision 8 says, and until then the README states only what was checked.</li>
+              <li><strong>Agent tools.</strong> Install the coding agent inside WSL, as its Linux build, so it runs where htmlspec and the project are. <code>htmlspec init --tools …</code> writes the instructions there. Editors reach the project through their WSL integration.</li>
+            </ul>
+            <p data-field="rationale">Each of these is a place a person on Windows goes wrong without being told, and each costs a line. The line-ending case matters most, because the failure it causes, <code>asset/mismatch</code>, points at the store, not at where the project was checked out.</p>
+          </section>
+          <section class="decision" id="decision-contributors-without-nix" data-change="added" data-status="accepted">
+            <h3>6. A contributor without Nix is told what to install, and what only Nix checks</h3>
+            <p>"Building" becomes two equal parts. The part without Nix names what a machine needs:</p>
+            <ul>
+              <li>rustup, then <code>rustup toolchain install</code> in the repository, which reads <code>rust-toolchain.toml</code> and installs Rust 1.90.0 with <code>rustfmt</code>, <code>clippy</code>, and <code>rust-src</code>. It is run explicitly, as the release workflow runs it, rather than left to the first <code>cargo</code> command;</li>
+              <li>a C linker (<code>build-essential</code> on Ubuntu);</li>
+              <li>Python 3, standard library only, with the versions checked stated as such: 3.9.6 and 3.13.14, and Ubuntu's own in the job below;</li>
+              <li>bash and git.</li>
+            </ul>
+            <p data-field="note">It says that <code>scripts/check</code> runs every stage with those, the stages continuous integration runs, which <code>scripts/check --list</code> prints. It says that a contributor who sets <code>CARGO_TARGET_DIR</code> gets a prompt stage that finds the binary there, once task 3.5 has the stage read it. It also names what only the Nix sandbox and continuous integration check:</p>
+            <ul>
+              <li>that every file a stage reads survives the flake's source filter and is tracked;</li>
+              <li>the provenance of the vendored browser libraries, re-fetched from their pinned addresses;</li>
+              <li>a reproducible <code>nix build</code>.</li>
+            </ul>
+            <p data-field="note">Publishing stays a maintainer's job. The publish runbook's preflight requires the flake's development shell on purpose, and the README says so in one line.</p>
+            <p data-field="note">A continuous-integration job proves the claim continuously. It runs <code>rustup toolchain install</code> and then <code>scripts/check</code> on Ubuntu with the system's Python, with no Nix. It runs on a schedule once a week, and on pull requests whose paths match <code>README.md</code>, <code>rust-toolchain.toml</code>, <code>Cargo.toml</code>, <code>Cargo.lock</code>, <code>crates/**</code>, <code>scripts/**</code>, <code>flake.nix</code>, or its own workflow file. The README's "Two workflows check what arrives" table gains its row.</p>
+            <p data-field="rationale">"Runs without Nix" is a claim the README would make about every stage, and stages are added often. A claim about the suite that nothing checks drifts, exactly as the Linux block would. The job runs the same <code>scripts/check</code>, so it adds no second list of steps, and toolchain-packaging's "Project checks are runnable as one command" holds. The job runs on Linux, whose minutes cost the normal rate in the private repository, unlike macOS's tenfold rate. So the filter is there to keep pull requests that touch only documents from running the suite twice, not to ration an expensive runner. It names every path the suite builds from, and the weekly run catches the slow drift of the base image.</p>
+            <p data-field="note">Built on 2026-10-27. The workflow is <code>check-without-nix.yml</code>, and its job is named <code>check-without-nix</code>, not <code>check</code>, so its result is never mistaken for the <code>check</code> the branch ruleset requires. It can also be started by hand. The README's table now reads "Three workflows".</p>
+          </section>
+          <section class="decision" id="decision-prove-the-block" data-change="added" data-status="accepted">
+            <h3>7. Every release installs itself through the README, on both Linux architectures</h3>
+            <p>The check has three layers:</p>
+            <ul>
+              <li><strong>Offline, in the suite.</strong> A new stage, <code>readme-install</code>, runs <code>scripts/check-readme-install</code>, a standard-library Python script. It reads <code>README.md</code> and finds each install block by a marker comment just before its fence. It fails when a marked block is missing, when <code>bash -n</code> refuses it, or when the Linux block could pick a target the release does not build. That last check reads the targets from <code>scripts/release_facts.py</code>, where the release reads them. It also fails when the block's reading of <code>SHA256SUMS</code> no longer matches what <code>scripts/pack-release --sums</code> writes. It needs no network, so it runs on every pull request and inside the sandbox. The script joins the flake's <code>patchShebangs</code> line, and the source filter already admits <code>README.md</code> and the scripts.</li>
+              <li>
+                <strong>Networked, in the release workflow: two jobs, after what each one tests.</strong>
+                <ul>
+                  <li><code>install</code> has <code>needs: release</code> and runs on <code>ubuntu-24.04</code> and <code>ubuntu-24.04-arm</code>. Before running anything, it polls <code>releases/latest</code> for a bounded time, about five minutes, until the address it redirects to ends in <code>/tag/$TAG</code>. If the latest release names a newer version than the tag, the tag is a patch on an older line. The block, which always installs the latest, cannot test it, so the job reports that and ends as skipped without failing. If the bound passes and the latest still names an older version, the job fails with its own message, "latest is not $TAG". Otherwise it extracts the marked Linux block from the README at the tag and runs it verbatim with <code>bash -x</code>, so a failure names its line, with <code>HOME</code> set to an empty directory. It requires the installed <code>htmlspec --version</code> to name the tag's version, then runs <code>htmlspec init --tools none</code>, <code>htmlspec new change smoke</code>, and <code>htmlspec validate</code> in a scratch project.</li>
+                  <li><code>install-homebrew</code> has <code>needs: tap</code>, so it runs only after the formula is in the tap, and runs on <code>ubuntu-24.04</code>. The runner image carries Homebrew under <code>/home/linuxbrew</code>. It runs the Homebrew-on-Linux block verbatim with <code>bash -x</code> and reads the version the same way. An expired tap token fails <code>tap</code> and this job, and nothing else.</li>
+                  <li>Both carry the condition every job after <code>release</code> carries: <code>github.repository == 'Firefly-Projects/htmlspec' &amp;&amp; startsWith(github.ref, 'refs/tags/v')</code>. <code>cargo install</code> is left to the publish runbook, because it compiles for several minutes and the runbook already installs it.</li>
+                </ul>
+              </li>
+              <li><strong>Recorded, in the publish runbook.</strong> Step 6, "Watch the release workflow to its end", treats a failed <code>install</code> or <code>install-homebrew</code> job as something to carry to step 8, not as a reason to stop. Publication has already happened, and rerunning those jobs cannot change it. Step 8, "Check each channel", records each job's result beside the four channels it installs on the maintainer's machine. When a job failed because the README's commands were broken at the tag, step 8 records the failure and stays open. The fix ships as a patch release, and when that release's run of the job that failed, <code>install</code> or <code>install-homebrew</code>, passes, step 8 is settled with a note naming it, so the record can land. A job that failed for another reason, a timeout waiting for <code>latest</code> or the network, is run again and its rerun recorded.</li>
+            </ul>
+            <p data-field="rationale">The block is tested against the release it describes, the published one, because its whole job is to fetch that. The job therefore runs after publication and cannot stop it. What it changes is when a broken block is found: at the release, by a job whose trace names the line that failed, not later by a person who cannot tell a broken block from a mistake of their own. Polling <code>latest</code> keeps the job from testing the previous release in the moments before GitHub moves <code>latest</code> to the new one. The skip for an older line keeps a patch to a maintained older minor from failing a check that can only test the newest. Splitting Homebrew into its own job after <code>tap</code> keeps it from racing the formula's push. The offline layer catches the cheap failures, a syntax error or a target the release dropped, before anything is published. The job needs the network and a published release, so it cannot be a stage of <code>scripts/check</code>. It stands outside the suite for the reason the vendored-asset provenance check does, and its workflow comment says so, as <code>check.yml</code>'s does.</p>
+            <p data-field="note">Built on 2026-10-27, with two settlements. A running job cannot mark itself skipped, so for a patch on an older line <code>install</code> ends with a notice, the steps after the poll are skipped, and the job succeeds. <code>scripts/check-readme-install</code> also prints a marked block with <code>--print</code>, and both install jobs extract the block that way, so the jobs and the offline stage read the README one way. The stage also runs the script's <code>--self-test</code>, which proves each check refuses what it should. The polling step ran against the live latest release: the current tag was ready, an older one ended with the notice, and a tag that never became the latest failed with "latest is not" once its bound passed.</p>
+            <p data-field="note">Settled after the review on 2026-10-27. <code>scripts/check-readme-install</code> requires all four marked blocks, <code>linux-release</code>, <code>linux-homebrew</code>, <code>cargo</code>, and <code>macos-homebrew</code>, so a route that disappears from the README fails the suite. Only the latest release reaches the tap, since the formula holds one version and an older line's would downgrade every Homebrew install, so on an older line <code>tap</code> and <code>install-homebrew</code> are skipped.</p>
+          </section>
+          <section class="decision" id="decision-what-only-windows-shows" data-change="added" data-status="accepted">
+            <h3>8. What only a Windows machine shows is checked by hand once, or stated as unchecked</h3>
+            <p>Three things depend on Windows itself, and no runner has it:</p>
+            <ul>
+              <li><code>explorer.exe .</code> opening the project's folder;</li>
+              <li>a Windows browser rendering a document over <code>file://wsl.localhost/…</code> with its store above it;</li>
+              <li>the <code>http.server</code> route reaching the Windows browser at <code>localhost</code>.</li>
+            </ul>
+            <p data-field="note">The README's Windows part (task 2.4) is written after this check (task 3.4), so it states only what was checked. If the user or a colleague has a Windows machine with WSL 2, they run those three once. The result is recorded as evidence, and the README states what worked. If not, the README gives the <code>http.server</code> route as the way to read documents from Windows, and the change's specification records the <code>file://</code> route as unchecked.</p>
+            <p data-field="rationale">The Linux jobs prove everything that runs inside WSL. They cannot prove what Windows does with the result, and writing a route nobody ran into the README is the failure this change exists to remove.</p>
+            <p data-field="note">No Windows machine with WSL 2 was available on 2026-10-27, so task 3.4 was dropped. The README gives only the <code>http.server</code> route, and says that opening a document straight from the Linux file system in a Windows browser is not described because nobody checked it. The specification records <code>explorer.exe .</code>, the <code>file://wsl.localhost/…</code> route, and the <code>http.server</code> route's reach into a Windows browser as unchecked.</p>
+          </section>
+          <section class="decision" id="decision-contract" data-change="added" data-status="accepted">
+            <h3>9. The contract gains the install check, and stays silent on platforms</h3>
+            <p>One accepted requirement is modified: toolchain-packaging's "A release reaches every channel from one tag".</p>
+            <ul>
+              <li><strong>A new statement.</strong> After a release that is the repository's latest is published, its workflow installs it through the README's documented Linux commands, verbatim, on both Linux targets, and through the README's Homebrew-on-Linux commands once the formula is in the tap. The run fails when an installed binary does not name the tag's version. A release on an older line is not made the latest, so the Linux <code>install</code> job reports it as untested, not failed, and the tap and the Homebrew job are skipped for it.</li>
+              <li><strong>A new scenario.</strong> README commands that stopped working.</li>
+            </ul>
+            <p data-field="note">"Project checks are runnable as one command" is unchanged. The offline test is part of the suite, the job without Nix runs the same suite, and the <code>install</code> job is outside it for the reason decision 7 gives.</p>
+            <p data-field="note">The publish runbook's "Each channel's version is recorded" is modified in the runbook's own specification to cover the two install jobs' results. It gains a scenario for the README broken at the tag: step 8 records the failure and stays open until the fixing patch release's run of the job that failed passes, then is settled with a note naming that release. Step 6 is amended so that an install job's failure is carried to step 8 rather than stopping the run. That makes the runbook 0.3.0, with a changelog heading.</p>
+            <p data-field="rationale">The contract names no supported platform, only where checks run. This change keeps it that way. The README says which platforms are served and how, and the release's targets are stated where the release reads them. A requirement naming WSL would promise something about a system nothing can run in continuous integration.</p>
+          </section>
+          <section class="decision" id="decision-version" data-change="added" data-status="accepted">
+            <h3>10. Release 1.1.1</h3>
+            <p>The change ships as release 1.1.1, a patch.</p>
+            <p data-field="rationale">The program does not change: no command, flag, payload, or rule. The change is documentation, a test, two jobs, and a runbook release, which a patch release carries.</p>
+          </section>
+          <section class="decision" id="decision-withdrawn-proposal" data-change="added" data-status="accepted">
+            <h3>11. The withdrawn proposal's earlier mentions stay as written</h3>
+            <p>The 1.1.0 archive's design and tasks, and <code>publish/READINESS.md</code>'s read log, mention <code>release-a-windows-build</code> as an active change. They describe main as it stood on 2026-10-23 and stay unchanged.</p>
+            <p data-field="rationale">Archived documents are not edited, and the read log records what was read on the day it was read. Rewriting either to forget the proposal would make the record describe a main that never existed.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <section class="risk" id="risk-github-changes-the-address" data-change="added" data-response="mitigated">
+            <h3>GitHub changes the <code>latest/download</code> address, or the sums' layout changes</h3>
+            <p>The block depends on GitHub answering <code>releases/latest/download/SHA256SUMS</code> and on the sums being one digest, two spaces, and a name.</p>
+            <p data-field="mitigation">The layout is the project's own: <code>scripts/pack-release --sums</code> writes it, and the offline test can read it from there. The address is GitHub's, documented for release assets. The <code>install</code> job runs the block against every release, so a change in either fails the release run that meets it, with the failing line named.</p>
+          </section>
+          <section class="risk" id="risk-found-after-publication" data-change="added" data-response="accepted">
+            <h3>A broken block is found only after the release is public</h3>
+            <p>The <code>install</code> job runs after publication, so it cannot keep a release with a broken block from going out.</p>
+            <p data-field="mitigation">Accepted. The offline test stops a syntax error or a dropped target before publication. What only a published release can show is found by the job, in the same run, and fixed in a patch release. The publish runbook keeps step 8 open until the fixing release's run of the job that failed passes.</p>
+          </section>
+          <section class="risk" id="risk-path-not-set" data-change="added" data-response="mitigated">
+            <h3><code>~/.local/bin</code> is not on <code>PATH</code> in the reader's current terminal</h3>
+            <p>Ubuntu adds <code>~/.local/bin</code> to <code>PATH</code> at login only if it already exists, so a reader who creates it with the block cannot run <code>htmlspec</code> by name until they open a new terminal.</p>
+            <p data-field="mitigation">The block ends by running the installed binary by its full path, so it shows success either way. The README says to open a new terminal, and gives the line to add if <code>htmlspec</code> is still not found. That is the case of the colleague's Homebrew install, met in advance.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

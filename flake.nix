@@ -152,7 +152,7 @@
           buildPhaseCargoCommand = ''
             patchShebangs scripts/check scripts/check-prompt scripts/check-release scripts/check-installed \
               scripts/check-publish-crates scripts/publish-crates scripts/crate-notices \
-              scripts/check-crate-notices
+              scripts/check-crate-notices scripts/check-readme-install
             ./scripts/check
           '';
           # `python3` for the prompt, release, and publisher checks, all standard library

@@ -152,3 +152,29 @@ fn no_fixture_produces_an_unmapped_recovery() {
         );
     }
 }
+
+/// The parser quotes the character it stopped at, which is the document's own. A document holding
+/// an escape sequence's opening or a bidirectional override must not write it into every report of
+/// the recovery, so the message names each such character by its code point, and the code is still
+/// read from the parser's own text.
+#[test]
+fn a_recovered_message_names_a_hidden_character_by_its_code_point() {
+    let document = "<!doctype html><html><head><title>t</title></head>\
+                    <body><p>a\u{1b}[31m\u{202E}b</p></body></html>";
+    let recovered = parse_document(document).recovered;
+    assert!(!recovered.is_empty(), "the control character is a recovery");
+    for error in &recovered {
+        assert!(
+            !error.message.contains('\u{1b}') && !error.message.contains('\u{202E}'),
+            "a hidden character reached the message: {:?}",
+            error.message
+        );
+    }
+    assert!(
+        recovered
+            .iter()
+            .any(|error| error.code == ParseDiagnosticCode::BadCharacter
+                && error.message.contains("<U+001B>")),
+        "the bad character is named by its code point: {recovered:?}"
+    );
+}

@@ -2,7 +2,7 @@
 description: Think through an idea before it becomes a change — investigate the problem, read the code, and clarify what the work is for. Use before a change exists, when the shape of the problem is not yet settled.
 allowed-tools: Read, Glob, Grep
 argument-hint: [the idea or question to think through]
-generatedBy: htmlspec 1.1.0
+generatedBy: htmlspec 1.2.1
 ---
 
 Think through an idea before it becomes a change.

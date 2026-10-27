@@ -1791,9 +1791,10 @@
             <h3>The command surface checks a runbook's machine prerequisites <span class="hs-id">req-the-command-surface-checks-a-runbook-s-machine-prerequisites</span></h3>
             <p>The command <code>htmlspec preflight &lt;runbook&gt;</code> SHALL report whether the selected runbook can start in the invocation's working environment. It SHALL support the existing <code>--store</code> and <code>--json</code> selectors. Store selection SHALL locate the runbook and its records, while machine requirements SHALL be evaluated against the invocation's working directory and environment, not the store's directory. Names SHALL follow the existing runbook-name rules.</p>
             <p>The report SHALL identify the runbook, carried version, source location, working directory, aggregate readiness, and each checked requirement with its expected condition, observation, outcome, and remedy for a refusal. Results SHALL follow document order. Human output SHALL lead with readiness. JSON output SHALL contain one structured report with no probe output interleaved.</p>
-            <p>Where a check's declaration carries a remedy, the JSON report SHALL carry it as <code>runbookRemedy</code> on that check whatever its outcome, and the human report SHALL show it, labelled as the runbook's words, after the program's own remedy for a check whose outcome is <code>unmet</code>, <code>unavailable</code>, <code>timed-out</code>, or <code>probe-failed</code>, and never for one that passed. A declaration's field name, tool name, and path SHALL reach a report with each character a terminal would not show as itself named by its code point, and the probe SHALL use them as written. The help of <code>preflight</code> and <code>run</code> SHALL point to the operation that lists the project's runbooks.</p>
+            <p>Where a check's declaration carries a remedy, the JSON report SHALL carry it as <code>runbookRemedy</code> on that check whatever its outcome, and the human report SHALL show it, labelled as the runbook's words, after the program's own remedy for a check whose outcome is <code>unmet</code>, <code>unavailable</code>, <code>timed-out</code>, or <code>probe-failed</code>, and never for one that passed. A declaration's field name, tool name, path, a runbook's name, and a record's name SHALL reach a report with each character a terminal would not show as itself named by its code point, and the probe SHALL use them as written. The help of <code>preflight</code> and <code>run</code> SHALL point to the operation that lists the project's runbooks.</p>
             <p>A completed preflight with unmet requirements SHALL exit 1, a successful one SHALL exit 0, an invalid invocation, invalid contract, or operational failure SHALL exit 2, and cancellation SHALL exit 3. Unknown observations such as an unavailable manifest environment or a timed-out probe SHALL be reported as unmet readiness rather than as success. An invalid declaration SHALL remain distinguishable from a valid check whose condition is false.</p>
             <p><code>htmlspec run &lt;runbook&gt; --as &lt;record&gt;</code> SHALL apply the same checks and exit distinctions before creating a run. <code>htmlspec run &lt;runbook&gt; --check</code> SHALL continue to report existing run conformance without checking the present machine. Existing JSON fields on successful run creation SHALL be preserved, with version and preflight information added.</p>
+            <p>With <code>--json</code>, a run check SHALL carry a <code>run</code> object in <code>preflight</code> and <code>run</code> alike: the runbook it names, its lowest release, its state, one of met, unmet, missing, or unavailable, the records that satisfy it and how many, each record that does not with its reason, and its runs still open. A report that is not ready SHALL still name a met run check's open runs. A runbook named on the command line SHALL be known by one of the project's runbook directory names: the typed name when it is one; else, among the names for the same directory, the one equal to it ignoring case; else the directory's only name. Only a name that stays ambiguous SHALL be refused. The report, the source location, and the record SHALL carry the name it resolves to.</p>
             <article class="scenario" id="scenario-an-agent-inspects-readiness" data-change="unchanged">
               <h4>An agent inspects readiness</h4>
               <dl>
@@ -1870,6 +1871,26 @@
                 <dd>the report names it</dd>
                 <dt>Then</dt>
                 <dd>each such character is written as its code point, and nothing reaches the terminal as an escape</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-check-in-the-json-report" data-change="unchanged">
+              <h4>A run check in the JSON report</h4>
+              <dl>
+                <dt>When</dt>
+                <dd><code>htmlspec --json preflight migrate</code> reports a run check naming backup</dd>
+                <dt>Then</dt>
+                <dd>the check carries a run object with its state and the records that do and do not satisfy it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-named-in-another-case" data-change="unchanged">
+              <h4>A runbook named in another case beside a link</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>the project holds outside and a symbolic link outside-link to it, on a filesystem that folds case</dd>
+                <dt>When</dt>
+                <dd><code>htmlspec preflight OUTSIDE</code> is invoked</dd>
+                <dt>Then</dt>
+                <dd>it reports for outside, as 1.1 ran it, and a self-reference or cycle is found on that name</dd>
               </dl>
             </article>
           </section>
@@ -2280,6 +2301,9 @@
             <p>Publication SHALL begin only from a version tag in the public repository, <code>Firefly-Projects/htmlspec</code>, only for a commit that repository's <code>main</code> holds, and only after the check suite has passed on that commit. A tag in any other repository SHALL publish nothing. A release SHALL publish only from a run in which the binary of every target it releases was built and the formula passed its check, though runs elsewhere leave some of those jobs out.</p>
             <p>A publication interrupted partway SHALL finish when run again, and SHALL NOT publish any version twice: the crates publish one at a time, a version the registry already holds is skipped, and a rate limit is waited out within a stated budget, after which the run stops and names the crates that remain. Every request the release makes to crates.io SHALL carry a fixed User-Agent that names the project, and no personal information.</p>
             <p>Each channel that ships the binary SHALL ship its notices with it: each release tarball holds them beside the program, the Homebrew formula installs them, and the Nix package installs them under <code>share/doc/htmlspec/</code>. The formula SHALL declare exactly the licenses the binary credits. The check suite SHALL fail when <code>CRATE-LICENSES</code> differs from what the lockfile reaches, naming each crate added, removed, or changed, and when the formula's template declares other licenses than the binary credits, so a pull request that changes either meets it, on Linux as well as where the macOS jobs run.</p>
+            <p>A release SHALL become the repository's latest, the release <code>releases/latest</code> names, only when its version is the highest among the repository's published releases, and only that release SHALL reach the Homebrew tap, whose formula holds one version. A release on an older line SHALL NOT be made the latest, and its run SHALL leave the tap as it was.</p>
+            <p>After a release that is the repository's latest is published, its workflow SHALL install it through the README's documented Linux commands, verbatim, on both Linux targets, and through the README's Homebrew-on-Linux commands once the formula is in the tap. The run SHALL fail when an installed binary does not name the tag's version. A release on an older line SHALL be reported as untested by the Linux commands, not failed, and the Homebrew commands SHALL not run for it.</p>
+            <p>The check suite SHALL hold the README's install and upgrade commands without the network: each marked install or upgrade block SHALL parse, each upgrade block the README gives SHALL be present and marked as an upgrade block, no upgrade block SHALL be run, the Linux block SHALL check its download against <code>SHA256SUMS</code> before it unpacks or installs it, SHALL ask only for a target the release builds, and SHALL read <code>SHA256SUMS</code> as the release writes it.</p>
             <article class="scenario" id="scenario-a-tag-naming-another-version" data-change="unchanged">
               <h4>A tag naming another version</h4>
               <dl>
@@ -2378,6 +2402,50 @@
                 <dd>the check suite runs, on Linux</dd>
                 <dt>Then</dt>
                 <dd>it fails, naming the licenses the template states and the ones the binary credits</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-readme-commands-that-stopped-working" data-change="unchanged">
+              <h4>README commands that stopped working</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a release whose README, at its tag, holds a Linux install block that no longer installs it</dd>
+                <dt>When</dt>
+                <dd>the release is published and its workflow runs the block verbatim on both Linux targets</dd>
+                <dt>Then</dt>
+                <dd>the install job fails after publication, which it cannot undo, and its trace shows the line the block stopped at</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-patch-on-an-older-line" data-change="unchanged">
+              <h4>A patch on an older line</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a repository whose latest release is <code>v1.1.0</code></dd>
+                <dt>When</dt>
+                <dd>the release runs on the tag <code>v1.0.2</code></dd>
+                <dt>Then</dt>
+                <dd><code>v1.0.2</code> is published and not made the latest, the Linux install job reports it as untested with a notice, and the tap is left holding the formula for <code>v1.1.0</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-install-block-that-skips-its-checksum" data-change="unchanged">
+              <h4>An install block that skips its checksum</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a README whose Linux install block unpacks its download before it runs <code>sha256sum --check</code> against <code>SHA256SUMS</code>, or never runs it</dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>it fails, naming the block</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-upgrade-block-missing-or-mismarked" data-change="unchanged">
+              <h4>An upgrade block missing or mismarked</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a README whose Homebrew, cargo, Nix, or project upgrade block is missing, is marked as an install block, or does not parse</dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>it fails, naming the block, and it runs no upgrade block, so the machine it runs on is not upgraded</dd>
               </dl>
             </article>
           </section>

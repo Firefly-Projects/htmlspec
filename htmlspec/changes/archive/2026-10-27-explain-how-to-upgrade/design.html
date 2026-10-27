@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Tell users how to upgrade htmlspec and the projects that use it: design</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Tell users how to upgrade htmlspec and the projects that use it: design</h1>
+        <p>The upgrade guide is a README section with two halves, the binary and the project, because those are two steps on two different schedules: a machine upgrades its binary once, and each project it works on is brought up afterwards. Every command in it was run, or read from its own help, before it was written down, and the stage that already checks the README's install blocks now checks the upgrade blocks too. The contract changes in one sentence, the one that says what the check suite holds of the README's commands.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Tell users how to upgrade htmlspec and the projects that use it: design</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="design-today">
+          <h2>What a reader has today</h2>
+          <p>Measured on main at 1.2.0, before this change. A 1.1.0 project was made in a scratch directory with the 1.1.0 binary, committed, and then brought up with the 1.2.0 binary:</p>
+          <ul>
+            <li><code>htmlspec init --tools claude,agents</code> changed 19 files and touched nothing under <code>htmlspec/</code> and not <code>spec.nix</code>. Sixteen changed only their <code>generatedBy</code> line. The <code>new</code> command, the <code>new</code> skill, and the marked region of <code>AGENTS.md</code> each gained 1.2.0's passage on declaring a runbook's order, 28 lines added and 3 removed. Measured again after the review: the first measurement counted only files and missed that.</li>
+            <li><code>htmlspec format --upgrade-assets --check</code> found nothing behind, because 1.1.0 and 1.2.0 write the same stylesheet and scripts.</li>
+            <li><code>htmlspec validate</code> reported 0 errors, as it did under 1.1.0.</li>
+          </ul>
+          <p>That is the whole upgrade from 1.1 to 1.2, and no document says so.</p>
+        </section>
+        <section id="design-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-two-halves" data-change="added" data-status="accepted">
+            <h3>1. The guide is one README section, split into the binary and the project</h3>
+            <p>A new <code>## Upgrading</code> section follows "Getting started", and "After installing" links to it. Its first half says how to upgrade the binary on each channel the README installs from. Its second half says what to do in a project, from its root, once the binary is newer. Then it states what 1.x promises, and where to read what each release lets a project adopt.</p>
+            <p data-field="rationale">The two halves happen on different schedules and often to different people: a machine's binary is upgraded once, and every project on it is brought up afterwards, possibly by whoever next works in it. A reader looking for one half should not have to read through the other. The README is where a reader already went to install, so it is where they look to upgrade.</p>
+          </section>
+          <section class="decision" id="decision-binary-per-channel" data-change="added" data-status="accepted">
+            <h3>2. Upgrading the binary uses each channel's own command</h3>
+            <ul>
+              <li><strong>The release block</strong> on Linux and WSL: run it again. It reads the latest release, so a second run installs the newer one over the first. The README already said so, and the guide points back to it.</li>
+              <li><strong>Homebrew,</strong> on macOS or Linux: <code>brew upgrade htmlspec</code>.</li>
+              <li><strong>cargo:</strong> <code>cargo install --locked htmlspec-cli</code> again, which replaces an older installed version with the newest.</li>
+              <li>
+                <strong>Nix:</strong>
+                <ul>
+                  <li>a profile install: <code>nix profile upgrade htmlspec</code>, where <code>htmlspec</code> is the entry's name as <code>nix profile list</code> prints it;</li>
+                  <li><code>nix run github:Firefly-Projects/htmlspec</code>, which always runs the newest release and installs nothing to upgrade;</li>
+                  <li>a project whose flake has htmlspec as an input: <code>nix flake update htmlspec</code>, run in that project, and committed with its <code>flake.lock</code>.</li>
+                </ul>
+              </li>
+            </ul>
+            <p>Each ends with <code>htmlspec --version</code>, or <code>-v</code>, which names the release and the commit it was built from.</p>
+            <p data-field="rationale">Every channel already owns the file it installed, and upgrades it its own way, so the guide repeats those commands rather than inventing one. Each was read from its own help on this machine (Determinate Nix, Nix 2.34) before it was written down. A current Nix accepts a profile entry by its name and a flake input as a bare argument to <code>nix flake update</code>. An older Nix takes the entry's index from <code>nix profile list</code>, and updates one input with <code>nix flake lock --update-input htmlspec</code>, and the README says both.</p>
+            <p data-field="note">Settled after the review on 2026-10-27. Three things a Nix reader meets are now said. A profile entry or a flake input that names a tag stays at that tag, so the reader names the new tag first. <code>nix profile</code> names its entries from Nix 2.20, <code>nix flake update &lt;input&gt;</code> arrived in 2.19, and Nix 2.34 refuses an index (seen here: "'nix profile' no longer supports indices"), the first two read from Nix's own release notes. And <code>nix run github:Firefly-Projects/htmlspec</code> runs the head of the default branch, which Nix reuses for <code>tarball-ttl</code> seconds, 3600 here, until <code>--refresh</code>. The macOS tarball route and the Homebrew-on-Linux <code>brew shellenv</code> step gained an upgrade line each.</p>
+          </section>
+          <section class="decision" id="decision-the-project" data-change="added" data-status="accepted">
+            <h3>3. Bringing a project up is <code>init</code>, an optional asset upgrade, and <code>validate</code></h3>
+            <p>In the project's root, once the binary is newer:</p>
+            <ol>
+              <li><code>htmlspec init --tools &lt;the tools the project uses&gt;</code> rewrites the installed agent instructions to the new release's, and leaves the specifications, changes, archive, runbooks, and <code>spec.nix</code> as they are. Naming the tools skips <code>init</code>'s question.</li>
+              <li>Optionally, <code>htmlspec format --upgrade-assets --check</code> lists the documents whose stylesheet or scripts are behind the release's, and <code>htmlspec format --upgrade-assets</code> moves them. It never touches an archived change or a run record, and it downloads nothing.</li>
+              <li><code>htmlspec validate</code>.</li>
+              <li>Commit what changed.</li>
+            </ol>
+            <p data-field="note">Where the project pins htmlspec, the pin moves too: the <code>htmlspec</code> field of <code>spec.nix</code>, or a flake input. The guide suggests the public address, <code>github:Firefly-Projects/htmlspec/vX.Y.Z</code>, for a pin that still names a private one.</p>
+            <p data-field="rationale">project-bootstrap's "Bootstrapping installs agent instructions for the tools a project uses" says the instructions record the version of the program that generated them, so an installation that predates the instructions it should carry is identifiable. The guide gives the one line that shows that version, so a reader can tell whether a project needs the refresh. The asset step is optional because older references still validate, which is what "Formatting preserves meaning" protects by leaving them as written unless asked.</p>
+            <p data-field="note">Settled after the review on 2026-10-27. The command that shows which release a project's instructions come from also reads <code>AGENTS.md</code>, which records the release as <code>Generated by htmlspec X.Y.Z</code> and not as <code>generatedBy:</code>; the first one printed nothing for a project made with <code>--tools agents</code>. Checked on a project made with <code>agents</code> only and on one mixing two releases. The guide also says <code>init</code> writes any of the release's assets the store lacks, which was seen to restore a deleted stylesheet. The asset files are byte for byte the same at 1.0.0 and now, so within 1.x that changes nothing, and <code>--upgrade-assets</code> has nothing to move.</p>
+          </section>
+          <section class="decision" id="decision-what-1x-promises" data-change="added" data-status="accepted">
+            <h3>4. The guide states what 1.x promises, and cites where</h3>
+            <p>The guide says what stays true across a 1.x upgrade, names the accepted requirement behind each promise, and marks the one thing it reports that no requirement promises.</p>
+            <ul>
+              <li>Commands, flags, exit codes, and <code>--json</code> payloads only gain things within 1.x. That is toolchain-packaging's "The command surface is stable within a major version", which leaves the wording of human-readable output out.</li>
+              <li>A document a 1.x release accepts stays accepted by every later 1.x release. That is document-schema's "The contract's version is a semantic version", whose promise covers errors, not warnings.</li>
+              <li>A runbook declaration in a newer format, <code>preflight/v2</code> or <code>preflight/v3</code>, is refused by a binary that predates it, which names the formats it reads. That is runbook-portability's "Machine requirements are explicit and mechanically checkable". So everyone who runs a project's runbooks upgrades before the project adopts a newer format.</li>
+              <li>A run's record written by 1.2 states its runbook's release in its head. A 1.1 binary reads such a record and ignores the line. This is an observation, made when 1.2.0 was reviewed, not a promise, and the guide says so.</li>
+            </ul>
+            <p data-field="rationale">A reader who knows the promise upgrades without fear, and a reader who knows its edges, warnings and human-readable wording, is not surprised by them. The guide cites the requirements so a reader who doubts it can read the contract itself.</p>
+            <p data-field="note">Settled after the review on 2026-10-27. The document promise now carries the requirement's exception, a document an earlier version accepted by a defect the changelog names, and says the promise is worded about the contract's version, which every 1.x release so far keeps at 1.0.0, not about the program's release. Records read both ways moved out of the list, below it, as observed and not promised, and it describes both directions. The README stated the promises twice, under Upgrading and under Project status; they are stated once, under Upgrading, and Project status links there.</p>
+          </section>
+          <section class="decision" id="decision-changelog-notes" data-change="added" data-status="accepted">
+            <h3>5. Each changelog entry from 1.1.0 on says what upgrading to it asks</h3>
+            <p>1.1.0, 1.1.1, 1.2.0, and the new 1.2.1 each gain a short "Upgrading" paragraph. Most say that refreshing the instructions with <code>htmlspec init</code> is the only step. 1.2.0's also names the two things a reader may notice: parse messages now show a hidden character by its code point, which changes <code>validate --json</code>'s message text but not its codes, and a new run's record states its runbook's release. Entries before 1.1.0 are left as they are, because nobody upgrades to them now.</p>
+            <p data-field="rationale">toolchain-packaging's "The project records what changed in each version it ships" keeps an entry's prose the author's and says a check shall not impose a structure on what an entry says. So the notes are written and not enforced. A check that refused an entry without one would contradict that requirement.</p>
+            <p data-field="note">Settled after the review on 2026-10-27. Neither 1.1.1 nor 1.2.0 was published on its own, so every channel moves from 1.1.0 straight to 1.2.1, and 1.2.1's note says that an upgrade from 1.1.x follows 1.2.0's and 1.1.1's notes too, and what that means: <code>init</code> brings 1.2.0's new instruction text, and <code>preflight/v3</code> needs 1.2 everywhere. The README says the notes are cumulative. The three notes written for entries already released are headed <code>Upgrading (added in 1.2.1)</code>, because that requirement says an entry reconstructed after the fact says that it is a reconstruction.</p>
+          </section>
+          <section class="decision" id="decision-check-the-blocks" data-change="added" data-status="accepted">
+            <h3>6. The README's upgrade blocks are marked and checked like its install blocks</h3>
+            <p>Each upgrade command block a reader runs is marked on the line before its fence with <code>&lt;!-- upgrade: NAME --&gt;</code>, beside the existing <code>&lt;!-- install: NAME --&gt;</code> markers, and the two share one set of names. <code>scripts/check-readme-install</code> requires four upgrade blocks, <code>upgrade-homebrew</code>, <code>upgrade-cargo</code>, <code>upgrade-nix</code>, and <code>upgrade-project</code>, and refuses one that is missing or that <code>bash -n</code> refuses. Its self-test gains the cases that prove it. The Linux release block needs no upgrade twin, because running it again is the upgrade.</p>
+            <p data-field="rationale">A block a reader pastes is checked, as the install blocks are, because a broken one costs the reader the most. A command that names a placeholder in angle brackets would not parse, so each block names a real value, <code>htmlspec</code> for the profile entry and the flake input, and <code>claude</code> for the tools, with prose saying to substitute. The blocks are only parsed, never run: running them would upgrade the machine the check runs on.</p>
+            <p data-field="note">Settled after the review on 2026-10-27. <code>--print</code> prints only an install block, and refuses an upgrade block, so nothing that runs what it prints can be handed one. The script refuses an install block marked <code>upgrade:</code> as it refuses the reverse, its messages say which marker to use, and its usage and <code>scripts/check</code>'s comment name upgrade blocks. Its self-test has 19 cases, against 11 on main.</p>
+          </section>
+          <section class="decision" id="decision-release" data-change="added" data-status="accepted">
+            <h3>7. Release 1.2.1, a patch, and the publish runbook left alone</h3>
+            <p>The release moves to 1.2.1 through <code>scripts/set-version</code>. Nothing the program does changes, so a patch fits.</p>
+            <p data-field="rationale">No accepted requirement says how a release's number is chosen; the contract's own version stays 1.0.0 either way. This follows the project's practice that a release adding nothing to the command surface or the contract is a patch, as 1.0.1 and 1.1.1 were. The publish runbook's channel check already installs each channel, and upgrading is not part of publishing, so the runbook keeps its version.</p>
+          </section>
+        </section>
+        <section id="contract">
+          <h2>What the contract says</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Requirement</th>
+                <th>Effect at archival</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>toolchain-packaging's "A release reaches every channel from one tag"</td>
+                <td>Modified: its last statement says the check suite holds the README's install commands without the network. It now holds the upgrade commands too: each marked install or upgrade block parses, and the upgrade blocks the README gives are present. A scenario for a missing upgrade block is added.</td>
+              </tr>
+              <tr>
+                <td>toolchain-packaging's "The project records what changed in each version it ships"</td>
+                <td>Unchanged. It forbids a check on an entry's structure, which is why decision 5 enforces nothing.</td>
+              </tr>
+              <tr>
+                <td>project-bootstrap's "Bootstrapping installs agent instructions for the tools a project uses"</td>
+                <td>Unchanged. The guide relies on its <code>generatedBy</code> record.</td>
+              </tr>
+              <tr>
+                <td>toolchain-packaging's "The command surface is stable within a major version", document-schema's "The contract's version is a semantic version", runbook-portability's "Machine requirements are explicit and mechanically checkable"</td>
+                <td>Unchanged. The guide states them.</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>The contract is otherwise silent on how a user upgrades. The guide is the README's own words, non-normative, and the check on its blocks is what holds it to the tools.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -5,6 +5,20 @@ What this runbook's releases are. A release is the pair of canonical documents â
 identifies one such pair. Nothing else moves it: a run's record is history rather than procedure, so
 adding or editing one is not a release.
 
+## 0.3.0
+
+Published with the project's 1.1.1 release.
+
+**A run records the README's install jobs.** The release workflow gains two jobs that run the
+README's own install commands against the published release: `install`, on both Linux targets, and
+`install-homebrew`, once the formula is in the tap. Step 6 carries a failure of either to step 8
+rather than stopping, because publication has already happened. Step 8 records both, records a tag
+older than the latest release as untested by them, and, when the README's commands were broken at
+the tag, stays open until the fixing patch release's run of the job that failed passes. A job that
+failed for another reason, a timeout waiting for `latest` or the network, is run again and its rerun
+recorded. On an older line the tap is not updated, so Homebrew is recorded as untested. "Each channel's version
+is recorded" says so, with a scenario for the README broken at the tag.
+
 ## 0.2.1
 
 Published with the project's 1.1.0 release.
