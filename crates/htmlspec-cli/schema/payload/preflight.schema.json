@@ -71,10 +71,74 @@
             ]
           },
           "runbookRemedy": {
-            "description": "What the runbook says to do when this check does not pass: one line of text from a preflight/v2 declaration, present whenever the declaration carries one, whatever the outcome. It is the runbook's words, never run.",
+            "description": "What the runbook says to do when this check does not pass: one line of text from a preflight/v2 or preflight/v3 declaration, present whenever the declaration carries one, whatever the outcome. It is the runbook's words, never run.",
             "type": "string",
             "minLength": 1,
             "maxLength": 200
+          },
+          "run": {
+            "description": "Present on a run check, a preflight/v3 declaration of kind run: the runbook it names, the lowest release it accepts where it declares one, the state of the check, the first satisfying records in name order with how many satisfy it in all, why each record does not count where none does, and the runs of the named runbook still under way. Names are the raw text. The state is unavailable where nothing was measured.",
+            "type": "object",
+            "required": [
+              "runbook",
+              "state",
+              "satisfiedBy",
+              "satisfying",
+              "notSatisfying",
+              "openRuns"
+            ],
+            "properties": {
+              "runbook": {
+                "type": "string"
+              },
+              "atLeast": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "met",
+                  "unmet",
+                  "missing",
+                  "unavailable"
+                ]
+              },
+              "satisfiedBy": {
+                "type": "array",
+                "maxItems": 3,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "satisfying": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "notSatisfying": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "record",
+                    "reason"
+                  ],
+                  "properties": {
+                    "record": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "openRuns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }

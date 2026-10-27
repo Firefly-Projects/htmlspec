@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Let a runbook require a passed run of another runbook: as built</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Let a runbook require a passed run of another runbook: as built</h1>
+        <p>What the change <code>require-a-run-of-another-runbook</code> established, as built: a runbook can require a finished, passed run of another runbook before its own run starts, declared as a <code>preflight/v3</code> run check, and the runbook listing shows and draws the order.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Let a runbook require a passed run of another runbook: as built</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-runbook-portability">runbook-portability</a></li>
+          <li><a href="#hs-runbook-authority">runbook-authority</a></li>
+          <li><a href="#hs-runbook-execution">runbook-execution</a></li>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-runbook-portability">
+          <h2>runbook-portability</h2>
+          <section class="requirement" id="req-machine-requirements-are-explicit-and-mechanically-checkable" data-change="modified">
+            <h3>Machine requirements are explicit and mechanically checkable <span class="hs-id">req-machine-requirements-are-explicit-and-mechanically-checkable</span></h3>
+            <p>A runbook SHALL state machine prerequisites as ordinary requirement units in its specification,
+            with stable identifiers, normative statements, scenarios, and an explicit check declaration.
+            Preflight SHALL read these declarations from the existing projected requirement notes. It SHALL
+            NOT infer checks from prose, requirement names, or executable examples. The declaration format
+            SHALL be documented and restricted to built-in checks; arbitrary commands SHALL NOT be accepted.</p>
+            <p>The supported needs SHALL include a tool at a stated version, a tool supplied by a pinned
+            package-manager environment, an installed agent skill, and a working-directory state. Machine
+            requirements SHALL remain part of the logging contract: passing preflight does not remove their
+            obligation to have an outcome recorded. Ordinary requirements without a check declaration SHALL
+            remain logging obligations without becoming machine checks.</p>
+            <p>Malformed declarations, unknown check kinds, duplicate declarations on one requirement, and
+            unsupported format versions SHALL be reported against the requirement and SHALL prevent starting
+            a run. A contract with no machine declarations SHALL report zero checks, without claiming to
+            have established unstated prerequisites.</p>
+            <p>A second declaration format, <code>preflight/v2</code>, SHALL read every form <code>preflight/v1</code> reads and one optional field, <code>remedy</code>: text saying where to get what the check needs. A remedy SHALL be one line of 1 to 200 characters once the spaces around it are trimmed, holding no control character, no whitespace but the plain space, and no invisible character, Unicode's format and default-ignorable characters, beyond the two joiners and one emoji presentation selector directly after the character it is for. A remedy breaking any of these SHALL make the declaration malformed. A remedy is text: preflight SHALL NOT run it, open an address in it, or count it as satisfying the check. <code>preflight/v1</code> SHALL keep refusing the field, and an unsupported format version SHALL be reported naming the formats the program reads.</p>
+            <ins>
+              <p>A third declaration format, <code>preflight/v3</code>, SHALL read every form <code>preflight/v2</code> reads, with its remedy, and one more kind, <code>run</code>, whose fields are <code>runbook</code> and an optional <code>atLeast</code>, and whose need is a finished, passed run of that runbook recorded in the same project. <code>preflight/v1</code> and <code>preflight/v2</code> SHALL refuse <code>run</code> as an unknown kind, and the fault SHALL say it is declared in <code>preflight/v3</code>. A run check that names its own runbook, and one whose run checks lead back to its own runbook through others, SHALL be malformed, and SHALL prevent starting a run as every malformed declaration does, naming the cycle in order.</p>
+            </ins>
+            <article class="scenario" id="scenario-a-missing-tool" data-change="unchanged">
+              <h4>A missing tool</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a declared tool cannot be found on the invocation's executable search path</dd>
+                <dt>Then</dt>
+                <dd>preflight identifies the requirement and missing tool and refuses readiness</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-version-mismatch" data-change="unchanged">
+              <h4>A version mismatch</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the selected tool reports a different version from the declared one</dd>
+                <dt>Then</dt>
+                <dd>preflight reports the expected and observed versions and refuses readiness</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-missing-skill" data-change="unchanged">
+              <h4>A missing skill</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the declared skill file is absent from the declared local installation scope</dd>
+                <dt>Then</dt>
+                <dd>preflight names that scope and skill and refuses readiness without installing it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-bootstrap-hazard" data-change="unchanged">
+              <h4>The bootstrap hazard</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a requirement that the working directory must be outside an existing HTMLSpec project</dd>
+                <dt>When</dt>
+                <dd>the working directory resolves to a project</dd>
+                <dt>Then</dt>
+                <dd>preflight refuses readiness before bootstrap or any procedure step occurs</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-declaration-cannot-be-interpreted" data-change="unchanged">
+              <h4>A declaration cannot be interpreted</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a machine-check declaration is malformed, duplicated, or unsupported</dd>
+                <dt>Then</dt>
+                <dd>preflight reports an invalid declaration rather than omitting it or treating it as passed</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-about-a-later-outcome" data-change="unchanged">
+              <h4>A requirement about a later outcome</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an ordinary logging requirement has no machine-check declaration</dd>
+                <dt>Then</dt>
+                <dd>preflight does not attempt to check that outcome and the run still owes its verification</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-remedy-in-a-v2-declaration" data-change="unchanged">
+              <h4>A remedy in a v2 declaration</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a <code>preflight/v2</code> skill declaration whose remedy says where to get the skill</dd>
+                <dt>When</dt>
+                <dd>preflight reads it</dd>
+                <dt>Then</dt>
+                <dd>the check is the one v1 would make, and the remedy is carried as text</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-remedy-holding-a-hidden-character" data-change="unchanged">
+              <h4>A remedy holding a hidden character</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a remedy holding a zero-width space, a variation selector, a line separator, or an escape sequence</dd>
+                <dt>When</dt>
+                <dd>preflight reads it</dd>
+                <dt>Then</dt>
+                <dd>the declaration is malformed, the fault names the character by its code point, and no run starts</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-remedy-in-a-v1-declaration" data-change="unchanged">
+              <h4>A remedy in a v1 declaration</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a <code>preflight/v1</code> declaration with a <code>remedy</code> field</dd>
+                <dt>When</dt>
+                <dd>preflight reads it</dd>
+                <dt>Then</dt>
+                <dd>the field is refused as one the form does not have</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-check-in-a-v2-declaration" data-change="added">
+              <h4>A run check in a v2 declaration</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's note declares <code>preflight/v2</code> with the kind <code>run</code></dd>
+                <dt>Then</dt>
+                <dd>the declaration is refused as an unknown kind, and the fault says the kind is declared in <code>preflight/v3</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-that-requires-itself" data-change="added">
+              <h4>A runbook that requires itself</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a run check names the runbook that declares it</dd>
+                <dt>Then</dt>
+                <dd>the contract is malformed: preflight and the start exit 2 and write no record</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-cycle-through-the-declaring-runbook" data-change="added">
+              <h4>A cycle through the declaring runbook</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>migrate requires a run of backup, and backup requires a run of migrate</dd>
+                <dt>When</dt>
+                <dd>preflight or a start is asked of migrate</dd>
+                <dt>Then</dt>
+                <dd>the contract is malformed: it exits 2 and names the cycle in order, starting from migrate</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-prerequisite-run-is-met-by-a-finished-passed-record" data-change="added">
+            <h3>A prerequisite run is met by a finished, passed record <span class="hs-id">req-a-prerequisite-run-is-met-by-a-finished-passed-record</span></h3>
+            <p>A run check SHALL name its runbook by a runbook directory whose name equals the declared name byte for byte, whatever the filesystem. A name that no runbook directory holds SHALL leave the check unmet, with a remedy that says to add the runbook or correct the name.</p>
+            <p>A record under that runbook's <code>runs/</code> folder SHALL satisfy the check when it parses without error recovery, is a tasks document, has at least one task done and every task done or dropped, and records an outcome of <code>passed</code> for every requirement it carries. Any satisfying record SHALL meet the check, because a record states no time and no record is the latest. A record that is a symbolic link, or resolves outside that runbook's <code>runs/</code> folder, SHALL NOT satisfy it, because the run it records may have happened in another project.</p>
+            <p>Where <code>atLeast</code> is declared, a record SHALL satisfy the check only when the runbook release it states is at or above <code>atLeast</code> within the same major. A record's release SHALL be read from the one <code>htmlspec-runbook-release</code> meta in its head and from nowhere else, and a record that states none, states one that is not three dot-separated integers, or states more than one SHALL NOT satisfy a check with <code>atLeast</code>.</p>
+            <p>A record that does not satisfy the check SHALL be named with the first reason it does not, in this order: it is a link, it cannot be read, it needs error recovery, it is not a tasks document, it has no task done, it is still open, it recorded an outcome other than <code>passed</code>, it records no outcome for a requirement, or its release is missing, malformed, stated twice, or misses <code>atLeast</code>. Up to three satisfying records SHALL be named, with a count of the rest, and every run of the named runbook still open SHALL be named whether the check is met or not.</p>
+            <p>A specification reached through the run checks that cannot be read, needs error recovery, or does not validate SHALL leave the check unavailable, naming that runbook, and never met.</p>
+            <article class="scenario" id="scenario-a-finished-passed-record" data-change="added">
+              <h4>A finished, passed record</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a record of backup has every task done and every requirement it carries recorded as passed</dd>
+                <dt>Then</dt>
+                <dd>it satisfies a run check naming backup, and the check is met</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-open-record" data-change="added">
+              <h4>An open record</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the only record of backup has 1 of 2 tasks done</dd>
+                <dt>Then</dt>
+                <dd>the check is unmet, and the record is named as still open with 1 of 2 steps done</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-failed-outcome" data-change="added">
+              <h4>A recorded failure</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a finished record of backup recorded failed for one requirement</dd>
+                <dt>Then</dt>
+                <dd>it does not satisfy the check, and the way forward named is a new run, never an edited outcome</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unrecorded-requirement" data-change="added">
+              <h4>A requirement with no outcome</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a finished record of backup carries a requirement it records no outcome for</dd>
+                <dt>Then</dt>
+                <dd>it does not satisfy the check, and the record is named with that requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-vacuous-record" data-change="added">
+              <h4>A record that did no work</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a record of backup has every task dropped, or a file under runs/ is empty or not a tasks document</dd>
+                <dt>Then</dt>
+                <dd>it does not satisfy the check</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-release-below-the-bound" data-change="added">
+              <h4>A release below the bound</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a check declares atLeast 1.4.0 and the only passed record states 1.3.0</dd>
+                <dt>Then</dt>
+                <dd>the check is unmet, and the record is named with its release</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-release-in-another-major" data-change="added">
+              <h4>A release in another major</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a check declares atLeast 1.4.0 and the only passed record states 2.0.0</dd>
+                <dt>Then</dt>
+                <dd>the check is unmet</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-record-that-states-no-release" data-change="added">
+              <h4>A record that states no release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a passed record has no release meta in its head, or one in its body only</dd>
+                <dt>Then</dt>
+                <dd>it satisfies a check without atLeast, and not one with atLeast</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-missing-runbook" data-change="added">
+              <h4>A runbook the project does not have</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a run check names backup and the project has only Backup</dd>
+                <dt>Then</dt>
+                <dd>the check is unmet as missing, and the remedy says to add the runbook or correct the name</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-several-satisfying-records" data-change="added">
+              <h4>Several satisfying records</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>five records of backup satisfy the check</dd>
+                <dt>Then</dt>
+                <dd>three are named with their releases, followed by and 2 more</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-linked-record" data-change="added">
+              <h4>A record linked from another project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a file under backup/runs/ is a symbolic link to another project's passed record</dd>
+                <dt>Then</dt>
+                <dd>it does not satisfy the check, and it is named as a link</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-preflight-gates-the-creation-of-a-run" data-change="modified">
+            <h3>Preflight gates the creation of a run <span class="hs-id">req-preflight-gates-the-creation-of-a-run</span></h3>
+            <p>Starting a run SHALL perform preflight against the selected runbook and the invocation's current
+            working directory and environment before creating the record or its directory. A standalone
+            preflight success SHALL NOT be reusable as permission to skip this check. Only a result in which
+            every declared machine requirement passes SHALL permit record creation; failed, unknown, timed-out,
+            and unsupported results SHALL refuse it. There SHALL be no force or skip-preflight option.</p>
+            <p>Preflight SHALL execute no procedure steps and SHALL not modify the runbook, existing records,
+            skills, or target working tree. Checks SHALL have bounded execution and captured output. An
+            interrupted preflight SHALL stop its probes and publish no record. Each retry SHALL collect fresh
+            observations. Readiness describes observations at the beginning of a run, not a guarantee about
+            the environment throughout the procedure.</p>
+            <p>A successfully created record SHALL carry the runbook version and a verification of each passed
+            machine requirement, with its observation and method. Other logging requirements SHALL remain
+            unverified until the run records their outcomes. Checking or editing an existing record SHALL NOT
+            become subject to preflight; run conformance remains advisory as established by <code>log-a-runbook-run</code>.</p>
+            <figure id="figure-preflight-gates-the-creation-of-a-run" data-migration="drawn">
+              <figcaption>The gate <em>Preflight gates the creation of a run</em> states: starting a run performs preflight before the record or its directory is created, an interrupted preflight publishes no record, and only a result in which every declared machine requirement passes permits record creation. Drawn when this document was migrated, from the text beside it.</figcaption>
+              <details>
+                <summary>Diagram source</summary>
+                <pre class="mermaid">flowchart TD
+  start["Starting a run"] --&gt; pre["Preflight against the selected runbook and the invocation's current working directory and environment"]
+  pre --&gt;|interrupted| stopped["Probes stopped; no record published"]
+  pre --&gt; gate{"Does every declared machine requirement pass?"}
+  gate --&gt;|"failed, unknown, timed-out, or unsupported"| refused["Record creation refused: no record or directory created"]
+  gate --&gt;|"every one passes"| created["Record and its directory created, carrying the runbook version and a verification of each passed machine requirement"]</pre>
+              </details>
+            </figure>
+            <ins>
+              <p>A run check SHALL read only the records of the runbook it names, in the project the declaring runbook is read from, the store's under <code>--store</code>, and SHALL read nothing else. An unmet run check SHALL refuse the start as an unmet machine requirement does, before anything is written, and no option SHALL override it. A new record SHALL state the release of the runbook it ran in an <code>htmlspec-runbook-release</code> meta in its head, and the verification it carries for a passed run check SHALL name up to three satisfying records with their releases and a count of the rest.</p>
+            </ins>
+            <article class="scenario" id="scenario-a-prerequisite-fails" data-change="unchanged">
+              <h4>A prerequisite fails</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>starting a run finds an unsatisfied machine requirement</dd>
+                <dt>Then</dt>
+                <dd>no record or new records directory is created and the canonical procedure is unchanged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-environment-changes-after-a-standalone-check" data-change="unchanged">
+              <h4>The environment changes after a standalone check</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a standalone preflight passed before a required tool was removed</dd>
+                <dt>When</dt>
+                <dd>the operator starts a run</dd>
+                <dt>Then</dt>
+                <dd>the fresh preflight fails and no record is created</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-starting-after-all-prerequisites-pass" data-change="unchanged">
+              <h4>Starting after all prerequisites pass</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>preflight passes and the composed record validates</dd>
+                <dt>Then</dt>
+                <dd>the record includes the copied procedure, the carried version, passed machine-check evidence, and unverified remaining logging obligations</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-check-never-finishes" data-change="unchanged">
+              <h4>A check never finishes</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a probe exceeds its execution bound</dd>
+                <dt>Then</dt>
+                <dd>it is stopped, its timeout is reported, and no run is started</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reviewing-a-historical-run-on-an-unprepared-machine" data-change="unchanged">
+              <h4>Reviewing a historical run on an unprepared machine</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>an operator checks an existing run's logging conformance</dd>
+                <dt>Then</dt>
+                <dd>missing current machine prerequisites do not prevent that review or promote its findings to errors</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-start-refused-for-an-unmet-prerequisite" data-change="added">
+              <h4>A start refused for an unmet prerequisite</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>migrate requires a run of backup, and backup has no finished, passed run</dd>
+                <dt>When</dt>
+                <dd><code>htmlspec run migrate --as m1</code> is invoked</dd>
+                <dt>Then</dt>
+                <dd>it exits 1, names the check and why it is unmet, and creates no record</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-start-after-its-prerequisite-passed" data-change="added">
+              <h4>A start after its prerequisite passed</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>backup has a finished, passed run nightly</dd>
+                <dt>When</dt>
+                <dd>a run of migrate starts</dd>
+                <dt>Then</dt>
+                <dd>the record states its runbook release in its head, and its verification for the run check names nightly with its release</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-carried-runbook-does-not-require-its-source-project-s-history" data-change="modified">
+            <h3>A carried runbook does not require its source project's history <span class="hs-id">req-a-carried-runbook-does-not-require-its-source-project-s-history</span></h3>
+            <p>A carried runbook SHALL be usable with its specification, procedure, version, changelog, and the
+            referenced shared asset store in a minimal receiving project layout. It SHALL NOT require the
+            source project's archive, project declaration, accepted specifications, or old run records to
+            perform preflight or start a new local run. The receiving layout SHALL preserve one asset store
+            shared by the runbooks and their records; it SHALL NOT introduce a store inside each runbook.</p>
+            <p>The runbook SHALL require tools and skills from the receiving machine rather than vendor them.
+            Its dependency manifests SHALL be supplied by the target work environment when required. Old run
+            records SHALL remain at their source unless separately copied; their absence at the destination
+            SHALL NOT imply they never existed or prevent a new run. Transport and history synchronization
+            SHALL remain outside the preflight operation.</p>
+            <ins>
+              <p>The sentences above hold for a carried runbook with no run check, and for a carried runbook's own records. A carried runbook that declares a run check SHALL have it evaluated in the receiving project: it SHALL need the runbook it names there, and a finished, passed run of it recorded there, and a prerequisite absent from the receiving project SHALL leave the check unmet.</p>
+            </ins>
+            <article class="scenario" id="scenario-the-source-project-is-absent" data-change="modified">
+              <h4>The source project is absent</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a copied runbook <ins>that declares no run check </ins>and its shared assets in a minimal receiving layout</dd>
+                <dt>When</dt>
+                <dd>the operator selects it and satisfies its declared machine requirements</dd>
+                <dt>Then</dt>
+                <dd>preflight and run creation work without reading any source-project file</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-carried-runbook-has-no-prior-records" data-change="modified">
+              <h4>A carried runbook has no prior records</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>its first local run starts<ins>, and it declares no run check</ins></dd>
+                <dt>Then</dt>
+                <dd>a new local record is created and no source history is fabricated or required</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-offline-viewing-on-the-receiving-machine" data-change="unchanged">
+              <h4>Offline viewing on the receiving machine</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the copied procedure and a newly created record are opened without network access</dd>
+                <dt>Then</dt>
+                <dd>both use the receiving project's one copied asset store</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-carried-runbook-whose-prerequisite-has-not-run-here" data-change="added">
+              <h4>A carried runbook whose prerequisite has not run here</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a carried runbook requires a run of backup, and the receiving project has no passed run of backup</dd>
+                <dt>When</dt>
+                <dd>the operator checks it with <code>--store</code></dd>
+                <dt>Then</dt>
+                <dd>the check is unmet, and a copied record from elsewhere is not what meets it</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-runbook-authority">
+          <h2>runbook-authority</h2>
+          <section class="requirement" id="req-a-project-keeps-its-procedures-in-a-fourth-place" data-change="modified">
+            <h3>A project keeps its procedures in a fourth place <span class="hs-id">req-a-project-keeps-its-procedures-in-a-fourth-place</span></h3>
+            <p>A project SHALL have a place for its runbooks, beneath the project root, distinct from its
+accepted specifications, its active changes, and its archive. A runbook SHALL be identified by a
+directory in that place, and the directory's name SHALL be the runbook's name.</p>
+            <p>A procedure that is run repeatedly SHALL NOT be represented as a change. A change is completed
+and archived once; a procedure is run again, so a representation that archives it after its first
+run destroys the thing being kept.</p>
+            <p>The place SHALL be created when a project is bootstrapped, rather than when a project's first
+runbook is created. A location that does not exist until something is in it is not a location a
+contributor can find, and the bootstrap operation is already required to produce the project's
+places rather than to acquire them on use.</p>
+            <p>The runbook's name SHALL NOT be recorded anywhere but in its directory name<ins>, except that a run check's declaration names another runbook as data to address it</ins>, and nothing SHALL
+derive an ordering, a version, or a history from that name. A runbook is renamed by moving its
+directory, exactly as a change is. This is narrower than the prohibition on deriving a version
+from a directory name and it is not in tension with it: a version is a value a gate compares, so
+reading one out of a display string depends on a convention nothing enforces, while a name is how
+a thing is addressed rather than something compared to anything.</p>
+            <p>A runbook's documents SHALL reference the project's one asset store, as every other document in
+the project does. A runbook SHALL NOT hold a store of its own.</p>
+            <article class="scenario" id="scenario-a-bootstrapped-project-has-the-place" data-change="unchanged">
+              <h4>A bootstrapped project has the place</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor bootstraps a project</dd>
+                <dt>Then</dt>
+                <dd>the place for its runbooks exists alongside the places for its specifications, its changes, and its archive</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-procedure-that-is-run-again" data-change="unchanged">
+              <h4>A procedure that is run again</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a procedure that has been run once</dd>
+                <dt>When</dt>
+                <dd>it is run a second time</dd>
+                <dt>Then</dt>
+                <dd>the procedure is still where it was, because a runbook is not archived after a run</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-renamed" data-change="unchanged">
+              <h4>A runbook renamed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's directory is moved to another name</dd>
+                <dt>Then</dt>
+                <dd>the runbook is the one at the new name, because nothing records the old one</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-s-documents-share-the-project-s-store" data-change="unchanged">
+              <h4>A runbook's documents share the project's store</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook's document is opened from the filesystem</dd>
+                <dt>Then</dt>
+                <dd>it renders with no network access, because its asset references resolve to the project's one store</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-check-names-another-runbook" data-change="added">
+              <h4>A run check names another runbook</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>migrate's specification declares a run check naming backup</dd>
+                <dt>Then</dt>
+                <dd>the name addresses backup's directory, and nothing derives an order, a version, or a history from the name itself</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-project-enumerates-the-runbooks-it-holds" data-change="modified">
+            <h3>The project enumerates the runbooks it holds <span class="hs-id">req-the-project-enumerates-the-runbooks-it-holds</span></h3>
+            <p>The operation that lists what a project holds SHALL be able to list its runbooks, as a selection
+alongside its changes and its accepted specifications. A separate top-level command SHALL NOT be
+introduced for it, because listing what the project holds is an operation that already exists and
+a second command would invent a second vocabulary for it.</p>
+            <p>The enumeration SHALL be derived from what the place holds rather than from a list a contributor
+maintains. A maintained list is the shape this project refuses when it forbids a gate from
+reading the last archived version out of a directory name: a value kept beside the facts it
+summarizes depends on a convention nothing enforces.</p>
+            <p>Each entry SHALL carry what a selector needs in order to choose between runbooks, rather than a name alone: its version, its title, and the documents it holds. A runbook whose procedure is absent is the case that matters, because a name alone
+cannot distinguish it from one that is complete.</p>
+            <p>The enumeration SHALL name a runbook once, whatever number of documents it holds. An enumeration
+that listed each document separately would present one runbook as two entries.</p>
+            <p>The operation that starts a run, named with no runbook, SHALL list the project's runbooks as this enumeration does, say how to start one, and refuse as an invocation missing its argument does. A runbook's name and title SHALL reach a terminal with each character a terminal would not show as itself written as its escape, and the structured listing SHALL carry them as they are.</p>
+            <ins>
+              <p>Each entry SHALL also carry whether the runbook's declarations can be read, its prerequisites, and whether every one is met. Each prerequisite SHALL carry the requirement declaring it, the runbook it names, its lowest release where declared, its state, one of met, unmet, missing, self, cycle, or unavailable, up to three records that satisfy it with a count of all, and the names of its runs still open, whether met or not. Only a met or unmet prerequisite SHALL name records, and a runbook whose declarations cannot be read SHALL NOT read as met. The enumeration SHALL name one cycle for each group of runbooks whose run checks lead back to one another, the shortest through the group's least runbook.</p>
+            </ins>
+            <ins>
+              <p>Asked to, the enumeration SHALL draw the same order as a Mermaid flowchart, with one arrow from each prerequisite to the runbook requiring it, styled met, unmet, or cycle, in the same bytes on every machine. A name SHALL reach the drawing escaped, so no name breaks the diagram or acts as a Mermaid directive. The drawing asked for without the runbook selection SHALL be refused as a usage error, and the structured listing SHALL be unchanged by it.</p>
+            </ins>
+            <article class="scenario" id="scenario-listing-the-project-s-runbooks" data-change="unchanged">
+              <h4>Listing the project's runbooks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor lists the project's runbooks</dd>
+                <dt>Then</dt>
+                <dd>each runbook the place holds appears once, with what it holds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-whose-procedure-is-absent" data-change="unchanged">
+              <h4>A runbook whose procedure is absent</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a runbook holds no tasks document</dd>
+                <dt>Then</dt>
+                <dd>the enumeration shows that it holds none, so a selector is not left to open it to find out</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-project-with-no-runbooks" data-change="unchanged">
+              <h4>A project with no runbooks</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor lists the runbooks of a project holding none</dd>
+                <dt>Then</dt>
+                <dd>the operation succeeds and reports that there are none</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-enumeration-nobody-maintains" data-change="unchanged">
+              <h4>An enumeration nobody maintains</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook added to the project by creating its directory</dd>
+                <dt>When</dt>
+                <dd>the runbooks are enumerated</dd>
+                <dt>Then</dt>
+                <dd>it appears, because the enumeration reads the place rather than a list</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-starting-a-run-with-no-runbook-named" data-change="unchanged">
+              <h4>Starting a run with no runbook named</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a contributor runs <code>htmlspec run</code> with no runbook</dd>
+                <dt>Then</dt>
+                <dd>the project's runbooks are listed with their versions and titles, the way to start one is named, and the command exits 2</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-title-holding-an-escape-sequence" data-change="unchanged">
+              <h4>A title holding an escape sequence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook whose title holds an escape sequence or a bidirectional override</dd>
+                <dt>When</dt>
+                <dd>its runbooks are listed</dd>
+                <dt>Then</dt>
+                <dd>the title is shown with each such character written as its escape, and the JSON listing carries it as written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-listing-what-each-runbook-requires" data-change="added">
+              <h4>Listing what each runbook requires</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>migrate requires backup, which has a passed run and one still open, and provision-database requires create-account, which has no run</dd>
+                <dt>When</dt>
+                <dd>the runbooks are listed</dd>
+                <dt>Then</dt>
+                <dd>migrate's prerequisite reads met by its record with one run still open, and provision-database's reads unmet</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-drawing-the-order" data-change="added">
+              <h4>Drawing the order</h4>
+              <dl>
+                <dt>When</dt>
+                <dd><code>htmlspec list --runbooks --graph</code> is invoked twice, in projects whose directories were created in different orders</dd>
+                <dt>Then</dt>
+                <dd>both print the same Mermaid flowchart, byte for byte</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-drawing-asked-for-alone" data-change="added">
+              <h4>The drawing asked for alone</h4>
+              <dl>
+                <dt>When</dt>
+                <dd><code>htmlspec list --graph</code> is invoked</dd>
+                <dt>Then</dt>
+                <dd>it is refused as a usage error, exit 2</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-runbook-execution">
+          <h2>runbook-execution</h2>
+          <section class="requirement" id="req-a-run-s-conformance-to-its-runbook-s-contract-is-reported-and-never-gated" data-change="modified">
+            <h3>A run's conformance to its runbook's contract is reported and never gated <span class="hs-id">req-a-run-s-conformance-to-its-runbook-s-contract-is-reported-and-never-gated</span></h3>
+            <p>A run whose record does not attest to every requirement the runbook states SHALL be reported, and the report SHALL name both the run and each requirement nothing in it attests to. A report naming only the run leaves a reader to find which requirement, and a report naming only the requirement leaves them to find which run.</p>
+            <p><strong>The report SHALL NOT fail validation and SHALL NOT be promotable to a failure.</strong> A run under way legitimately has requirements nothing has verified yet, because a run is one record from start to finish, so a check that failed the run halfway through would gate the work that produces the very records it asks for. This is the same policy that keeps a specification in progress from failing: the report marks work for attention rather than blocking it.</p>
+            <p><strong>The subject of the report SHALL be a runbook and its runs together</strong>, so the check SHALL be evaluated where both are in view rather than as part of validating one document. Neither document alone can decide it: the specification states the requirements and the record states the outcomes. A check that ran over each document would report one violation once per document, and none of it would be a fault of the document being validated.</p>
+            <p>The report SHALL NOT be produced for:</p>
+            <ul>
+              <li>
+                <p>a runbook nobody has run. A procedure with no runs violates nothing, and a report firing from the moment a runbook is created is one a reader learns to ignore.</p>
+              </li>
+              <li>
+                <p>a run whose recorded outcome states that the check did not pass. <strong>The obligation is that the run recorded an outcome, not that the outcome was good.</strong> A batch that came out wrong is a bad batch and a correct record of one, and a report that treated a recorded failure as a document fault would teach an operator to record a pass.</p>
+              </li>
+              <li>
+                <p>a run attesting to something the runbook does not require. A run that recorded more than it owed is not at fault.</p>
+              </li>
+            </ul>
+            <ins>
+              <p>Whether a record satisfies another runbook's run check SHALL be a separate question, answered from its task states and recorded outcomes. A record that does not satisfy one SHALL NOT thereby be at fault, and the conformance report SHALL stay advisory and never gate the run it describes.</p>
+            </ins>
+            <article class="scenario" id="scenario-a-run-missing-a-verification" data-change="unchanged">
+              <h4>A run missing a verification</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook stating two requirements of its runs</dd>
+                <dt>When</dt>
+                <dd>a run's record attests to one of them</dd>
+                <dt>Then</dt>
+                <dd>the other is reported, naming the run and the requirement, and validation still succeeds</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-under-way" data-change="unchanged">
+              <h4>A run under way</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a run whose record attests to nothing yet</dd>
+                <dt>When</dt>
+                <dd>conformance is checked under the strictest setting available</dd>
+                <dt>Then</dt>
+                <dd>the report is made and nothing fails, because a run in progress is not a defect</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-nobody-has-run" data-change="unchanged">
+              <h4>A runbook nobody has run</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>conformance is checked for a runbook with no records</dd>
+                <dt>Then</dt>
+                <dd>nothing is reported</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-that-recorded-a-failure" data-change="unchanged">
+              <h4>A run that recorded a failure</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a run whose record states that a requirement's check did not pass</dd>
+                <dt>When</dt>
+                <dd>conformance is checked</dd>
+                <dt>Then</dt>
+                <dd>nothing is reported about that requirement, because the run recorded the outcome it had</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-check-evaluated-over-one-document" data-change="unchanged">
+              <h4>A check evaluated over one document</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a run's record is validated on its own</dd>
+                <dt>Then</dt>
+                <dd>no conformance report is produced, because the check's subject is the runbook and its runs and neither document holds both halves</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-the-command-surface-checks-a-runbook-s-machine-prerequisites" data-change="modified">
+            <h3>The command surface checks a runbook's machine prerequisites <span class="hs-id">req-the-command-surface-checks-a-runbook-s-machine-prerequisites</span></h3>
+            <p>The command <code>htmlspec preflight &lt;runbook&gt;</code> SHALL report whether the selected runbook can start in the invocation's working environment. It SHALL support the existing <code>--store</code> and <code>--json</code> selectors. Store selection SHALL locate the runbook and its records, while machine requirements SHALL be evaluated against the invocation's working directory and environment, not the store's directory. Names SHALL follow the existing runbook-name rules.</p>
+            <p>The report SHALL identify the runbook, carried version, source location, working directory, aggregate readiness, and each checked requirement with its expected condition, observation, outcome, and remedy for a refusal. Results SHALL follow document order. Human output SHALL lead with readiness. JSON output SHALL contain one structured report with no probe output interleaved.</p>
+            <p>Where a check's declaration carries a remedy, the JSON report SHALL carry it as <code>runbookRemedy</code> on that check whatever its outcome, and the human report SHALL show it, labelled as the runbook's words, after the program's own remedy for a check whose outcome is <code>unmet</code>, <code>unavailable</code>, <code>timed-out</code>, or <code>probe-failed</code>, and never for one that passed. A declaration's field name, tool name, <del>and </del>path<ins>, a runbook's name, and a record's name</ins> SHALL reach a report with each character a terminal would not show as itself named by its code point, and the probe SHALL use them as written. The help of <code>preflight</code> and <code>run</code> SHALL point to the operation that lists the project's runbooks.</p>
+            <p>A completed preflight with unmet requirements SHALL exit 1, a successful one SHALL exit 0, an invalid invocation, invalid contract, or operational failure SHALL exit 2, and cancellation SHALL exit 3. Unknown observations such as an unavailable manifest environment or a timed-out probe SHALL be reported as unmet readiness rather than as success. An invalid declaration SHALL remain distinguishable from a valid check whose condition is false.</p>
+            <p><code>htmlspec run &lt;runbook&gt; --as &lt;record&gt;</code> SHALL apply the same checks and exit distinctions before creating a run. <code>htmlspec run &lt;runbook&gt; --check</code> SHALL continue to report existing run conformance without checking the present machine. Existing JSON fields on successful run creation SHALL be preserved, with version and preflight information added.</p>
+            <ins>
+              <p>With <code>--json</code>, a run check SHALL carry a <code>run</code> object in <code>preflight</code> and <code>run</code> alike: the runbook it names, its lowest release, its state, one of met, unmet, missing, or unavailable, the records that satisfy it and how many, each record that does not with its reason, and its runs still open. A report that is not ready SHALL still name a met run check's open runs. A runbook named on the command line SHALL be known by one of the project's runbook directory names: the typed name when it is one; else, among the names for the same directory, the one equal to it ignoring case; else the directory's only name. Only a name that stays ambiguous SHALL be refused. The report, the source location, and the record SHALL carry the name it resolves to.</p>
+            </ins>
+            <article class="scenario" id="scenario-an-agent-inspects-readiness" data-change="unchanged">
+              <h4>An agent inspects readiness</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operator requests preflight with <code>--json</code></dd>
+                <dt>Then</dt>
+                <dd>standard output is one parseable readiness report, no prompt occurs, and probe output stays inside the report</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-selected-store-differs-from-the-working-directory" data-change="unchanged">
+              <h4>The selected store differs from the working directory</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a stored runbook is checked from a separate target checkout</dd>
+                <dt>Then</dt>
+                <dd>the report identifies both locations and evaluates working-tree assumptions in the target checkout</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-several-prerequisites-fail" data-change="unchanged">
+              <h4>Several prerequisites fail</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>several valid checks report unsatisfied conditions</dd>
+                <dt>Then</dt>
+                <dd>one report names all of them in document order and the command exits 1</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-contract-is-malformed" data-change="unchanged">
+              <h4>The contract is malformed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a selected runbook contains an invalid machine declaration</dd>
+                <dt>Then</dt>
+                <dd>the command exits 2 and identifies the requirement and invalid field</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-reviewing-existing-records" data-change="unchanged">
+              <h4>Reviewing existing records</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the operator runs <code>htmlspec run &lt;runbook&gt; --check</code> on a machine missing a prerequisite</dd>
+                <dt>Then</dt>
+                <dd>it reports run conformance under its existing advisory contract</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-failing-check-whose-runbook-names-a-remedy" data-change="unchanged">
+              <h4>A failing check whose runbook names a remedy</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a <code>preflight/v2</code> declaration with a remedy, whose condition does not hold</dd>
+                <dt>When</dt>
+                <dd>an operator runs <code>htmlspec preflight</code></dd>
+                <dt>Then</dt>
+                <dd>the report shows the program's remedy, then <code>the runbook says:</code> and the runbook's text, and with <code>--json</code> the check carries <code>runbookRemedy</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-passing-check-with-a-remedy" data-change="unchanged">
+              <h4>A passing check with a remedy</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a <code>preflight/v2</code> declaration with a remedy, whose condition holds</dd>
+                <dt>When</dt>
+                <dd>an operator runs <code>htmlspec preflight</code></dd>
+                <dt>Then</dt>
+                <dd>the human report shows no remedy for it, and the JSON report still carries <code>runbookRemedy</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-declared-name-holding-an-escape-sequence" data-change="unchanged">
+              <h4>A declared name holding an escape sequence</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a declaration whose tool name, path, or unknown field holds an escape sequence</dd>
+                <dt>When</dt>
+                <dd>the report names it</dd>
+                <dt>Then</dt>
+                <dd>each such character is written as its code point, and nothing reaches the terminal as an escape</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-check-in-the-json-report" data-change="added">
+              <h4>A run check in the JSON report</h4>
+              <dl>
+                <dt>When</dt>
+                <dd><code>htmlspec --json preflight migrate</code> reports a run check naming backup</dd>
+                <dt>Then</dt>
+                <dd>the check carries a run object with its state and the records that do and do not satisfy it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-named-in-another-case" data-change="added">
+              <h4>A runbook named in another case beside a link</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>the project holds outside and a symbolic link outside-link to it, on a filesystem that folds case</dd>
+                <dt>When</dt>
+                <dd><code>htmlspec preflight OUTSIDE</code> is invoked</dd>
+                <dt>Then</dt>
+                <dd>it reports for outside, as 1.1 ran it, and a self-reference or cycle is found on that name</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-a-backup-then-a-migration" data-change="added" data-refs="req-a-prerequisite-run-is-met-by-a-finished-passed-record req-preflight-gates-the-creation-of-a-run">
+            <h3>A backup, then a migration, in a scratch project <span class="hs-id">evidence-a-backup-then-a-migration</span></h3>
+            <p>On 2026-10-27, in a scratch project where migrate declares <code>preflight/v3 {"kind":"run","runbook":"backup"}</code>, <code>htmlspec run migrate --as first-migration</code> exited 1 while the only backup run, nightly, had 1 of 2 steps done, naming nightly as still open, and created nothing. Once nightly was finished and passed, the run started, and its record's verification read "1 finished, passed run(s) of <code>backup</code> meet it: nightly (0.1.0)".</p>
+          </section>
+          <section class="evidence" id="evidence-what-this-change-settled-beside-its-rows" data-change="added" data-refs="req-the-command-surface-checks-a-runbook-s-machine-prerequisites">
+            <h3>What the change settled beside its contract rows <span class="hs-id">evidence-what-this-change-settled-beside-its-rows</span></h3>
+            <p>Four behaviours have no row of their own and are stated where they fall: the <code>unavailable</code> state, which replaced the draft's <code>unknown</code> before release; reading a record's release from its head alone; the escaping of runbook and record names in every report; and the resolution of a typed runbook name, which keeps every name 1.1.1 ran. A fifth reaches beyond this change's requirements: a parse recovery's message quoted the character the parser stopped at raw, and now names each character a terminal would not show as itself by its code point, through the rule <code>htmlspec-parse</code>'s <code>visible</code> module holds, so <code>validate --json</code> gives a different message for such a document with the same diagnostic code.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-the-run-check-end-to-end" data-change="added" data-outcome="passed" data-refs="req-machine-requirements-are-explicit-and-mechanically-checkable req-a-prerequisite-run-is-met-by-a-finished-passed-record req-preflight-gates-the-creation-of-a-run req-a-carried-runbook-does-not-require-its-source-project-s-history req-a-run-s-conformance-to-its-runbook-s-contract-is-reported-and-never-gated">
+            <h3>The run check, decided from records and gating the start <span class="hs-id">verify-the-run-check-end-to-end</span></h3>
+            <p data-field="method"><code>cargo test -p htmlspec-cli --test prerequisites</code> passed its 16 end-to-end cases, among them a migration started only after a finished, passed backup, a recorded failure, a release below <code>atLeast</code>, a chain of three, a self-reference and a cycle, an unreadable specification on the way, exact name matching, a runbook typed in another case or beside a link, a linked record from another project, escaped names, and a carried runbook checked against its receiving project. The unit tests in <code>src/prerequisites.rs</code> passed, covering each reason a record does not count, the head-only release, and name resolution. <code>scripts/check</code> passed all 17 stages.</p>
+          </section>
+          <section class="verification" id="verify-the-listing-and-the-graph" data-change="added" data-outcome="passed" data-refs="req-the-project-enumerates-the-runbooks-it-holds req-a-project-keeps-its-procedures-in-a-fourth-place">
+            <h3>The listing and the graph <span class="hs-id">verify-the-listing-and-the-graph</span></h3>
+            <p data-field="method"><code>cargo test -p htmlspec-cli --test order</code> passed its 9 cases: every state in the listing and its JSON, a met prerequisite naming its open run, the graph byte for byte against the design's example and across creation orders, each edge case, hostile names escaped, and <code>--graph</code> refused alone. The unit tests in <code>src/order.rs</code> found one cycle per component quickly, nine mutually requiring runbooks included.</p>
+          </section>
+          <section class="verification" id="verify-the-report-and-the-surface" data-change="added" data-outcome="passed" data-refs="req-the-command-surface-checks-a-runbook-s-machine-prerequisites">
+            <h3>The report's run object and the frozen surface <span class="hs-id">verify-the-report-and-the-surface</span></h3>
+            <p data-field="method">Every test that runs the binary held its payload to the published schemas, and the surface tests held <code>1.2.json</code> to the program and to the 1.0 and 1.1 files it must keep. Runbooks with no run check gave the same preflight and run JSON as 1.1.1 in the pre-archival review.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

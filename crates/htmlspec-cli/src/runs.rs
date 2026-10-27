@@ -34,8 +34,9 @@ use htmlspec_validate::rules::runs::{RecordedRun, RunbookUnderReview};
 
 use crate::exit::Outcome;
 use crate::output::Streams;
-use crate::preflight::MachineContract;
+use crate::preflight::{Fact, MachineContract};
 use crate::project::ProjectRoot;
+use crate::terminal::shown;
 use crate::version::RunbookVersion;
 
 /// The document holding a runbook's procedure.
@@ -120,9 +121,10 @@ pub fn start<O: Write, E: Write>(
 
     if !directory.is_dir() {
         let _ = streams.failure(&format!(
-            "no runbook named {runbook} in {}. To see what the project holds, run \
+            "no runbook named {} in {}. To see what the project holds, run \
              `htmlspec list --runbooks`",
-            project.runbooks().display()
+            shown(runbook),
+            shown(&project.runbooks().display().to_string())
         ));
         return Outcome::OperationalFailure;
     }
@@ -137,11 +139,17 @@ pub fn start<O: Write, E: Write>(
             return Outcome::OperationalFailure;
         }
     };
+    // The runbook by its enumerated name from here on, which is the one the record's directory, the
+    // payload, and the report use, whatever case the command line typed.
+    let runbook = source.name.clone();
 
     // Validated -> Ready. The checks run against the invocation's working directory, which is *not*
     // necessarily the store's: `--store` selects documents and not the tree a state check judges.
     let workdir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let mut host = crate::preflight::host::Host::interruptible(workdir.clone(), streams);
+    // Run checks read the records of the project the runbook was read from, the store's under
+    // `--store`, while the machine checks keep judging the working directory.
+    let mut host = crate::preflight::host::Host::interruptible(workdir.clone(), streams)
+        .with_runbooks(project.runbooks());
     // Taken before the snapshot is consumed, because the refusal has to report the runbook it refused
     // and the version it carries, and both are facts about the snapshot.
     let context = crate::preflight::ReportContext {
@@ -169,8 +177,8 @@ pub fn start<O: Write, E: Write>(
             // the report above is what an operator reads; in structured mode this is the only thing
             // on standard error besides the payload, and it is the half that is easy to miss.
             let _ = streams.failure(
-                "no record was created and nothing was written, because this machine does not \
-                 satisfy every prerequisite the runbook declares",
+                "no record was created and nothing was written, because not every prerequisite \
+                 the runbook declares is satisfied here",
             );
             return Outcome::PrerequisiteFailure;
         }
@@ -178,7 +186,7 @@ pub fn start<O: Write, E: Write>(
 
     // Ready -> Prepared -> Started. The destination is resolved as vacant first so a collision is
     // reported as one, and publication then makes it true rather than hoping.
-    let destination = match VacantRecord::at(&project, runbook, record) {
+    let destination = match VacantRecord::at(&project, &runbook, record) {
         Ok(destination) => destination,
         Err(report) => {
             let _ = streams.failure(&report);
@@ -215,9 +223,10 @@ pub fn start<O: Write, E: Write>(
         }
     } else {
         let _ = streams.report(&format!(
-            "{}: started a run of {runbook} {}\n  {} step(s) to work, {} requirement(s) to \
-             record, {} of {} machine check(s) passed before it started\n",
-            started.path.display(),
+            "{}: started a run of {} {}\n  {} step(s) to work, {} requirement(s) to record, {} \
+             of {} check(s) passed before it started\n",
+            shown(&started.path.display().to_string()),
+            shown(&runbook),
             started.version,
             started.steps,
             started.requirements,
@@ -301,9 +310,26 @@ impl std::error::Error for LoadFault {}
 /// say which release ran. **Old record review is untouched** — [`check`] reads neither file, so a
 /// record created before this obligation stays readable, which is what the same requirement asks
 /// for.
-pub fn load(directory: &Path, name: &str) -> Result<ValidatedRunbook, LoadFault> {
+pub fn load(directory: &Path, typed: &str) -> Result<ValidatedRunbook, LoadFault> {
+    // Known by its enumerated name from here on, so a run check's self-reference or cycle is found
+    // whatever case the command line used (the change `require-a-run-of-another-runbook`, its
+    // design's decision 2), and the record, the report, and the payload name the runbook as the
+    // listing does.
+    let Some(name) = crate::prerequisites::enumerated_name(directory, typed) else {
+        return Err(LoadFault::Invalid {
+            report: format!(
+                "{} reaches a runbook directory that is listed under no one name, so which runbook \
+                 it means is not known. Name the runbook as `htmlspec list --runbooks` prints it",
+                shown(typed)
+            ),
+        });
+    };
+    // Every message below names the runbook by its directory name, which can hold any character a
+    // directory name can, so it is shown with the characters a terminal would act on named by code
+    // point.
+    let named = shown(&name);
     let absent = |file: &str, guidance: &str| LoadFault::Absent {
-        report: format!("{name} has no {file}, and starting a run needs it. {guidance}"),
+        report: format!("{named} has no {file}, and starting a run needs it. {guidance}"),
     };
     let procedure = read_document(directory, PROCEDURE, &absent(
         PROCEDURE,
@@ -331,7 +357,7 @@ pub fn load(directory: &Path, name: &str) -> Result<ValidatedRunbook, LoadFault>
     ))?;
     let version =
         crate::runbook_release::read_version(directory).map_err(|problem| LoadFault::Absent {
-            report: format!("{name} {problem}"),
+            report: format!("{named} {problem}"),
         })?;
 
     // The changelog has to head the version declared, and heading it twice cannot say which entry is
@@ -341,7 +367,7 @@ pub fn load(directory: &Path, name: &str) -> Result<ValidatedRunbook, LoadFault>
     if !headings.contains(&version) {
         return Err(LoadFault::Invalid {
             report: format!(
-                "{name} declares {version} and its {} has no heading naming it. A carried runbook \
+                "{named} declares {version} and its {} has no heading naming it. A carried runbook \
                  identifies its release by the pair, so add the heading or correct the version",
                 crate::runbook_release::CHANGELOG_FILE
             ),
@@ -351,7 +377,7 @@ pub fn load(directory: &Path, name: &str) -> Result<ValidatedRunbook, LoadFault>
     if let Some(repeated) = repeated.first() {
         return Err(LoadFault::Invalid {
             report: format!(
-                "{name}'s {} heads {repeated} more than once, so it cannot say which entry is the \
+                "{named}'s {} heads {repeated} more than once, so it cannot say which entry is the \
                  release. One heading per release",
                 crate::runbook_release::CHANGELOG_FILE
             ),
@@ -366,7 +392,7 @@ pub fn load(directory: &Path, name: &str) -> Result<ValidatedRunbook, LoadFault>
         if !report.is_accepted() {
             return Err(LoadFault::Invalid {
                 report: format!(
-                    "{name}'s {file} does not validate, so a run cannot start from it:\n{}",
+                    "{named}'s {file} does not validate, so a run cannot start from it:\n{}",
                     htmlspec_validate::render_human(&report)
                 ),
             });
@@ -377,7 +403,7 @@ pub fn load(directory: &Path, name: &str) -> Result<ValidatedRunbook, LoadFault>
     if !parsed.is_recovery_free() {
         return Err(LoadFault::Invalid {
             report: format!(
-                "{name}'s {CONTRACT} requires error recovery, so it has more than one reading and a \
+                "{named}'s {CONTRACT} requires error recovery, so it has more than one reading and a \
                  copy would pick one. Run `htmlspec validate` on the runbook first"
             ),
         });
@@ -386,16 +412,35 @@ pub fn load(directory: &Path, name: &str) -> Result<ValidatedRunbook, LoadFault>
     let contract = crate::preflight::parse_contract(&projection.model).map_err(|faults| {
         LoadFault::Invalid {
             report: format!(
-                "{name}'s {CONTRACT} declares a machine check this program cannot read, so it \
+                "{named}'s {CONTRACT} declares a prerequisite this program cannot read, so it \
                  cannot be started — a declaration that was skipped would be a prerequisite \
                  reported as checked:\n{faults}"
             ),
         }
     })?;
+    // A run check that names this runbook, or leads back to it through the runbooks it names, is an
+    // invalid contract: the runbook could never start as written. Refused here, with every other
+    // contract this program cannot honour, so it exits 2 before any record is read and before any
+    // report is written (the change `require-a-run-of-another-runbook`, its design's decision 7).
+    if let Some(runbooks) = directory.parent() {
+        crate::prerequisites::refuse_cycles(runbooks, &name, &contract).map_err(|faults| {
+            LoadFault::Invalid {
+                report: format!(
+                    "{named}'s {CONTRACT} declares a run check no order can satisfy, so it cannot \
+                     be started:\n{faults}"
+                ),
+            }
+        })?;
+    }
 
+    // The directory as the listing names it, so the report's source path and the record's location
+    // carry the name the runbook resolved to, not the spelling a command line typed.
+    let directory = directory
+        .parent()
+        .map_or_else(|| directory.to_owned(), |runbooks| runbooks.join(&name));
     Ok(ValidatedRunbook {
-        name: name.to_owned(),
-        directory: directory.to_owned(),
+        name,
+        directory,
         procedure,
         specification,
         changelog,
@@ -1089,7 +1134,7 @@ pub fn check<O: Write, E: Write>(
 /// The precedent cuts this way too. `commands.rs`'s `completion` returns `None` for a document it
 /// cannot read, and the enumeration reports that as *a change with no tasks document* rather than as
 /// no change — the project's habit is to preserve the distinction.
-enum Found {
+pub(crate) enum Found {
     /// The record's name and its source.
     Readable(String, String),
     /// The record's name and why it could not be read.
@@ -1104,7 +1149,7 @@ impl Found {
     }
 }
 
-fn gather(runs: &Path) -> Vec<Found> {
+pub(crate) fn gather(runs: &Path) -> Vec<Found> {
     let Ok(entries) = std::fs::read_dir(runs) else {
         return Vec::new();
     };
@@ -1279,8 +1324,10 @@ fn compose(run: &ReadyRun, destination: &VacantRecord) -> Result<String, String>
     //
     // **The contract was right and the code was wrong**, so the code changed. Narrowing the
     // requirement to "the task units" was the alternative and it is worse: a record that cannot say
-    // what the procedure consumed cannot answer the question the record exists for, and the input gap
-    // this change records means that prose is the *only* place a prerequisite can live.
+    // what the procedure consumed cannot answer the question the record exists for. That prose is
+    // still where a person reads what the procedure needs; a prerequisite *run* of another runbook
+    // is now also declared as a run check in the specification, which preflight reads and this
+    // record attests to (the change `require-a-run-of-another-runbook`).
     //
     // This also removes the invented `<ul>` wrapper, which was a second defect: the runbook's own
     // list structure now comes across intact, so a procedure whose steps are `<section>` elements no
@@ -1314,6 +1361,7 @@ fn compose(run: &ReadyRun, destination: &VacantRecord) -> Result<String, String>
     let source = shell(
         runbook,
         record,
+        run.version(),
         &destination.assets,
         &masthead(runbook, record, run.version(), requirements.len()),
         &sections,
@@ -1585,7 +1633,7 @@ fn record_section(
         opening = match checked {
             0 => String::from("None of them has been run yet."),
             _ => format!(
-                "The {checked} machine prerequisite(s) this runbook declares were checked before \
+                "The {checked} prerequisite(s) this runbook declares were checked before \
                  the run started, at the {version} release, and each entry below records what was \
                  observed. Those checks are obligations of the run like any other: a passed \
                  prerequisite is recorded, not discharged."
@@ -1625,14 +1673,33 @@ fn record_section(
         // other verification stays `not-run`, which is the distinction `log-a-runbook-run` drew and
         // this change does not blur: passing preflight does not discharge a logging obligation, it
         // records the outcome of one of them.
+        // A run check observed this project's records, not the machine, and its method says so.
         let (outcome, method) = match evidence.get(id) {
             Some(check) => (
                 "passed",
                 format!(
-                    "Checked before this run started by `htmlspec preflight {runbook}`: {}. \
-                     Repeat it with that command, which observes the machine afresh rather than \
-                     trusting this record.",
-                    htmlspec_assets::escape_text(&check.fact.observed())
+                    "Checked before this run started by `htmlspec preflight {}`: {}. \
+                     Repeat it with that command, which {} afresh rather than trusting this \
+                     record.",
+                    htmlspec_assets::escape_text(&shown(runbook)),
+                    htmlspec_assets::escape_text(&check.fact.observed()),
+                    match check.fact {
+                        Fact::RunMet { .. }
+                        | Fact::RunUnmet { .. }
+                        | Fact::RunbookMissing { .. } => {
+                            "reads this project's runs"
+                        }
+                        Fact::ToolVersion { .. }
+                        | Fact::ToolAbsent { .. }
+                        | Fact::ToolVersionUnreadable { .. }
+                        | Fact::ToolchainTools { .. }
+                        | Fact::SkillInstalled { .. }
+                        | Fact::SkillAbsent { .. }
+                        | Fact::NoNearestProject
+                        | Fact::NearestProject { .. }
+                        | Fact::WorktreeClean
+                        | Fact::WorktreeDirty { .. } => "observes the machine",
+                    }
                 ),
             ),
             None => (
@@ -1664,7 +1731,14 @@ fn record_section(
 /// tasks template carries two example task units and a placeholder summary, both of which
 /// `review/example-content` reports, so rendering it and then replacing its body would mean
 /// stripping content this function never wanted.
-fn shell(runbook: &str, record: &str, assets: &str, masthead: &str, sections: &str) -> String {
+fn shell(
+    runbook: &str,
+    record: &str,
+    release: RunbookVersion,
+    assets: &str,
+    masthead: &str,
+    sections: &str,
+) -> String {
     let subject = htmlspec_assets::escape_text(&format!("{runbook} run: {record}"));
     let mut out = format!(
         "<!DOCTYPE html>\n\
@@ -1674,6 +1748,7 @@ fn shell(runbook: &str, record: &str, assets: &str, masthead: &str, sections: &s
          \x20   <meta content=\"width=device-width, initial-scale=1\" name=\"viewport\">\n\
          \x20   <meta content=\"{contract}\" name=\"htmlspec-version\">\n\
          \x20   <meta content=\"tasks\" name=\"htmlspec-kind\">\n\
+         \x20   <meta content=\"{release}\" name=\"{release_meta}\">\n\
          \x20   <title>{subject}</title>\n\
          \x20   {fallback}\n",
         // A record is a document the program writes, so it carries the fallback stylesheet every
@@ -1683,6 +1758,11 @@ fn shell(runbook: &str, record: &str, assets: &str, masthead: &str, sections: &s
         fallback = htmlspec_assets::fallback::ELEMENT,
         // The version the masthead names too: see `masthead`.
         contract = htmlspec_schema::CONTRACT_VERSION,
+        // The runbook release this run ran with, as a value the program reads back: a run check's
+        // `atLeast` compares it, and the masthead's prose is not read (the change
+        // `require-a-run-of-another-runbook`, its design's decision 4). In the formatter's
+        // attribute order, so the record is canonical as written.
+        release_meta = crate::prerequisites::RELEASE_META,
     );
     for (name, extra) in [
         ("htmlspec.css", ""),
@@ -2029,7 +2109,14 @@ mod tests {
             "the name was not escaped:\n{head}"
         );
 
-        let whole = shell(hostile, hostile, "assets", "", "");
+        let whole = shell(
+            hostile,
+            hostile,
+            RunbookVersion::parse("0.1.0").expect("a release"),
+            "assets",
+            "",
+            "",
+        );
         assert!(!whole.contains("a<b&c"), "the name went in raw:\n{whole}");
         assert!(whole.contains("a&lt;b&amp;c"), "the name was not escaped");
     }

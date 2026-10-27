@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Let a runbook require a passed run of another runbook before its own run starts: tasks</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Let a runbook require a passed run of another runbook before its own run starts: tasks</h1>
+        <p>The work that lets a runbook require a passed run of another, in five groups, after <code>install-through-wsl-without-nix</code> archives at 1.1.1: open 1.2.0, build the check, show the order in the listing and the graph, document the declaration, and close the release. Group 2 lands whole before groups 3 and 4, which can run in parallel.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Let a runbook require a passed run of another runbook before its own run starts: tasks</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-tasks">Tasks</a></li>
+          <li><a href="#group-open">1. Open 1.2.0</a></li>
+          <li><a href="#group-check">2. The prerequisite check</a></li>
+          <li><a href="#group-listing">3. Show the order</a></li>
+          <li><a href="#group-documentation">4. Document the declaration</a></li>
+          <li><a href="#group-close">5. Close 1.2.0</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-tasks">
+          <h2>Tasks</h2>
+          <p>This change follows <code>install-through-wsl-without-nix</code>, and group 1 starts only after that change has archived at 1.1.1. Group 2 builds the check and merges whole. Groups 3 and 4 depend on group 2 and not on each other, so one agent can take them in order or two can take them in parallel worktrees. Group 5 merges last. The examples throughout are generic: <code>backup</code> and <code>migrate</code>, and <code>create-account</code>, <code>provision-database</code>, and <code>deploy-service</code>. Each group settles only its own tasks and amends only its own part of the design, and <code>tests/surface/1.2.json</code> is always regenerated with the writer, never merged by hand.</p>
+        </section>
+        <section id="group-open">
+          <h2>1. Open 1.2.0</h2>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Move the workspace to 1.2.0, after 1.1.1 has archived <span class="hs-id">task-1-1</span></h3>
+              <p data-field="note">Branch from <code>main</code> only once <code>install-through-wsl-without-nix</code> has archived there at 1.1.1: <code>htmlspec list</code> no longer shows it, and <code>spec.nix</code> reads 1.1.1. Then run <code>scripts/set-version 1.2.0</code> for the version, the five pins, and the lockfile. Leave <code>spec.nix</code> at 1.1.1 for this change's archival. <code>scripts/set-version</code> has no guard against moving backwards, so this order is the only thing that keeps 1.1.1 before 1.2.0 (design decision 12). <code>scripts/check-release</code> passes.</p>
+              <p data-field="note">Branched from main at <code>ef8d30c</code>, after <code>install-through-wsl-without-nix</code> archived at 1.1.1. <code>scripts/set-version 1.2.0</code> moved the version, the five pins, and the lockfile; <code>spec.nix</code> stays at 1.1.1, and <code>scripts/check-release</code> passes.</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Give the changelog a 1.2.0 heading with one subheading per group <span class="hs-id">task-1-2</span></h3>
+              <p data-field="note">Add <code>## 1.2.0</code> to <code>CHANGELOG.md</code> with subheadings for the check, the listing, and the documentation, each reading "Not yet merged." until its group lands.</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Record the 1.2 surface, equal to 1.1's except its version <span class="hs-id">task-1-3</span></h3>
+              <p data-field="note">Write <code>crates/htmlspec-cli/tests/surface/1.2.json</code> with the surface writer. It differs from <code>1.1.json</code> only in <code>version</code>, and the surface tests pass at 1.2.0.</p>
+              <p data-field="note">Written by <code>write_the_current_minors_surface</code>. It differs from <code>1.1.json</code> only in <code>"version": "1.2"</code>, and the 22 surface tests pass at 1.2.0.</p>
+            </li>
+            <li class="task" id="task-1-4" data-change="added" data-state="done">
+              <h3>1.4 Regenerate the installed instruction files and land the opening pull request <span class="hs-id">task-1-4</span></h3>
+              <p data-field="note">The 45 installed files change only their <code>generatedBy</code> line, and the <code>installed</code> stage passes. The pull request takes its review and merges before group 2 branches.</p>
+              <p data-field="note">The 45 installed files change only their <code>generatedBy</code> line, and <code>scripts/check-installed</code> passes. The opening work lands as the first commit of the pull request that also builds group 2, on direction, so it takes that pull request's review and merge.</p>
+              <p data-field="deviation">The opening work did not merge on its own before group 2 branched. It landed as the first commit of pull request 87, which also built group 2, and took that pull request's review and merge on 2026-10-27. The installed files and the 1.2 surface reached main with it.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="group-check">
+          <h2>2. The prerequisite check</h2>
+          <ul>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Read <code>preflight/v3</code> and its <code>run</code> kind <span class="hs-id">task-2-1</span></h3>
+              <p data-field="note">In <code>crates/htmlspec-cli/src/preflight.rs</code>, add the <code>preflight/v3</code> marker. It reads every <code>preflight/v2</code> form, with <code>remedy</code>, and a <code>run</code> entry in the forms table with <code>kind</code>, <code>runbook</code>, and an optional <code>atLeast</code>. <code>preflight/v1</code> and <code>preflight/v2</code> refuse <code>run</code> as an unknown kind. Test the accepted form, each malformed form (no <code>runbook</code>, an extra field, an <code>atLeast</code> that is not three integers, an unsafe name), and that v1 and v2 refuse the kind. Design decision 1.</p>
+              <p data-field="note">Done on 2026-10-27. <code>preflight/v3</code> reads every v2 form with its <code>remedy</code>, and the forms table has a <code>run</code> entry whose <code>atLeast</code> is optional. A declared name must pass the runbook name rule. Unit tests in <code>preflight.rs</code> cover the accepted form, every v2 form read under v3, v1 and v2 refusing <code>run</code>, and six malformed forms: no <code>runbook</code>, an empty one, an extra field, an <code>atLeast</code> of <code>"1.4"</code>, a numeric <code>atLeast</code>, and the unsafe name <code>../elsewhere</code>. After the review of 2026-10-27, every v2 form, <code>toolchain</code> and <code>skill</code> included, is tested under v3, and a test holds each kind fault to the note's own format.</p>
+              <p data-field="deviation">The unknown-kind fault names the note's format and the forms it reads and, for <code>run</code> under v1 or v2, says to begin the note with <code>preflight/v3</code>. A missing <code>kind</code> is told its own format's forms, and an empty <code>runbook</code> has a fault of its own. The test that used <code>preflight/v3</code> as an unsupported format now uses <code>preflight/v4</code> (design decision 1's note).</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Write each new record's release, and prove validation and formatting keep it <span class="hs-id">task-2-2</span></h3>
+              <p data-field="note">In <code>crates/htmlspec-cli/src/runs.rs</code>, <code>run --as</code> writes <code>&lt;meta content="X.Y.Z" name="htmlspec-runbook-release"&gt;</code>, in that canonical attribute order, into the record's head. One function reads it back and reports one of: a release; none; not three dot-separated integers; or more than one. Tests cover:</p>
+              <ul>
+                <li>
+                  a new record carries the meta in canonical form;
+                  <p data-field="note">Done on 2026-10-27. <code>run --as</code> writes <code>&lt;meta content="0.1.0" name="htmlspec-runbook-release"&gt;</code> after the <code>htmlspec-kind</code> meta. The end-to-end test reads it in the new record, then runs <code>validate --strict</code> and <code>format --check</code> on that record, and both pass. A unit test reads back each of a release, none, a malformed one, and two. After the review of 2026-10-27, only a meta in the head is read, and a unit test shows that one in the body states nothing, alone or beside the head's.</p>
+                  <p data-field="deviation">The function that reads the meta back, <code>release_of</code>, lives in <code>prerequisites.rs</code> beside its only reader, not in <code>runs.rs</code>, which only writes it.</p>
+                </li>
+                <li><code>htmlspec validate</code> accepts it;</li>
+                <li><code>htmlspec format</code> and <code>format --check</code> keep it byte for byte;</li>
+                <li>a record without it reads as stating no release;</li>
+                <li>a malformed meta and a duplicated meta each read as their own fault.</li>
+              </ul>
+              <p data-field="note">If validation or formatting drops or refuses the meta, stop and settle design decision 4 before going on.</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Decide whether a record satisfies a run check <span class="hs-id">task-2-3</span></h3>
+              <p data-field="note">A new module, <code>crates/htmlspec-cli/src/prerequisites.rs</code>, finds and reads the files under a runbook's <code>runs/</code> with <code>runs.rs</code>'s <code>gather()</code>. It applies the recovery check that <code>runs.rs</code>'s read path already applies, and decides each record from its projected model, by design decision 3. Do not reuse, widen, or change <code>RecordedRun</code> in <code>htmlspec-validate</code>: it is a public type in a published crate, and a new field breaks downstream code.</p>
+              <p data-field="note">A record satisfies the check when all of these hold:</p>
+              <ul>
+                <li>
+                  it is readable and recovery-free;
+                  <p data-field="note">Done on 2026-10-27. <code>prerequisites.rs</code> reads records through <code>runs.rs</code>'s <code>gather()</code>, refuses one that needs recovery as <code>runs.rs</code>'s read path does, and decides from the projected model. <code>RecordedRun</code> is untouched. Its unit tests cover every case the task lists, including five satisfying records of which three are named with a count of 5, a met check beside an open run, and, on Unix, an unreadable file. After the review of 2026-10-27, a satisfying record carries what it states of its release, so a malformed or duplicated meta is named as such under a check without <code>atLeast</code>, never as no release.</p>
+                  <p data-field="deviation">An empty or whitespace-only file is decided as not a tasks document before the recovery check, because the parser recovers an empty input and would otherwise call it a record needing recovery (design decision 3's note). A verification that did not pass is named by the first requirement it references.</p>
+                </li>
+                <li>it declares the <code>tasks</code> kind;</li>
+                <li>it has at least one task done, and every task done or dropped;</li>
+                <li>every requirement it carries is verified <code>passed</code>;</li>
+                <li>its release meets <code>atLeast</code> within one major, where <code>atLeast</code> is declared.</li>
+              </ul>
+              <p data-field="note">The module returns up to three satisfying records in name order, with the total count. When none satisfies, it returns each file with its first reason, in the design's order. It also returns the open records of the runbook. Unit tests cover each of these:</p>
+              <ul>
+                <li>a finished, passed record;</li>
+                <li>an open record (todo, and in progress);</li>
+                <li>one outcome each of <code>failed</code>, <code>blocked</code>, <code>not-run</code>, and <code>partial</code>;</li>
+                <li>a requirement with no verification;</li>
+                <li>a record with every task dropped, and a tasks document with no tasks;</li>
+                <li>an empty <code>.html</code> file and a stray non-tasks document under <code>runs/</code>;</li>
+                <li>an unreadable file, and one that needs error recovery;</li>
+                <li>a release below <code>atLeast</code>, one in another major, none, a malformed one, and two;</li>
+                <li>five satisfying records, of which three are named and the count is 5;</li>
+                <li>a met check beside an open run;</li>
+                <li>no records.</li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Evaluate run checks in preflight, with their faults <span class="hs-id">task-2-4</span></h3>
+              <p data-field="note">Preflight evaluates a run check in five steps:</p>
+              <ol>
+                <li>
+                  Resolve the declared name by comparing it byte for byte with the names the project's runbook enumeration finds, in the declaring runbook's project or the
+                  <code>--store</code>
+                  project (decisions 2 and 5). Never use a path test such as
+                  <code>named_runbook(..).is_dir()</code>
+                  .
+                  <p data-field="note">Done on 2026-10-27. A run check is observed through a new probe method, <code>prerequisite</code>, on the host <code>preflight</code> and <code>run --as</code> build with the project's runbooks. Self-references and cycles are refused when the runbook is loaded, before any check runs. The preflight and run payload schemas gained the <code>run</code> object, the payload test declares a met and an unmet run check so every new field appears, and 1.2.json was regenerated with the writer. End-to-end tests in <code>tests/prerequisites.rs</code> cover each outcome, a self-reference and cycles of two and three, a cycle elsewhere, an unreadable specification on the way, <code>Backup</code> and <code>MIGRATE</code> beside lower-case directories, and ESC in a runbook and a record name. With the cycle refusal disabled, or with the name compared through a path test, the cycle and case tests fail.</p>
+                  <p data-field="note">After the review of 2026-10-27:</p>
+                  <ul>
+                    <li>A runbook typed in another case is known by its enumerated name before the cycle check (design decision 2's note). A test, skipped where the filesystem tells case apart, shows <code>preflight MIGRATE</code> refusing a self-reference and <code>run TWO</code> a cycle, each with exit 2.</li>
+                    <li>A report that is not ready names a met check's run under way.</li>
+                    <li>A missing runbook and an unavailable check each have a remedy of their own.</li>
+                    <li>A real runbook directory and real records whose names hold ESC and a right-to-left override reach every report, the header, and a new record's method by code point.</li>
+                    <li>The walk's unit test shows a cycle refused although an unreadable specification is met first.</li>
+                  </ul>
+                  <p data-field="note">With the enumerated name, the open-run lines, the head-only read, or the header's escaping undone in turn, the case, not-ready, body-meta, and escaping tests fail.</p>
+                  <p data-field="deviation">The probe method is <code>prerequisite</code>, not <code>run</code>, because the host already has a private <code>run</code>. A host built without the project's runbooks reports a run check unavailable. The JSON shape is design decision 6's note: <code>state</code> adds <code>unavailable</code> for a check whose answer cannot be established (design decision 8's note), and a met run check in a report that is not ready still carries its satisfying records. And 1.2.json did not only gain: the writer refuses to record a surface that lacks anything the current minor's own file holds, so the unreleased <code>unknown</code> state was removed from 1.2.json by hand. The writer then rewrote the file from the program, and the diff against the earlier file is that one word, in both payloads. No released surface, 1.0 or 1.1, ever held it.</p>
+                </li>
+                <li>A name with no match is unmet, as missing.</li>
+                <li>Follow declarations from the named runbook, and only look for cycles that lead back to the declaring runbook. A self-reference, or such a cycle, is an invalid contract: exit 2, with a fault on standard error naming the requirement and the cycle in order, and no report.</li>
+                <li>A runbook reached on the way whose specification cannot be read, needs error recovery, or does not validate makes the check <code>unavailable</code>, naming it.</li>
+                <li>Otherwise, report the check as passed or unmet with 2.3's records and reasons, and name any open run.</li>
+              </ol>
+              <p data-field="note">The report entry carries <code>runbook</code>, <code>atLeast</code> when declared, the satisfying records with their count, or each record's reason, and the open runs, in human output and in <code>--json</code>, with <code>runbookRemedy</code> as for any v2 declaration. Runbook names and record names reach human output through the terminal escaping. Update <code>crates/htmlspec-cli/schema/payload/preflight.schema.json</code> and <code>run.schema.json</code>, and regenerate 1.2.json with the writer. Tests cover:</p>
+              <ul>
+                <li>each outcome;</li>
+                <li>a self-reference and a two-step and three-step cycle through the runbook, each exit 2;</li>
+                <li>a cycle elsewhere in the project that does not pass through the runbook, which does not refuse it;</li>
+                <li>an unreadable specification reached on the way;</li>
+                <li>a declaration naming <code>Backup</code> beside a <code>backup</code> directory, which is missing on every filesystem, and a self-reference spelled with different case, which is missing and not a self-reference;</li>
+                <li>a runbook and a record name holding ESC, which are escaped.</li>
+              </ul>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done">
+              <h3>2.5 Gate <code>run --as</code> and record what satisfied the check <span class="hs-id">task-2-5</span></h3>
+              <p data-field="note">An unmet run check refuses the start, creates no record or directory, and exits 1, as an unmet machine check does. An invalid contract exits 2. A passed check leads to a record whose verification for that requirement is <code>passed</code>, with a method naming up to three satisfying records with their releases and the count of the rest (decision 6). End-to-end tests in a scratch project cover:</p>
+              <ul>
+                <li>
+                  <code>backup</code>
+                  then
+                  <code>migrate</code>
+                  : refused with no backup record, refused with an open one, and started after a finished one, with the new record naming it;
+                  <p data-field="note">Done on 2026-10-27. An unmet run check refuses the start with exit 1 and creates no <code>runs/</code> directory, and an invalid contract exits 2 with no report. A passed one is recorded as <code>passed</code>, with the method "Checked before this run started by <code>htmlspec preflight migrate</code>: 1 finished, passed run(s) of <code>backup</code> meet it: b1 (0.1.0). Repeat it with that command, which reads this project's runs afresh rather than trusting this record." The end-to-end tests cover backup then migrate (no record, an open one, then a finished one) and the create-account, provision-database, deploy-service chain. The comment in <code>runs.rs</code> now points to the run check.</p>
+                  <p data-field="deviation">Two texts changed with it (design decision 6's note). The recorded method says a run check reads this project's runs, not the machine. The refusal's last line on standard error says not every prerequisite is satisfied here, where it said this machine does not satisfy every one. After the review of 2026-10-27, the started line counts "check(s) passed" and a new record's opening counts "prerequisite(s)", where both said machine checks, and a runbook typed in another case is started and recorded under its directory's name.</p>
+                </li>
+                <li>the three-runbook chain.</li>
+              </ul>
+              <p data-field="note">In <code>runs.rs</code>, rewrite the comment that says the consumes section's prose is the only place a prerequisite can live, so it points to the run check.</p>
+            </li>
+            <li class="task" id="task-2-6" data-change="added" data-state="done">
+              <h3>2.6 Check a carried runbook's prerequisites in the receiving project <span class="hs-id">task-2-6</span></h3>
+              <p data-field="note">Register a project holding a carried <code>migrate</code> with <code>htmlspec store add</code>. Show that <code>htmlspec --store NAME preflight migrate</code> is unmet when that project has no <code>backup</code>, or no passed run of it, and passes once it has one (decision 10). A carried runbook with no run check still starts in a minimal receiving project with no records, as today. Machine checks keep reading the invocation's working directory.</p>
+              <p data-field="note">Done on 2026-10-27. <code>a_carried_runbook_is_checked_against_the_receiving_project</code> registers a receiving project holding a copy of <code>migrate</code>. <code>--store</code> preflight there is unmet with no <code>backup</code>, and unmet beside a carried <code>backup</code> with no records, even though the source project has a passed run. The carried <code>backup</code>, which has no run check, starts there with no records. Once that run is finished and passed, the check passes. <code>preflight_checks_the_working_directory_and_not_the_store</code> in <code>tests/run.rs</code> still passes, so machine checks still read the working directory.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="group-listing">
+          <h2>3. Show the order</h2>
+          <ul>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Give the runbook listing each runbook's prerequisites and their state <span class="hs-id">task-3-1</span></h3>
+              <p data-field="note"><code>htmlspec list --runbooks</code> shows, per runbook, each prerequisite and its state now, with the records that meet it. The JSON carries what design decision 8 lists:</p>
+              <ul>
+                <li>per runbook, <code>prerequisites</code>, each entry with <code>requirement</code>, <code>runbook</code>, <code>atLeast</code> when declared, <code>state</code> (<code>met</code>, <code>unmet</code>, <code>missing</code>, <code>self</code>, or <code>cycle</code>), <code>satisfiedBy</code> (an array of up to three names), <code>satisfying</code>, and <code>openRuns</code>;</li>
+                <li>per runbook, <code>declarations</code> (<code>readable</code>, <code>malformed</code>, or <code>unreadable</code>) and <code>prerequisitesMet</code>, which is never true unless <code>declarations</code> is <code>readable</code>;</li>
+                <li>at the top level, <code>prerequisiteCycles</code>.</li>
+              </ul>
+              <p data-field="note">Use 2.3 and 2.4's code, and do not restate the rule. Update <code>crates/htmlspec-cli/schema/payload/list.schema.json</code> following the <code>follows</code> and <code>followsCycles</code> precedent, regenerate 1.2.json, and escape names in human output. The help says that "met" covers prerequisite runs and not machine checks. Tests cover:</p>
+              <ul>
+                <li>each state;</li>
+                <li>a malformed and an unreadable specification, each with <code>prerequisitesMet</code> false;</li>
+                <li>a project with two separate cycles in <code>prerequisiteCycles</code>.</li>
+              </ul>
+              <p data-field="deviation">The listing's <code>state</code> also reads <code>unavailable</code>, beside the five this task names: a prerequisite whose named runbook, or a runbook it reaches, cannot have its declarations read. A start reports that check unavailable, so reading the prerequisite's records and calling it <code>met</code> or <code>unmet</code> would let <code>prerequisitesMet</code> say ready where <code>run --as</code> refuses. It is the same value group 2's preflight payload gives the <code>run</code> object for an unavailable check. Group 3 first built it as <code>unknown</code>, the word group 2's draft used, and renamed it when group 2's review did, before 1.2.0 shipped either.</p>
+              <p data-field="note">Done on 2026-10-27. The order is read once, in a new <code>crates/htmlspec-cli/src/order.rs</code>, from group 2's <code>declarations_of</code>, <code>read_records</code>, and byte-for-byte <code>runbook_names</code>, so the listing restates no rule. The schema's <code>runbooks</code> branch keeps <code>runbooks</code> as its only required field: the surface keys a <code>oneOf</code> branch by its required set, so requiring <code>prerequisiteCycles</code> there would read as the 1.0 branch withdrawn. The new per-runbook fields are required on each item. <code>the_listing_shows_each_prerequisites_state</code> in <code>tests/order.rs</code> covers every state, a malformed and an unreadable specification with <code>prerequisitesMet</code> false, and two separate cycles plus a self-reference in <code>prerequisiteCycles</code>. <code>tests/payloads.rs</code> lists the runbooks again once release requires a met and an unmet run, so every new field appears in a payload.</p>
+              <p data-field="note">Revised on 2026-10-27 after PR #89's review. Only <code>met</code> and <code>unmet</code> carry records, because the state is a type whose other variants hold none, and <code>openRuns</code> is an array of record names, as in preflight's <code>run</code> object. <code>the_listing_shows_each_prerequisites_state</code> gives the self-referencing and cycling runbooks passed and open runs, and asserts their prerequisites still name none. The surface file was recorded again from group 2's version, because 1.2 is unreleased and the first recording held the integer.</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Show the same in the bare <code>run</code> listing <span class="hs-id">task-3-2</span></h3>
+              <p data-field="note">The listing <code>htmlspec run</code> prints with no runbook uses the same rows, so a reader sees what can start before choosing. Test it, including a cycle and a missing runbook.</p>
+              <p data-field="note">Done on 2026-10-27. <code>runbooks_to_start</code> prints the same rows as <code>list --runbooks</code>, through one function, each indented two spaces. <code>the_bare_run_listing_shows_what_can_start</code> covers a met, a missing, and a cycle, and checks every row of the listing appears in the bare <code>run</code> listing. Two unit tests in <code>commands.rs</code> that counted one line per runbook now count the rows at the margin, because a runbook with no specification now has a line beneath it saying its declarations cannot be read.</p>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Draw the order with <code>list --runbooks --graph</code> <span class="hs-id">task-3-3</span></h3>
+              <p data-field="note">Add <code>--graph</code> to <code>list</code>, in both spellings. It prints a Mermaid flowchart to standard output from 3.1's results, laid out exactly as design decision 8 sets out:</p>
+              <ul>
+                <li>nodes in name order, missing names included, numbered <code>r1</code> onwards;</li>
+                <li>edges sorted by prerequisite then runbook, with duplicate declarations merged into one edge;</li>
+                <li><code>classDef</code> and <code>class</code> lines, in their fixed order;</li>
+                <li>one <code>linkStyle</code> line per style, met, unmet, then cycle, each listing its edge indices ascending.</li>
+              </ul>
+              <p data-field="note">Labels escape hidden characters in <code>shown</code>'s <code>&lt;U+…&gt;</code> form, then write <code>"</code>, <code>#</code>, <code>`</code>, <code>&lt;</code>, <code>&gt;</code> and <code>&amp;</code> as Mermaid entity codes. Without <code>--runbooks</code> it is refused, exit 2. With <code>--json</code>, the payload is the listing's, unchanged. Regenerate 1.2.json with the writer. Tests cover:</p>
+              <ul>
+                <li>the exact output for the design's example project;</li>
+                <li>the same bytes from two runs, and from runbook directories created in a different order;</li>
+                <li>each edge case: an isolated runbook, a missing runbook, a self-reference, a cycle, and unreadable declarations;</li>
+                <li>two declarations naming one prerequisite with different <code>atLeast</code>;</li>
+                <li>names holding <code>"</code>, <code>#</code>, a backtick, <code>&lt;</code>, <code>&amp;</code>, ESC, a newline, and a bidirectional override, so no raw one and no line break reaches the output;</li>
+                <li>an empty project;</li>
+                <li>the refusals, and <code>--json --graph</code> equal to <code>--json</code>;</li>
+                <li>the output pasted into a scratch document's <code>&lt;pre class="mermaid"&gt;</code>, which then validates and formats canonically.</li>
+              </ul>
+              <p data-field="note">Open that document in a browser once, confirm Mermaid draws it, the backtick included, and record that check on this task.</p>
+              <p data-field="deviation">Decision 8 names three edge labels and leaves two cases open, which the graph settles: a prerequisite in the <code>unavailable</code> state is an edge labelled <code>cannot be checked</code>, drawn unmet, and two declarations naming one prerequisite with different <code>atLeast</code> are labelled with both, joined by "and", such as <code>unmet, at least 1.2.0 and 1.4.0</code>. The cycle style, which the decision does not give, is <code>stroke:#7a3fa3,stroke-width:3px</code>.</p>
+              <p data-field="note">Done on 2026-10-27. <code>--graph</code> is a flag on <code>ListArgs</code> with <code>requires = "runbooks"</code>, so <code>list</code> and <code>get list</code> both take it and clap refuses it alone with exit 2. Tests in <code>tests/order.rs</code> cover the design's example byte for byte, two runs and two directory creation orders giving the same bytes, every edge case, merged declarations, eight hostile names with no raw character and no extra line, an empty project, the refusals, <code>--json --graph</code> equal to <code>--json</code>, and the output pasted into a runbook's figure, which validates, formats with its arrows written <code>--&amp;gt;</code>, and is canonical. Unit tests in <code>order.rs</code> pin the layout, the labels, and the cycle search.</p>
+              <p data-field="note">Rendered once on 2026-10-27: a scratch project's graph, holding a missing runbook named <code>`quirk` &amp; &lt;co&gt;</code>, pasted into a runbook's <code>&lt;pre class="mermaid"&gt;</code> and opened headless in Chrome with the project's own Mermaid. Mermaid drew every node and edge, the label read <code>`quirk` &amp; &lt;co&gt; (no such runbook)</code> with its backticks in a dashed node, the met edge solid green, and the unmet edges dashed red.</p>
+              <p data-field="note">Revised on 2026-10-27 after PR #89's review. <code>label</code> also writes <code>%</code> as <code>#37;</code> and Mermaid's placeholder characters <code>ﬂ</code>, <code>°</code>, <code>¶</code>, and <code>ß</code> by code point. <code>hostile_names_reach_the_graph_escaped</code> adds a <code>%%{init: …}%%</code> name, a bare <code>%%</code>, and a placeholder name, and asserts no <code>%</code> and no placeholder reaches the output. It fails with the <code>%</code> escape removed. The cycle search runs only within strongly connected components, and <code>a_large_acyclic_project_is_searched_quickly</code> searches 51 runbooks in 17 layers in about 10 ms, where the earlier search took 107 seconds on it in a debug build.</p>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="done">
+              <h3>3.4 Describe the ordering, the listing, and the graph in the README's runbooks section <span class="hs-id">task-3-4</span></h3>
+              <p data-field="note">The README's runbooks section gains three short examples: one of ordering two runbooks, one of reading the listing's prerequisite states, and one of <code>list --runbooks --graph</code> with its output pasted into a figure. This task belongs to group 3 because what it shows comes from group 3. Group 4 owns the preflight documentation elsewhere in the README.</p>
+              <p data-field="note">Done on 2026-10-27. The README's runbooks section gains an <strong>Ordered</strong> point and a short part, "Running runbooks in order": the declaration in prose, a real <code>list --runbooks</code> listing of the backup and account chain, and its <code>--graph</code> output in a Mermaid block, which GitHub draws. The declaration is written inline rather than as note markup, so the README test reading <code>preflight/v1</code> examples does not read it, and group 4's documentation under "Carrying a runbook to another machine" stays the place that describes the format.</p>
+              <p data-field="note">Revised on 2026-10-27 after PR #89's review. The command reference gains <code>list --runbooks --graph</code> and a paragraph on the listing's JSON fields. The runbooks section's pointer to "Carrying a runbook to another machine" for the declaration's full description becomes true when group 4's documentation lands.</p>
+            </li>
+          </ul>
+        </section>
+        <section id="group-documentation">
+          <h2>4. Document the declaration</h2>
+          <ul>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Document <code>preflight/v3</code> and the run kind in the README <span class="hs-id">task-4-1</span></h3>
+              <p data-field="note">The README's preflight documentation, under "Carrying a runbook to another machine", gains a <code>preflight/v3</code> example with the <code>run</code> kind. It says:</p>
+              <ul>
+                <li>what satisfies it;</li>
+                <li>that names match exactly;</li>
+                <li>that it reads the project's records only;</li>
+                <li>that a record states no time;</li>
+                <li>that a self-reference or a cycle is refused;</li>
+                <li>that a failed prerequisite run is a correct record whose fix is a new run, never an edited outcome;</li>
+                <li>that a hand-edited record is not a security boundary.</li>
+              </ul>
+              <p data-field="note">Extend <code>every_declared_example_in_the_readme_parses</code> in <code>crates/htmlspec-cli/tests/preflight.rs</code> so a v3 example is parsed with its own marker, and require one. Everything this task documents comes from group 2.</p>
+              <p data-field="deviation">Done on 2026-10-27, with more than the list: the README also quotes the refusal the program writes for an unmet check, says there is no override, describes the <code>--json</code> <code>run</code> object and the record the passed check leaves, and gains a <code>run</code> row in the forms table and a bullet saying a run check reads records, not the machine. "Every start observes the machine afresh" now also says it reads the project's runs afresh. The README test requires a v3 example beside v1 and v2, and keeps each example under its own marker.</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Tell the agent instructions about prerequisites <span class="hs-id">task-4-2</span></h3>
+              <p data-field="note">The <code>new</code> workflow's paragraph about runbooks says a runbook that must follow another declares it with a <code>preflight/v3</code> run check, and doesn't write the order as prose. Regenerate the 45 installed files, and the <code>installed</code> stage passes.</p>
+              <p data-field="deviation">Done on 2026-10-27, with more than its words: besides the declaration, the <code>new</code> workflow tells an agent that a start refused for an unmet prerequisite means running the prerequisite and never editing its record, what reasons the report gives, and that a refused cycle is fixed in the specifications. The five installed copies of the <code>new</code> instruction were regenerated with <code>htmlspec init --tools claude,codex,pi</code>, and nothing else in the 45 changed.</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Write each group's changelog entry <span class="hs-id">task-4-3</span></h3>
+              <p data-field="note">Each group replaces its "Not yet merged." under <code>## 1.2.0</code> as it lands. This task checks that all three are written before group 5.</p>
+              <p data-field="note">2026-10-27: group 2's entry and group 4's are written. Group 3's, "The listing and the graph", still reads "Not yet merged." until its pull request lands.</p>
+              <p data-field="note">Done on 2026-10-27. Group 3's entry, "The listing and the graph", is written on its pull request, #89, which merged main with group 4's documentation. All three subheadings under <code>## 1.2.0</code> are written, and none reads "Not yet merged.".</p>
+            </li>
+          </ul>
+        </section>
+        <section id="group-close">
+          <h2>5. Close 1.2.0</h2>
+          <ul>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Make one pass over the README and the changelog <span class="hs-id">task-5-1</span></h3>
+              <p data-field="note">Read both whole, so they describe 1.2.0 as one release. The README tests keep passing.</p>
+              <p data-field="note">Done on 2026-10-27. The README's project status names 1.1.1's install path and 1.2.0's prerequisites and listing, and lists 1.2.json among the surface files. The runbooks part's short rule now says a satisfying run has a step done, and its "checked before they start" point names a prerequisite run. The run check's documentation and the listing's read as one release, with no passage repeated. The changelog's 1.2.0 entry opens with what the release does as a whole and lists, besides each group's entry, the parse recovery escaping this pull request settles.</p>
+              <p data-field="deviation">The pass also settled one code fault the group 2 build found and left open: a parse recovery's message wrote the character it quoted raw, which a runbook directory name holding an escape reaches through the record a run composes. The design's decision 6 records the fix and where the rule it uses now lives.</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Take the code review, and settle each finding <span class="hs-id">task-5-2</span></h3>
+              <p data-field="note">One review of the whole change before archival, under the merge rule, in addition to each group's own pull request review.</p>
+              <p data-field="note">Done on 2026-10-27. The pre-archival review of the whole change ran against pull request 90. Its findings, each reproduced before it was fixed: a runbook named in another case or beside a link was refused, though 1.1.1 ran it, and now resolves to its own name, the one equal to it ignoring case, or its directory's only name; the listing hid a met prerequisite's open runs, and now names them; two contract rows were stale, and now match the build; a symbolic link under <code>runs/</code> satisfied a run check, and now does not, named as a link; the passed check's method printed the runbook's name raw; <code>prerequisiteCycles</code> grew factorially, and now lists one cycle per group of runbooks that lead back to one another; an unavailable run check stated its remedy twice; the report's source path kept the typed spelling; a specification needing recovery read as one that does not validate; and stale comments and schema descriptions. The changelog names the crate API change and the parse message escaping.</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Archive at 1.2.0 <span class="hs-id">task-5-3</span></h3>
+              <p data-field="note">Write the specification from what was built. Add the satisfaction requirement and restate each Modified requirement whole, with its scenarios, as the design's contract table names them, including the carried-runbook scenarios it says change. Raise <code>spec.nix</code> from 1.1.1 to 1.2.0. Name this change in every archive command, run <code>htmlspec show</code> with <code>--diff</code> for each modified requirement, then archive.</p>
+              <p data-field="note">Done on 2026-10-27. The specification restates seven accepted requirements whole, marked, and adds one, "A prerequisite run is met by a finished, passed record". <code>show --diff</code> reported every restatement's words marked as written, <code>sync</code> reported the contract applied in full, and <code>spec.nix</code> is at 1.2.0.</p>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Record every readiness read at the content the archived tree holds <span class="hs-id">task-5-4</span></h3>
+              <p data-field="note">After archival, read every changed allowlisted file in full, and record each path's read by content in <code>publish/READINESS.md</code>.</p>
+              <p data-field="note">Done on 2026-10-27. The rows for <code>.claude</code>, <code>.codex</code>, <code>.pi</code>, <code>Cargo.lock</code>, <code>Cargo.toml</code>, <code>CHANGELOG.md</code>, <code>crates</code>, <code>htmlspec</code>, <code>README.md</code>, and <code>spec.nix</code> are recorded at the content the closing pull request holds, after every added line was read in its diff and swept. Nothing private was found.</p>
+            </li>
+            <li class="task" id="task-5-5" data-change="added" data-state="done">
+              <h3>5.5 Rehearse the export <span class="hs-id">task-5-5</span></h3>
+              <p data-field="note">Run <code>publish/export --ref HEAD --dry-run</code> against an empty local bare repository, and against one with an unrelated <code>main</code>. Every read is current, the scan is clean, and every check passes inside the exported tree.</p>
+              <p data-field="note">Done on 2026-10-27, on the closing pull request's head: both dry runs, against an empty bare repository and against one with an unrelated <code>main</code>, found every read current, scanned clean, and passed all 17 checks inside the exported tree. The second took the titled export onto that <code>main</code>.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

@@ -54,7 +54,10 @@
             "type": "object",
             "required": [
               "name",
-              "documents"
+              "documents",
+              "declarations",
+              "prerequisitesMet",
+              "prerequisites"
             ],
             "properties": {
               "name": {
@@ -77,7 +80,38 @@
               "title": {
                 "description": "The runbook's tasks document's title, or its specification's where the tasks document has none. Absent where neither document states one.",
                 "type": "string"
+              },
+              "declarations": {
+                "description": "Whether the runbook's specification could be read and every declaration in it is one this program reads. Beside malformed or unreadable, prerequisites is empty because what the runbook requires is not known.",
+                "type": "string",
+                "enum": [
+                  "readable",
+                  "malformed",
+                  "unreadable"
+                ]
+              },
+              "prerequisitesMet": {
+                "description": "True only when declarations is readable and every prerequisite is met. Met covers runs of other runbooks only, never a machine check.",
+                "type": "boolean"
+              },
+              "prerequisites": {
+                "description": "One entry per run check the runbook declares, in document order.",
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/prerequisite"
+                }
               }
+            }
+          }
+        },
+        "prerequisiteCycles": {
+          "description": "One cycle for each group of runbooks whose run checks lead back to one another: the shortest cycle through the group's least runbook, as the runbooks in the order they require one another, starting from that name. Groups are listed by their least runbook. A runbook that requires itself is a cycle of one. Empty when there are none. Always written from 1.2.0 on.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
             }
           }
         }
@@ -165,6 +199,64 @@
             "resolved": {
               "type": "boolean"
             }
+          }
+        }
+      }
+    },
+    "prerequisite": {
+      "description": "One run check: a finished, passed run of another runbook that must exist before this runbook's run starts.",
+      "type": "object",
+      "required": [
+        "requirement",
+        "runbook",
+        "state",
+        "satisfiedBy",
+        "satisfying",
+        "openRuns"
+      ],
+      "properties": {
+        "requirement": {
+          "description": "The requirement whose note declares the check.",
+          "type": "string"
+        },
+        "runbook": {
+          "description": "The runbook name the check declares, exactly as written.",
+          "type": "string"
+        },
+        "atLeast": {
+          "description": "The lowest release whose runs count, within its major. Absent where the check declares none.",
+          "type": "string"
+        },
+        "state": {
+          "description": "met: a record satisfies it. unmet: none does. unavailable: a runbook the prerequisite reaches cannot have its declarations read, so a start reports the check unavailable, as preflight's run object does. missing: no runbook has the name. cycle: the prerequisite leads back to this runbook. self: the runbook names itself.",
+          "type": "string",
+          "enum": [
+            "met",
+            "unmet",
+            "unavailable",
+            "missing",
+            "cycle",
+            "self"
+          ]
+        },
+        "satisfiedBy": {
+          "description": "Up to three records that satisfy the check, in name order. Empty unless state is met.",
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          }
+        },
+        "satisfying": {
+          "description": "How many records satisfy the check in all. Zero unless state is met.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "openRuns": {
+          "description": "Every record of the named runbook still under way, in name order: a run that has started and not finished. Named only where state is met or unmet, which are decided from records; empty otherwise. The same shape as the run object preflight and run write.",
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         }
       }

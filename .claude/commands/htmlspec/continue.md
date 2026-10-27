@@ -2,7 +2,7 @@
 description: Produce the next artifact an html-spec change is missing. Use on a change that exists and is not yet ready to implement.
 allowed-tools: Bash(htmlspec:*), Read, Write, Edit, Glob, Grep
 argument-hint: [the change to continue, or nothing to infer it]
-generatedBy: htmlspec 1.1.0
+generatedBy: htmlspec 1.2.1
 ---
 
 Produce the next artifact an html-spec change is missing.

@@ -1064,7 +1064,7 @@ fn project_store_root(destination: &Path) -> Option<PathBuf> {
 /// Whether two paths name one directory, asked of the filesystem rather than of their spelling.
 ///
 /// A path that does not exist names no directory, so it is the same as nothing.
-fn same_directory(one: &Path, other: &Path) -> bool {
+pub(crate) fn same_directory(one: &Path, other: &Path) -> bool {
     let (Ok(one), Ok(other)) = (std::fs::metadata(one), std::fs::metadata(other)) else {
         return false;
     };
@@ -2698,6 +2698,35 @@ fn runbook_rows(runbooks: &[Runbook]) -> Vec<String> {
         .collect()
 }
 
+/// The order of the runbooks `list --runbooks` found: each one's prerequisites and their state now.
+///
+/// Read once per listing, in the listing's order, so the rows, the payload, and the graph show one
+/// answer (the change `require-a-run-of-another-runbook`, design decision 8).
+fn read_order(project: &ProjectRoot, runbooks: &[Runbook]) -> crate::order::Order {
+    let names: Vec<String> = runbooks
+        .iter()
+        .map(|runbook| runbook.name.clone())
+        .collect();
+    crate::order::read(&project.runbooks(), &names)
+}
+
+/// The runbook rows, each followed by its prerequisites and their state, indented beneath it.
+///
+/// Shared by `list --runbooks` and a bare `run`, as [`runbook_rows`] is, so a reader sees what can
+/// start before choosing, in the same words in both places.
+fn runbook_listing(runbooks: &[Runbook], order: &crate::order::Order) -> Vec<String> {
+    let mut listing = Vec::new();
+    for (row, entry) in runbook_rows(runbooks).into_iter().zip(&order.runbooks) {
+        listing.push(row);
+        listing.extend(
+            crate::order::lines(entry)
+                .into_iter()
+                .map(|line| format!("  {line}")),
+        );
+    }
+    listing
+}
+
 /// What `run` prints when it is named with no runbook: the runbooks it could start, and how.
 ///
 /// The change's design, decision 18. A refusal that names the candidates, as `archive` with no
@@ -2711,7 +2740,8 @@ pub fn runbooks_to_start(project: &ProjectRoot) -> String {
             project.runbooks().display()
         );
     }
-    let rows: Vec<String> = runbook_rows(&found)
+    let order = read_order(project, &found);
+    let rows: Vec<String> = runbook_listing(&found, &order)
         .into_iter()
         .map(|row| format!("  {row}"))
         .collect();
@@ -2721,6 +2751,54 @@ pub fn runbooks_to_start(project: &ProjectRoot) -> String {
          --check`",
         rows.join("\n")
     )
+}
+
+/// One runbook's entry in the `list --runbooks --json` payload.
+///
+/// `documents` is always present, empty where a runbook directory holds neither. `version` and
+/// `title` are present where the runbook has them. `declarations`, `prerequisitesMet`, and
+/// `prerequisites` are always present: an empty `prerequisites` beside `readable` is a runbook that
+/// requires nothing, and beside `malformed` or `unreadable` one whose requirements are not known.
+fn runbook_entry(runbook: &Runbook, ordered: &crate::order::RunbookOrder) -> serde_json::Value {
+    let mut entry = serde_json::Map::new();
+    entry.insert("name".into(), runbook.name.clone().into());
+    entry.insert("documents".into(), runbook.documents.clone().into());
+    if let Some(version) = runbook.version {
+        entry.insert("version".into(), version.to_string().into());
+    }
+    if let Some(title) = &runbook.title {
+        entry.insert("title".into(), title.clone().into());
+    }
+    entry.insert("declarations".into(), ordered.declarations.label().into());
+    entry.insert("prerequisitesMet".into(), ordered.met().into());
+    let prerequisites: Vec<serde_json::Value> = ordered
+        .prerequisites
+        .iter()
+        .map(|prerequisite| {
+            let mut declared = serde_json::Map::new();
+            declared.insert(
+                "requirement".into(),
+                prerequisite.requirement.clone().into(),
+            );
+            declared.insert("runbook".into(), prerequisite.runbook.clone().into());
+            if let Some(release) = prerequisite.at_least {
+                declared.insert("atLeast".into(), release.to_string().into());
+            }
+            declared.insert("state".into(), prerequisite.state.kind().label().into());
+            declared.insert(
+                "satisfiedBy".into(),
+                prerequisite.state.satisfied_by().to_vec().into(),
+            );
+            declared.insert("satisfying".into(), prerequisite.state.satisfying().into());
+            declared.insert(
+                "openRuns".into(),
+                prerequisite.state.open_runs().to_vec().into(),
+            );
+            serde_json::Value::Object(declared)
+        })
+        .collect();
+    entry.insert("prerequisites".into(), prerequisites.into());
+    serde_json::Value::Object(entry)
 }
 
 /// Enumerates what a project holds.
@@ -2739,6 +2817,7 @@ pub fn runbooks_to_start(project: &ProjectRoot) -> String {
 pub fn list<O: Write, E: Write>(
     specs: bool,
     runbooks: bool,
+    graph: bool,
     store: Option<&str>,
     streams: &mut Streams<O, E>,
 ) -> Outcome {
@@ -2749,7 +2828,7 @@ pub fn list<O: Write, E: Write>(
             return Outcome::OperationalFailure;
         }
     };
-    list_in(&project, specs, runbooks, streams)
+    list_drawn(&project, specs, runbooks, graph, streams)
 }
 
 /// What one invocation of the enumeration was asked for.
@@ -2785,15 +2864,32 @@ impl Subject {
     }
 }
 
+/// [`list_drawn`] without `--graph`, the shape the unit tests below enumerate through.
+#[cfg(test)]
+fn list_in<O: Write, E: Write>(
+    project: &ProjectRoot,
+    specs: bool,
+    wants_runbooks: bool,
+    streams: &mut Streams<O, E>,
+) -> Outcome {
+    list_drawn(project, specs, wants_runbooks, false, streams)
+}
+
 /// Enumerates a resolved project, which is everything [`list`] does after resolution.
 ///
 /// Split out so the enumeration is reachable from a test without registering a store. The
 /// registry lives in the contributor's own configuration directory, so a test that registered
 /// one would write outside its scratch directory to check a listing.
-fn list_in<O: Write, E: Write>(
+///
+/// `graph` is `--graph`: the runbooks' order drawn as a Mermaid flowchart instead of rows. The
+/// command surface accepts it only beside `--runbooks`, so it is read only on the runbook arm. With
+/// `--json` it changes nothing: the payload already holds every node, edge, state, and cycle the
+/// graph draws (the change `require-a-run-of-another-runbook`, design decision 8).
+fn list_drawn<O: Write, E: Write>(
     project: &ProjectRoot,
     specs: bool,
     wants_runbooks: bool,
+    graph: bool,
     streams: &mut Streams<O, E>,
 ) -> Outcome {
     let found = match Subject::of(specs, wants_runbooks) {
@@ -2893,28 +2989,37 @@ fn list_in<O: Write, E: Write>(
             // `version` and `title` are present where the runbook has them and omitted where it
             // does not, as `completion` is for a change: an absent field says the runbook has no
             // VERSION, where a placeholder would be a version nobody released.
-            Enumerated::Runbooks(runbooks) => serde_json::json!({
-                "runbooks": runbooks
-                    .iter()
-                    .map(|runbook| {
-                        let mut entry = serde_json::Map::new();
-                        entry.insert("name".into(), runbook.name.clone().into());
-                        entry.insert("documents".into(), runbook.documents.clone().into());
-                        if let Some(version) = runbook.version {
-                            entry.insert("version".into(), version.to_string().into());
-                        }
-                        if let Some(title) = &runbook.title {
-                            entry.insert("title".into(), title.clone().into());
-                        }
-                        serde_json::Value::Object(entry)
-                    })
-                    .collect::<Vec<_>>(),
-            }),
+            //
+            // `prerequisites`, `declarations`, and `prerequisitesMet` follow the precedent the change
+            // listing set for `follows`: a state per edge, kept beside the boolean a selecting agent
+            // asks, so "unmet" and "missing" and "cycle" stay distinguishable. `prerequisiteCycles`
+            // is project-wide, as `followsCycles` is, because a cycle is a fact about a set of
+            // runbooks and not about any one of them.
+            Enumerated::Runbooks(runbooks) => {
+                let order = read_order(project, runbooks);
+                serde_json::json!({
+                    "runbooks": runbooks
+                        .iter()
+                        .zip(&order.runbooks)
+                        .map(|(runbook, ordered)| runbook_entry(runbook, ordered))
+                        .collect::<Vec<_>>(),
+                    "prerequisiteCycles": order.cycles,
+                })
+            }
         };
         if let Ok(json) = serde_json::to_string_pretty(&payload) {
             let _ = streams.payload(&json);
         }
         return Outcome::Success;
+    }
+
+    if graph {
+        if let Enumerated::Runbooks(runbooks) = &found {
+            // Printed for an empty project too, as the header alone: a document that pastes the
+            // output gets a diagram that renders, rather than prose Mermaid cannot read.
+            let _ = streams.report(&crate::order::graph(&read_order(project, runbooks)));
+            return Outcome::Success;
+        }
     }
 
     if found.is_empty() {
@@ -2934,7 +3039,7 @@ fn list_in<O: Write, E: Write>(
             // the column would read `0/9` on every runbook at every moment, and a column that
             // never moves teaches a reader to ignore it. A version and a title are what a person
             // chooses by instead.
-            for row in runbook_rows(runbooks) {
+            for row in runbook_listing(runbooks, &read_order(project, runbooks)) {
                 let _ = streams.report(&format!("{row}\n"));
             }
         }
@@ -8359,7 +8464,12 @@ mod tests {
         let (outcome, out, _) = run(Form::Human, |streams| list_in(&root, false, true, streams));
 
         assert_eq!(outcome, Outcome::Success);
-        let rows: Vec<&str> = out.lines().filter(|line| !line.is_empty()).collect();
+        // A runbook's row starts at the margin. The lines indented beneath it state its
+        // prerequisites, or that its declarations cannot be read, and are not runbooks.
+        let rows: Vec<&str> = out
+            .lines()
+            .filter(|line| !line.is_empty() && !line.starts_with(' '))
+            .collect();
         assert_eq!(rows.len(), 2, "one row per runbook: {out:?}");
         let names: Vec<&str> = rows
             .iter()
@@ -8449,7 +8559,12 @@ mod tests {
         let (outcome, out, _) = run(Form::Human, |streams| list_in(&root, false, true, streams));
 
         assert_eq!(outcome, Outcome::Success);
-        let rows: Vec<&str> = out.lines().filter(|line| !line.is_empty()).collect();
+        // A runbook's row starts at the margin. The lines indented beneath it state its
+        // prerequisites, or that its declarations cannot be read, and are not runbooks.
+        let rows: Vec<&str> = out
+            .lines()
+            .filter(|line| !line.is_empty() && !line.starts_with(' '))
+            .collect();
         assert_eq!(rows.len(), 1, "the loose file was enumerated: {out:?}");
         assert!(
             !out.contains("NOTES.md"),

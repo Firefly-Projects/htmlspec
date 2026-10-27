@@ -9,6 +9,7 @@ pub mod diagnostics;
 pub mod model;
 pub mod parse;
 pub mod project;
+pub mod visible;
 
 pub use diagnostics::{ParseDiagnosticCode, REVIEWED_HTML5EVER_VERSION};
 pub use model::{DocumentModel, UnitKind, UnitView};

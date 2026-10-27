@@ -61,7 +61,7 @@ run destroys the thing being kept.</p>
 runbook is created. A location that does not exist until something is in it is not a location a
 contributor can find, and the bootstrap operation is already required to produce the project's
 places rather than to acquire them on use.</p>
-            <p>The runbook's name SHALL NOT be recorded anywhere but in its directory name, and nothing SHALL
+            <p>The runbook's name SHALL NOT be recorded anywhere but in its directory name, except that a run check's declaration names another runbook as data to address it, and nothing SHALL
 derive an ordering, a version, or a history from that name. A runbook is renamed by moving its
 directory, exactly as a change is. This is narrower than the prohibition on deriving a version
 from a directory name and it is not in tension with it: a version is a value a gate compares, so
@@ -105,6 +105,15 @@ the project does. A runbook SHALL NOT hold a store of its own.</p>
                 <dd>a runbook's document is opened from the filesystem</dd>
                 <dt>Then</dt>
                 <dd>it renders with no network access, because its asset references resolve to the project's one store</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-check-names-another-runbook" data-change="unchanged">
+              <h4>A run check names another runbook</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>migrate's specification declares a run check naming backup</dd>
+                <dt>Then</dt>
+                <dd>the name addresses backup's directory, and nothing derives an order, a version, or a history from the name itself</dd>
               </dl>
             </article>
           </section>
@@ -272,6 +281,8 @@ cannot distinguish it from one that is complete.</p>
             <p>The enumeration SHALL name a runbook once, whatever number of documents it holds. An enumeration
 that listed each document separately would present one runbook as two entries.</p>
             <p>The operation that starts a run, named with no runbook, SHALL list the project's runbooks as this enumeration does, say how to start one, and refuse as an invocation missing its argument does. A runbook's name and title SHALL reach a terminal with each character a terminal would not show as itself written as its escape, and the structured listing SHALL carry them as they are.</p>
+            <p>Each entry SHALL also carry whether the runbook's declarations can be read, its prerequisites, and whether every one is met. Each prerequisite SHALL carry the requirement declaring it, the runbook it names, its lowest release where declared, its state, one of met, unmet, missing, self, cycle, or unavailable, up to three records that satisfy it with a count of all, and the names of its runs still open, whether met or not. Only a met or unmet prerequisite SHALL name records, and a runbook whose declarations cannot be read SHALL NOT read as met. The enumeration SHALL name one cycle for each group of runbooks whose run checks lead back to one another, the shortest through the group's least runbook.</p>
+            <p>Asked to, the enumeration SHALL draw the same order as a Mermaid flowchart, with one arrow from each prerequisite to the runbook requiring it, styled met, unmet, or cycle, in the same bytes on every machine. A name SHALL reach the drawing escaped, so no name breaks the diagram or acts as a Mermaid directive. The drawing asked for without the runbook selection SHALL be refused as a usage error, and the structured listing SHALL be unchanged by it.</p>
             <article class="scenario" id="scenario-listing-the-project-s-runbooks" data-change="unchanged">
               <h4>Listing the project's runbooks</h4>
               <dl>
@@ -328,6 +339,35 @@ that listed each document separately would present one runbook as two entries.</
                 <dd>its runbooks are listed</dd>
                 <dt>Then</dt>
                 <dd>the title is shown with each such character written as its escape, and the JSON listing carries it as written</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-listing-what-each-runbook-requires" data-change="unchanged">
+              <h4>Listing what each runbook requires</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>migrate requires backup, which has a passed run and one still open, and provision-database requires create-account, which has no run</dd>
+                <dt>When</dt>
+                <dd>the runbooks are listed</dd>
+                <dt>Then</dt>
+                <dd>migrate's prerequisite reads met by its record with one run still open, and provision-database's reads unmet</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-drawing-the-order" data-change="unchanged">
+              <h4>Drawing the order</h4>
+              <dl>
+                <dt>When</dt>
+                <dd><code>htmlspec list --runbooks --graph</code> is invoked twice, in projects whose directories were created in different orders</dd>
+                <dt>Then</dt>
+                <dd>both print the same Mermaid flowchart, byte for byte</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-drawing-asked-for-alone" data-change="unchanged">
+              <h4>The drawing asked for alone</h4>
+              <dl>
+                <dt>When</dt>
+                <dd><code>htmlspec list --graph</code> is invoked</dd>
+                <dt>Then</dt>
+                <dd>it is refused as a usage error, exit 2</dd>
               </dl>
             </article>
           </section>

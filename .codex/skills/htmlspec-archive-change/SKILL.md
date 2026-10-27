@@ -5,7 +5,7 @@ allowed-tools: Bash(htmlspec:*), Read, Write, Edit, Glob, Grep
 argument-hint: [the change to archive, or nothing to infer it]
 license: MIT
 metadata:
-  generatedBy: htmlspec 1.1.0
+  generatedBy: htmlspec 1.2.1
 ---
 
 Archive an html-spec change.

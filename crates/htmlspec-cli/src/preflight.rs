@@ -60,6 +60,16 @@ pub const MARKER: &str = "preflight/v1";
 /// the thing that is out of date.
 pub const MARKER_V2: &str = "preflight/v2";
 
+/// The marker of a declaration that may require a passed run of another runbook: every form
+/// [`MARKER_V2`] has, with its remedy, and one more kind, `run`.
+///
+/// A version of its own rather than a kind added to v2, which is the change
+/// `require-a-run-of-another-runbook` decided (its design's decision 1). A 1.1 reader given a v2
+/// declaration of kind `run` would refuse it as an unknown kind and so blame the runbook. Given this
+/// marker it reports a format it does not read, which points at the program, the thing that is out
+/// of date.
+pub const MARKER_V3: &str = "preflight/v3";
+
 /// The declaration formats this program reads, by the marker that opens each.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Format {
@@ -67,16 +77,42 @@ enum Format {
     V1,
     /// The four forms, each with an optional `remedy`.
     V2,
+    /// The four forms and `run`, each with an optional `remedy`.
+    V3,
 }
 
 impl Format {
+    /// The marker that opens a note in this format.
+    const fn marker(self) -> &'static str {
+        match self {
+            Self::V1 => MARKER,
+            Self::V2 => MARKER_V2,
+            Self::V3 => MARKER_V3,
+        }
+    }
+
     /// The format a marker names, or nothing for a marker this program does not read.
     fn of(marker: &str) -> Option<Self> {
         match marker {
             MARKER => Some(Self::V1),
             MARKER_V2 => Some(Self::V2),
+            MARKER_V3 => Some(Self::V3),
             _ => None,
         }
+    }
+
+    /// Whether a declaration in this format may carry a `remedy`.
+    const fn takes_a_remedy(self) -> bool {
+        matches!(self, Self::V2 | Self::V3)
+    }
+
+    /// Whether this format reads `kind`.
+    ///
+    /// The forms table is closed and the formats share it, so a kind newer than a format is refused
+    /// by that format as unknown, exactly as a kind no format has: `run` under v1 or v2 names a check
+    /// those formats do not provide.
+    fn reads(self, kind: &str) -> bool {
+        self == Self::V3 || !LATER_KINDS.contains(&kind)
     }
 }
 
@@ -154,7 +190,24 @@ const FORMS: &[(&str, &[(&str, FieldType)])] = &[
         "state",
         &[("kind", FieldType::Text), ("check", FieldType::Text)],
     ),
+    (
+        "run",
+        &[
+            ("kind", FieldType::Text),
+            ("runbook", FieldType::Text),
+            ("atLeast", FieldType::Text),
+        ],
+    ),
 ];
+
+/// The kinds only [`MARKER_V3`] reads. Every other kind every format reads.
+const LATER_KINDS: &[&str] = &["run"];
+
+/// The fields a form may leave out, by kind. Every other field of a form is required.
+///
+/// `atLeast` is the one, and it is optional because the version a dependent run needs is the
+/// author's judgment: a declaration without it is met by any finished, passed run.
+const OPTIONAL_FIELDS: &[(&str, &str)] = &[("run", "atLeast")];
 
 /// A requirement's identifier, as the declaration was found under it.
 ///
@@ -398,6 +451,42 @@ impl std::fmt::Display for PathFault {
     }
 }
 
+/// The name of the runbook a run check requires, as data.
+///
+/// A name and not a reference: a runbook's documents reach only themselves, so the declaration
+/// names another runbook as a value preflight resolves against the project's runbooks at check
+/// time, the way a change's `FOLLOWS` names another change. It passes the rule `run` and
+/// `preflight` apply to a name, [`crate::project::ProjectRoot::is_a_name`], so it cannot be a path.
+/// Whether it names a runbook is decided by comparing it byte for byte with the project's runbook
+/// directories, never by a filesystem lookup (the change `require-a-run-of-another-runbook`, its
+/// design's decision 2).
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct RunbookName(String);
+
+impl RunbookName {
+    /// A runbook name, refusing the shapes of a path.
+    pub fn new(text: &str) -> Result<Self, ()> {
+        if crate::project::ProjectRoot::is_a_name(text) {
+            Ok(Self(text.to_owned()))
+        } else {
+            Err(())
+        }
+    }
+
+    /// The name as written.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for RunbookName {
+    /// The name with every character a terminal would not show as itself named by code point: it is
+    /// a runbook author's text, and it reaches an operator's terminal.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&shown(&self.0))
+    }
+}
+
 /// The installation scope a skill's path is resolved within.
 ///
 /// Two scopes and no fallback between them, which the design states and which is what makes the
@@ -616,6 +705,18 @@ pub enum MachineCheck {
         /// The state it assumes.
         check: WorkingState,
     },
+    /// A finished, passed run of another runbook in the same project.
+    ///
+    /// Not a fact about the machine, and still a preflight check, because it is one more thing a run
+    /// needs before it starts: the start path's refusal, the report, and the record's verification
+    /// all follow from it being one (the change `require-a-run-of-another-runbook`, its design's
+    /// decision 1). Declared only in [`MARKER_V3`].
+    Run {
+        /// The runbook whose run is required.
+        runbook: RunbookName,
+        /// The lowest release of it whose runs count, within that release's major.
+        at_least: Option<RunbookVersion>,
+    },
 }
 
 impl MachineCheck {
@@ -648,6 +749,14 @@ impl MachineCheck {
                 scope = scope.name()
             ),
             Self::State { check } => check.expected().to_owned(),
+            Self::Run { runbook, at_least } => match at_least {
+                Some(at_least) => format!(
+                    "a finished, passed run of `{runbook}` at release {at_least} or later within \
+                     major {}, recorded in this project",
+                    at_least.major()
+                ),
+                None => format!("a finished, passed run of `{runbook}`, recorded in this project"),
+            },
         }
     }
 
@@ -685,6 +794,38 @@ impl MachineCheck {
                      expects it",
                 ),
             },
+            Self::Run { runbook, .. } => format!(
+                "run `{runbook}` to completion, with every requirement it carries recorded as \
+                 passed, then start this run again: `htmlspec run {runbook} --as NAME`. A run that \
+                 recorded a failure is a correct record of a failed run, and the way forward is a \
+                 new run, never an edited outcome"
+            ),
+        }
+    }
+
+    /// What to do about this check not passing, given what was observed of it.
+    ///
+    /// A run check's own [`Self::remedy`], running the required runbook to completion, answers only
+    /// a check whose records were read and found wanting. A runbook the project does not have cannot
+    /// be run, and a specification on the way that cannot be read has to be repaired first, which
+    /// the observation names. Every other check's remedy does not depend on what was observed.
+    pub fn remedy_given(&self, observation: &Observation) -> String {
+        match (self, observation) {
+            (Self::Run { runbook, .. }, Observation::Measured(Fact::RunbookMissing { .. })) => {
+                format!(
+                    "add a runbook named `{runbook}` to this project, or correct the declaration to \
+                     a name `htmlspec list --runbooks` prints. The name is matched byte for byte, \
+                     so its case counts"
+                )
+            }
+            (Self::Run { .. }, Observation::Unavailable { remedy, .. }) => remedy.clone(),
+            (Self::Run { .. }, Observation::TimedOut { .. } | Observation::ProbeFailure { .. }) => {
+                String::from(
+                    "check again. Whether a run of the named runbook passed could not be read, so \
+                     nothing is known about it yet",
+                )
+            }
+            _ => self.remedy(),
         }
     }
 }
@@ -788,11 +929,18 @@ pub enum DeclarationFault {
         marker: String,
     },
     /// The declaration carries no `kind`, so there is no form to read it as.
-    NoKind,
-    /// The declaration names a form this program does not provide.
+    NoKind {
+        /// The forms the declaration's format reads, for the report.
+        forms: String,
+    },
+    /// The declaration names a form its format does not provide.
     UnknownKind {
         /// The kind as written.
         kind: String,
+        /// The marker of the declaration's format.
+        marker: &'static str,
+        /// The forms the declaration's format reads, for the report.
+        forms: String,
     },
     /// The declaration omits a field its form requires.
     MissingField {
@@ -857,6 +1005,37 @@ pub enum DeclarationFault {
         /// Why it is not one.
         fault: RemedyFault,
     },
+    /// A run check's `runbook` is empty, so it names no runbook at all.
+    EmptyRunbook,
+    /// A run check's `runbook` is a path rather than a runbook's name.
+    InvalidRunbook {
+        /// The value as written.
+        given: String,
+    },
+    /// A run check's `atLeast` is not three numeric components.
+    InvalidAtLeast {
+        /// The value as written.
+        given: String,
+        /// The shared parser's reason.
+        problem: String,
+    },
+    /// A run check names the runbook that declares it.
+    ///
+    /// An invalid contract rather than an unmet check: no run of a runbook can come before its own,
+    /// so the runbook could never start as written.
+    RequiresItself {
+        /// The runbook, as named.
+        runbook: String,
+    },
+    /// A run check leads back to the runbook that declares it, through the declarations of the
+    /// runbooks it names.
+    ///
+    /// An invalid contract for the reason [`Self::RequiresItself`] is: whichever runbook of the
+    /// cycle runs first breaks one of its declarations.
+    Cycle {
+        /// The runbooks of the cycle in order, starting and ending with the declaring one.
+        chain: Vec<String>,
+    },
     /// A toolchain declares no tool, so there is nothing to check.
     NoTools,
     /// One requirement carries more than one declaration.
@@ -879,24 +1058,38 @@ impl std::fmt::Display for DeclarationFault {
             ),
             Self::UnsupportedFormat { marker } => write!(
                 f,
-                "{marker:?} is not a format this program reads; it reads {MARKER:?} and \
-                 {MARKER_V2:?}. A note \
+                "{marker:?} is not a format this program reads; it reads {MARKER:?}, \
+                 {MARKER_V2:?}, and {MARKER_V3:?}. A note \
                  beginning {MARKER_STEM:?} is a declaration rather than prose, so this is reported \
                  instead of being skipped — skipping it would report the runbook ready when it \
                  asked for checks nothing performed"
             ),
-            Self::NoKind => write!(
+            Self::NoKind { forms } => write!(
                 f,
-                "the declaration names no `kind`. The forms are {}, and each one needs its `kind` \
-                 stated",
-                forms_list()
+                "the declaration names no `kind`. The forms are {forms}, and each one needs its \
+                 `kind` stated"
             ),
-            Self::UnknownKind { kind } => write!(
+            // A kind a later format provides is not an unsupported condition, and saying it stays
+            // a manual obligation would send the author to prose for a check this program has.
+            Self::UnknownKind {
+                kind,
+                marker,
+                forms,
+            } if LATER_KINDS.contains(&kind.as_str()) => write!(
                 f,
-                "{kind:?} is not a check this program provides; the forms are {}. A runbook \
+                "`{kind}` is a check {MARKER_V3:?} provides, and this note is written in \
+                 {marker:?}, whose forms are {forms}. Begin the note with {MARKER_V3:?} to \
+                 declare it"
+            ),
+            Self::UnknownKind {
+                kind,
+                marker,
+                forms,
+            } => write!(
+                f,
+                "{kind:?} is not a check {marker:?} provides; its forms are {forms}. A runbook \
                  cannot supply its own command, so an unsupported condition stays a manual \
-                 obligation stated in prose",
-                forms_list()
+                 obligation stated in prose"
             ),
             Self::MissingField { field } => write!(f, "the declaration has no `{field}` field"),
             // The key is the declaration's, so it is shown with every character a terminal would not
@@ -946,6 +1139,39 @@ impl std::fmt::Display for DeclarationFault {
                  obligation stated in prose"
             ),
             Self::InvalidRemedy { fault } => write!(f, "`remedy` is refused: {fault}"),
+            Self::EmptyRunbook => f.write_str(
+                "`runbook` is empty. A run check names the runbook whose run must come first, by \
+                 its directory name as `htmlspec list --runbooks` prints it",
+            ),
+            Self::InvalidRunbook { given } => write!(
+                f,
+                "{given:?} is not a runbook's name: a run check names a runbook of this project \
+                 by its directory name, and a name holding `/` or `\\`, or one that is `.` or \
+                 `..`, is the shape of a path"
+            ),
+            Self::InvalidAtLeast { given, problem } => write!(
+                f,
+                "{given:?} is not a release: {problem}. `atLeast` is three numeric components, \
+                 the lowest release of the named runbook whose runs count"
+            ),
+            Self::RequiresItself { runbook } => write!(
+                f,
+                "the run check names `{}`, the runbook that declares it. No run of a runbook can \
+                 come before its own, so this runbook could never start as written. Name the \
+                 runbook that must run first",
+                shown(runbook)
+            ),
+            Self::Cycle { chain } => write!(
+                f,
+                "the run check leads back to this runbook: {}. Whichever of these runs first \
+                 breaks one of the declarations, so no order satisfies them all. Remove the \
+                 declaration that does not belong",
+                chain
+                    .iter()
+                    .map(|name| format!("`{}`", shown(name)))
+                    .collect::<Vec<_>>()
+                    .join(" requires a run of ")
+            ),
             Self::NoTools => write!(
                 f,
                 "the toolchain declaration lists no tool, so there is nothing for it to check. \
@@ -966,10 +1192,11 @@ impl std::fmt::Display for DeclarationFault {
     }
 }
 
-/// The form's names, for a message that has to say what they are.
-fn forms_list() -> String {
+/// The names of the forms `format` reads, for a message that has to say what they are.
+fn forms_list(format: Format) -> String {
     FORMS
         .iter()
+        .filter(|(kind, _)| format.reads(kind))
         .map(|(kind, _)| format!("`{kind}`"))
         .collect::<Vec<_>>()
         .join(", ")
@@ -1008,6 +1235,12 @@ impl ContractErrors {
     /// The faults found.
     pub fn faults(&self) -> &[ContractFault] {
         &self.0
+    }
+
+    /// Faults found outside this module, by the check that follows a contract's run checks
+    /// through the project ([`crate::prerequisites::refuse_cycles`]). Nonempty where it is used.
+    pub(crate) fn of(faults: Vec<ContractFault>) -> Self {
+        Self(faults)
     }
 }
 
@@ -1059,6 +1292,13 @@ struct WireState {
     check: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct WireRun {
+    runbook: String,
+    at_least: Option<String>,
+}
+
 /// The closed tagged enum a declaration deserializes into, one variant per form.
 #[derive(Debug)]
 enum WireCheck {
@@ -1066,6 +1306,7 @@ enum WireCheck {
     Toolchain(WireToolchain),
     Skill(WireSkill),
     State(WireState),
+    Run(WireRun),
 }
 
 /// Reads every machine-check declaration a projected document carries.
@@ -1192,9 +1433,9 @@ fn declaration_in(note: &str) -> Result<(MachineCheck, Option<Remedy>), Contract
 
     let mut fields = object.clone();
     let mut remedy_faults = Vec::new();
-    let remedy = match format {
-        Format::V1 => None,
-        Format::V2 => match fields.remove("remedy") {
+    let remedy = match format.takes_a_remedy() {
+        false => None,
+        true => match fields.remove("remedy") {
             None => None,
             Some(serde_json::Value::String(given)) => Remedy::new(&given)
                 .map_err(|fault| remedy_faults.push(DeclarationFault::InvalidRemedy { fault }))
@@ -1214,7 +1455,7 @@ fn declaration_in(note: &str) -> Result<(MachineCheck, Option<Remedy>), Contract
         requirement: None,
         fault,
     });
-    match form_in(&fields) {
+    match form_in(&fields, format) {
         Ok(check) => {
             let faults: Vec<ContractFault> = remedy_faults.collect();
             if faults.is_empty() {
@@ -1233,8 +1474,9 @@ fn declaration_in(note: &str) -> Result<(MachineCheck, Option<Remedy>), Contract
 /// The one check a declaration's fields describe, its `kind` and the form's own fields.
 fn form_in(
     object: &serde_json::Map<String, serde_json::Value>,
+    format: Format,
 ) -> Result<MachineCheck, ContractErrors> {
-    check_fields(object)?;
+    check_fields(object, format)?;
     // The field set and every type in it are already known to be the form's, so the deserializer's
     // only job here is to hand the values to the typed structs. `kind` is the tag this function
     // selected the form by and not a field of it, so it is dropped before deserializing: a struct
@@ -1255,6 +1497,7 @@ fn form_in(
             serde_json::from_value::<WireToolchain>(without_tag).map(WireCheck::Toolchain)
         }
         "skill" => serde_json::from_value::<WireSkill>(without_tag).map(WireCheck::Skill),
+        "run" => serde_json::from_value::<WireRun>(without_tag).map(WireCheck::Run),
         _ => serde_json::from_value::<WireState>(without_tag).map(WireCheck::State),
     }
     .map_err(|error| {
@@ -1264,7 +1507,7 @@ fn form_in(
             wanted: "the fields its form takes",
         })
     })?;
-    validate(wire)
+    validate(wire, format)
 }
 
 /// What a JSON value is, in words, for a report.
@@ -1296,11 +1539,16 @@ pub(super) fn describe_value(value: &serde_json::Value) -> String {
 /// Types are checked here rather than left to the deserializer because the deserializer's message
 /// names a JSON offset and not a field, and an author told "invalid type at column 60" has to count
 /// characters to find out what is wrong.
-fn check_fields(object: &serde_json::Map<String, serde_json::Value>) -> Result<(), ContractErrors> {
+fn check_fields(
+    object: &serde_json::Map<String, serde_json::Value>,
+    format: Format,
+) -> Result<(), ContractErrors> {
     let mut faults: Vec<DeclarationFault> = Vec::new();
     let kind = match object.get("kind") {
         None => {
-            faults.push(DeclarationFault::NoKind);
+            faults.push(DeclarationFault::NoKind {
+                forms: forms_list(format),
+            });
             None
         }
         Some(value) => match value.as_str() {
@@ -1315,17 +1563,23 @@ fn check_fields(object: &serde_json::Map<String, serde_json::Value>) -> Result<(
             }
         },
     };
-    let allowed = kind
-        .as_deref()
-        .and_then(|kind| FORMS.iter().find(|(name, _)| *name == kind));
+    let allowed = kind.as_deref().and_then(|kind| {
+        FORMS
+            .iter()
+            .find(|(name, _)| *name == kind && format.reads(name))
+    });
     if let Some(kind) = &kind {
         if allowed.is_none() {
-            faults.push(DeclarationFault::UnknownKind { kind: kind.clone() });
+            faults.push(DeclarationFault::UnknownKind {
+                kind: kind.clone(),
+                marker: format.marker(),
+                forms: forms_list(format),
+            });
         }
     }
     // With no recognized form there is no field set to check against, and the faults above already
     // say why. Guessing at a form's fields would report a second problem about the first one.
-    let Some((_, fields)) = allowed else {
+    let Some((form, fields)) = allowed else {
         return refuse(faults);
     };
 
@@ -1345,7 +1599,10 @@ fn check_fields(object: &serde_json::Map<String, serde_json::Value>) -> Result<(
         }
     }
     for (field, _) in *fields {
-        if *field != "kind" && !object.contains_key(*field) {
+        let optional = OPTIONAL_FIELDS
+            .iter()
+            .any(|(kind, name)| kind == form && name == field);
+        if *field != "kind" && !optional && !object.contains_key(*field) {
             faults.push(DeclarationFault::MissingField { field });
         }
     }
@@ -1383,7 +1640,7 @@ fn one(fault: DeclarationFault) -> ContractErrors {
 /// program name reaching a process argument vector is a [`ProgramName`], the path reaching a
 /// filesystem join is a [`ScopedRelativePath`], and the version reaching a numeric comparison is a
 /// [`ToolVersion`]. That is `AGENTS.md` §4's "parse at boundaries and preserve the evidence".
-fn validate(wire: WireCheck) -> Result<MachineCheck, ContractErrors> {
+fn validate(wire: WireCheck, format: Format) -> Result<MachineCheck, ContractErrors> {
     let mut faults: Vec<DeclarationFault> = Vec::new();
     let mut check = None;
 
@@ -1448,6 +1705,29 @@ fn validate(wire: WireCheck) -> Result<MachineCheck, ContractErrors> {
                 check = Some(MachineCheck::State { check: parsed });
             }
         }
+        WireCheck::Run(WireRun { runbook, at_least }) => {
+            let parsed_runbook = RunbookName::new(&runbook).map_err(|()| {
+                faults.push(if runbook.is_empty() {
+                    DeclarationFault::EmptyRunbook
+                } else {
+                    DeclarationFault::InvalidRunbook {
+                        given: runbook.clone(),
+                    }
+                });
+            });
+            let parsed_at_least = match &at_least {
+                None => Ok(None),
+                Some(given) => RunbookVersion::parse(given).map(Some).map_err(|error| {
+                    faults.push(DeclarationFault::InvalidAtLeast {
+                        given: given.clone(),
+                        problem: error.to_string(),
+                    });
+                }),
+            };
+            if let (Ok(runbook), Ok(at_least)) = (parsed_runbook, parsed_at_least) {
+                check = Some(MachineCheck::Run { runbook, at_least });
+            }
+        }
     }
 
     match (check, faults.is_empty()) {
@@ -1464,7 +1744,9 @@ fn validate(wire: WireCheck) -> Result<MachineCheck, ContractErrors> {
                 })
                 .collect(),
         )),
-        (None, true) => Err(one(DeclarationFault::NoKind)),
+        (None, true) => Err(one(DeclarationFault::NoKind {
+            forms: forms_list(format),
+        })),
     }
 }
 
@@ -1569,6 +1851,32 @@ pub enum Fact {
         /// The entries, as the read-only status operation reported them, bounded.
         entries: Vec<String>,
     },
+    /// At least one record of the named runbook is a finished, passed run that the check accepts.
+    RunMet {
+        /// The runbook named.
+        runbook: RunbookName,
+        /// The first satisfying records in name order, at most [`crate::prerequisites::NAMED`].
+        satisfying: Vec<crate::prerequisites::Satisfying>,
+        /// How many records satisfy the check in all.
+        total: usize,
+        /// The named runbook's runs still under way, named so a run in progress beside a finished
+        /// one is in view.
+        open: Vec<crate::prerequisites::OpenRun>,
+    },
+    /// No record of the named runbook satisfies the check.
+    RunUnmet {
+        /// The runbook named.
+        runbook: RunbookName,
+        /// Every file under its `runs/`, with the first reason it does not count.
+        records: Vec<(String, crate::prerequisites::NotSatisfying)>,
+        /// Its runs still under way.
+        open: Vec<crate::prerequisites::OpenRun>,
+    },
+    /// The project has no runbook of exactly that name.
+    RunbookMissing {
+        /// The runbook named.
+        runbook: RunbookName,
+    },
 }
 
 /// Where one requested tool resolved, and whether that place is the pinned environment's.
@@ -1668,8 +1976,68 @@ impl Fact {
                 if entries.len() == 1 { "y" } else { "ies" },
                 entries.join(", ")
             ),
+            Self::RunMet {
+                runbook,
+                satisfying,
+                total,
+                open,
+            } => {
+                let named = satisfying
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let more = total.saturating_sub(satisfying.len());
+                let mut out = format!(
+                    "{total} finished, passed run(s) of `{runbook}` meet it: {named}{}",
+                    if more > 0 {
+                        format!(", and {more} more")
+                    } else {
+                        String::new()
+                    }
+                );
+                out.push_str(&open_runs(open));
+                out
+            }
+            Self::RunUnmet {
+                runbook,
+                records,
+                open,
+            } => {
+                let mut out = if records.is_empty() {
+                    format!("`{runbook}` has no runs on record")
+                } else {
+                    format!(
+                        "no record of `{runbook}` is a finished, passed run this check accepts: {}",
+                        records
+                            .iter()
+                            .map(|(record, reason)| format!("{} {reason}", shown(record)))
+                            .collect::<Vec<_>>()
+                            .join("; ")
+                    )
+                };
+                out.push_str(&open_runs(open));
+                out
+            }
+            Self::RunbookMissing { runbook } => {
+                format!("this project has no runbook named `{runbook}`")
+            }
         }
     }
+}
+
+/// The open runs a run check names, as a clause for its observation.
+fn open_runs(open: &[crate::prerequisites::OpenRun]) -> String {
+    if open.is_empty() {
+        return String::new();
+    }
+    format!(
+        ". Still under way: {}",
+        open.iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
 }
 
 /// What one probe produced: a measured fact, or why it measured nothing.
@@ -1775,6 +2143,17 @@ pub trait HostProbe {
 
     /// Measure one working-directory state.
     fn state(&mut self, state: &WorkingState) -> Result<Fact, ProbeFault>;
+
+    /// Decide whether a finished, passed run of `runbook` is on record in the project whose
+    /// runbooks this host reads.
+    ///
+    /// Reads the named runbook's specification, the specifications its run checks reach, and its
+    /// records, and runs nothing.
+    fn prerequisite(
+        &mut self,
+        runbook: &RunbookName,
+        at_least: Option<RunbookVersion>,
+    ) -> Result<Fact, ProbeFault>;
 }
 
 /// Observes one declared check against a host.
@@ -1792,6 +2171,7 @@ pub fn observe(check: &MachineCheck, host: &mut impl HostProbe) -> Observation {
         } => host.toolchain(manifest, shell, tools),
         MachineCheck::Skill { scope, path } => host.skill(scope, path),
         MachineCheck::State { check } => host.state(check),
+        MachineCheck::Run { runbook, at_least } => host.prerequisite(runbook, *at_least),
     };
     match measured {
         Ok(fact) => Observation::Measured(fact),
@@ -1992,6 +2372,8 @@ pub struct Finding {
     pub outcome: CheckOutcome,
     /// What to do about it.
     pub remedy: String,
+    /// The fact measured, where one was: a run check's records are reported from it.
+    pub fact: Option<Fact>,
 }
 
 /// How one check ended, where the ending is not a pass.
@@ -2039,6 +2421,7 @@ impl std::fmt::Display for CheckOutcome {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NonEmptyFindings {
     findings: Vec<Finding>,
+    passed: Vec<PassedCheck>,
 }
 
 impl NonEmptyFindings {
@@ -2050,13 +2433,24 @@ impl NonEmptyFindings {
         if findings.is_empty() {
             None
         } else {
-            Some(Self { findings })
+            Some(Self {
+                findings,
+                passed: Vec::new(),
+            })
         }
     }
 
     /// The findings, in document order.
     pub fn findings(&self) -> &[Finding] {
         &self.findings
+    }
+
+    /// The checks that passed beside the findings, with what was measured.
+    ///
+    /// Kept so a run check that passed while another check did not still reports the records that
+    /// met it.
+    pub fn passed(&self) -> &[PassedCheck] {
+        &self.passed
     }
 }
 
@@ -2105,9 +2499,15 @@ pub fn assess(contract: &MachineContract, facts: Observations) -> PreflightAsses
                 observed: String::from("this requirement declares no machine check"),
                 outcome: CheckOutcome::ProbeFailed,
                 remedy: observed.check.remedy(),
+                fact: None,
             });
             continue;
         };
+        let measured = match &observed.observation {
+            Observation::Measured(fact) => Some(fact.clone()),
+            _ => None,
+        };
+        let remedy = declared.check.remedy_given(&observed.observation);
         match judge(&declared.check, &observed.observation) {
             Verdict::Satisfied(fact) => passed.push(PassedCheck {
                 requirement: declared.requirement.clone(),
@@ -2120,13 +2520,17 @@ pub fn assess(contract: &MachineContract, facts: Observations) -> PreflightAsses
                 expected: declared.check.expected(),
                 observed,
                 outcome,
-                remedy: declared.check.remedy(),
+                remedy,
+                fact: measured,
             }),
         }
     }
 
     match NonEmptyFindings::of(findings) {
-        Some(findings) => PreflightAssessment::NotReady(findings),
+        Some(mut findings) => {
+            findings.passed = passed;
+            PreflightAssessment::NotReady(findings)
+        }
         None => PreflightAssessment::Ready(PassedChecks { passed }),
     }
 }
@@ -2151,6 +2555,12 @@ enum Verdict {
 fn judge(check: &MachineCheck, observation: &Observation) -> Verdict {
     let fact = match observation {
         Observation::Measured(fact) => fact,
+        // A run check's remedy line already gives the observation's remedy, so its observation
+        // states the reason alone. Every other check's remedy line is its own, so the observation
+        // keeps the probe's remedy beside the reason.
+        Observation::Unavailable { reason, .. } if matches!(check, MachineCheck::Run { .. }) => {
+            return refused(reason.clone(), CheckOutcome::Unavailable)
+        }
         Observation::Unavailable { reason, remedy } => {
             return refused(format!("{reason} ({remedy})"), CheckOutcome::Unavailable)
         }
@@ -2255,6 +2665,10 @@ fn judge(check: &MachineCheck, observation: &Observation) -> Verdict {
             },
             Fact::WorktreeDirty { .. },
         ) => refused(fact.observed(), CheckOutcome::Unmet),
+        (MachineCheck::Run { .. }, Fact::RunMet { .. }) => Verdict::Satisfied(fact.clone()),
+        (MachineCheck::Run { .. }, Fact::RunUnmet { .. } | Fact::RunbookMissing { .. }) => {
+            refused(fact.observed(), CheckOutcome::Unmet)
+        }
         // A fact that is not the one this check produces. Unreachable through `observe`, which
         // pairs them; reported rather than assumed away, so a check kind added without a matching
         // arm fails a run loudly instead of passing it silently.
@@ -2373,7 +2787,7 @@ impl PreflightReport {
         let mut out = String::new();
         match &self.assessment {
             PreflightAssessment::Ready(passed) => {
-                out.push_str(&format!("ready: {} can start here\n", self.runbook));
+                out.push_str(&format!("ready: {} can start here\n", shown(&self.runbook)));
                 out.push_str(&self.identifies());
                 if passed.is_empty() {
                     // Zero stated rather than glossed, because "ready" over a runbook that declared
@@ -2396,7 +2810,10 @@ impl PreflightReport {
                 }
             }
             PreflightAssessment::NotReady(findings) => {
-                out.push_str(&format!("not ready: {} cannot start here\n", self.runbook));
+                out.push_str(&format!(
+                    "not ready: {} cannot start here\n",
+                    shown(&self.runbook)
+                ));
                 out.push_str(&self.identifies());
                 out.push_str(&format!(
                     "\n{} of {} check(s) are not satisfied:\n",
@@ -2421,10 +2838,31 @@ impl PreflightReport {
                         out.push_str(&format!("      the runbook says: {remedy}\n"));
                     }
                 }
+                // A passed check is not repeated here, except a met run check with a run of what it
+                // requires still under way: the design's decision 3 names that run even when the
+                // check is met, and this report is the one an operator reads before trying again.
+                let under_way: Vec<&PassedCheck> = findings
+                    .passed()
+                    .iter()
+                    .filter(|check| matches!(&check.fact, Fact::RunMet { open, .. } if !open.is_empty()))
+                    .collect();
+                if !under_way.is_empty() {
+                    out.push_str(&format!(
+                        "\n{} met run check(s) have a run still under way:\n",
+                        under_way.len()
+                    ));
+                    for check in under_way {
+                        out.push_str(&format!(
+                            "  ok  {} — {}\n",
+                            check.requirement,
+                            check.fact.observed()
+                        ));
+                    }
+                }
                 out.push_str(
                     "\nno run was started and nothing was written. Preflight reports rather than \
-                     installs: what is missing is named above, and how to supply it on this \
-                     machine is yours to decide\n",
+                     installs: what is missing is named above, and how to supply it here is yours \
+                     to decide\n",
                 );
             }
         }
@@ -2462,44 +2900,59 @@ impl PreflightReport {
                 PreflightAssessment::Ready(passed) => passed
                     .checks()
                     .iter()
-                    .map(|check| self.with_remedy(&check.requirement, serde_json::json!({
-                        "requirement": check.requirement.to_string(),
-                        "expected": check.check.expected(),
-                        "observed": check.fact.observed(),
-                        "outcome": "passed",
-                        "remedy": null,
-                    })))
+                    .map(|check| with_run(&check.check, Some(&check.fact), self.with_remedy(
+                        &check.requirement,
+                        serde_json::json!({
+                            "requirement": check.requirement.to_string(),
+                            "expected": check.check.expected(),
+                            "observed": check.fact.observed(),
+                            "outcome": "passed",
+                            "remedy": null,
+                        }),
+                    )))
                     .collect::<Vec<_>>(),
                 PreflightAssessment::NotReady(findings) => {
                     // Every declared check appears, in document order: the passed ones beside the
                     // findings, because a report naming only failures leaves an agent unable to
                     // tell a check that passed from one nothing reached.
                     let mut all: Vec<serde_json::Value> = Vec::new();
+                    let passed = findings.passed();
                     let findings = findings.findings();
                     for declared in self.contract.checks() {
                         match findings
                             .iter()
                             .find(|finding| finding.requirement == declared.requirement)
                         {
-                            Some(finding) => all.push(self.with_remedy(
-                                &finding.requirement,
-                                serde_json::json!({
-                                    "requirement": finding.requirement.to_string(),
-                                    "expected": finding.expected,
-                                    "observed": finding.observed,
-                                    "outcome": finding.outcome.name(),
-                                    "remedy": finding.remedy,
-                                }),
+                            Some(finding) => all.push(with_run(
+                                &finding.check,
+                                finding.fact.as_ref(),
+                                self.with_remedy(
+                                    &finding.requirement,
+                                    serde_json::json!({
+                                        "requirement": finding.requirement.to_string(),
+                                        "expected": finding.expected,
+                                        "observed": finding.observed,
+                                        "outcome": finding.outcome.name(),
+                                        "remedy": finding.remedy,
+                                    }),
+                                ),
                             )),
-                            None => all.push(self.with_remedy(
-                                &declared.requirement,
-                                serde_json::json!({
-                                    "requirement": declared.requirement.to_string(),
-                                    "expected": declared.check.expected(),
-                                    "observed": "the condition held",
-                                    "outcome": "passed",
-                                    "remedy": null,
-                                }),
+                            None => all.push(with_run(
+                                &declared.check,
+                                passed
+                                    .iter()
+                                    .find(|check| check.requirement == declared.requirement)
+                                    .map(|check| &check.fact),
+                                self.with_remedy(
+                                    &declared.requirement,
+                                    serde_json::json!({
+                                        "requirement": declared.requirement.to_string(),
+                                        "expected": declared.check.expected(),
+                                        "observed": "the condition held",
+                                        "outcome": "passed",
+                                        "remedy": null,
+                                    }),
+                                ),
                             )),
                         }
                     }
@@ -2529,6 +2982,79 @@ impl PreflightReport {
         }
         check
     }
+}
+
+/// A check's payload object, with a run check's `run` object beside its other fields.
+///
+/// The object says which runbook the check names and the lowest release it accepts, and, from the
+/// fact measured, the state of the check, the first satisfying records and how many there are, why
+/// each record does not count where none does, and the runs still under way. Names are the raw
+/// text, as everywhere in a payload: escaping is for a terminal. A check that measured nothing, an
+/// unavailable one, has the state `unavailable`.
+fn with_run(
+    check: &MachineCheck,
+    fact: Option<&Fact>,
+    mut value: serde_json::Value,
+) -> serde_json::Value {
+    let MachineCheck::Run { runbook, at_least } = check else {
+        return value;
+    };
+    let names = |satisfying: &[crate::prerequisites::Satisfying]| -> Vec<String> {
+        satisfying
+            .iter()
+            .map(|record| record.record.clone())
+            .collect()
+    };
+    let open = |open: &[crate::prerequisites::OpenRun]| -> Vec<String> {
+        open.iter().map(|run| run.record.clone()).collect()
+    };
+    let (state, satisfied_by, satisfying, not_satisfying, open_runs) = match fact {
+        Some(Fact::RunMet {
+            satisfying,
+            total,
+            open: running,
+            ..
+        }) => ("met", names(satisfying), *total, Vec::new(), open(running)),
+        Some(Fact::RunUnmet {
+            records,
+            open: running,
+            ..
+        }) => (
+            "unmet",
+            Vec::new(),
+            0,
+            records
+                .iter()
+                .map(|(record, reason)| {
+                    serde_json::json!({ "record": record, "reason": reason.to_string() })
+                })
+                .collect(),
+            open(running),
+        ),
+        Some(Fact::RunbookMissing { .. }) => ("missing", Vec::new(), 0, Vec::new(), Vec::new()),
+        // Nothing was measured, because the observation could not be made: the check's own outcome
+        // says how. A run check is measured only as one of the three facts above, so no other fact
+        // reaches here.
+        _ => ("unavailable", Vec::new(), 0, Vec::new(), Vec::new()),
+    };
+    let mut run = serde_json::json!({
+        "runbook": runbook.as_str(),
+        "state": state,
+        "satisfiedBy": satisfied_by,
+        "satisfying": satisfying,
+        "notSatisfying": not_satisfying,
+        "openRuns": open_runs,
+    });
+    if let (Some(at_least), Some(object)) = (at_least, run.as_object_mut()) {
+        object.insert(
+            String::from("atLeast"),
+            serde_json::Value::String(at_least.to_string()),
+        );
+    }
+    if let Some(object) = value.as_object_mut() {
+        object.insert(String::from("run"), run);
+    }
+    value
 }
 
 /// Reports whether `runbook` can start in this working environment.
@@ -2597,7 +3123,10 @@ pub fn command<O: std::io::Write, E: std::io::Write>(
         contract: source.contract.clone(),
     };
 
-    let mut host = host::Host::interruptible(context.workdir.clone(), streams);
+    // Run checks read the runbooks of the project the runbook was read from, the store's under
+    // `--store`, while machine checks keep judging the working directory.
+    let mut host = host::Host::interruptible(context.workdir.clone(), streams)
+        .with_runbooks(project.runbooks());
     let observations = match host::observe_all(&source.contract, &mut host) {
         Ok(observations) => observations,
         Err(_interrupted) => {
@@ -2681,6 +3210,7 @@ mod tests {
                         MachineCheck::Toolchain { .. } => String::from("toolchain"),
                         MachineCheck::Skill { .. } => String::from("skill"),
                         MachineCheck::State { .. } => String::from("state"),
+                        MachineCheck::Run { .. } => String::from("run"),
                     },
                 )
             })
@@ -2690,6 +3220,209 @@ mod tests {
     /// The faults a parse produced, as text, for an assertion message.
     fn reported(error: &ContractErrors) -> String {
         error.to_string()
+    }
+
+    /// `preflight/v3` reads a run check, with and without `atLeast`, and with a remedy.
+    #[test]
+    fn a_v3_run_check_parses() {
+        let contract = contract_of(&[
+            (
+                "bare",
+                &["preflight/v3 {\"kind\":\"run\",\"runbook\":\"backup\"}"],
+            ),
+            (
+                "bounded",
+                &[
+                    "preflight/v3 {\"kind\":\"run\",\"runbook\":\"backup\",\"atLeast\":\"1.4.0\",\
+                     \"remedy\":\"see the backup team's page\"}",
+                ],
+            ),
+        ])
+        .expect("both declarations read");
+        assert_eq!(
+            contract.checks()[0].check,
+            MachineCheck::Run {
+                runbook: RunbookName::new("backup").expect("a name"),
+                at_least: None,
+            }
+        );
+        assert_eq!(
+            contract.checks()[1].check,
+            MachineCheck::Run {
+                runbook: RunbookName::new("backup").expect("a name"),
+                at_least: Some(RunbookVersion::parse("1.4.0").expect("a release")),
+            }
+        );
+        assert_eq!(
+            contract.checks()[1]
+                .remedy
+                .as_ref()
+                .map(ToString::to_string),
+            Some(String::from("see the backup team's page"))
+        );
+    }
+
+    /// `preflight/v3` reads every form `preflight/v2` reads, with its remedy.
+    #[test]
+    fn v3_reads_every_v2_form() {
+        let contract = contract_of(&[
+            (
+                "tool",
+                &["preflight/v3 {\"kind\":\"tool\",\"program\":\"python3\",\
+                     \"version\":\"3.13.2\",\"remedy\":\"install it\"}"],
+            ),
+            (
+                "toolchain",
+                &[
+                    "preflight/v3 {\"kind\":\"toolchain\",\"manifest\":\"flake.nix\",\
+                   \"shell\":\"default\",\"tools\":[\"cargo\"],\
+                   \"remedy\":\"run this inside nix develop\"}",
+                ],
+            ),
+            (
+                "skill",
+                &["preflight/v3 {\"kind\":\"skill\",\"scope\":\"home\",\
+                   \"path\":\".claude/skills/login/SKILL.md\"}"],
+            ),
+            (
+                "state",
+                &["preflight/v3 {\"kind\":\"state\",\"check\":\"outside-project\"}"],
+            ),
+        ])
+        .expect("every v2 form reads under v3");
+        assert_eq!(
+            declared(&contract),
+            [
+                ("req-tool", "tool"),
+                ("req-toolchain", "toolchain"),
+                ("req-skill", "skill"),
+                ("req-state", "state"),
+            ]
+            .map(|(id, kind)| (String::from(id), String::from(kind)))
+        );
+    }
+
+    /// Earlier formats refuse the `run` kind as unknown, and say which format declares it.
+    #[test]
+    fn v1_and_v2_refuse_the_run_kind() {
+        for marker in [MARKER, MARKER_V2] {
+            let note = format!("{marker} {{\"kind\":\"run\",\"runbook\":\"backup\"}}");
+            let error = one(&note).expect_err("an earlier format read `run`");
+            assert!(
+                error.faults().iter().any(|fault| matches!(
+                    &fault.fault,
+                    DeclarationFault::UnknownKind { kind, marker: written, forms }
+                        if kind == "run" && *written == marker && !forms.contains("`run`")
+                )),
+                "{marker}: {error}"
+            );
+            assert!(
+                reported(&error).contains(MARKER_V3),
+                "the refusal does not say where `run` is declared: {error}"
+            );
+        }
+    }
+
+    /// Each malformed run check is refused with its own fault.
+    #[test]
+    fn a_malformed_run_check_is_refused() {
+        type Expected = fn(&DeclarationFault) -> bool;
+        let cases: [(&str, Expected); 6] = [
+            (
+                "{\"kind\":\"run\"}",
+                |fault| matches!(fault, DeclarationFault::MissingField { field } if *field == "runbook"),
+            ),
+            (
+                "{\"kind\":\"run\",\"runbook\":\"backup\",\"after\":\"x\"}",
+                |fault| matches!(fault, DeclarationFault::UnknownField { field } if field == "after"),
+            ),
+            (
+                "{\"kind\":\"run\",\"runbook\":\"backup\",\"atLeast\":\"1.4\"}",
+                |fault| matches!(fault, DeclarationFault::InvalidAtLeast { given, .. } if given == "1.4"),
+            ),
+            ("{\"kind\":\"run\",\"runbook\":\"\"}", |fault| {
+                matches!(fault, DeclarationFault::EmptyRunbook)
+            }),
+            (
+                "{\"kind\":\"run\",\"runbook\":\"../elsewhere\"}",
+                |fault| matches!(fault, DeclarationFault::InvalidRunbook { given } if given == "../elsewhere"),
+            ),
+            (
+                "{\"kind\":\"run\",\"runbook\":\"backup\",\"atLeast\":140}",
+                |fault| matches!(fault, DeclarationFault::WrongType { field, .. } if field == "atLeast"),
+            ),
+        ];
+        for (body, expected) in cases {
+            let error = one(&format!("{MARKER_V3} {body}")).expect_err("a malformed check read");
+            assert!(
+                error.faults().iter().any(|fault| expected(&fault.fault)),
+                "{body}: {error}"
+            );
+        }
+    }
+
+    /// A kind fault speaks for the note's own format: a v1 note with no `kind` is not told `run` is
+    /// one of its forms, a `run` under an earlier format is pointed at the format that has it, and
+    /// an empty name is refused as empty rather than as the shape of a path.
+    #[test]
+    fn a_kind_fault_names_the_forms_of_the_notes_own_format() {
+        let message = |note: &str| reported(&one(note).expect_err("refused"));
+        let no_kind = message("preflight/v1 {\"program\":\"cargo\"}");
+        assert!(!no_kind.contains("`run`"), "{no_kind}");
+        assert!(
+            message("preflight/v3 {\"runbook\":\"backup\"}").contains("`run`"),
+            "v3 has `run`"
+        );
+        let later = message("preflight/v2 {\"kind\":\"run\",\"runbook\":\"backup\"}");
+        assert!(
+            later.contains(
+                "`run` is a check \"preflight/v3\" provides, and this note is written in \
+                 \"preflight/v2\""
+            ),
+            "{later}"
+        );
+        assert!(!later.contains("manual obligation"), "{later}");
+        let unknown = message("preflight/v1 {\"kind\":\"command\"}");
+        assert!(
+            unknown.contains("\"command\" is not a check \"preflight/v1\" provides"),
+            "{unknown}"
+        );
+        let empty = message("preflight/v3 {\"kind\":\"run\",\"runbook\":\"\"}");
+        assert!(empty.contains("`runbook` is empty"), "{empty}");
+        assert!(!empty.contains("shape of a path"), "{empty}");
+    }
+
+    /// A run check's remedy follows what was observed: a missing runbook is added or the name
+    /// corrected, an unavailable check is repaired as its observation says, and only records found
+    /// wanting are answered by running the required runbook again.
+    #[test]
+    fn a_run_checks_remedy_follows_what_was_observed() {
+        let runbook = RunbookName::new("backup").expect("a name");
+        let check = MachineCheck::Run {
+            runbook: runbook.clone(),
+            at_least: None,
+        };
+        let missing = check.remedy_given(&Observation::Measured(Fact::RunbookMissing {
+            runbook: runbook.clone(),
+        }));
+        assert!(
+            missing.starts_with("add a runbook named `backup`"),
+            "{missing}"
+        );
+        let unavailable = check.remedy_given(&Observation::Unavailable {
+            reason: String::from("`helper` cannot be read"),
+            remedy: String::from("make the specification of `helper` read and validate"),
+        });
+        assert_eq!(
+            unavailable,
+            "make the specification of `helper` read and validate"
+        );
+        let unmet = check.remedy_given(&Observation::Measured(Fact::RunUnmet {
+            runbook,
+            records: Vec::new(),
+            open: Vec::new(),
+        }));
+        assert!(unmet.starts_with("run `backup` to completion"), "{unmet}");
     }
 
     /// Each of the four public forms parses, and parses into the variant it names.
@@ -2845,8 +3578,10 @@ mod tests {
     /// ready when the runbook asked for checks this binary cannot perform.
     #[test]
     fn an_unsupported_format_version_is_refused_rather_than_skipped() {
+        // `preflight/v3` was this test's unknown version until 1.2.0 made it a format this program
+        // reads, so the version past the newest stands in for it.
         for note in [
-            "preflight/v3 {\"kind\":\"state\",\"check\":\"outside-project\"}",
+            "preflight/v4 {\"kind\":\"state\",\"check\":\"outside-project\"}",
             "preflight/v0 {\"kind\":\"tool\",\"program\":\"cargo\",\"version\":\"1.90.0\"}",
             "preflight/latest {}",
             "preflight/",
@@ -3368,7 +4103,7 @@ mod tests {
         assert!(
             error.faults().iter().any(|fault| matches!(
                 &fault.fault,
-                DeclarationFault::UnknownKind { kind } if kind == "command"
+                DeclarationFault::UnknownKind { kind, .. } if kind == "command"
             )),
             "{text}"
         );
@@ -3389,10 +4124,10 @@ mod tests {
     fn a_declaration_with_no_kind_is_reported_as_having_none() {
         let error = one("preflight/v1 {\"program\":\"cargo\"}").expect_err("no kind");
         assert!(
-            error
-                .faults()
-                .iter()
-                .any(|fault| fault.fault == DeclarationFault::NoKind),
+            error.faults().iter().any(|fault| matches!(
+                &fault.fault,
+                DeclarationFault::NoKind { forms } if !forms.contains("`run`")
+            )),
             "{error}"
         );
     }
@@ -4382,6 +5117,7 @@ mod tests {
                     observed: String::from("a project here"),
                     outcome: CheckOutcome::Unmet,
                     remedy: String::from("run elsewhere"),
+                    fact: None,
                 }])
                 .expect("nonempty"),
             ),

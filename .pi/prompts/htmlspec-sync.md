@@ -2,7 +2,7 @@
 description: Apply an html-spec change's contract to the project's accepted specifications — merge the requirements it states into the documents the project holds. Use when a change's work is done and its contract should reach the project before, or independently of, archiving it.
 allowed-tools: Bash(htmlspec:*), Read, Write, Edit, Glob, Grep
 argument-hint: [the change to sync, or nothing to infer it]
-generatedBy: htmlspec 1.1.0
+generatedBy: htmlspec 1.2.1
 ---
 
 Apply a change's contract to the project's accepted specifications.

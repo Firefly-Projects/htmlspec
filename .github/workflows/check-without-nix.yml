@@ -1,0 +1,63 @@
+# The check suite, without Nix.
+#
+# `check.yml` runs `scripts/check` inside the Nix sandbox, and that is what this repository is held
+# to. The README also tells a contributor that the same script runs every stage with rustup, a C
+# linker, Python 3, bash, and git, and no Nix. Nothing else checks that claim, and a claim about
+# every stage drifts as stages are added, so this job runs the same script that way. It keeps no
+# list of steps of its own: to change what it checks, change `scripts/check`.
+#
+# It runs weekly, for the slow drift of the runner image, and on pull requests that touch what the
+# suite builds from. Its minutes are Linux minutes, at the normal rate even in a private repository,
+# so the path filter keeps a pull request that changes only documents from running the suite twice.
+# It does not ration a costly runner.
+#
+# The job is named `check-without-nix`, not `check`, so its result is never mistaken for the
+# `check` the branch ruleset requires.
+
+name: check without Nix
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - README.md
+      - rust-toolchain.toml
+      - Cargo.toml
+      - Cargo.lock
+      - crates/**
+      - scripts/**
+      - flake.nix
+      - .github/workflows/check-without-nix.yml
+
+# A superseded run tells nobody anything, and the suite is not cheap.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check-without-nix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # rustup is on the runner image. Installing the toolchain explicitly, as the release
+      # workflow does, reads rust-toolchain.toml rather than waiting for the first cargo command.
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+
+      - name: Name what the suite runs with
+        run: |
+          set -euo pipefail
+          rustc --version
+          cargo --version
+          python3 --version
+          bash --version | head -n 1
+          git --version
+
+      - name: Run the check suite
+        run: scripts/check

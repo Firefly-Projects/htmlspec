@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Install htmlspec on Windows through WSL, without Nix: tasks</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Install htmlspec on Windows through WSL, without Nix: tasks</h1>
+        <p>The work that makes WSL the documented Windows route and the routes without Nix as clear as the one with it. It covers the README's install and contributor sections, an offline test of the install blocks, a continuous-integration job without Nix, an install job that runs the README against every release, and the publish runbook's record of it. Release 1.1.1.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Install htmlspec on Windows through WSL, without Nix: tasks</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-tasks">Tasks</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-tasks">
+          <h2>Tasks</h2>
+          <p>Group 1 settles the scope, and task 1.3 lands before any README text names Homebrew's Linux prefix. Groups 2 and 3 can run in parallel, with one exception: task 2.4 waits for task 3.4, because the Windows part says only what was checked there. Group 2 writes the README, and group 3 tests what it says. Group 3's offline test reads group 2's marker comments, so whichever lands second runs the test against the other. Group 4 follows group 3, and group 5 closes.</p>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Withdraw the native Windows proposal <span class="hs-id">task-1-1</span></h3>
+              <p data-field="note">Remove <code>htmlspec/changes/release-a-windows-build/</code>, by the user's decision of 2026-10-26 (design decision 1), and leave the earlier records that name it as written (decision 11). Done in this change's planning branch, in a commit of its own, after a search found the only other mentions in the 1.1.0 archive and the readiness log.</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Settle the install script with the user <span class="hs-id">task-1-2</span></h3>
+              <p data-field="note">Ask the user whether to publish an <code>install.sh</code> beside the README block, and record the answer in design decision 4.</p>
+              <p data-field="note">Settled on 2026-10-26: the user decided there is no <code>install.sh</code>, only the README block. Decision 4 is accepted with that decision, and no script task is added.</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Allow Homebrew's Linux prefix in the export scan <span class="hs-id">task-1-3</span></h3>
+              <p data-field="note">Change the allowance of <code>publish/patterns.tsv</code> row 36, the Linux home-directory shape, from <code>/home/operator\b</code> to <code>/home/(operator|linuxbrew)\b</code>, so the README's <code>/home/linuxbrew/.linuxbrew</code> passes the scan. Add a <code>publish/test</code> case: Homebrew's prefix passes, and any other home directory is still refused. The test builds its refused example at run time, so no tracked file spells one and this note can say so in words. This lands before task 2.3 writes the Homebrew lines (design decision 2's note).</p>
+              <p data-field="note">Done on 2026-10-27. Row 36 now excuses <code>/home/(operator|linuxbrew)\b</code>, with its reason saying the prefix names no person. The new <code>publish/test</code> case runs the real pattern file: the README's Homebrew line passes, a home directory built at run time is refused, and a line holding both is refused. With the old allowance put back, the case fails.</p>
+            </li>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Arrange "Getting started" by platform <span class="hs-id">task-2-1</span></h3>
+              <p data-field="note">Replace the single install block with an "Installing" part in three places: Linux, and Windows through WSL; macOS; and Nix, anywhere, said to be optional (design decision 2). Keep every command that exists today. The README tests in <code>crates/htmlspec-cli/tests/preflight.rs</code> must keep passing.</p>
+              <p data-field="note">Done on 2026-10-27. "Getting started" now has a part each for Linux and Windows through WSL, macOS, and Nix, then "Working in WSL" and "After installing", which keeps the license paragraph and the first commands. Every command it held before is still there.</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Write the Linux block <span class="hs-id">task-2-2</span></h3>
+              <p data-field="note">The block in design decision 3, preceded by a marker comment the offline test finds, for example <code>&lt;!-- install: linux-release --&gt;</code>. It is followed by the upgrade sentence, the pinned-version variant, and the <code>PATH</code> line for a reader whose <code>~/.local/bin</code> is not on it, and the line naming <code>curl</code>, <code>ca-certificates</code>, and GNU coreutils for a minimal image. Run it once by hand in an <code>ubuntu:24.04</code> container on each architecture available before committing it, after <code>apt-get install -y curl ca-certificates</code>, which that image lacks.</p>
+              <p data-field="deviation">The block is in the README as design decision 3 gives it, under <code>&lt;!-- install: linux-release --&gt;</code>, with the sentences the task names. No container runtime is installed on this machine, so it was not run in an <code>ubuntu:24.04</code> container. Instead it ran on 2026-10-27 as the README holds it, with only its target line set to <code>aarch64-unknown-linux-musl</code> and its install directory moved to a scratch one, under GNU coreutils 9.11, against the published v1.1.0: the tarball checked <code>OK</code> against <code>SHA256SUMS</code>, and the binary and its three license files were installed. Only the last line, running the binary, failed, because this machine is macOS. The release workflow's <code>install</code> job runs it unchanged on both Linux targets.</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Give Homebrew on Linux and <code>cargo install</code> their own lines <span class="hs-id">task-2-3</span></h3>
+              <p data-field="note">Homebrew on Linux with its <code>brew shellenv</code> line for the shell's start-up file, under its own marker comment. Then <code>cargo install --locked htmlspec-cli</code> after rustup and <code>rustup toolchain install</code>, naming <code>build-essential</code>. Each route ends by running <code>htmlspec --version</code>.</p>
+              <p data-field="deviation">Homebrew on Linux has its own marked block, and its first line loads Homebrew's environment, so the block runs as written in a terminal where <code>brew</code> is not yet on <code>PATH</code>, which is the case the <code>install-homebrew</code> job meets. The line for the start-up file follows it, in a block of its own. The cargo route installs Rust with rustup, then runs <code>rustup toolchain install stable</code>, not the bare form: a reader installing htmlspec has no <code>rust-toolchain.toml</code> for the bare form to read. It names <code>build-essential</code>, and each route ends with <code>htmlspec --version</code>.</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done">
+              <h3>2.4 Write the Windows part <span class="hs-id">task-2-4</span></h3>
+              <p data-field="note">State that native Windows is not supported, then give <code>wsl --install</code> and the Linux route inside it. Then cover where projects live (the Linux file system, git from inside WSL, and why <code>/mnt/c</code> and Windows' line-ending conversion break the store's digests), how documents open, and where agent tools run (design decision 5). This task follows task 3.4, and says only what it checked about opening documents from Windows. The <code>http.server</code> route rests on WSL 2's documented <code>localhost</code> forwarding.</p>
+              <p data-field="note">Done on 2026-10-27, after task 3.4 was dropped. The README states that native Windows is not supported and why, gives <code>wsl --install</code>, and covers where projects live, reading documents through <code>python3 -m http.server</code>, which rests on WSL 2's localhost forwarding, and where agents run. It says that opening a document straight from the Linux file system in a Windows browser is not described, because nobody checked it, and it does not mention <code>explorer.exe</code>.</p>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done">
+              <h3>2.5 Make "Building" two equal parts <span class="hs-id">task-2-5</span></h3>
+              <p data-field="note">With Nix, and without. The part without Nix lists rustup with <code>rustup toolchain install</code>, a C linker, Python 3, bash, and git, and says <code>scripts/check</code> runs every stage with them, pointing at <code>scripts/check --list</code>. It states the Python versions that were checked rather than a floor nothing holds. It names what only the Nix sandbox and continuous integration check, and says publishing needs the flake's development shell (design decision 6).</p>
+              <p data-field="note">Done on 2026-10-27. "Building" has a part with Nix and a part without, which lists rustup with <code>rustup toolchain install</code>, a C linker, Python 3 with the two versions checked, bash, and git, and points at <code>scripts/check --list</code>. It names what only the Nix sandbox and continuous integration check, says the prompt stage honours <code>CARGO_TARGET_DIR</code>, and says publishing needs the flake's shell. "Checks" gains a line saying a second job runs the suite without Nix.</p>
+            </li>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Test the README's install blocks offline <span class="hs-id">task-3-1</span></h3>
+              <p data-field="note">A new stage, <code>readme-install</code>, running <code>scripts/check-readme-install</code>, a standard-library Python script. It finds each marked install block and fails when one is missing or when <code>bash -n</code> refuses it. It also fails when the Linux block could pick a target <code>scripts/release_facts.py</code> does not build, or when the block's way of reading <code>SHA256SUMS</code> no longer matches what <code>scripts/pack-release --sums</code> writes. It joins the suite with no network (design decision 7). Add the script to the flake's <code>patchShebangs</code> line, and make sure every file it reads is admitted by the source filter, in the same change.</p>
+              <p data-field="deviation"><code>scripts/check-readme-install</code> does what the task asks, and two things more. <code>--print NAME</code> prints a marked block, so the release workflow's install jobs extract the block with the same reading the stage checks. <code>--self-test</code> proves each check refuses what it should: a missing block, a syntax error, a target the release does not build, a wrong field of <code>SHA256SUMS</code>, a marker with no fence, and a name marking two blocks. The stage runs the self-test and then the check. It requires the <code>linux-release</code> and <code>linux-homebrew</code> blocks, which the workflow runs, and holds every marked block to <code>bash -n</code>. The script joined the flake's <code>patchShebangs</code> line, and the source filter already admits the README and the scripts it reads.</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Run the suite without Nix in continuous integration <span class="hs-id">task-3-2</span></h3>
+              <p data-field="note">A job on <code>ubuntu-latest</code> that installs rustup, runs <code>rustup toolchain install</code>, and runs <code>scripts/check</code> with the system's Python and no Nix. It runs weekly, and on pull requests whose paths match <code>README.md</code>, <code>rust-toolchain.toml</code>, <code>Cargo.toml</code>, <code>Cargo.lock</code>, <code>crates/**</code>, <code>scripts/**</code>, <code>flake.nix</code>, or its own workflow file. Its workflow comment says why it exists beside <code>check.yml</code>, and that its Linux minutes cost the normal rate (design decision 6). Add its row to the README's "Two workflows check what arrives" table. Lint it with actionlint.</p>
+              <p data-field="deviation">The workflow is <code>check-without-nix.yml</code>. Its job is named <code>check-without-nix</code>, not <code>check</code>, so its result is never mistaken for the <code>check</code> the branch ruleset requires. It can also be started by hand. Its row is in the README's table, which now reads "Three workflows", and actionlint 1.7.12 with ShellCheck 0.11.0 reports nothing in it.</p>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Install every release through the README <span class="hs-id">task-3-3</span></h3>
+              <p data-field="note">Two jobs in the release workflow (design decision 7):</p>
+              <p data-field="note"><code>install</code>, with <code>needs: release</code>, on <code>ubuntu-24.04</code> and <code>ubuntu-24.04-arm</code>. It polls <code>releases/latest</code> for about five minutes until it redirects to <code>/tag/$TAG</code>. It ends as skipped, with a notice, when the latest names a newer version (a patch on an older line), and fails with "latest is not $TAG" when the bound passes otherwise. Then it extracts the marked Linux block from the README at the tag, runs it verbatim with <code>bash -x</code> and an empty <code>HOME</code>, requires the tag's version, and runs <code>init</code>, <code>new change</code>, and <code>validate</code> in a scratch project.</p>
+              <p data-field="note"><code>install-homebrew</code>, with <code>needs: tap</code>, on <code>ubuntu-24.04</code>, running the Homebrew-on-Linux block verbatim with <code>bash -x</code> and requiring the tag's version.</p>
+              <p data-field="note">Both carry <code>if: github.repository == 'Firefly-Projects/htmlspec' &amp;&amp; startsWith(github.ref, 'refs/tags/v')</code>, as every job after <code>release</code> does. Lint the workflow with actionlint, and record which jobs run where.</p>
+              <p data-field="deviation">Both jobs are in <code>release.yml</code> with the needs and the condition the task gives. A running job cannot mark itself skipped, so for a patch on an older line <code>install</code> ends with a notice and the steps after it are skipped, and the job succeeds. The polling step was run on 2026-10-27 against the live latest release: <code>v1.1.0</code> was ready, <code>v1.0.0</code> ended with the notice, and <code>v1.2.0</code> failed with "latest is not v1.2.0" once the bound passed. Which jobs run where: both run only on a version tag in <code>Firefly-Projects/htmlspec</code>, and neither runs on a pull request or in this repository. Their downloads therefore wait for the 1.1.1 publish. actionlint 1.7.12 with ShellCheck 0.11.0 reports nothing in any workflow.</p>
+            </li>
+            <li class="task" id="task-3-4" data-change="added" data-state="dropped">
+              <h3>3.4 Check what only Windows shows, or say it is unchecked <span class="hs-id">task-3-4</span></h3>
+              <p data-field="note">If a Windows machine with WSL 2 is available, check three things and record the result as evidence: <code>explorer.exe .</code> opening the project, a Windows browser rendering a document over <code>file://wsl.localhost/…</code>, and <code>python3 -m http.server</code> reaching the Windows browser at <code>localhost</code>. If none is available, drop this task with that reason, and the specification records the routes as unchecked (design decision 8). Task 2.4 follows this one.</p>
+              <p data-field="reason">No Windows machine with WSL 2 was available on 2026-10-27. So nothing that only Windows shows was checked: <code>explorer.exe .</code>, a Windows browser opening a document over <code>file://wsl.localhost/…</code>, and the <code>http.server</code> route reaching a Windows browser. The README gives only the <code>http.server</code> route, which rests on WSL 2's documented localhost forwarding, and the specification records all three as unchecked.</p>
+            </li>
+            <li class="task" id="task-3-5" data-change="added" data-state="done">
+              <h3>3.5 Let the prompt stage find the binary under <code>CARGO_TARGET_DIR</code> <span class="hs-id">task-3-5</span></h3>
+              <p data-field="note"><code>scripts/check-prompt</code> defaults <code>--binary</code> to <code>target/debug/htmlspec</code> (its line 243). Make the default resolve the target directory: <code>$CARGO_TARGET_DIR/debug/htmlspec</code> when that is set, <code>target/debug/htmlspec</code> otherwise. Then a contributor who sets <code>CARGO_TARGET_DIR</code> runs the stage against the binary <code>scripts/check</code> just built. Test it the way the script's other behaviour is tested, and say it in task 2.5's README text.</p>
+              <p data-field="note">Done on 2026-10-27. The default is <code>$CARGO_TARGET_DIR/debug/htmlspec</code> when that is set and not empty, and <code>target/debug/htmlspec</code> otherwise. The script checks that rule first, before any case, because it needs no binary. With <code>CARGO_TARGET_DIR</code> pointing outside the repository, the stage's own build and then the script without <code>--binary</code> passed all four prompt cases.</p>
+            </li>
+            <li class="task" id="task-4-1" data-change="added" data-state="done">
+              <h3>4.1 Record the install job in the publish runbook <span class="hs-id">task-4-1</span></h3>
+              <p data-field="note">Step 6, "Watch the release workflow to its end", says that a failed <code>install</code> or <code>install-homebrew</code> job does not stop the run, and that its result is carried to step 8. Step 8, "Check each channel", records both jobs' results. When the README's commands were broken at the tag, step 8 records the failure and stays open until the fixing patch release's <code>install</code> job passes, then is settled with a note naming that release, so the record can land. "Each channel's version is recorded" says so in the runbook's specification, with a scenario for the README broken at the tag. The runbook becomes 0.3.0, with a changelog heading (design decision 9).</p>
+              <p data-field="note">Done on 2026-10-27. Step 6 carries a failed install job to step 8. Step 8 records both jobs, records a tag older than the latest release as untested by them, and keeps the step open when the README's commands were broken at the tag. "Each channel's version is recorded" gains the statement and the scenario "The README broken at the tag". The runbook is 0.3.0 with its changelog heading, and it validates strictly and is canonical.</p>
+            </li>
+            <li class="task" id="task-5-1" data-change="added" data-state="done">
+              <h3>5.1 Advance the release to 1.1.1 <span class="hs-id">task-5-1</span></h3>
+              <p data-field="note">With <code>scripts/set-version</code>, and a CHANGELOG entry naming the WSL route, the install blocks, the contributor path, the two jobs, and the withdrawn native proposal (design decision 10).</p>
+              <p data-field="note">Done on 2026-10-27. <code>scripts/set-version 1.1.1</code> moved the version, the five pins, and the lockfile, and the 45 installed instruction files' <code>generatedBy</code> lines moved to 1.1.1. The CHANGELOG has a <code>## 1.1.1</code> entry. <code>spec.nix</code> stays at 1.1.0 until archival.</p>
+            </li>
+            <li class="task" id="task-5-2" data-change="added" data-state="done">
+              <h3>5.2 Take the code review, and settle each finding <span class="hs-id">task-5-2</span></h3>
+              <p data-field="note">One review of the whole change before archival, under the merge rule.</p>
+              <p data-field="note">Done on 2026-10-27. One review of pull request 86 ran under the merge rule and found nothing high. Each finding was reproduced and settled: the Windows-browser route is stated as resting on WSL 2's localhost forwarding and not tried here; <code>check-readme-install</code> requires the Linux block's <code>sha256sum --check</code> line before its unpack and install lines, and all four marked blocks; row 36's allowance ends where the directory name does, with <code>publish/test</code> cases for a home directory whose name only begins with <code>linuxbrew</code> or <code>operator</code>; the release job passes <code>--latest=false</code> unless the tag is the highest published version, and only the latest release reaches the tap; step 8 settles on the fixing release's run of the job that failed, and a job that failed for another reason is run again and recorded; the Ubuntu commands run <code>apt-get update</code> first and the <code>PATH</code> advice names login shells, <code>~/.bash_profile</code>, and desktop terminals; decision 9's older-line sentence names the Linux <code>install</code> job; <code>check-prompt</code>'s comment on an empty <code>CARGO_TARGET_DIR</code> is corrected; and the runbook scenario no longer asks for a trace line.</p>
+            </li>
+            <li class="task" id="task-5-3" data-change="added" data-state="done">
+              <h3>5.3 Archive at 1.1.1 <span class="hs-id">task-5-3</span></h3>
+              <p data-field="note">Write the specification from what was built. It restates toolchain-packaging's "A release reaches every channel from one tag" with the install job's statement and scenario, and records anything task 3.4 left unchecked. Then move <code>spec.nix</code> to 1.1.1 and run <code>htmlspec archive install-through-wsl-without-nix</code>.</p>
+              <p data-field="note">Done on 2026-10-27. The specification restates toolchain-packaging's "A release reaches every channel from one tag" whole, as modified, with three statements and three scenarios added, and records the routes only Windows shows as unchecked. <code>spec.nix</code> is 1.1.1, <code>htmlspec show --diff</code> showed only this change's words, the merge reached the accepted specification, and <code>htmlspec sync</code> reports the contract applied in full.</p>
+            </li>
+            <li class="task" id="task-5-4" data-change="added" data-state="done">
+              <h3>5.4 Record the readiness reads and rehearse the export <span class="hs-id">task-5-4</span></h3>
+              <p data-field="note">After archival, record the read of every allowlisted path whose content changed, then run <code>publish/export --ref HEAD --dry-run</code> against an empty local bare repository.</p>
+              <p data-field="note">Done on 2026-10-27, after archival, in the commits that follow it. The export named the files under twelve allowlisted paths as changed since their recorded read: <code>.claude</code>, <code>.codex</code>, <code>.github</code>, <code>.pi</code>, <code>Cargo.lock</code>, <code>Cargo.toml</code>, <code>CHANGELOG.md</code>, <code>flake.nix</code>, <code>htmlspec</code>, <code>README.md</code>, <code>scripts</code>, and <code>spec.nix</code>. Every added line of each of those files was read in its diff and swept for each kind <code>publish/READINESS.md</code> lists, and each path's read was recorded there at the content the archived tree holds. Then <code>publish/export --ref HEAD --dry-run</code>, against an empty local bare repository, found every read current, scanned the exported tree clean, and passed every stage of the suite inside it.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

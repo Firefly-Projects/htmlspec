@@ -62,6 +62,7 @@
             a run. A contract with no machine declarations SHALL report zero checks, without claiming to
             have established unstated prerequisites.</p>
             <p>A second declaration format, <code>preflight/v2</code>, SHALL read every form <code>preflight/v1</code> reads and one optional field, <code>remedy</code>: text saying where to get what the check needs. A remedy SHALL be one line of 1 to 200 characters once the spaces around it are trimmed, holding no control character, no whitespace but the plain space, and no invisible character, Unicode's format and default-ignorable characters, beyond the two joiners and one emoji presentation selector directly after the character it is for. A remedy breaking any of these SHALL make the declaration malformed. A remedy is text: preflight SHALL NOT run it, open an address in it, or count it as satisfying the check. <code>preflight/v1</code> SHALL keep refusing the field, and an unsupported format version SHALL be reported naming the formats the program reads.</p>
+            <p>A third declaration format, <code>preflight/v3</code>, SHALL read every form <code>preflight/v2</code> reads, with its remedy, and one more kind, <code>run</code>, whose fields are <code>runbook</code> and an optional <code>atLeast</code>, and whose need is a finished, passed run of that runbook recorded in the same project. <code>preflight/v1</code> and <code>preflight/v2</code> SHALL refuse <code>run</code> as an unknown kind, and the fault SHALL say it is declared in <code>preflight/v3</code>. A run check that names its own runbook, and one whose run checks lead back to its own runbook through others, SHALL be malformed, and SHALL prevent starting a run as every malformed declaration does, naming the cycle in order.</p>
             <article class="scenario" id="scenario-a-missing-tool" data-change="unchanged">
               <h4>A missing tool</h4>
               <dl>
@@ -151,6 +152,142 @@
                 <dd>the field is refused as one the form does not have</dd>
               </dl>
             </article>
+            <article class="scenario" id="scenario-a-run-check-in-a-v2-declaration" data-change="unchanged">
+              <h4>A run check in a v2 declaration</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a requirement's note declares <code>preflight/v2</code> with the kind <code>run</code></dd>
+                <dt>Then</dt>
+                <dd>the declaration is refused as an unknown kind, and the fault says the kind is declared in <code>preflight/v3</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-runbook-that-requires-itself" data-change="unchanged">
+              <h4>A runbook that requires itself</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a run check names the runbook that declares it</dd>
+                <dt>Then</dt>
+                <dd>the contract is malformed: preflight and the start exit 2 and write no record</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-cycle-through-the-declaring-runbook" data-change="unchanged">
+              <h4>A cycle through the declaring runbook</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>migrate requires a run of backup, and backup requires a run of migrate</dd>
+                <dt>When</dt>
+                <dd>preflight or a start is asked of migrate</dd>
+                <dt>Then</dt>
+                <dd>the contract is malformed: it exits 2 and names the cycle in order, starting from migrate</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-prerequisite-run-is-met-by-a-finished-passed-record" data-change="unchanged">
+            <h3>A prerequisite run is met by a finished, passed record <span class="hs-id">req-a-prerequisite-run-is-met-by-a-finished-passed-record</span></h3>
+            <p>A run check SHALL name its runbook by a runbook directory whose name equals the declared name byte for byte, whatever the filesystem. A name that no runbook directory holds SHALL leave the check unmet, with a remedy that says to add the runbook or correct the name.</p>
+            <p>A record under that runbook's <code>runs/</code> folder SHALL satisfy the check when it parses without error recovery, is a tasks document, has at least one task done and every task done or dropped, and records an outcome of <code>passed</code> for every requirement it carries. Any satisfying record SHALL meet the check, because a record states no time and no record is the latest. A record that is a symbolic link, or resolves outside that runbook's <code>runs/</code> folder, SHALL NOT satisfy it, because the run it records may have happened in another project.</p>
+            <p>Where <code>atLeast</code> is declared, a record SHALL satisfy the check only when the runbook release it states is at or above <code>atLeast</code> within the same major. A record's release SHALL be read from the one <code>htmlspec-runbook-release</code> meta in its head and from nowhere else, and a record that states none, states one that is not three dot-separated integers, or states more than one SHALL NOT satisfy a check with <code>atLeast</code>.</p>
+            <p>A record that does not satisfy the check SHALL be named with the first reason it does not, in this order: it is a link, it cannot be read, it needs error recovery, it is not a tasks document, it has no task done, it is still open, it recorded an outcome other than <code>passed</code>, it records no outcome for a requirement, or its release is missing, malformed, stated twice, or misses <code>atLeast</code>. Up to three satisfying records SHALL be named, with a count of the rest, and every run of the named runbook still open SHALL be named whether the check is met or not.</p>
+            <p>A specification reached through the run checks that cannot be read, needs error recovery, or does not validate SHALL leave the check unavailable, naming that runbook, and never met.</p>
+            <article class="scenario" id="scenario-a-finished-passed-record" data-change="unchanged">
+              <h4>A finished, passed record</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a record of backup has every task done and every requirement it carries recorded as passed</dd>
+                <dt>Then</dt>
+                <dd>it satisfies a run check naming backup, and the check is met</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-open-record" data-change="unchanged">
+              <h4>An open record</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the only record of backup has 1 of 2 tasks done</dd>
+                <dt>Then</dt>
+                <dd>the check is unmet, and the record is named as still open with 1 of 2 steps done</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-failed-outcome" data-change="unchanged">
+              <h4>A recorded failure</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a finished record of backup recorded failed for one requirement</dd>
+                <dt>Then</dt>
+                <dd>it does not satisfy the check, and the way forward named is a new run, never an edited outcome</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-unrecorded-requirement" data-change="unchanged">
+              <h4>A requirement with no outcome</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a finished record of backup carries a requirement it records no outcome for</dd>
+                <dt>Then</dt>
+                <dd>it does not satisfy the check, and the record is named with that requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-vacuous-record" data-change="unchanged">
+              <h4>A record that did no work</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a record of backup has every task dropped, or a file under runs/ is empty or not a tasks document</dd>
+                <dt>Then</dt>
+                <dd>it does not satisfy the check</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-release-below-the-bound" data-change="unchanged">
+              <h4>A release below the bound</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a check declares atLeast 1.4.0 and the only passed record states 1.3.0</dd>
+                <dt>Then</dt>
+                <dd>the check is unmet, and the record is named with its release</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-release-in-another-major" data-change="unchanged">
+              <h4>A release in another major</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a check declares atLeast 1.4.0 and the only passed record states 2.0.0</dd>
+                <dt>Then</dt>
+                <dd>the check is unmet</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-record-that-states-no-release" data-change="unchanged">
+              <h4>A record that states no release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a passed record has no release meta in its head, or one in its body only</dd>
+                <dt>Then</dt>
+                <dd>it satisfies a check without atLeast, and not one with atLeast</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-missing-runbook" data-change="unchanged">
+              <h4>A runbook the project does not have</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a run check names backup and the project has only Backup</dd>
+                <dt>Then</dt>
+                <dd>the check is unmet as missing, and the remedy says to add the runbook or correct the name</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-several-satisfying-records" data-change="unchanged">
+              <h4>Several satisfying records</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>five records of backup satisfy the check</dd>
+                <dt>Then</dt>
+                <dd>three are named with their releases, followed by and 2 more</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-linked-record" data-change="unchanged">
+              <h4>A record linked from another project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a file under backup/runs/ is a symbolic link to another project's passed record</dd>
+                <dt>Then</dt>
+                <dd>it does not satisfy the check, and it is named as a link</dd>
+              </dl>
+            </article>
           </section>
           <section class="requirement" id="req-package-manifests-retain-authority-over-package-pins" data-change="unchanged">
             <h3>Package manifests retain authority over package pins <span class="hs-id">req-package-manifests-retain-authority-over-package-pins</span></h3>
@@ -221,6 +358,7 @@
   gate --&gt;|"every one passes"| created["Record and its directory created, carrying the runbook version and a verification of each passed machine requirement"]</pre>
               </details>
             </figure>
+            <p>A run check SHALL read only the records of the runbook it names, in the project the declaring runbook is read from, the store's under <code>--store</code>, and SHALL read nothing else. An unmet run check SHALL refuse the start as an unmet machine requirement does, before anything is written, and no option SHALL override it. A new record SHALL state the release of the runbook it ran in an <code>htmlspec-runbook-release</code> meta in its head, and the verification it carries for a passed run check SHALL name up to three satisfying records with their releases and a count of the rest.</p>
             <article class="scenario" id="scenario-a-prerequisite-fails" data-change="unchanged">
               <h4>A prerequisite fails</h4>
               <dl>
@@ -268,6 +406,28 @@
                 <dd>missing current machine prerequisites do not prevent that review or promote its findings to errors</dd>
               </dl>
             </article>
+            <article class="scenario" id="scenario-a-start-refused-for-an-unmet-prerequisite" data-change="unchanged">
+              <h4>A start refused for an unmet prerequisite</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>migrate requires a run of backup, and backup has no finished, passed run</dd>
+                <dt>When</dt>
+                <dd><code>htmlspec run migrate --as m1</code> is invoked</dd>
+                <dt>Then</dt>
+                <dd>it exits 1, names the check and why it is unmet, and creates no record</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-start-after-its-prerequisite-passed" data-change="unchanged">
+              <h4>A start after its prerequisite passed</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>backup has a finished, passed run nightly</dd>
+                <dt>When</dt>
+                <dd>a run of migrate starts</dd>
+                <dt>Then</dt>
+                <dd>the record states its runbook release in its head, and its verification for the run check names nightly with its release</dd>
+              </dl>
+            </article>
           </section>
           <section class="requirement" id="req-a-carried-runbook-does-not-require-its-source-project-s-history" data-change="unchanged">
             <h3>A carried runbook does not require its source project's history <span class="hs-id">req-a-carried-runbook-does-not-require-its-source-project-s-history</span></h3>
@@ -281,11 +441,12 @@
             records SHALL remain at their source unless separately copied; their absence at the destination
             SHALL NOT imply they never existed or prevent a new run. Transport and history synchronization
             SHALL remain outside the preflight operation.</p>
+            <p>The sentences above hold for a carried runbook with no run check, and for a carried runbook's own records. A carried runbook that declares a run check SHALL have it evaluated in the receiving project: it SHALL need the runbook it names there, and a finished, passed run of it recorded there, and a prerequisite absent from the receiving project SHALL leave the check unmet.</p>
             <article class="scenario" id="scenario-the-source-project-is-absent" data-change="unchanged">
               <h4>The source project is absent</h4>
               <dl>
                 <dt>Given</dt>
-                <dd>a copied runbook and its shared assets in a minimal receiving layout</dd>
+                <dd>a copied runbook that declares no run check and its shared assets in a minimal receiving layout</dd>
                 <dt>When</dt>
                 <dd>the operator selects it and satisfies its declared machine requirements</dd>
                 <dt>Then</dt>
@@ -296,7 +457,7 @@
               <h4>A carried runbook has no prior records</h4>
               <dl>
                 <dt>When</dt>
-                <dd>its first local run starts</dd>
+                <dd>its first local run starts, and it declares no run check</dd>
                 <dt>Then</dt>
                 <dd>a new local record is created and no source history is fabricated or required</dd>
               </dl>
@@ -308,6 +469,17 @@
                 <dd>the copied procedure and a newly created record are opened without network access</dd>
                 <dt>Then</dt>
                 <dd>both use the receiving project's one copied asset store</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-carried-runbook-whose-prerequisite-has-not-run-here" data-change="unchanged">
+              <h4>A carried runbook whose prerequisite has not run here</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a carried runbook requires a run of backup, and the receiving project has no passed run of backup</dd>
+                <dt>When</dt>
+                <dd>the operator checks it with <code>--store</code></dd>
+                <dt>Then</dt>
+                <dd>the check is unmet, and a copied record from elsewhere is not what meets it</dd>
               </dl>
             </article>
           </section>

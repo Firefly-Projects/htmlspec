@@ -28,9 +28,11 @@ mod install;
 mod invocations;
 mod migrate;
 mod operation;
+mod order;
 mod output;
 mod plan;
 mod preflight;
+mod prerequisites;
 mod project;
 mod prompt;
 mod runbook_release;
@@ -202,10 +204,10 @@ enum Command {
 
     /// Report whether a runbook can start in this working environment.
     ///
-    /// Checks the machine prerequisites the runbook declares — tools and their versions, a pinned
-    /// package-manager environment, installed agent skills, and the state of the working directory —
-    /// and writes nothing. The ordering is the value: a missing tool found here costs nothing, and
-    /// found at step six costs the first five steps.
+    /// Checks the prerequisites the runbook declares — tools and their versions, a pinned
+    /// package-manager environment, installed agent skills, the state of the working directory, and
+    /// a finished, passed run of another runbook — and writes nothing. The ordering is the value: a
+    /// missing tool found here costs nothing, and found at step six costs the first five steps.
     ///
     /// Reports rather than repairs. What is missing is named with a remedy, and how to supply it on
     /// this machine is the operator's judgment, because choosing a package manager for an unknown
@@ -213,7 +215,8 @@ enum Command {
     ///
     /// Machine requirements are evaluated against the invocation's working directory and
     /// environment, while `--store` selects where the runbook's documents are read from. The two
-    /// differ whenever `--store` is used, and the report names both.
+    /// differ whenever `--store` is used, and the report names both. A run check reads the runbooks
+    /// and records of the project the runbook is read from, which under `--store` is the store's.
     ///
     /// `htmlspec list --runbooks` lists the runbooks this can check.
     Preflight(PreflightArgs),
@@ -560,9 +563,20 @@ struct ListArgs {
     ///
     /// A flag beside `--specs` rather than a command of its own: listing what the
     /// project holds is this operation, and a second command would invent a second
-    /// vocabulary for it.
+    /// vocabulary for it. Each runbook is followed by the runs of other runbooks it
+    /// requires and whether each is met now. "Met" covers those prerequisite runs
+    /// only, never a machine check: `htmlspec preflight <runbook>` reports those.
     #[arg(long)]
     runbooks: bool,
+
+    /// With `--runbooks`, draw which runbook requires which as a Mermaid flowchart.
+    ///
+    /// Printed to standard output with nothing around it, ready to paste into a
+    /// document's `<pre class="mermaid">`. Each arrow points from a prerequisite to the
+    /// runbook that requires it, styled by whether it is met now. With `--json` the
+    /// payload is the listing's, which already holds everything the graph draws.
+    #[arg(long, requires = "runbooks")]
+    graph: bool,
 }
 
 #[derive(Args, Clone, Debug, Eq, PartialEq)]
@@ -912,9 +926,11 @@ impl Invocation {
                 streams,
             ),
             Self::Assets(AssetsArgs { path }) => commands::assets(path.as_deref(), streams),
-            Self::List(ListArgs { specs, runbooks }) => {
-                commands::list(specs, runbooks, store, streams)
-            }
+            Self::List(ListArgs {
+                specs,
+                runbooks,
+                graph,
+            }) => commands::list(specs, runbooks, graph, store, streams),
             Self::StoreAdd(StoreAddArgs { id, path }) => commands::store_add(&id, &path, streams),
             Self::StoreList(StoreListArgs {}) => commands::store_list(streams),
             Self::StoreRemove(StoreRemoveArgs { id }) => commands::store_remove(&id, streams),
@@ -1220,7 +1236,7 @@ mod tests {
                 "name",
                 "withdrawn.html",
             ],
-            Operation::List => &["--specs", "--runbooks"],
+            Operation::List => &["--specs", "--runbooks", "--graph"],
             Operation::Run => &["release", "--as", "first", "--check"],
             Operation::Preflight => &["release"],
             Operation::Status => &["--change", "a-change"],

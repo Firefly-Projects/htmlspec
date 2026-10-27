@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Install htmlspec on Windows through WSL, without Nix</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Install htmlspec on Windows through WSL, without Nix</h1>
+        <p>A person on Windows can use htmlspec today, through WSL and the Linux build, but nothing tells them so, and the README reads as if Nix were the way in. This change makes WSL the documented Windows route and makes the routes without Nix as clear as the one with it: exact commands that install the published binary on Linux and WSL, run against the release on every release, and a contributor path that names what a machine without Nix needs. Native Windows is not supported, by the user's decision.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Install htmlspec on Windows through WSL, without Nix</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>The README's "Getting started" lists <code>nix run</code> first, then Homebrew and <code>cargo install</code>, then says a binary can be downloaded from the releases page, with no commands. It never mentions Windows or WSL. Two things happened that this would have prevented:</p>
+          <ul>
+            <li>A colleague installed htmlspec with Homebrew on Linux and could not run it. Homebrew on Linux lives under <code>/home/linuxbrew/.linuxbrew</code>, and the step that puts it on <code>PATH</code> is printed once by Homebrew's installer and appears nowhere in our README.</li>
+            <li>The same colleague then reached for Nix, which works. But a person on Windows or a plain Ubuntu machine has no reason to install Nix to run one static binary. Every release already ships that binary for <code>x86_64-unknown-linux-musl</code> and <code>aarch64-unknown-linux-musl</code>, and it runs under WSL as it is.</li>
+          </ul>
+          <p>Contributors meet the same tilt. "Building" shows four Nix commands and two without, and it does not say that <code>scripts/check</code>, the whole suite, runs without Nix, or what a machine needs for it to.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <p>What working looks like:</p>
+          <ol>
+            <li>A person on Windows reads one section: install WSL, open Ubuntu, and install htmlspec there with the commands below. Native Windows is not supported.</li>
+            <li>On Linux or in WSL they paste one block. It picks the binary for their machine from the latest release, checks it against <code>SHA256SUMS</code>, and installs <code>htmlspec</code> to <code>~/.local/bin</code>. Pasting it again upgrades. The block names no version, so it stays right from release to release.</li>
+            <li>Homebrew on Linux and <code>cargo install</code> each get a few lines of their own. Homebrew's include the step that puts it on <code>PATH</code>, and <code>cargo</code>'s name the linker Ubuntu needs.</li>
+            <li>Nix is described as one route among several, optional everywhere.</li>
+            <li>The README says where a project should live under WSL: in the Linux file system, not under <code>/mnt/c</code>. It says how a Windows browser opens the documents, and that agent tools run inside WSL beside htmlspec.</li>
+            <li>A contributor without Nix reads what they need: rustup, a C linker, Python 3, bash, and git. They also read that <code>scripts/check</code> runs every stage with those, and what only the Nix sandbox checks.</li>
+            <li>Every release installs itself through the README's own Linux commands, run verbatim on both Linux architectures after it is published, and the publish runbook records the result when it checks each channel. A README whose commands stopped working is found at the release, not by the next person to try them.</li>
+          </ol>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <ul>
+            <li><strong>A native Windows build.</strong> Drafted as <code>release-a-windows-build</code> and withdrawn on 2026-10-26 by the user's decision. Everything around the program assumes a POSIX shell: the bash scripts, the git hooks, the Nix development shell, and preflight's model of <code>PATH</code> and executables. A native build would be the binary alone, and supporting it would mean supporting Windows' differences everywhere else. Windows users use WSL.</li>
+            <li><strong>An install script published with each release</strong>, run as <code>curl … | sh</code>. It would shorten the Linux route to one line. Set aside by the user's decision of 2026-10-26: there is no <code>install.sh</code>, only the README block. A script would add a release asset that people are asked to run unread, and the block shows every command before it runs.</li>
+            <li><strong>Documentation only, untested.</strong> Cheaper, and it is how the release-page sentence came to be: nothing ran it, so nothing noticed it gave no commands. Commands that nothing runs go stale.</li>
+          </ul>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <ul>
+            <li><strong>Not a native Windows build, and no promise of one later.</strong> No Windows target, no PowerShell instructions, no <code>.exe</code>, and no change to how the program handles paths or executables.</li>
+            <li><strong>No change to the program.</strong> The command surface and the documents the program writes are unchanged. This is documentation, its tests, the release workflow, the export scan's allowance for Homebrew's Linux prefix, and the publish runbook. The contract changes in one place: toolchain-packaging's "A release reaches every channel from one tag" gains one statement and one scenario, for the install check.</li>
+            <li><strong>No new channel.</strong> The Linux tarballs, Homebrew, crates.io, and the flake already exist. This documents them for Linux and WSL and tests what the README tells people to run.</li>
+            <li><strong>No WSL runner.</strong> GitHub provides none. WSL 2 runs a Linux kernel, so the Linux jobs run the same binary and the same commands. What only a Windows machine can show, a Windows browser opening a document stored in WSL, is checked once by hand where possible and stated as unchecked where not.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

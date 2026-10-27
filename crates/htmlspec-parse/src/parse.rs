@@ -7,13 +7,19 @@ use html5ever::tendril::TendrilSink;
 use kuchikiki::NodeRef;
 
 use crate::diagnostics::{classify, ParseDiagnosticCode};
+use crate::visible::shown;
 
 /// One recovery the parser performed, with the code this project owns for it.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RecoveredError {
     /// The stable project-owned code.
     pub code: ParseDiagnosticCode,
-    /// The message the pinned parser produced, kept verbatim as evidence.
+    /// The message the pinned parser produced, kept as evidence, with each character a terminal
+    /// would not show as itself written as its code point, [`crate::visible::shown`].
+    ///
+    /// The parser quotes the character it stopped at, which is the document's own, so a document
+    /// holding an escape sequence's opening would otherwise write it into every report of the
+    /// recovery. Every other character is kept as the parser wrote it.
     pub message: String,
 }
 
@@ -56,10 +62,11 @@ pub fn parse_document(html: &str) -> ParseOutcome {
     opts.tokenizer.exact_errors = true;
     opts.tree_builder.exact_errors = true;
     opts.on_parse_error = Some(Box::new(move |message| {
+        // Classified from the parser's own text, then escaped for the reports that quote it.
         let message = message.to_string();
         sink.borrow_mut().push(RecoveredError {
             code: classify(&message),
-            message,
+            message: shown(&message),
         });
     }));
 

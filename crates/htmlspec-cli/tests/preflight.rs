@@ -356,9 +356,10 @@ fn every_declared_example_in_the_readme_parses() {
     // marker, and a sentence is not a declaration. What an author copies is the example in the
     // document, so that is what is checked.
     //
-    // Each example keeps its own marker, `preflight/v1` or `preflight/v2`, and is checked under it:
-    // a v2 example wrapped in a v1 note would be refused for its remedy, and a v1 example wrapped
-    // in a v2 note would never test that v1 still reads.
+    // Each example keeps its own marker, `preflight/v1`, `preflight/v2`, or `preflight/v3`, and is
+    // checked under it: a v2 example wrapped in a v1 note would be refused for its remedy, a v3
+    // example wrapped in a v2 note would be refused for its `run` kind, and an older example wrapped
+    // in a newer note would never test that the older format still reads.
     let examples: Vec<(&str, &str)> = source
         .split("data-field=\"note\">preflight/")
         .skip(1)
@@ -372,7 +373,7 @@ fn every_declared_example_in_the_readme_parses() {
         !examples.is_empty(),
         "the README documents no declaration, so there is nothing for a contributor to copy"
     );
-    for version in ["v1", "v2"] {
+    for version in ["v1", "v2", "v3"] {
         assert!(
             examples.iter().any(|(found, _)| *found == version),
             "the README documents no preflight/{version} declaration"

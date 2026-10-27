@@ -37,6 +37,11 @@ process. Items 1 and 2 are the guards added in `prompt-selection-guards`.
 Usage:
   scripts/check-prompt              run every case
   scripts/check-prompt --binary P   use the binary at P
+
+Without `--binary`, the binary is the one `cargo build` writes: under `$CARGO_TARGET_DIR`
+when that is set, as it is for a contributor who keeps build output elsewhere, and under
+`target/` otherwise. The stage builds it just before, so the default must name that same
+place or the stage drives a stale binary, or none.
 """
 
 from __future__ import annotations
@@ -227,6 +232,25 @@ def the_flag_still_means_no_tools(binary: Path, stack) -> None:
     )
 
 
+def default_binary(environ: dict[str, str]) -> Path:
+    """The binary `cargo build` writes, honouring `CARGO_TARGET_DIR` as cargo does."""
+    target = environ.get("CARGO_TARGET_DIR") or "target"
+    return Path(target) / "debug" / "htmlspec"
+
+
+def the_default_binary_follows_cargo_target_dir() -> None:
+    """Checked before any case, because it needs no binary: only where the default points."""
+    assert default_binary({}) == Path("target/debug/htmlspec"), default_binary({})
+    assert default_binary({"CARGO_TARGET_DIR": ""}) == Path("target/debug/htmlspec"), (
+        "an empty CARGO_TARGET_DIR names no directory: cargo refuses one, so the stage's build "
+        "fails before this runs, and the default falls back to target/ rather than naming nowhere"
+    )
+    assert default_binary({"CARGO_TARGET_DIR": "/elsewhere/build"}) == Path(
+        "/elsewhere/build/debug/htmlspec"
+    ), default_binary({"CARGO_TARGET_DIR": "/elsewhere/build"})
+    assert default_binary({"CARGO_TARGET_DIR": "out"}) == Path("out/debug/htmlspec")
+
+
 CASES = [
     a_fresh_repository_opens_with_every_row_checked,
     an_empty_confirmation_is_refused_and_asks_again,
@@ -240,10 +264,19 @@ def main() -> int:
     parser.add_argument(
         "--binary",
         type=Path,
-        default=Path("target/debug/htmlspec"),
-        help="the htmlspec binary to drive",
+        default=None,
+        help="the htmlspec binary to drive (default: the one cargo build writes)",
     )
     arguments = parser.parse_args()
+
+    try:
+        the_default_binary_follows_cargo_target_dir()
+    except AssertionError as error:
+        print(f"!!! the_default_binary_follows_cargo_target_dir\n    {error}", file=sys.stderr)
+        return 1
+    print("  ok  the_default_binary_follows_cargo_target_dir")
+    if arguments.binary is None:
+        arguments.binary = default_binary(dict(os.environ))
 
     binary = arguments.binary.resolve()
     if not binary.exists():

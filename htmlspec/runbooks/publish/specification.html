@@ -159,6 +159,8 @@
             <h3>Each channel's version is recorded <span class="hs-id">req-each-channels-version-is-recorded</span></h3>
             <p>A run MUST record, for each of the four channels, what <code>htmlspec --version</code> prints after installing from it, and MUST NOT settle step 8 as done while any channel fails to install or prints another version than <code>X.Y.Z</code>.</p>
             <p>The release workflow passing says that each job ran. It does not say that a person can install the release, which is what publishing is for. The four channels are installed and run the way a reader of the README would, so a channel that broke is found by the run rather than by the first person to try it.</p>
+            <p>A run MUST also record the result of the release workflow's <code>install</code> job, on both Linux targets, and its <code>install-homebrew</code> job, which run the README's install commands against the published release. When a job failed because those commands were broken at the tag, the run MUST keep step 8 open until the fixing patch release's run of the job that failed, <code>install</code> or <code>install-homebrew</code>, passes, and then settle it with a note naming that release. A job that failed for another reason, such as <code>latest</code> not naming the tag in time or the network, MUST be run again and its rerun recorded.</p>
+            <p>The README is what a reader follows, and the install jobs run it verbatim. A broken command found there is fixed in a patch release, because the release it describes is already public. Keeping step 8 open until the fix passes stops a record from landing that says the release can be installed when the README says otherwise, and settling it then lets the record land rather than stay open for ever.</p>
             <article class="scenario" id="scenario-the-tap-not-updated" data-change="unchanged">
               <h4>The tap not updated</h4>
               <dl>
@@ -168,6 +170,17 @@
                 <dd>Step 8 installs through Homebrew.</dd>
                 <dt>Then</dt>
                 <dd>The formula is absent or names the previous version. The step stays open, and the record names the channel and what it printed, until the token is renewed and the tap job is run again.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-readme-broken-at-the-tag" data-change="unchanged">
+              <h4>The README broken at the tag</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A release whose <code>install</code> job failed, because the README's Linux block, at the tag, named an address that no longer answered.</dd>
+                <dt>When</dt>
+                <dd>Step 8 records the channels and the install jobs.</dd>
+                <dt>Then</dt>
+                <dd>The record names the failed job and the message it ended with, and step 8 stays open. A patch release fixes the block, and when its <code>install</code> job passes, step 8 is settled with a note naming that release, and the record can land.</dd>
               </dl>
             </article>
           </section>

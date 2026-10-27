@@ -1744,7 +1744,7 @@ fn a_runbook_declaring_no_machine_check_starts_and_claims_nothing() {
     let (code, out, err) = run_in(&project, &["run", "release", "--as", "first"]);
     assert_eq!(code, 0, "{out}{err}");
     assert!(
-        out.contains("0 of 0 machine check"),
+        out.contains("0 of 0 check(s) passed before it started"),
         "the start report does not say how many checks passed:\n{out}"
     );
     assert!(records(&runbook).join("first.html").is_file());

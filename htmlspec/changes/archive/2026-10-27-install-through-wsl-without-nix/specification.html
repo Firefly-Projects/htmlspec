@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Install htmlspec on Windows through WSL, without Nix</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Install htmlspec on Windows through WSL, without Nix</h1>
+        <p>What this change established. Windows is served through WSL 2 and the Linux build, and native Windows is not a goal. The README installs htmlspec by platform, with a Linux block that names no version, checks its download against <code>SHA256SUMS</code>, and installs under <code>~/.local</code>, and it names what a contributor without Nix needs. The check suite holds those commands offline, and every release that is the repository's latest is installed through them, verbatim, on both Linux targets. Only the latest release becomes the repository's latest and reaches the Homebrew tap, so a patch on an older line can neither redirect the README's block nor downgrade the formula.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Install htmlspec on Windows through WSL, without Nix</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-a-release-reaches-every-channel-from-one-tag" data-change="modified">
+            <h3>A release reaches every channel from one tag <span class="hs-id">req-a-release-reaches-every-channel-from-one-tag</span></h3>
+            <p>Every release SHALL be cut from one tag, <code>vX.Y.Z</code>, whose version equals the version the workspace declares, and the binaries, the crates, and the Homebrew formula the release produces SHALL each name that version. The release SHALL refuse a tag that names another version before it builds anything.</p>
+            <p>Publication SHALL begin only from a version tag in the public repository, <code>Firefly-Projects/htmlspec</code>, only for a commit that repository's <code>main</code> holds, and only after the check suite has passed on that commit. A tag in any other repository SHALL publish nothing. A release SHALL publish only from a run in which the binary of every target it releases was built and the formula passed its check, though runs elsewhere leave some of those jobs out.</p>
+            <p>A publication interrupted partway SHALL finish when run again, and SHALL NOT publish any version twice: the crates publish one at a time, a version the registry already holds is skipped, and a rate limit is waited out within a stated budget, after which the run stops and names the crates that remain. Every request the release makes to crates.io SHALL carry a fixed User-Agent that names the project, and no personal information.</p>
+            <p>Each channel that ships the binary SHALL ship its notices with it: each release tarball holds them beside the program, the Homebrew formula installs them, and the Nix package installs them under <code>share/doc/htmlspec/</code>. The formula SHALL declare exactly the licenses the binary credits. The check suite SHALL fail when <code>CRATE-LICENSES</code> differs from what the lockfile reaches, naming each crate added, removed, or changed, and when the formula's template declares other licenses than the binary credits, so a pull request that changes either meets it, on Linux as well as where the macOS jobs run.</p>
+            <ins>
+              <p>A release SHALL become the repository's latest, the release <code>releases/latest</code> names, only when its version is the highest among the repository's published releases, and only that release SHALL reach the Homebrew tap, whose formula holds one version. A release on an older line SHALL NOT be made the latest, and its run SHALL leave the tap as it was.</p>
+              <p>After a release that is the repository's latest is published, its workflow SHALL install it through the README's documented Linux commands, verbatim, on both Linux targets, and through the README's Homebrew-on-Linux commands once the formula is in the tap. The run SHALL fail when an installed binary does not name the tag's version. A release on an older line SHALL be reported as untested by the Linux commands, not failed, and the Homebrew commands SHALL not run for it.</p>
+              <p>The check suite SHALL hold the README's install commands without the network: each marked install block SHALL parse, the Linux block SHALL check its download against <code>SHA256SUMS</code> before it unpacks or installs it, SHALL ask only for a target the release builds, and SHALL read <code>SHA256SUMS</code> as the release writes it.</p>
+            </ins>
+            <article class="scenario" id="scenario-a-tag-naming-another-version" data-change="unchanged">
+              <h4>A tag naming another version</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a workspace that declares 0.33.0</dd>
+                <dt>When</dt>
+                <dd>the release runs on the tag <code>v9.9.9</code></dd>
+                <dt>Then</dt>
+                <dd>it refuses before any build, naming both versions</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tag-in-another-repository" data-change="unchanged">
+              <h4>A tag in another repository</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a version tag is pushed to a repository other than the public one</dd>
+                <dt>Then</dt>
+                <dd>the workflow verifies and builds, and its release, crates, and tap jobs publish nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tag-on-a-commit-main-does-not-hold" data-change="unchanged">
+              <h4>A tag on a commit main does not hold</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a version tag in the public repository names a commit that its <code>main</code> does not hold</dd>
+                <dt>Then</dt>
+                <dd>the release refuses it, and nothing publishes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-artifact-names-the-version" data-change="unchanged">
+              <h4>Every artifact names the version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release builds from a tag</dd>
+                <dt>Then</dt>
+                <dd>each binary reports that version, each crate is packaged at it, and the formula installs it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-formula-matches-the-release" data-change="unchanged">
+              <h4>The formula matches the release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the formula is rendered for a release</dd>
+                <dt>Then</dt>
+                <dd>each target's digest is the one the release's <code>SHA256SUMS</code> records, and the rendered formula passes Homebrew's strict audit, installs, and passes its test in a local tap</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-publication-stopped-by-the-rate-limit" data-change="unchanged">
+              <h4>A publication stopped by the rate limit</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a crates publication that published some crates and stopped on the registry's rate limit</dd>
+                <dt>When</dt>
+                <dd>it runs again</dd>
+                <dt>Then</dt>
+                <dd>it skips the crates already published, publishes the rest, and publishes nothing twice</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-request-names-the-project" data-change="unchanged">
+              <h4>Every request names the project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release sends a request to crates.io</dd>
+                <dt>Then</dt>
+                <dd>its User-Agent names the project and its public repository, and no header carries personal information</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-missing-a-target-publishes-nothing" data-change="unchanged">
+              <h4>A run missing a target publishes nothing</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a run on a version tag in the public repository in which a build failed, the formula's check did not pass, or <code>SHA256SUMS</code> names no tarball for one of the four targets</dd>
+                <dt>When</dt>
+                <dd>the run reaches the release</dd>
+                <dt>Then</dt>
+                <dd>the release job is skipped, or its first step refuses, and nothing publishes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-dependency-added-without-its-notices" data-change="unchanged">
+              <h4>A dependency added without its notices</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a pull request that adds a crate to the binary's dependencies and leaves <code>CRATE-LICENSES</code> as it was</dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>it fails, naming each crate the lockfile now reaches that the notices do not credit</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-formula-that-drifted-from-the-notices" data-change="unchanged">
+              <h4>A formula that drifted from the notices</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>the formula's template, declaring licenses other than the binary credits</dd>
+                <dt>When</dt>
+                <dd>the check suite runs, on Linux</dd>
+                <dt>Then</dt>
+                <dd>it fails, naming the licenses the template states and the ones the binary credits</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-readme-commands-that-stopped-working" data-change="added">
+              <h4>README commands that stopped working</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a release whose README, at its tag, holds a Linux install block that no longer installs it</dd>
+                <dt>When</dt>
+                <dd>the release is published and its workflow runs the block verbatim on both Linux targets</dd>
+                <dt>Then</dt>
+                <dd>the install job fails after publication, which it cannot undo, and its trace shows the line the block stopped at</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-patch-on-an-older-line" data-change="added">
+              <h4>A patch on an older line</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a repository whose latest release is <code>v1.1.0</code></dd>
+                <dt>When</dt>
+                <dd>the release runs on the tag <code>v1.0.2</code></dd>
+                <dt>Then</dt>
+                <dd><code>v1.0.2</code> is published and not made the latest, the Linux install job reports it as untested with a notice, and the tap is left holding the formula for <code>v1.1.0</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-install-block-that-skips-its-checksum" data-change="added">
+              <h4>An install block that skips its checksum</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a README whose Linux install block unpacks its download before it runs <code>sha256sum --check</code> against <code>SHA256SUMS</code>, or never runs it</dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>it fails, naming the block</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-the-install-block-against-v1-1-0" data-change="added" data-refs="req-a-release-reaches-every-channel-from-one-tag">
+            <h3>The README's Linux block, run against the published v1.1.0 <span class="hs-id">evidence-the-install-block-against-v1-1-0</span></h3>
+            <p>On 2026-10-27 the block, printed from the README by <code>scripts/check-readme-install --print linux-release</code>, ran on a macOS machine under GNU coreutils 9.11 against the published <code>v1.1.0</code>, with only its target line set to <code>aarch64-unknown-linux-musl</code> and its install directory moved to a scratch one. It read the latest release's <code>SHA256SUMS</code>, picked <code>htmlspec-1.1.0-aarch64-unknown-linux-musl.tar.gz</code>, checked it <code>OK</code>, and installed the binary and its three license files. Its last line, running the binary, failed because the machine is not Linux.</p>
+          </section>
+          <section class="evidence" id="evidence-the-latest-release-and-the-poll" data-change="added" data-refs="scenario-a-patch-on-an-older-line">
+            <h3>Which tag is the latest, read two ways <span class="hs-id">evidence-the-latest-release-and-the-poll</span></h3>
+            <p>The install job's polling step, run on 2026-10-27 against the live <code>releases/latest</code>, found <code>v1.1.0</code> ready, ended for <code>v1.0.0</code> with the notice that a newer release is the latest, and failed for <code>v1.2.0</code> with "latest is not v1.2.0" once its bound passed. The release job's comparison, fed the published tags <code>v1.1.0</code> and <code>v1.0.0</code>, makes <code>v1.1.1</code> the latest and <code>v1.0.2</code> not, keeps <code>v1.1.0</code> the latest on a rerun, and orders <code>v1.10.1</code> after <code>v1.9.0</code>.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-the-install-blocks-offline" data-change="added" data-outcome="passed" data-refs="req-a-release-reaches-every-channel-from-one-tag scenario-an-install-block-that-skips-its-checksum">
+            <h3>The suite holds the README's install blocks offline <span class="hs-id">verify-the-install-blocks-offline</span></h3>
+            <p data-field="method"><code>scripts/check</code> passed all 17 stages, among them <code>readme-install</code>, which runs <code>scripts/check-readme-install --self-test</code> and then checks the README. The self-test's 11 cases each refuse what they should: a missing block of each of the four, a syntax error, a block with no checksum line, one that unpacks before its checksum, a target the release does not build, a wrong field of <code>SHA256SUMS</code>, a marker with no fence, and a name marking two blocks. A copy of the README with the checksum line taken out of its Linux block failed the check, naming the block.</p>
+          </section>
+          <section class="verification" id="verify-the-release-installs-itself" data-change="added" data-outcome="partial" data-refs="req-a-release-reaches-every-channel-from-one-tag scenario-readme-commands-that-stopped-working scenario-a-patch-on-an-older-line">
+            <h3>The release installs itself through the README, and only the latest is the latest <span class="hs-id">verify-the-release-installs-itself</span></h3>
+            <p data-field="method">actionlint 1.7.12 with ShellCheck 0.11.0 reports no error in any of the five workflows. The install job's polling step and the release job's comparison ran as the evidence above records, and the Linux block ran against <code>v1.1.0</code> as its evidence records.</p>
+            <p data-field="unchecked">No version tag has yet run the <code>install</code> and <code>install-homebrew</code> jobs, which run only on a version tag in the public repository, so neither has installed a release on a Linux runner, and no release has yet been created with <code>--latest</code> set by the comparison.</p>
+            <p data-field="unchecked">The Linux block was not run in an <code>ubuntu:24.04</code> container, because no container runtime was available, and the Homebrew-on-Linux block was not run anywhere before its job.</p>
+            <p data-field="unchecked">What only a Windows machine shows was not checked, because none was available: <code>explorer.exe .</code> opening the project, a Windows browser rendering a document over <code>file://wsl.localhost/…</code>, and <code>python3 -m http.server</code> reaching a Windows browser at <code>localhost</code>. The README states the last as resting on WSL 2's localhost forwarding, and does not describe the first two.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

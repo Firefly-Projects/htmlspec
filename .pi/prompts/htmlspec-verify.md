@@ -2,7 +2,7 @@
 description: Check an implemented html-spec change against its own artifacts before archival — what was built against what the tasks claim, and the code against the design's decisions. Use when the tasks are complete and archival has not started.
 allowed-tools: Bash(htmlspec:*), Read, Glob, Grep
 argument-hint: [the change to check, or nothing to infer it]
-generatedBy: htmlspec 1.1.0
+generatedBy: htmlspec 1.2.1
 ---
 
 Check an implemented html-spec change against its own artifacts, before archival.

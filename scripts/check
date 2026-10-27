@@ -28,6 +28,17 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # a missing newline.
 steps=(
   "format:cargo fmt --all -- --check"
+  # The README's install and upgrade blocks, the commands a reader on Linux, WSL, or macOS pastes.
+  # Each marked block must exist, carry the right kind of marker, and pass `bash -n`, the Linux
+  # block must check its download first and ask only for a target the release builds, and its
+  # reading of SHA256SUMS must find each Linux tarball in the file `pack-release --sums` writes.
+  # Upgrade blocks are only parsed: running one would upgrade the machine the suite runs on. The
+  # self-test first proves each of those checks refuses what it should.
+  #
+  # Here, near the front, because it takes a second and needs no build. The downloads themselves need
+  # a published release and the network, so the release workflow's `install` job runs the block
+  # against every release instead, and that job is outside this suite for that reason alone.
+  "readme-install:scripts/check-readme-install --self-test && scripts/check-readme-install"
   "lint:cargo clippy --workspace --all-targets --locked -- -D warnings"
   # The whole workspace's tests, which include:
   #   - the conformance suite            (htmlspec-conformance)
