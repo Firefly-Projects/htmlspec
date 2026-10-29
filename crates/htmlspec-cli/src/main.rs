@@ -33,6 +33,7 @@ mod output;
 mod plan;
 mod preflight;
 mod prerequisites;
+mod progress;
 mod project;
 mod prompt;
 mod runbook_release;
@@ -183,7 +184,7 @@ enum Command {
     /// also what makes an argument-less `archive` able to ask which change you meant.
     List(ListArgs),
 
-    /// Start a run of a runbook, or check what its runs recorded.
+    /// Start a run of a runbook, check what its runs recorded, or show how far they have come.
     ///
     /// A run's record is a copy of the runbook's procedure with its states advanced, beside the
     /// requirements the runbook states its runs must record. The copy is not duplication for its
@@ -197,6 +198,12 @@ enum Command {
     /// `--check` writes nothing and reports which requirements each run has recorded nothing for.
     /// It always exits zero: a run under way legitimately has requirements it has not reached, so
     /// the report marks work for attention rather than gating it.
+    ///
+    /// `--status` writes nothing and reports how far each run has come, one line each in name
+    /// order: the steps done, the step in hand, and whether a finished run passed by the rule a
+    /// `preflight/v3` run check applies. `--status <record>` shows that run alone, every step with
+    /// its state, each requirement's outcome, and the release its record states. It exits zero
+    /// whatever the runs say, and 2 when the runbook or the record is not there.
     ///
     /// `htmlspec list --runbooks` lists the project's runbooks. Named with no runbook, `run` lists
     /// them as well, each with its version and title and with how to start one, and exits 2.
@@ -598,6 +605,69 @@ struct RunArgs {
     /// Report what this runbook's runs recorded, and write nothing.
     #[arg(long)]
     check: bool,
+
+    /// Report how far each of this runbook's runs has come, one line each, and write nothing.
+    ///
+    /// Each line gives the steps done and whether the run is still open, with the step in hand, or
+    /// finished, and whether it passed by the rule a `preflight/v3` run check applies. Name a record
+    /// to see that run alone: every step with its state, each dropped step's reason, the outcome
+    /// recorded for each requirement, and the runbook release the record states. Runs are listed
+    /// in name order, which says nothing about which ran first.
+    #[arg(long, value_name = "RECORD")]
+    status: Option<Option<String>>,
+}
+
+/// What `run` was asked to do, once its options are read together.
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum RunMode {
+    /// Start a run whose record takes this name.
+    Start(String),
+    /// Report what the runs recorded against what the runbook requires.
+    Check,
+    /// Report how far every run has come, or the one recorded under this name.
+    Status(Option<String>),
+}
+
+impl RunMode {
+    /// Reads `run`'s options into one mode, or the sentence that says which option is surplus or
+    /// missing.
+    ///
+    /// The modes are exclusive rather than composable, and the pairing is checked here rather than
+    /// expressed as a clap conflict: a contributor who passed two asked for two things, and naming
+    /// which of them to drop is a better report than clap's generic conflict message.
+    fn of(
+        record: Option<String>,
+        check: bool,
+        status: Option<Option<String>>,
+    ) -> Result<Self, &'static str> {
+        match (record, check, status) {
+            (Some(record), false, None) => Ok(Self::Start(record)),
+            (None, true, None) => Ok(Self::Check),
+            (None, false, Some(record)) => Ok(Self::Status(record)),
+            (Some(_), true, None) => Err(
+                "--check reports on the runs a runbook already has, so it takes no --as. Drop one: \
+                 `htmlspec run <runbook> --check` to report, or `htmlspec run <runbook> --as <name>` \
+                 to start one",
+            ),
+            (_, true, Some(_)) => Err(
+                "--check and --status are two reports on a runbook's runs, so pass one: `htmlspec \
+                 run <runbook> --check` for what each run recorded against what the runbook \
+                 requires, or `htmlspec run <runbook> --status` for how far each has come",
+            ),
+            (Some(_), false, Some(_)) => Err(
+                "--status reports on the runs a runbook already has, so it takes no --as. Name the \
+                 run after --status, `htmlspec run <runbook> --status <record>`, to see one, or drop \
+                 --status to start a run with `htmlspec run <runbook> --as <name>`",
+            ),
+            (None, false, None) => Err(
+                "starting a run needs a name for its record: `htmlspec run <runbook> --as <name>`. \
+                 There is no default, because a date collides when a procedure runs twice in a day \
+                 and a sequence number derives an ordering from a directory's contents — which a \
+                 runbook's name is forbidden to do. To report on the runs that exist, pass --check \
+                 for what they recorded, or --status for how far each has come",
+            ),
+        }
+    }
 }
 
 #[derive(Args, Clone, Debug, Eq, PartialEq)]
@@ -942,8 +1012,8 @@ impl Invocation {
                 commands::instructions(&stage, streams)
             }
             // Named with no runbook, `run` lists the ones it could start and refuses as a usage
-            // error, whatever else was passed: `--as` or `--check` without a runbook asks about no
-            // runbook in particular. Exit 2, the code clap gave a missing argument before the
+            // error, whatever else was passed: `--as`, `--check`, or `--status` without a runbook asks
+            // about no runbook in particular. Exit 2, the code clap gave a missing argument before the
             // argument became optional, so the exit status a script reads does not change.
             Self::Run(RunArgs { runbook: None, .. }) => {
                 runs::refuse_without_a_runbook(store, streams)
@@ -952,29 +1022,15 @@ impl Invocation {
                 runbook: Some(runbook),
                 record,
                 check,
-            }) => match (check, record) {
-                // The two modes are exclusive rather than composable, and the pairing is checked
-                // here rather than expressed as a clap conflict: a contributor who passed both
-                // asked to start a run and to report on one, and naming which of the two is
-                // missing or surplus is a better report than clap's generic conflict message.
-                (true, None) => runs::check(&runbook, store, streams),
-                (false, Some(record)) => runs::start(&runbook, &record, store, streams),
-                (true, Some(_)) => {
-                    let _ = streams.failure(
-                        "--check reports on the runs a runbook already has, so it takes no --as. \
-                         Drop one: `htmlspec run <runbook> --check` to report, or `htmlspec run \
-                         <runbook> --as <name>` to start one",
-                    );
-                    exit::Outcome::OperationalFailure
+                status,
+            }) => match RunMode::of(record, check, status) {
+                Ok(RunMode::Start(record)) => runs::start(&runbook, &record, store, streams),
+                Ok(RunMode::Check) => runs::check(&runbook, store, streams),
+                Ok(RunMode::Status(record)) => {
+                    progress::status(&runbook, record.as_deref(), store, streams)
                 }
-                (false, None) => {
-                    let _ = streams.failure(
-                        "starting a run needs a name for its record: `htmlspec run <runbook> --as \
-                         <name>`. There is no default, because a date collides when a procedure \
-                         runs twice in a day and a sequence number derives an ordering from a \
-                         directory's contents — which a runbook's name is forbidden to do. To \
-                         report on the runs that exist, pass --check",
-                    );
+                Err(refusal) => {
+                    let _ = streams.failure(refusal);
                     exit::Outcome::OperationalFailure
                 }
             },
@@ -1241,7 +1297,7 @@ mod tests {
                 "withdrawn.html",
             ],
             Operation::List => &["--specs", "--runbooks", "--graph"],
-            Operation::Run => &["release", "--as", "first", "--check"],
+            Operation::Run => &["release", "--as", "first", "--check", "--status", "first"],
             Operation::Preflight => &["release"],
             Operation::Status => &["--change", "a-change"],
             Operation::Sync => &["--change", "a-change"],
@@ -1478,6 +1534,68 @@ mod tests {
         ] {
             let cli = Cli::try_parse_from(&argv).expect("parses");
             assert!(cli.json, "{argv:?} did not set the flag");
+        }
+    }
+
+    /// `--status` takes a record or none, in either spelling, and never takes a global option for
+    /// its record.
+    #[test]
+    fn status_takes_a_record_or_none() {
+        let status = |argv: &[&str]| match Cli::try_parse_from(argv).expect("parses").command {
+            Command::Run(arguments)
+            | Command::Post {
+                what: PostObject::Run(arguments),
+            } => arguments.status,
+            other => panic!("{argv:?} parsed as {other:?}"),
+        };
+        assert_eq!(status(&["htmlspec", "run", "rb", "--status"]), Some(None));
+        assert_eq!(
+            status(&["htmlspec", "run", "rb", "--status", "v1"]),
+            Some(Some(String::from("v1")))
+        );
+        assert_eq!(
+            status(&["htmlspec", "post", "run", "rb", "--status", "v1"]),
+            Some(Some(String::from("v1")))
+        );
+        assert_eq!(
+            status(&["htmlspec", "run", "rb", "--status", "--json"]),
+            Some(None)
+        );
+        assert_eq!(status(&["htmlspec", "run", "rb"]), None);
+    }
+
+    /// `run`'s three modes are exclusive, and each other pairing names what to drop.
+    #[test]
+    fn run_reads_its_options_into_one_mode() {
+        let named = || Some(String::from("first"));
+        assert_eq!(
+            RunMode::of(named(), false, None),
+            Ok(RunMode::Start(String::from("first")))
+        );
+        assert_eq!(RunMode::of(None, true, None), Ok(RunMode::Check));
+        assert_eq!(
+            RunMode::of(None, false, Some(None)),
+            Ok(RunMode::Status(None))
+        );
+        assert_eq!(
+            RunMode::of(None, false, Some(named())),
+            Ok(RunMode::Status(named()))
+        );
+        for (record, check, status, names) in [
+            (named(), true, None, ["--check", "--as"]),
+            (None, true, Some(None), ["--check", "--status"]),
+            (named(), true, Some(named()), ["--check", "--status"]),
+            (named(), false, Some(None), ["--status", "--as"]),
+            (None, false, None, ["--check", "--status"]),
+        ] {
+            let refusal = RunMode::of(record.clone(), check, status.clone())
+                .expect_err("the pairing is refused");
+            for name in names {
+                assert!(
+                    refusal.contains(name),
+                    "{record:?} {check} {status:?}: {refusal}"
+                );
+            }
         }
     }
 }

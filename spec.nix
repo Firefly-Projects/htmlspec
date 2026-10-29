@@ -6,7 +6,7 @@
 # input with a hash, which is a pin the build already knows how to resolve.
 {
   name = "html-spec";
-  version = "1.2.2";
+  version = "1.3.0";
   # The toolchain this project expects. Replace `null` with a pinned flake
   # reference to hold every machine to one binary.
   htmlspec = null;

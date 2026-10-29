@@ -131,10 +131,26 @@ Runbooks carry their own discipline:
 - **Versioned.** A runbook has its own `VERSION` and `CHANGELOG.md`. Archival refuses changed steps that kept the old version.
 - **Checked before they start.** `htmlspec preflight <runbook>` reports a missing tool, the wrong working directory, or a prerequisite run that has not passed, before step one, not at the step that needed it.
 - **Recorded.** `htmlspec run <runbook> --as <record>` starts a run. The record copies the procedure it ran, so you always know which version ran and what it produced.
+- **Tracked.** `htmlspec run <runbook> --status` shows how far each run has come, and whether it finished and passed. See [How far a run has come](#how-far-a-run-has-come).
 - **Ordered.** A runbook can require a finished, passed run of another runbook before its own run starts. `htmlspec run` refuses to start it until one exists, and names each record it found and why that record does not count.
 - **Portable.** Copy a runbook to another machine and run it there. See [Carrying a runbook to another machine](#carrying-a-runbook-to-another-machine).
 
 This repository releases itself with one: [`htmlspec/runbooks/release/`](htmlspec/runbooks/release/).
+
+#### How far a run has come
+
+A run is one record from start to finish, edited as the work goes, so a run stopped at step three is picked up from the same record later. `htmlspec run <runbook> --status` reads every record of a runbook and gives each run one line:
+
+```text
+backup has 3 runs, in name order:
+  monday     7/9 done, 2 dropped, finished and passed
+  tuesday    9/9 done, finished, not passed: recorded failed for req-the-copy-restores
+  wednesday  4/9 done, step 5 in progress
+```
+
+Name the record to see that run alone, `htmlspec run backup --status wednesday`: every step in order with its state, each dropped step with the reason the record gives, each requirement with the outcome recorded for it or `no outcome`, any other verification's outcome, such as one under a withdrawn requirement, because whether the run passed reads those too, the runbook release the record states, and whether it is finished and passed. A file under `runs/` that is not a run's record, such as an empty file or one whose markup needs repair, is named with the reason.
+
+"Finished and passed" is the rule a prerequisite run check applies, described under [Running runbooks in order](#running-runbooks-in-order), without its `atLeast`, so a run this calls passed is one a check without `atLeast` counts. Compare the release it shows with a check's `atLeast` yourself, or ask `htmlspec preflight` about the runbook that requires it. Runs are listed in name order, which says nothing about which ran first: a record states no time. The report writes nothing, and exits 0 whatever the runs say. `htmlspec --json run <runbook> --status` writes the same as a payload, which `run`'s schema states.
 
 #### Running runbooks in order
 
@@ -371,7 +387,7 @@ Every 1.x release keeps three promises, each stated by an accepted requirement:
 - **Documents stay valid within the contract's major version.** document-schema's "The contract's version is a semantic version" states it, and it is worded about the contract's version, the one a document declares in its `htmlspec-version` meta, not about the program's release: every 1.x release so far reads and writes contract `1.0.0`. Within a major version of the contract, a document one version accepts gains no error under any later version, unless the earlier version accepted it by a defect, which the release's changelog names. Warnings are not covered. Contract `1.0.0` is the `0.7.0` vocabulary, unchanged, so a document that declares `0.1.0` to `0.7.0` still validates. The suite checks that each conformance fixture gains no error under `1.0.0` that it lacked under the version it declares. It cannot check that a rule added later leaves a valid document valid, so review holds that line: a change to what a fixture expects is a change to the contract.
 - **Upgrade every machine before adopting a newer runbook format.** A binary refuses a runbook declaration in a format newer than it reads, and names the formats it does read: 1.0 refuses `preflight/v2`, and 1.1 refuses `preflight/v3`. runbook-portability's "Machine requirements are explicit and mechanically checkable" states it.
 
-The suite holds the surface to one file per released minor, [`1.0.json`](crates/htmlspec-cli/tests/surface/1.0.json), [`1.1.json`](crates/htmlspec-cli/tests/surface/1.1.json), and [`1.2.json`](crates/htmlspec-cli/tests/surface/1.2.json), each read from the program's own parser: the program keeps everything an earlier file of its major records, and the current minor's file records exactly what it does. Each payload has a published JSON Schema under [`crates/htmlspec-cli/schema/payload/`](crates/htmlspec-cli/schema/payload/). A published schema admits a field it does not declare, so output from a later 1.x release still validates against it. The suite reads the same schemas strictly, so the program writes only what its schema declares.
+The suite holds the surface to one file per released minor, [`1.0.json`](crates/htmlspec-cli/tests/surface/1.0.json), [`1.1.json`](crates/htmlspec-cli/tests/surface/1.1.json), [`1.2.json`](crates/htmlspec-cli/tests/surface/1.2.json), and [`1.3.json`](crates/htmlspec-cli/tests/surface/1.3.json), each read from the program's own parser: the program keeps everything an earlier file of its major records, and the current minor's file records exactly what it does. Each payload has a published JSON Schema under [`crates/htmlspec-cli/schema/payload/`](crates/htmlspec-cli/schema/payload/). A published schema admits a field it does not declare, so output from a later 1.x release still validates against it. The suite reads the same schemas strictly, so the program writes only what its schema declares.
 
 **Observed, not promised.** A run's record is read across 1.1 and 1.2 both ways. A record 1.2 writes states its runbook's release in its head, and 1.1 reads that record and ignores the line. A record 1.1 wrote states no release, and 1.2 reads it, and it meets a `preflight/v3` run check only where the check names no `atLeast`. This was observed when 1.2.0 was reviewed, and no requirement promises it.
 
@@ -381,6 +397,7 @@ Nothing here is required. The [changelog](CHANGELOG.md) says what each release c
 
 - **1.1:** `htmlspec new runbook`, `format --upgrade-assets`, a `remedy` in a `preflight/v2` declaration, and `-v`.
 - **1.2:** a runbook can require a passed run of another with a `preflight/v3` `run` check, and `htmlspec list --runbooks --graph` draws who requires whom.
+- **1.3:** `htmlspec run <runbook> --status` shows how far each run has come, and `--status <record>` shows one run's steps, outcomes, and release. A script reads it with `--json`.
 
 1.1.1, 1.2.1, and 1.2.2 give a project nothing new to adopt. 1.1.1 gave people an install path through WSL and every route without Nix, 1.2.1 this section, and 1.2.2 a word from `format --upgrade-assets` and `format --fallback` about each runbook they rewrite.
 
@@ -429,6 +446,8 @@ htmlspec assets                                  # check the project stores each
 htmlspec list --runbooks                         # the runbooks, with versions, titles, and what each requires
 htmlspec list --runbooks --graph                 # which runbook requires which, as a Mermaid flowchart
 htmlspec preflight release                       # can this runbook start here?
+htmlspec run publish --status                    # how far each of its runs has come
+htmlspec run publish --status v1.2.1             # one run: its steps, outcomes, and release
 htmlspec show add-dark-mode --diff               # each requirement it modifies, beside the accepted one
 htmlspec archive add-dark-mode                   # check a change before archiving it
 htmlspec validate --json                         # structured diagnostics on stdout
@@ -583,7 +602,7 @@ portable/
 
 Register it with `htmlspec store add portable <path>`. Then check and run it from the directory the work is in: `htmlspec --store portable preflight release`. The source project's archive, declaration, accepted specifications, and old run records stay behind, and a new local run does not need them. Transport is not a command. Copying is yours, and `git`, an archive, or `cp` are all equally correct.
 
-Older runbooks have no `VERSION`. Starting one is refused with the migration, instead of recorded anonymously. Reviewing the runs an older runbook already has still works: `htmlspec run <runbook> --check` reports conformance and never inspects the machine.
+Older runbooks have no `VERSION`. Starting one is refused with the migration, instead of recorded anonymously. Reviewing the runs an older runbook already has still works: `htmlspec run <runbook> --check` reports conformance and `htmlspec run <runbook> --status` how far each run came, and neither inspects the machine.
 
 ### The project declaration
 
@@ -796,7 +815,9 @@ Release 1.2.0 adds:
 
 Release 1.2.1 adds **a guide to upgrading**: how to upgrade the binary on each channel and bring a project up to it, under [Upgrading](#upgrading).
 
-Release 1.2.2 adds **a word about the runbooks an asset upgrade or the fallback rewrites**: `format --upgrade-assets` and `format --fallback` name each one and say whether its version must advance before the next archival, and archival's refusal names both as likely causes.
+Release 1.2.2 adds **a word about the runbooks an asset upgrade or the fallback rewrites**: `format --upgrade-assets` and `format --fallback` name each one and say whether its version must advance before the next archival, and archival's refusal names both as likely causes. It was archived and not published on its own, so it reaches every channel in 1.3.0.
+
+Release 1.3.0 adds **how far a run has come**: `htmlspec run <runbook> --status` lists each run of a runbook with its steps done and whether it finished and passed, by the rule a prerequisite run check applies, and `--status <record>` shows one run's steps, outcomes, and release.
 
 **What 1.x promises** is set out under [Upgrading](#what-1x-promises): the command surface only grows, documents stay valid within the contract's major version, and the suite holds both.
 

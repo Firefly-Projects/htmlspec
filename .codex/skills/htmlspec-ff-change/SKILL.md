@@ -5,7 +5,7 @@ allowed-tools: Bash(htmlspec:*), Read, Write, Edit, Glob, Grep
 argument-hint: [a description of the work]
 license: MIT
 metadata:
-  generatedBy: htmlspec 1.2.2
+  generatedBy: htmlspec 1.3.0
 ---
 
 Create an html-spec change and carry it through every artifact in one pass.

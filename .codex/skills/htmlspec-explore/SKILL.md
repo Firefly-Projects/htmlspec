@@ -5,7 +5,7 @@ allowed-tools: Read, Glob, Grep
 argument-hint: [the idea or question to think through]
 license: MIT
 metadata:
-  generatedBy: htmlspec 1.2.2
+  generatedBy: htmlspec 1.3.0
 ---
 
 Think through an idea before it becomes a change.

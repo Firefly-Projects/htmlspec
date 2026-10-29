@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>How far each run of a runbook has come</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>How far each run of a runbook has come</h1>
+        <p>A run's record holds every step's state and every outcome the run recorded, and no command reads them back: to learn how far a run has come, a person or an agent opens the record and counts by eye. <code>htmlspec run &lt;runbook&gt; --status</code> lists each run of a runbook with its steps done and whether it is finished and passed, and <code>--status &lt;record&gt;</code> shows one run's steps, outcomes, and release. "Finished and passed" is decided by the rule a prerequisite run check already applies, so the report and preflight cannot disagree about a record. The change is released as 1.3.0, which also carries 1.2.2.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>How far each run of a runbook has come</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>The user asked, while working through a runbook, whether there is a command to see how much of it is done. There is none. A run is one record from start to finish, by runbook-execution's <a href="../../../specs/runbook-execution/spec.html#req-a-run-is-one-record-from-start-to-finish">"A run is one record from start to finish"</a>, so a run stopped at step five and picked up later is the ordinary case, and the first thing anyone resuming one needs is where it stands. Each operation that touches runs today answers a different question:</p>
+          <ul>
+            <li><code>htmlspec status --change &lt;change&gt;</code> counts a change's tasks, and takes no runbook.</li>
+            <li><code>htmlspec run &lt;runbook&gt; --check</code> reports which requirements each run has recorded an outcome for. It never mentions a step.</li>
+            <li><code>htmlspec list --runbooks</code> shows no completion fraction, as runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-the-canonical-procedure-carries-no-completion-state">"The canonical procedure carries no completion state"</a> requires. It counts a runbook's open runs only where another runbook requires it.</li>
+            <li><code>htmlspec preflight &lt;runbook&gt;</code> names a prerequisite's open runs, as "v1.3.0 (4 of 9 steps done)", but only for a runbook another one requires, and only to explain why a check is unmet.</li>
+          </ul>
+          <p>So the answer is in the record's <code>data-state</code> and <code>data-outcome</code> attributes, and reading them means opening the HTML. A second question has the same gap. Whether a finished run counts for another runbook is decided by runbook-portability's <a href="../../../specs/runbook-portability/spec.html#req-a-prerequisite-run-is-met-by-a-finished-passed-record">"A prerequisite run is met by a finished, passed record"</a>, and today the only way to ask it is to run preflight on a runbook that requires this one.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <p><code>run</code> gains a third report beside starting a run and <code>--check</code>: <code>--status</code>, with an optional record name. What working looks like, for a <code>publish</code> runbook with three records, one of them under way:</p>
+          <ol>
+            <li>
+              <p><code>htmlspec run publish --status</code> prints one line per run, in name order:</p>
+              <pre><code>publish has 3 runs, in name order:
+  v1.1.0  7/9 done, 2 dropped, finished and passed
+  v1.2.1  7/9 done, 2 dropped, finished and passed
+  v1.3.0  4/9 done, 1 dropped, step 6 in progress</code></pre>
+              <p>A run that finished without passing says why, in the words preflight uses: "9/9 done, finished, not passed: recorded failed for req-each-channels-version-is-recorded". A file that cannot be read as a run's record says that instead.</p>
+            </li>
+            <li><code>htmlspec run publish --status v1.3.0</code> lists every step in order, numbered, with its state and heading, and each dropped step's reason beneath it. It then lists each requirement the record carries with the outcome recorded for it, or "no outcome", says which runbook release the record states, and ends with "Finished and passed: no, it is still open, with 4 of 9 steps done", or "yes".</li>
+            <li>With <code>--json</code>, both forms write one payload, which <code>run</code>'s published schema states as a fourth shape.</li>
+            <li>The report writes nothing and exits 0 whatever the runs say. It exits 2 when the runbook or the record does not exist, and the refusal names the records there are.</li>
+            <li>A bare <code>htmlspec run</code>, <code>htmlspec run --help</code>, the README, and the instructions <code>init</code> installs for creating a runbook all name the new option.</li>
+          </ol>
+          <p>The option is a new flag, so the release is a minor one, <strong>1.3.0</strong>. 1.2.2 was archived and never published, so 1.3.0 is the next public release and carries 1.2.2's changes, and its changelog's Upgrading note says so.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <ul>
+            <li><strong><code>htmlspec status --run &lt;runbook&gt; [&lt;record&gt;]</code>.</strong> It reads well beside <code>status --change</code>, and a contributor who knows one would guess the other. It cannot be built within 1.x. <code>status</code>'s payload has <code>change</code>, <code>artifacts</code>, and <code>tasks</code> always present, every released surface since 1.0 records that, and toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-the-command-surface-is-stable-within-a-major-version">"The command surface is stable within a major version"</a> requires that "a field always present SHALL stay present". A report about a run has no change to name, so the schema would need a second shape, and every recorded fact about the first would move beneath it, which the surface check reports as a loss. <code>run</code>'s payload already has three shapes, and <code>run</code> already has a report, <code>--check</code>.</li>
+            <li><strong>Widen <code>run --check</code>.</strong> It answers whether each run attests to what the runbook requires, which runbook-execution's <a href="../../../specs/runbook-execution/spec.html#req-a-run-s-conformance-to-its-runbook-s-contract-is-reported-and-never-gated">"A run's conformance to its runbook's contract is reported and never gated"</a> makes its own question. Steps and verdicts in the same report would make a reader find one answer inside the other, and the conformance report already reads as a list of what is missing.</li>
+            <li><strong>A new operation, such as <code>htmlspec progress</code>.</strong> It would be a name OpenSpec does not have, a second request-verb spelling to fix, and a second command about runs beside <code>run</code>, for one report.</li>
+            <li><strong><code>--status</code> as a plain flag, selecting a record with <code>--as</code>.</strong> <code>--as</code> names the record a run creates. Using it for a record that exists would give one option two meanings, depending on another flag. A second positional, <code>run &lt;runbook&gt; &lt;record&gt; --status</code>, would be an argument that means something under one flag only.</li>
+          </ul>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <ul>
+            <li><strong>Records only.</strong> The report reads the runbook's <code>runs/</code> and never its canonical procedure, whose steps stay unstarted by runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-the-canonical-procedure-carries-no-completion-state">"The canonical procedure carries no completion state"</a>.</li>
+            <li><strong>No chronology.</strong> Runs are listed in name order, which says nothing about which ran first. A record states no time, by runbook-execution's <a href="../../../specs/runbook-execution/spec.html#req-a-run-is-one-record-from-start-to-finish">"A run is one record from start to finish"</a>, so there is no latest run to single out.</li>
+            <li><strong>No release bound.</strong> "Finished and passed" is the run check's rule without <code>atLeast</code>. The record's release is shown beside it, so a reader can compare it with a bound themselves.</li>
+            <li><strong>No writing.</strong> Nothing marks a step done or records an outcome. A record is edited as it is today, and the report reads what the edit left.</li>
+            <li><strong>No other listing changes.</strong> <code>list --runbooks</code>, <code>run --check</code>, and <code>preflight</code> report what they report now.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

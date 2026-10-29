@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Show how far a run has come: as built</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Show how far a run has come: as built</h1>
+        <p>What the change <code>show-how-far-a-run-has-come</code> established, as built: <code>htmlspec run &lt;runbook&gt; --status</code> reports how far each run of a runbook has come, and whether it finished and passed by the rule a prerequisite run check applies, and <code>--status &lt;record&gt;</code> reports one run's steps, outcomes, and release.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Show how far a run has come: as built</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-runbook-execution">runbook-execution</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-runbook-execution">
+          <h2>runbook-execution</h2>
+          <section class="requirement" id="req-a-run-s-progress-is-reported-from-its-record" data-change="added">
+            <h3>A run's progress is reported from its record <span class="hs-id">req-a-run-s-progress-is-reported-from-its-record</span></h3>
+            <p><code>htmlspec run &lt;runbook&gt; --status</code> SHALL report every file under the runbook's <code>runs/</code>, one line each, in name order, and SHALL say that the order is name order, because a record states no time. For each run it SHALL state the steps done of the total and the steps dropped, and then the steps in progress, or the first step neither done nor dropped where none is in progress, or that the run finished and whether it passed.</p>
+            <p>Whether a run finished and passed SHALL be decided by the rule runbook-portability's "A prerequisite run is met by a finished, passed record" states, without a lowest release, and by the code the run check applies, so the report and preflight give one answer about every record. A run that did not pass, and a file not read as a run's record, SHALL be named with the first reason that rule gives, in its words.</p>
+            <p><code>htmlspec run &lt;runbook&gt; --status &lt;record&gt;</code> SHALL report the run recorded under that name, matched byte for byte against the names the runbook's <code>runs/</code> holds: every step in order with its state and its heading, each dropped step's reason, each requirement the record carries with an identifier and does not withdraw, with the outcomes recorded for it, the outcome of every other verification the record holds, the runbook release the record's head states, and whether it is finished and passed. An absent or empty outcome SHALL be shown as no outcome, as the rule reads it, and every verification the rule reads SHALL be shown, so a verdict never names an outcome the report leaves out.</p>
+            <p>The report SHALL write nothing, and SHALL exit 0 whatever the runs say. It SHALL exit 2 when the runbook or the record is not there, naming the records the runbook has. With <code>--json</code> it SHALL write the payload <code>run</code>'s published schema states. A name or text a record or a directory holds SHALL reach the terminal with each character a terminal would act on written by its code point.</p>
+            <article class="scenario" id="scenario-every-run-on-one-line" data-change="added">
+              <h4>Every run on one line</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook <code>backup</code> with a finished, passed run, a run whose fifth step is in progress, and a finished run that recorded <code>failed</code> for a requirement</dd>
+                <dt>When</dt>
+                <dd><code>htmlspec run backup --status</code> runs</dd>
+                <dt>Then</dt>
+                <dd>each run is one line in name order, reading "finished and passed", "step 5 in progress", and "finished, not passed: recorded failed for" the requirement, and the report exits 0</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-one-run-in-full" data-change="added">
+              <h4>One run in full</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a run whose first step was dropped with a reason and whose second is in progress</dd>
+                <dt>When</dt>
+                <dd><code>htmlspec run backup --status</code> names that run's record</dd>
+                <dt>Then</dt>
+                <dd>both steps are listed with their states and headings, the dropped one with its reason, each requirement with the outcome recorded for it, the release the record states, and that the run is not finished and passed, with the rule's reason</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-report-and-preflight-agree" data-change="added">
+              <h4>The report and preflight agree</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook another runbook requires, with records of every kind, a record holding a verification that references no requirement, and a record whose only requirement is withdrawn</dd>
+                <dt>When</dt>
+                <dd>preflight on the requiring runbook and the report each read them</dd>
+                <dt>Then</dt>
+                <dd>the records preflight counts are the ones the report calls passed, its open runs are the ones the report calls open, and each record it does not count carries the reason the report gives</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-outcome-the-requirements-do-not-show" data-change="added">
+              <h4>An outcome no requirement shows</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a finished record whose requirement passed, and which also holds a verification that references no requirement and recorded <code>failed</code></dd>
+                <dt>When</dt>
+                <dd>the run is reported</dd>
+                <dt>Then</dt>
+                <dd>that verification is listed among the other outcomes, and the run is not finished and passed, naming it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-empty-outcome" data-change="added">
+              <h4>An empty outcome</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a finished record whose one verification states an empty outcome</dd>
+                <dt>When</dt>
+                <dd>the run is reported</dd>
+                <dt>Then</dt>
+                <dd>its requirement is listed with no outcome, and the run is not finished and passed, having recorded no outcome</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-file-that-is-not-a-runs-record" data-change="added">
+              <h4>A file that is not a run's record</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>an empty file and a file whose markup needs error recovery under the runbook's <code>runs/</code></dd>
+                <dt>When</dt>
+                <dd>the runbook's runs are reported</dd>
+                <dt>Then</dt>
+                <dd>each is named with the reason it is not read, and the report exits 0</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-record-that-is-not-there" data-change="added">
+              <h4>A record that is not there</h4>
+              <dl>
+                <dt>When</dt>
+                <dd><code>htmlspec run backup --status v9</code> names no record the runbook holds, or names one with its <code>.html</code>, as a path, or in another case</dd>
+                <dt>Then</dt>
+                <dd>it exits 2, naming the records the runbook has, and writes nothing</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-a-scratch-project-and-this-repository" data-change="added" data-refs="req-a-run-s-progress-is-reported-from-its-record">
+            <h3>A scratch project, and this repository's own runs <span class="hs-id">evidence-a-scratch-project-and-this-repository</span></h3>
+            <p>On 2026-10-28, in a scratch project with a runbook <code>backup</code> made by <code>htmlspec new runbook</code>, three runs gave "dropped 1/2 done, 1 dropped, finished and passed", "finished 2/2 done, finished and passed", and "open 1/2 done, step 2 in progress", and <code>--status dropped</code> printed the dropped step's reason beneath it. In this repository, <code>htmlspec run publish --status</code> read the four publish records, including those of 1.0.0 and 1.1.0, which were written before a record stated its runbook release: v1.0.0 as not passed for a <code>partial</code> outcome, v1.1.0 and v1.2.1 as finished and passed, and the stopped v1.2.2 run as 4 of 9 done, 5 dropped, not passed for a <code>not-run</code> outcome.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-the-report-end-to-end" data-change="added" data-outcome="passed" data-refs="req-a-run-s-progress-is-reported-from-its-record">
+            <h3>The report, through the built binary <span class="hs-id">verify-the-report-end-to-end</span></h3>
+            <p data-field="method"><code>cargo test -p htmlspec-cli --test progress</code> passed its 10 cases: twelve records of every kind in one listing, byte for byte and twice; one run in text under both spellings and in its payload; each outcome and a requirement with no verification; agreement with preflight over every kind of record, a stray verification, and a withdrawn requirement, met and unmet; what is not there; the refused pairings of options; a runbook typed in another case; a linked record; escaped names and text; and a project unchanged after the report. A copy of the rule in <code>progress.rs</code> that judged only the listed requirements was tried against the agreement test and failed it, naming the two records it called passed.</p>
+          </section>
+          <section class="verification" id="verify-the-report-in-parts" data-change="added" data-outcome="passed" data-refs="req-a-run-s-progress-is-reported-from-its-record">
+            <h3>The report's parts, and its payload <span class="hs-id">verify-the-report-in-parts</span></h3>
+            <p data-field="method">The unit tests in <code>src/progress.rs</code> passed: each line, each outcome, each reason a file is not read, the one-run text, an empty outcome, a stray verification and a withdrawn requirement, each release case, the listing, the payload's fields, escaping, and the refusal for a record that is not there. The tests of the rule in <code>src/prerequisites.rs</code> passed unchanged after it was split into the reading and the verdict both use. Every test that ran the binary held its payload to <code>run</code>'s published schema, the payload scenario carried every field the new shape declares, and the surface tests held <code>1.3.json</code> to the program and to the files of 1.0, 1.1, and 1.2.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

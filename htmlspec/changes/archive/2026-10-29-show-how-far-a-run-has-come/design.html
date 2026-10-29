@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>How far each run of a runbook has come: design</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>How far each run of a runbook has come: design</h1>
+        <p>How <code>htmlspec run &lt;runbook&gt; --status [&lt;record&gt;]</code> is built: a third mode of <code>run</code>, a report module that reads each record through the same reading and the same verdict the prerequisite run check uses, a fourth shape of <code>run</code>'s payload, and the 1.3.0 release that carries it and 1.2.2.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>How far each run of a runbook has come: design</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="overview">
+          <h2>The shape of it</h2>
+          <p>Everything the report says is already in each record, and most of the reading already exists. The prerequisite run check in <code>prerequisites.rs</code> reads every file under a runbook's <code>runs/</code>, refuses a link, parses each record without recovery, counts its done and settled steps, and decides whether it is finished and passed. What it throws away is the detail: which step is under way, why a step was dropped, and which outcome each requirement got. This change keeps that detail and prints it.</p>
+          <p>Four pieces, in the order they are built:</p>
+          <ol>
+            <li><strong>1.3.0 opens first.</strong> The version moves before anything is added, so <code>tests/surface/1.3.json</code> exists, equal to 1.2's but for its version, and the addition is recorded against it.</li>
+            <li><strong>The reading is shared.</strong> <code>prerequisites.rs</code> splits its private <code>decide</code> into a reading of one record and a verdict on the reading, and exposes both with the records of one runbook, each read once. The run check is rebuilt on them and decides exactly what it decided.</li>
+            <li><strong>The report.</strong> A new module, <code>progress.rs</code>, turns each reading into a run's status and renders it, as text or as a payload. <code>run</code>'s dispatch gains the mode.</li>
+            <li><strong>The surface.</strong> <code>run.schema.json</code> gains a fourth shape, the surface records that <code>--status</code>'s value is optional, and the README, the help, a bare <code>run</code>, the <code>new</code> instructions, and the changelog say what it does.</li>
+          </ol>
+          <figure id="figure-standing">
+            <figcaption>How the report places one file under <code>runs/</code>. Each question is the prerequisite run check's, in its order, without <code>atLeast</code>.</figcaption>
+            <details>
+              <summary>Diagram source</summary>
+              <pre class="mermaid">flowchart TD
+  F["a file under runs/"] --&gt; L{"a link, or resolves outside runs/?"}
+  L -- yes --&gt; U["unreadable: is a link"]
+  L -- no --&gt; R{"reads, parses without recovery, and is a tasks document?"}
+  R -- no --&gt; U2["unreadable: the first reason"]
+  R -- yes --&gt; O{"a step neither done nor dropped?"}
+  O -- yes --&gt; OP["open"]
+  O -- no --&gt; P{"a step done, every outcome passed, every requirement recorded?"}
+  P -- yes --&gt; PA["finished and passed"]
+  P -- no --&gt; NP["finished, not passed: the first reason"]</pre>
+            </details>
+          </figure>
+        </section>
+        <section id="contract">
+          <h2>What the contract says, and where it is silent</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Accepted requirement</th>
+                <th>What this change does with it</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>runbook-portability's <a href="../../../specs/runbook-portability/spec.html#req-a-prerequisite-run-is-met-by-a-finished-passed-record">"A prerequisite run is met by a finished, passed record"</a></td>
+                <td>Unchanged. The report applies its rule, without <code>atLeast</code>, through the same code, and names a record that falls short with the first reason in the order it fixes.</td>
+              </tr>
+              <tr>
+                <td>runbook-execution's <a href="../../../specs/runbook-execution/spec.html#req-a-run-is-one-record-from-start-to-finish">"A run is one record from start to finish"</a></td>
+                <td>Unchanged. A record states no time, so the report lists runs in name order and names no latest run.</td>
+              </tr>
+              <tr>
+                <td>runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-the-canonical-procedure-carries-no-completion-state">"The canonical procedure carries no completion state"</a></td>
+                <td>Unchanged. The report reads records and never the runbook's own <code>tasks.html</code>.</td>
+              </tr>
+              <tr>
+                <td>toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-a-single-command-exposes-validate-format-and-init">"The command surface names its operations as OpenSpec names them"</a></td>
+                <td>Unchanged. No operation is added. <code>run</code> keeps <code>post run</code>, because "the verb names the most the operation writes in any invocation", which is how <code>run --check</code> already reads under it.</td>
+              </tr>
+              <tr>
+                <td>toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-the-command-surface-is-stable-within-a-major-version">"The command surface is stable within a major version"</a></td>
+                <td>Unchanged. <code>--status</code> and the payload's fourth shape are additions, which a minor release may make, recorded in <code>1.3.json</code>, and permanent in 1.x from then on.</td>
+              </tr>
+              <tr>
+                <td>toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-exit-codes-distinguish-outcomes">"Exit codes distinguish outcomes"</a></td>
+                <td>Unchanged. A report exits 0, and a runbook or record that is not there is an operation that could not run, exit 2, as <code>run --check</code> exits for a runbook that is not there.</td>
+              </tr>
+              <tr>
+                <td>toolchain-packaging's <a href="../../../specs/toolchain-packaging/spec.html#req-the-project-records-what-changed-in-each-version-it-ships">"The project records what changed in each version it ships"</a></td>
+                <td>Unchanged. The changelog gains a 1.3.0 entry.</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>The specification adds one requirement to runbook-execution at archival, <strong>"A run's progress is reported from its record"</strong>: <code>htmlspec run &lt;runbook&gt; --status</code> reports each run's steps done and whether it is finished and passed, by runbook-portability's rule; naming a record reports each step's state, each dropped step's reason, each requirement's recorded outcome, and the record's release; the report writes nothing, never gates, and exits 0 whatever the runs say.</p>
+          <p>The contract is silent on the report's wording, its layout, and its payload's shape. Those are my choices, made under decisions 3 and 4. The wording can change in any release. The payload binds every later 1.x release once 1.3.0 ships it, so it is kept to what the text shows.</p>
+        </section>
+        <section id="decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-the-report-is-run-s" data-change="added" data-status="accepted">
+            <h3>1. The report is a mode of <code>run</code>: <code>--status</code>, with an optional record</h3>
+            <p><code>htmlspec run &lt;runbook&gt; --status</code> reports every run of the runbook, and <code>htmlspec run &lt;runbook&gt; --status &lt;record&gt;</code> reports one. <code>--status</code> is exclusive with <code>--as</code> and with <code>--check</code>.</p>
+            <p data-field="rationale">The proposal sets out the alternatives. The deciding fact is <code>status</code>'s payload: its three fields are recorded as always present in every released surface, and a run has none of them, so <code>status --run</code> is out of reach until 2.0. <code>run</code> is where a contributor already goes for runs, it already has a report, <code>--check</code>, and its payload already has several shapes. An optional value keeps one flag for both forms, and reads the way the user's own example did.</p>
+          </section>
+          <section class="decision" id="decision-one-rule-for-finished-and-passed" data-change="added" data-status="accepted">
+            <h3>2. One reading of a record and one verdict, shared with the run check</h3>
+            <p>The report decides "finished and passed" by calling the code that decides a run check. It never restates the rule.</p>
+            <p data-field="note"><code>prerequisites.rs</code> keeps its rule and changes its seams. <code>decide(source, at_least)</code> becomes two functions it is made of: <code>read(source)</code>, which turns a file's text into a <code>Reading</code> (the projected model and the release its head states) or the reason it is no run's record, in the existing order (empty, needs recovery, not a tasks document); and <code>judge(reading, at_least)</code>, which gives the verdict and, for an open run, its done and total steps. A step's state is read once, by a <code>StepState</code> with five values, the schema's four and <code>Undeclared</code> for a state that is absent or not one of them, which is the word <code>status</code> and <code>list</code> already use for such a task, and "settled" is <code>Done</code> or <code>Dropped</code>, so the count the rule makes and the steps the report lists cannot disagree. The set of requirements a record owes an outcome for, each it carries with an identifier and does not mark withdrawn, becomes one function, <code>owed</code>, which the rule checks and the report lists. A verification's outcome is read once too, by <code>outcome_of</code>, which reads an absent and an empty <code>data-outcome</code> alike as none, and the name the rule gives a verification by <code>named_by</code>; both serve the rule and the report. <code>judge_records(runs, at_least)</code> reads every file under <code>runs/</code> once, refusing a link before reading as today, and returns each record's name, verdict, progress, and reading. <code>read_records</code>, which the run check uses, is a fold of it.</p>
+            <p data-field="rationale">The user asked for this code to be reused, never duplicated, and the reason is the one decision 3 of <code>require-a-run-of-another-runbook</code> gave for the rule itself: an operator who sees "finished and passed" here and "still open" in preflight about the same record has two answers and no way to choose. The existing tests of <code>decide</code> are kept unchanged, as the check that the split decides what the whole did.</p>
+          </section>
+          <section class="decision" id="decision-what-the-text-says" data-change="added" data-status="accepted">
+            <h3>3. What the report says</h3>
+            <p>Every run gets one line, in name order, with the record names padded to one column, as the first example shows. A named run gets every step in order, its requirements and their outcomes, its release, and its verdict, as the second shows.</p>
+            <pre><code>publish has 4 runs, in name order:
+  v1.1.0  7/9 done, 2 dropped, finished and passed
+  v1.2.1  9/9 done, finished, not passed: recorded failed for req-b
+  v1.3.0  4/9 done, 1 dropped, step 6 in progress
+  stray   not read: is not a run's record: not a tasks document</code></pre>
+            <pre><code>publish run v1.3.0
+Steps: 4 of 9 done, 1 dropped
+  1. done         Start from the archived release
+  2. dropped      First run only: bootstrap the public repository
+                  reason: the public repository already has its main
+  3. done         Push the export and merge it
+  …
+  6. in progress  Watch the release workflow to its end
+  7. to do        Check each channel
+Requirements: 2 of 3 have an outcome
+  passed      req-a
+  failed      req-b
+  no outcome  req-c
+Runbook release: 0.3.0
+Finished and passed: no, it is still open, with 4 of 9 steps done</code></pre>
+            <p data-field="note">An open run's line names the steps in progress ("step 6", "steps 5 and 6", "steps 4, 5 and 6"), or, where none is, the first step neither done nor dropped, as "step 6 next". A finished run that does not pass, and a file not read as a record, give the run check's first reason in its own words. A step is numbered by its place in the record, its heading is the task's heading as a reader names it, without the identifier the template writes beside it (htmlspec-parse's <code>HeadingName</code>, which a rename is compared by), and a dropped step with no reason says "reason: none given". A requirement is listed where the record carries it with an identifier and does not mark it withdrawn, which is the set the rule's "records no outcome" check asks about, with every outcome a verification referencing it records, in document order. The rule's outcome check reads every verification, though, so a verification that references none of those requirements, one referencing nothing or only a withdrawn requirement, is listed after them under "Other outcomes", by the name the rule gives it: the requirement it references first, or else its identifier. So every verification the verdict can name is one the view shows. An empty outcome is no outcome, in the view as in the rule. The release line says "not stated", "stated more than once", or "not three dot-separated integers" and the text, where the head holds no single well-formed release. A runbook with no runs says so and how to start one. Every name, heading, reason, identifier, and outcome reaches the terminal through <code>terminal::shown</code>.</p>
+            <p data-field="rationale">The one-line form is the answer to "how far has it come", so it carries the count, the step in hand, and the verdict, and no more. The one-record form lists every step rather than only the open ones, because a person resuming a run reads where it stands from the steps around the one in hand. Name order is the order <code>gather</code> already gives every run report. It is stated in the header so that nobody reads it as chronology.</p>
+          </section>
+          <section class="decision" id="decision-the-payload" data-change="added" data-status="accepted">
+            <h3>4. The payload: <code>runbook</code> and <code>records</code></h3>
+            <p>Both forms write one shape, with one entry in <code>records</code> where a record is named. It is <code>run</code>'s fourth shape, told apart from the others by its required fields.</p>
+            <pre><code>{
+  "runbook": "publish",
+  "records": [{
+    "record": "v1.3.0",
+    "state": "open",
+    "reason": "is still open, with 4 of 9 steps done",
+    "done": 4, "dropped": 1, "total": 9,
+    "steps": [{"number": 2, "id": "task-bootstrap", "heading": "First run only: …",
+               "state": "dropped", "reason": "the public repository already has its main"}, …],
+    "requirements": [{"id": "req-a", "outcomes": ["passed"]}, {"id": "req-c", "outcomes": []}],
+    "release": {"stated": "one", "version": "0.3.0"}
+  }]
+}</code></pre>
+            <p data-field="note"><code>state</code> is one of <code>passed</code>, <code>open</code>, <code>not-passed</code>, and <code>unreadable</code>. <code>reason</code> is present in every state but <code>passed</code>. <code>done</code>, <code>dropped</code>, <code>total</code>, <code>steps</code>, <code>requirements</code>, and <code>release</code> are present wherever the file was read as a record and absent where it was not, so absent means "not known" and never "none". The schema states the two as the two branches of a <code>runStatus</code> definition, a read record with all of them required and a file not read, whose <code>state</code> is the constant <code>unreadable</code>, so a consumer can rely on them where the state is not <code>unreadable</code>. A step's <code>state</code> is one of <code>todo</code>, <code>in-progress</code>, <code>done</code>, <code>dropped</code>, and <code>undeclared</code>. Its <code>id</code>, <code>heading</code>, and <code>reason</code> are present where the record gives them. <code>release.stated</code> is one of <code>one</code>, <code>none</code>, <code>malformed</code>, and <code>several</code>, with <code>version</code> for <code>one</code> and <code>given</code> for <code>malformed</code>. Names and text are the raw text, because JSON escapes them.</p>
+            <p data-field="rationale">One shape for both forms means a script reads one schema whichever it asked. A read record also carries <code>otherOutcomes</code>, each with a <code>name</code> and an <code>outcome</code> where it has them, for the verifications decision 3 lists apart; the schema declares it as an optional property, and the program writes it on every read record, empty where there is none. The record's release is a small sum type, not a nullable string, because "no release stated" and "a release nobody can read" are different facts and a null would make them one. Nothing is in the payload that the text does not show, because every field becomes permanent with 1.3.0.</p>
+            <p data-field="note">Settled after the review of pull request 95. Two refinements were left as prose rather than encoded in the schema: requiring <code>reason</code> where the state is <code>open</code> or <code>not-passed</code>, and stating <code>release</code> as a <code>oneOf</code> of its four cases. The surface names a <code>oneOf</code> branch by its required fields, so either would rename a branch <code>1.3.json</code> already records, and the writer refuses a surface that loses a fact a recorded file holds. The program writes both as decision 4 says, and the schema's descriptions state it. A record-level <code>reason</code> is the rule's sentence in the form preflight's <code>notSatisfying</code> reason carries, with each character a terminal would act on written by its code point, and the schema now says so; every name and text elsewhere in the payload is the raw text.</p>
+          </section>
+          <section class="decision" id="decision-names" data-change="added" data-status="accepted">
+            <h3>5. Names resolve as <code>run</code> and <code>preflight</code> resolve them</h3>
+            <p>The runbook is found as <code>run --check</code> finds it, by 1.0's name rule, and then known by its enumerated name, as <code>run --as</code> and <code>preflight</code> know it. The record is matched byte for byte against the names the runbook's <code>runs/</code> holds.</p>
+            <p data-field="note">A typed runbook name that a case-folding filesystem finds, <code>PUBLISH</code> for <code>publish</code>, reports under <code>publish</code>, as decision 2 of <code>require-a-run-of-another-runbook</code> settled for <code>run</code> and <code>preflight</code>. A name that reaches a directory listed under no one name is refused, exit 2, with the message <code>run --as</code> gives. A runbook that is not there is refused, exit 2, with <code>run --check</code>'s message. A record that is not there is refused, exit 2, naming the records the runbook has. The record is never opened by its typed name, so a path, <code>..</code>, or a name that differs only in case finds nothing on any filesystem.</p>
+            <p data-field="rationale">The runbook rule keeps every name 1.2 ran working. The record rule is the run check's: a name means the same record on every machine.</p>
+          </section>
+          <section class="decision" id="decision-modes-are-exclusive" data-change="added" data-status="accepted">
+            <h3>6. The modes are exclusive, and a wrong pairing is named</h3>
+            <p><code>run</code>'s options are read together into one of three modes, starting a run, <code>--check</code>, and <code>--status</code>, by a total match on the three options. Each other pairing is refused, exit 2, with a sentence that names which option is surplus and both commands it could have meant.</p>
+            <p data-field="rationale">This is how <code>main.rs</code> already pairs <code>--check</code> and <code>--as</code>, for the reason its comment gives: naming what is surplus is a better report than clap's generic conflict. A start with no record name now also names <code>--status</code> beside <code>--check</code>.</p>
+          </section>
+          <section class="decision" id="decision-the-surface-records-an-optional-value" data-change="added" data-status="accepted">
+            <h3>7. The surface records that a value is optional</h3>
+            <p>An argument whose value may be left out records <code>"valueOptional": true</code> in the surface, and the comparison treats it as a fact a later 1.x release must keep.</p>
+            <p data-field="rationale"><code>--status</code> is the first option whose value is optional, and the surface records only that an option takes a value. A later release that made the value required would break <code>run publish --status</code> and pass every check. The fact is written only where it holds, so every argument already recorded keeps its record and <code>1.3.json</code> differs from <code>1.2.json</code> only by what 1.3 adds.</p>
+          </section>
+          <section class="decision" id="decision-where-it-is-named" data-change="added" data-status="accepted">
+            <h3>8. Where the option is named, and where it is not</h3>
+            <p>A bare <code>run</code> names it beside <code>--as</code> and <code>--check</code>, as does the refusal for a start with no record name. <code>run --help</code>, the README's runbook section and command reference, and the <code>new</code> workflow's instructions, where they say how to start a run, name it too. <code>list --runbooks</code> does not change.</p>
+            <p data-field="rationale">A bare <code>run</code> is where a contributor who has forgotten <code>run</code>'s modes lands, so it lists them. The installed instructions are what an agent working a run reads, and that is the reader the user's question came from. The listing's rows describe runbooks, not runs, and it already counts a prerequisite's open runs. Putting a command in every such line would lengthen the one table a reader scans to choose a runbook.</p>
+          </section>
+          <section class="decision" id="decision-release-1-3-0" data-change="added" data-status="accepted">
+            <h3>9. Release 1.3.0, which carries 1.2.2</h3>
+            <p>The workspace moves to 1.3.0 before anything is added, and <code>spec.nix</code> moves to 1.3.0 at archival. The changelog's 1.3.0 entry has an Upgrading note saying 1.2.2 was archived and not published, that 1.3.0 carries it, and that a project upgrading from 1.2.1 follows 1.2.2's note too.</p>
+            <p data-field="rationale">The user decided on 2026-10-28 to publish one release, 1.3.0, and skip publishing 1.2.2. A new flag is a minor release's addition. Opening the minor first means <code>1.3.json</code> exists before the addition, so the writer records it as an addition to 1.3 and never as a rewrite of 1.2, as 1.2's opening did.</p>
+          </section>
+        </section>
+        <section id="risks">
+          <h2>Risks</h2>
+          <section class="risk" id="risk-name-order-read-as-time" data-change="added" data-response="mitigated">
+            <h3>Name order is read as the order the runs happened</h3>
+            <p>A reader who sees <code>v1.10.0</code> listed before <code>v1.2.0</code>, or the last line taken for the latest run, draws a conclusion the records cannot support.</p>
+            <p data-field="mitigation">The header says "in name order", and the README says a record states no time. Nothing in the report or the payload names a latest run.</p>
+          </section>
+          <section class="risk" id="risk-passed-read-as-meeting-every-check" data-change="added" data-response="mitigated">
+            <h3>"Finished and passed" is read as meeting a check with <code>atLeast</code></h3>
+            <p>A record can be finished and passed and still miss a run check that declares a lowest release.</p>
+            <p data-field="mitigation">The one-record view and the payload carry the record's release beside the verdict, and the README says the verdict is the rule without <code>atLeast</code>. <code>preflight</code> on the dependent runbook stays the answer to whether its check is met.</p>
+          </section>
+          <section class="risk" id="risk-the-value-takes-the-runbook" data-change="added" data-response="mitigated">
+            <h3>The optional value takes the runbook's name</h3>
+            <p><code>htmlspec run --status publish</code> reads <code>publish</code> as the record, and finds no runbook.</p>
+            <p data-field="mitigation">A <code>run</code> with no runbook already lists the runbooks and refuses, exit 2, and that listing now spells <code>htmlspec run &lt;runbook&gt; --status</code>. Nothing is read or written on the way.</p>
+          </section>
+          <section class="risk" id="risk-the-report-and-preflight-drift" data-change="added" data-response="mitigated">
+            <h3>The report and the run check come to disagree</h3>
+            <p>A later change to one rule and not the other would show a record as finished and passed here and refused in preflight.</p>
+            <p data-field="mitigation">There is one rule, in <code>prerequisites.rs</code>, and the report calls it (decision 2). A test drives one project through both: each record preflight names as open is open here, and each record it counts is <code>passed</code> here.</p>
+          </section>
+          <section class="risk" id="risk-a-record-writes-to-the-terminal" data-change="added" data-response="mitigated">
+            <h3>A record writes an escape sequence to the terminal</h3>
+            <p>A record's name, a step's heading or reason, and an outcome are text a document holds, and any of them can carry a control character or a bidirectional override.</p>
+            <p data-field="mitigation">Every one goes through <code>terminal::shown</code>, the rule the preflight report and the listing read. A test writes a record whose name, heading, reason, and outcome each hold an escape and a right-to-left override, and checks the report names each by code point.</p>
+          </section>
+          <section class="risk" id="risk-an-unreadable-runs-folder-reads-as-no-runs" data-change="added" data-response="accepted">
+            <h3>A <code>runs/</code> folder that cannot be read reads as a runbook with no runs</h3>
+            <p>Where the runbook's <code>runs/</code> exists and cannot be listed, the report says the runbook has no runs on record, as if nobody had run it. The review of pull request 95 found it. The behavior is <code>runs::gather</code>'s, which <code>run --check</code> and preflight's run check share, so all three answer the same way today.</p>
+            <p data-field="mitigation">Accepted in this change, because the fix belongs in the one place all three read from and would change what <code>--check</code> and preflight report too. A follow-up change makes <code>gather</code> tell an absent folder from one it cannot read, and names the second in every report that reads it.</p>
+          </section>
+          <section class="risk" id="risk-the-payload-is-permanent" data-change="added" data-response="accepted">
+            <h3>The payload's shape is fixed for every later 1.x release</h3>
+            <p>A field added here that later proves wrong stays until 2.0.</p>
+            <p data-field="mitigation">Accepted, as every minor addition is. The payload is kept to what the text shows (decision 4), and a later release can add a field without removing one.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

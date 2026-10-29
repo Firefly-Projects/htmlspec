@@ -187,6 +187,17 @@ fn matches(node: &Value, value: &Value) -> bool {
         })
 }
 
+/// `node`, or the local definition of `root` it refers to.
+fn resolved<'a>(root: &'a Value, node: &'a Value) -> &'a Value {
+    match node["$ref"]
+        .as_str()
+        .and_then(|reference| reference.strip_prefix("#/definitions/"))
+    {
+        Some(name) => &root["definitions"][name],
+        None => node,
+    }
+}
+
 /// Records the properties `value` carries, walking it beside `node`, a node of `root`.
 fn cover(root: &Value, node: &Value, at: &str, value: &Value, out: &mut BTreeSet<String>) {
     if let Some(reference) = node["$ref"].as_str() {
@@ -203,10 +214,13 @@ fn cover(root: &Value, node: &Value, at: &str, value: &Value, out: &mut BTreeSet
         return;
     }
     if let Some(branches) = node["oneOf"].as_array() {
+        // A branch that is a reference is judged by the definition it names. Judged as written, it
+        // has no type and no properties, so it matched every value, and a branch after it, as
+        // `run`'s `--status` shape is after the preflight report, was never chosen.
         if let Some((index, alternative)) = branches
             .iter()
             .enumerate()
-            .find(|(_, alternative)| matches(alternative, value))
+            .find(|(_, alternative)| matches(resolved(root, alternative), value))
         {
             cover(
                 root,

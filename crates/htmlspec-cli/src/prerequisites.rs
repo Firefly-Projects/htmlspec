@@ -529,44 +529,85 @@ pub(crate) struct Records {
 /// Decides every file under `runs` against a run check whose lowest release is `at_least`.
 pub(crate) fn read_records(runs: &Path, at_least: Option<RunbookVersion>) -> Records {
     let mut records = Records::default();
-    let home = runs.canonicalize().ok();
-    for found in crate::runs::gather(runs) {
-        let name = match &found {
-            crate::runs::Found::Unreadable(file, _) | crate::runs::Found::Readable(file, _) => file,
-        };
-        // A record that is a link, or resolves outside this runbook's runs, may record a run made in
-        // another project, and only this project's runs count. `gather` keeps reading such files,
-        // so `run --check` reviews them as 1.1.1 did. Only satisfying a run check refuses them.
-        if escapes(runs, name, home.as_deref()) {
-            let record = name.strip_suffix(".html").unwrap_or(name).to_owned();
-            records.unsatisfying.push((record, NotSatisfying::IsALink));
-            continue;
-        }
-        let (file, verdict, open) = match &found {
-            crate::runs::Found::Unreadable(file, error) => (
-                file.clone(),
-                Err(NotSatisfying::Unreadable(error.clone())),
-                None,
-            ),
-            crate::runs::Found::Readable(file, source) => {
-                let (verdict, open) = decide(source, at_least);
-                (file.clone(), verdict, open)
+    for Judged { record, read } in judge_records(runs, at_least) {
+        let verdict = match read {
+            Ok(Read { verdict, open, .. }) => {
+                if let Some((done, total)) = open {
+                    records.open.push(OpenRun {
+                        record: record.clone(),
+                        done,
+                        total,
+                    });
+                }
+                verdict
             }
+            Err(reason) => Err(reason),
         };
-        let record = file.strip_suffix(".html").unwrap_or(&file).to_owned();
-        if let Some((done, total)) = open {
-            records.open.push(OpenRun {
-                record: record.clone(),
-                done,
-                total,
-            });
-        }
         match verdict {
             Ok(release) => records.satisfying.push(Satisfying { record, release }),
             Err(reason) => records.unsatisfying.push((record, reason)),
         }
     }
     records
+}
+
+/// One file under a runbook's `runs/`, read and judged by the rule a run check applies.
+#[derive(Debug)]
+pub(crate) struct Judged {
+    /// The record's name, without its extension.
+    pub record: String,
+    /// The record as read, with the rule's verdict on it, or the first reason the file was not read
+    /// as one of this runbook's records: it is a link, cannot be read, or [`reading_of`] refuses it.
+    pub read: Result<Read, NotSatisfying>,
+}
+
+/// A record read, and the rule's verdict on it.
+#[derive(Debug)]
+pub(crate) struct Read {
+    /// What the record holds.
+    pub reading: Reading,
+    /// Whether it satisfies the check, with what it states of its release where it does.
+    pub verdict: Verdict,
+    /// Its done and total steps, where the run is still under way.
+    pub open: Progress,
+}
+
+/// Reads and judges every file under `runs`, in name order, against a run check whose lowest release
+/// is `at_least`.
+///
+/// The one place a record is read for the rule, so the run check and `run --status` (the change
+/// `show-how-far-a-run-has-come`, its design's decision 2) give one answer about every record.
+pub(crate) fn judge_records(runs: &Path, at_least: Option<RunbookVersion>) -> Vec<Judged> {
+    let home = runs.canonicalize().ok();
+    crate::runs::gather(runs)
+        .into_iter()
+        .map(|found| {
+            let (crate::runs::Found::Unreadable(file, _) | crate::runs::Found::Readable(file, _)) =
+                &found;
+            let record = file.strip_suffix(".html").unwrap_or(file).to_owned();
+            // A record that is a link, or resolves outside this runbook's runs, may record a run
+            // made in another project, and only this project's runs count. `gather` keeps reading
+            // such files, so `run --check` reviews them as 1.1.1 did. Only the rule refuses them.
+            let read = if escapes(runs, file, home.as_deref()) {
+                Err(NotSatisfying::IsALink)
+            } else {
+                match &found {
+                    crate::runs::Found::Unreadable(_, error) => {
+                        Err(NotSatisfying::Unreadable(error.clone()))
+                    }
+                    crate::runs::Found::Readable(_, source) => reading_of(source).map(|reading| {
+                        let (verdict, open) = judge(&reading, at_least);
+                        Read {
+                            reading,
+                            verdict,
+                            open,
+                        }
+                    }),
+                }
+            };
+            Judged { record, read }
+        })
+        .collect()
 }
 
 /// Whether the file `name` under `runs` is a symbolic link, or resolves anywhere but directly inside
@@ -584,39 +625,131 @@ fn escapes(runs: &Path, name: &str, home: Option<&Path>) -> bool {
 }
 
 /// Whether one record satisfies a run check, with what it states of its release where it does.
-type Verdict = Result<RecordRelease, NotSatisfying>;
+pub(crate) type Verdict = Result<RecordRelease, NotSatisfying>;
 
 /// A record that is still under way, as `(done, total)` tasks.
-type Progress = Option<(usize, usize)>;
+pub(crate) type Progress = Option<(usize, usize)>;
 
-/// One record's verdict, and whether it is still under way.
-fn decide(source: &str, at_least: Option<RunbookVersion>) -> (Verdict, Progress) {
+/// A file under `runs/` read as a run's record: a tasks document that parses without recovery.
+///
+/// Only [`reading_of`] makes one, so holding one is the evidence that the first three of the rule's
+/// reasons do not apply.
+#[derive(Debug)]
+pub(crate) struct Reading {
+    /// The record's projected model.
+    pub model: htmlspec_parse::model::DocumentModel,
+    /// The release its head states.
+    pub release: RecordRelease,
+}
+
+/// Reads a file's text as a run's record, or names the first reason it is not one.
+pub(crate) fn reading_of(source: &str) -> Result<Reading, NotSatisfying> {
     // An empty file is no document at all, so it is not a tasks document, as the design's decision 3
     // says, rather than one whose markup needs recovery: the parser recovers an empty input into a
     // document, which would otherwise name it by the recovery and not by what it is.
     if source.trim().is_empty() {
-        return (Err(NotSatisfying::NotATasksDocument), None);
+        return Err(NotSatisfying::NotATasksDocument);
     }
     let parsed = htmlspec_parse::parse_document(source);
     if !parsed.is_recovery_free() {
-        return (Err(NotSatisfying::NeedsRecovery), None);
+        return Err(NotSatisfying::NeedsRecovery);
     }
     let model = htmlspec_parse::project(&parsed.document).model;
     if model.kind.as_deref() != Some("tasks") {
-        return (Err(NotSatisfying::NotATasksDocument), None);
+        return Err(NotSatisfying::NotATasksDocument);
+    }
+    Ok(Reading {
+        model,
+        release: release_of(&parsed.document),
+    })
+}
+
+/// Where one step of a run stands, by the state its record gives the task.
+///
+/// The task vocabulary's four states, and `Undeclared` for a task that declares none or one outside
+/// the vocabulary, which the validator reports and which `status` and `list` count the same way.
+/// Read once, here, so the counts the rule makes and the steps `run --status` lists cannot
+/// disagree.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum StepState {
+    /// Not started.
+    Todo,
+    /// Under way.
+    InProgress,
+    /// Finished.
+    Done,
+    /// Abandoned, with the reason the record gives.
+    Dropped,
+    /// No state the vocabulary holds.
+    Undeclared,
+}
+
+impl StepState {
+    /// The state `task` declares.
+    pub(crate) fn of(task: &htmlspec_parse::model::Task) -> Self {
+        match task.state.as_deref() {
+            Some("todo") => Self::Todo,
+            Some("in-progress") => Self::InProgress,
+            Some("done") => Self::Done,
+            Some("dropped") => Self::Dropped,
+            _ => Self::Undeclared,
+        }
     }
 
+    /// Done or dropped. A run is finished when every step is settled, and a step in any other
+    /// state, an undeclared one included, leaves it open: a step nobody has said anything about is
+    /// not finished.
+    pub(crate) fn is_settled(self) -> bool {
+        matches!(self, Self::Done | Self::Dropped)
+    }
+}
+
+/// The outcome one verification records: its `data-outcome`, where it states one that is not empty.
+///
+/// Read once, here, as [`StepState`] reads a step, so the rule and `run --status` agree about which
+/// verifications recorded nothing: an absent outcome and an empty one are both no outcome.
+pub(crate) fn outcome_of(verification: &htmlspec_parse::model::Verification) -> Option<&str> {
+    verification
+        .outcome
+        .as_deref()
+        .filter(|outcome| !outcome.is_empty())
+}
+
+/// What a report calls a verification: the requirement it references first, or else its own
+/// identifier. The rule names a verification that did not pass this way.
+pub(crate) fn named_by(verification: &htmlspec_parse::model::Verification) -> Option<&str> {
+    verification
+        .references
+        .first()
+        .map(|reference| reference.target.as_str())
+        .or(verification.id.as_deref())
+}
+
+/// The requirements a record owes an outcome for, in document order: each it carries with an
+/// identifier and does not mark withdrawn.
+pub(crate) fn owed(
+    model: &htmlspec_parse::model::DocumentModel,
+) -> impl Iterator<Item = &str> + '_ {
+    model
+        .requirements
+        .iter()
+        .filter(|requirement| !crate::runs::is_withdrawn(&requirement.change))
+        .filter_map(|requirement| requirement.id.as_deref())
+}
+
+/// One record's verdict, and whether it is still under way.
+pub(crate) fn judge(reading: &Reading, at_least: Option<RunbookVersion>) -> (Verdict, Progress) {
+    let model = &reading.model;
     let total = model.tasks.len();
-    let state = |task: &htmlspec_parse::model::Task| task.state.clone().unwrap_or_default();
     let done = model
         .tasks
         .iter()
-        .filter(|task| state(task) == "done")
+        .filter(|task| StepState::of(task) == StepState::Done)
         .count();
     let settled = model
         .tasks
         .iter()
-        .filter(|task| matches!(state(task).as_str(), "done" | "dropped"))
+        .filter(|task| StepState::of(task).is_settled())
         .count();
     // Open is a run still under way: some task neither done nor dropped. A record whose every task
     // was dropped is finished and did nothing, which is the vacuous case below rather than an open
@@ -633,22 +766,12 @@ fn decide(source: &str, at_least: Option<RunbookVersion>) -> (Verdict, Progress)
     // Every verification passed, so nothing failed, was blocked, was not run, or was only partly
     // checked. Named by the requirement it records, which is what an operator looks for.
     for verification in &model.verifications {
-        let outcome = verification.outcome.clone().unwrap_or_default();
-        if outcome != "passed" {
-            let requirement = verification
-                .references
-                .first()
-                .map(|reference| reference.target.clone())
-                .or_else(|| verification.id.clone())
-                .unwrap_or_default();
+        let outcome = outcome_of(verification);
+        if outcome != Some("passed") {
             return (
                 Err(NotSatisfying::OutcomeNotPassed {
-                    requirement,
-                    outcome: if outcome.is_empty() {
-                        String::from("no outcome")
-                    } else {
-                        outcome
-                    },
+                    requirement: named_by(verification).unwrap_or_default().to_owned(),
+                    outcome: outcome.unwrap_or("no outcome").to_owned(),
                 }),
                 open,
             );
@@ -661,13 +784,7 @@ fn decide(source: &str, at_least: Option<RunbookVersion>) -> (Verdict, Progress)
         .flat_map(|verification| verification.references.iter())
         .map(|reference| reference.target.as_str())
         .collect();
-    for requirement in &model.requirements {
-        if crate::runs::is_withdrawn(&requirement.change) {
-            continue;
-        }
-        let Some(id) = requirement.id.as_deref() else {
-            continue;
-        };
+    for id in owed(model) {
         if !recorded.contains(id) {
             return (
                 Err(NotSatisfying::Unrecorded {
@@ -678,7 +795,7 @@ fn decide(source: &str, at_least: Option<RunbookVersion>) -> (Verdict, Progress)
         }
     }
 
-    let release = release_of(&parsed.document);
+    let release = reading.release.clone();
     let Some(at_least) = at_least else {
         return (Ok(release), open);
     };
@@ -759,6 +876,15 @@ pub(crate) fn observe(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The rule over a file's text: [`reading_of`], then [`judge`], as [`judge_records`] applies them. The
+    /// tests below state the rule this way, as they did before the two were split.
+    fn decide(source: &str, at_least: Option<RunbookVersion>) -> (Verdict, Progress) {
+        match reading_of(source) {
+            Ok(reading) => judge(&reading, at_least),
+            Err(reason) => (Err(reason), None),
+        }
+    }
 
     /// A temporary directory that removes itself.
     struct Scratch(std::path::PathBuf);

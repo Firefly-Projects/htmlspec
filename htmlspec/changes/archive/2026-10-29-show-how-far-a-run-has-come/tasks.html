@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>How far each run of a runbook has come: tasks</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>How far each run of a runbook has come: tasks</h1>
+        <p>The work that builds <code>htmlspec run &lt;runbook&gt; --status [&lt;record&gt;]</code> and releases it as 1.3.0, in the order the design gives: open the release, share the run check's reading, build and test the report, document it, and land it.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>How far each run of a runbook has come: tasks</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-tasks">Tasks</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-tasks">
+          <h2>Tasks</h2>
+          <p>Each task is one unit of work, individually addressable, so a state change is a change to one unit rather than to a list. Group 1 opens the release and makes the surface able to hold the addition, group 2 builds and tests it, group 3 documents it, and group 4 lands it.</p>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done" data-refs="req-the-command-surface-is-stable-within-a-major-version">
+              <h3>1.1 Open the 1.3.0 release <span class="hs-id">task-1-1</span></h3>
+              <p data-field="note"><code>scripts/set-version 1.3.0</code> for the version, the pins, and the lockfile. A <code>## 1.3.0</code> heading in CHANGELOG.md. <code>tests/surface/1.3.json</code> recorded by the surface writer, equal to <code>1.2.json</code> but for its version. The 1.3.0 binary's <code>htmlspec init --tools claude,codex,pi</code> to move the installed instruction files, checked by <code>scripts/check-installed</code>. <code>spec.nix</code> stays at 1.2.2 until archival. Its own commit, before anything is added.</p>
+              <p data-field="note">Done on 2026-10-28. <code>scripts/set-version 1.3.0</code> moved the version, the five pins, and the lockfile. The writer recorded <code>1.3.json</code>, which differs from <code>1.2.json</code> only in its version. The 1.3.0 binary's <code>htmlspec init --tools claude,codex,pi</code> changed only the <code>generatedBy</code> line of each installed file, and <code>scripts/check-installed</code> reports the 45 files match.</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done" data-refs="req-the-command-surface-is-stable-within-a-major-version">
+              <h3>1.2 Record whether an argument's value is optional <span class="hs-id">task-1-2</span></h3>
+              <p data-field="note">In crates/htmlspec-cli/src/surface.rs, an argument whose value may be left out records <code>"valueOptional": true</code>, and the comparison reads it as a fact, as decision 7 says. A unit test: a surface whose optional value became required shows the loss. The recorded files are unchanged by it, because no released argument has an optional value.</p>
+              <p data-field="note">Done on 2026-10-28. Two unit tests in surface.rs: an argument built with an optional value is recorded with <code>valueOptional</code>, and one with a required value or none is not; and a surface whose optional value lost the fact names the loss. The test that the current minor's file records the program still passes against the unchanged <code>1.3.json</code>, so no argument released so far takes an optional value.</p>
+            </li>
+            <li class="task" id="task-2-1" data-change="added" data-state="done" data-refs="req-a-prerequisite-run-is-met-by-a-finished-passed-record">
+              <h3>2.1 Share the reading of a record with the run check <span class="hs-id">task-2-1</span></h3>
+              <p data-field="note">In crates/htmlspec-cli/src/prerequisites.rs, split <code>decide</code> into <code>read</code> and <code>judge</code>, add <code>StepState</code> and <code>judge_records</code>, and rebuild <code>read_records</code> on them, as decision 2 says. Every existing test of <code>decide</code>, <code>read_records</code>, preflight, and the listing passes unchanged.</p>
+              <p data-field="deviation">Done on 2026-10-28, with one seam more than the task names, and two names other than the design's. The set of requirements a record owes an outcome for became <code>owed</code>, which the rule checks and the report lists. <code>read</code> is <code>reading_of</code>, so it does not shadow a local named for what it returns. A judged file holds its name and either the reading with the rule's verdict or the first reason it was not read, so no file can carry a verdict without a reading. The tests of the rule state <code>decide</code> as <code>reading_of</code> then <code>judge</code>, in the test module, and pass unchanged with the integration tests of preflight, the run check, and the listing.</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Build the report <span class="hs-id">task-2-2</span></h3>
+              <p data-field="note">A new module, crates/htmlspec-cli/src/progress.rs: a run's status as types (its standing, steps, requirements, and release), built from <code>judge_records</code>; the text of decision 3 and the payload of decision 4, each a pure function of those types; and the operation, which resolves the runbook and the record as decision 5 says and exits 0 for any report and 2 for a name that is not there. Unit tests of the rendering: the line for each standing, the step labels and numbering, a dropped step with and without a reason, requirements with several, one, and no outcomes, each release case, and escaping.</p>
+              <p data-field="deviation">Done on 2026-10-28, with one detail the design did not give. A step's heading is its heading name, without the identifier the template writes beside it, by htmlspec-parse's <code>HeadingName</code>; the first run against this repository's records printed each heading with its identifier appended, and the design's decision 3 now says so. Ten unit tests in progress.rs cover the line for each standing, each outcome, each reason a file is not read, the one-run text for a mix of every state, a passed run and an empty record, each release case, the listing, the payload's fields, the escaping of every name and text, and the refusal for a record that is not there.</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Give <code>run</code> the mode <span class="hs-id">task-2-3</span></h3>
+              <p data-field="note">In crates/htmlspec-cli/src/main.rs, <code>RunArgs</code> gains <code>--status [RECORD]</code>, with help that says what it reports. The options are read into one of three modes by a total match, and each other pairing is refused with its own sentence, as decision 6 says. A bare <code>run</code>'s listing and the refusal for a start with no record name name <code>--status</code>.</p>
+              <p data-field="note">Done on 2026-10-28. <code>RunMode::of</code> reads the three options by a total match, and the parse table and two unit tests cover it: <code>--status</code> parses with a record, with none, under <code>post run</code>, and before <code>--json</code>, and each refused pairing names the options to drop.</p>
+            </li>
+            <li class="task" id="task-2-4" data-change="added" data-state="done" data-refs="req-the-command-surface-is-stable-within-a-major-version">
+              <h3>2.4 Publish the payload's shape, and record the surface <span class="hs-id">task-2-4</span></h3>
+              <p data-field="note">crates/htmlspec-cli/schema/payload/run.schema.json gains the fourth shape, and its description says there are four. crates/htmlspec-cli/tests/payloads.rs gains a scenario whose payloads carry every field the shape declares. <code>1.3.json</code> is rewritten by the writer, and differs from <code>1.2.json</code> only by the version, <code>--status</code>, and the new shape.</p>
+              <p data-field="deviation">Done on 2026-10-28, with a fix to the suite the task did not foresee. The suite's coverage walk judged a <code>oneOf</code> branch that is a reference as written, with no type or properties, so the preflight report's branch matched every value and the new shape after it was never credited. It now judges such a branch by the definition it names. The shape is a <code>runStatus</code> definition with two branches, a read record and a file not read, as decision 4 now says. The scenario in payloads.rs adds a record with a dropped step and a malformed release and a stray empty file to <code>backup</code>'s runs, and reads <code>run backup --status</code> and <code>run backup --status dropped</code>. <code>1.3.json</code> gains <code>--status</code> with <code>valueOptional</code>, the shape, and the definition, and nothing else.</p>
+            </li>
+            <li class="task" id="task-2-5" data-change="added" data-state="done" data-refs="req-a-prerequisite-run-is-met-by-a-finished-passed-record">
+              <h3>2.5 Test the report end to end <span class="hs-id">task-2-5</span></h3>
+              <p data-field="note">Through the built binary, in crates/htmlspec-cli/tests/: a run just started, one with a step in progress, one with several, one with steps to do and none in progress, a finished passed run, a run with a dropped step and its reason, a mix of all four states, a record with no steps, an empty file, a record that needs recovery, a file that is not a tasks document, and a link; each outcome, <code>passed</code>, <code>failed</code>, <code>blocked</code>, <code>partial</code>, and <code>not-run</code>, and a requirement with none; a runbook with no runs; each release case. Both forms in text and in <code>--json</code>, every payload held to the schema. A runbook typed in another case reports under its listed name. A record or runbook that is not there exits 2. Each refused pairing of options. Hostile names, headings, reasons, and outcomes reach the terminal escaped. Two runs of the same command print the same bytes. A project driven through <code>preflight</code> and the report agrees about every record.</p>
+              <p data-field="note">Done on 2026-10-28, in a new file, crates/htmlspec-cli/tests/progress.rs, with ten tests through the built binary. One project holds twelve runs, a run just started, one step in progress, two, one step done and one to do, finished and passed, passed with a dropped step, a recorded failure, every step dropped, a mix holding a step in each state and one undeclared, a record with no steps, an empty file, and a record that needs recovery; the listing is checked byte for byte, twice, and the payload twice. One run is checked in text under both spellings and in its payload. Each outcome is recorded in turn, and a requirement with no verification. A runbook typed in another case reports under its listed name on this filesystem, which folds case, and the test says so and returns where one does not. A runbook or a record that is not there, a record typed with <code>.html</code>, as a path, or in another case, and each refused pairing exit 2. A link is not read. A runbook, a record, a heading, a reason, and an outcome holding an escape or an override reach the terminal by code point. The project is byte for byte the same after the report. A project with a <code>preflight/v3</code> check on <code>backup</code> gets the same answers from <code>preflight</code> and the report, met and unmet.</p>
+            </li>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Say it in the README and the instructions <span class="hs-id">task-3-1</span></h3>
+              <p data-field="note">README.md: the runbook section and the command reference show <code>run &lt;runbook&gt; --status</code>, with what "finished and passed" means and that name order is not time; "What each release lets a project adopt" gains a 1.3 entry; "What 1.x promises" names <code>1.3.json</code>; "Project status" gains 1.3.0. crates/htmlspec-assets/instructions/new.md names the option beside <code>--as</code>, and <code>init</code> moves the installed copies. The README tests pass.</p>
+              <p data-field="deviation">Done on 2026-10-28, in two more places than the task names. The runbook section gains a "Tracked." line among a runbook's disciplines and a subsection, "How far a run has come", with an example listing, beside "Running runbooks in order"; the reference block gains both forms; the paragraph on older runbooks says <code>--status</code> reads their runs, as <code>--check</code> does; and "Project status" says 1.2.2 reaches the channels in 1.3.0. new.md names the option in one sentence, <code>init</code> moved the five installed copies of that workflow, and <code>scripts/check-installed</code> reports the 45 files match. <code>scripts/check-readme-install</code> passes, and the test that installed bodies name only commands the program has passes.</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done" data-refs="req-the-project-records-what-changed-in-each-version-it-ships">
+              <h3>3.2 Write the 1.3.0 changelog entry, with its Upgrading note <span class="hs-id">task-3-2</span></h3>
+              <p data-field="note">The <code>## 1.3.0</code> entry says what <code>--status</code> reports and that the surface records an optional value. Its Upgrading note says 1.2.2 was archived and not published, that 1.3.0 carries it, and that a project upgrading from 1.2.1 follows 1.2.2's note too, and from 1.2.0 or 1.1.x the notes before it.</p>
+              <p data-field="note">Done on 2026-10-28. The entry also names the shared reading and the surface's new fact, and its note says a record any earlier release wrote reads under <code>--status</code>, which the records of this repository's 1.0.0 and 1.1.0 publish runs show.</p>
+            </li>
+            <li class="task" id="task-4-1" data-change="added" data-state="done" data-refs="req-project-checks-are-runnable-as-one-command">
+              <h3>4.1 Run every check, and open the pull request <span class="hs-id">task-4-1</span></h3>
+              <p data-field="note">Under the shared suite lock: <code>scripts/check</code> with every stage, <code>scripts/check-release</code>, <code>publish/test</code>, <code>scripts/check-publish-crates</code>, <code>htmlspec validate</code> and <code>htmlspec format --check</code>, the README tests, and the surface tests. Then a pull request against <code>main</code> that says archival follows the review.</p>
+              <p data-field="note">Done on 2026-10-28, after main moved to 3cb9ecc and was merged in. Under the shared suite lock, at f45102f: <code>scripts/check</code> passed all 17 stages, with 1,668 Rust tests passed across 54 suites and none failed; <code>scripts/check-release</code>, <code>publish/test</code>, and <code>scripts/check-publish-crates</code> passed; <code>htmlspec validate</code> found 228 documents with no error, and <code>htmlspec format --check</code> found every document canonical. The README tests and the surface tests are stages of <code>scripts/check</code>. The pull request is opened against <code>main</code>.</p>
+            </li>
+            <li class="task" id="task-4-2" data-change="added" data-state="done">
+              <h3>4.2 Take the review, and settle each finding <span class="hs-id">task-4-2</span></h3>
+              <p data-field="note">One review of the pull request, as the merge rule requires. Each finding is fixed or answered on the pull request before archival.</p>
+              <p data-field="note">Done on 2026-10-28. One review of pull request 95 found nothing blocking, and six findings. An empty <code>data-outcome</code> was listed as an outcome while the rule read it as none: a verification's outcome is now read once, by <code>outcome_of</code> in prerequisites.rs, and a unit test holds the view to it. The verdict could name a verification the view never listed, a stray one or one under a withdrawn requirement, because the rule reads every verification and the view listed only the owed requirements: the view lists the others under "Other outcomes", the payload carries them as <code>otherOutcomes</code>, which run.schema.json declares and the writer recorded in <code>1.3.json</code>, and the agreement test now covers every kind of record, a stray verification, and a withdrawn requirement. A copy of the rule in progress.rs that judged only the listed requirements was tried against that test and failed it, naming the two records it called passed. <code>run</code>'s help names the third mode in its summary and gives it a paragraph. The schema says a record's <code>reason</code> carries preflight's escaped form. The README's example names a runbook this repository has runs of. An unreadable <code>runs/</code> reading as no runs is <code>runs::gather</code>'s behavior, shared with <code>--check</code> and preflight, and the design records it as an accepted risk for a follow-up change. Design decisions 2, 3, and 4 say what was built.</p>
+            </li>
+            <li class="task" id="task-4-3" data-change="added" data-state="done">
+              <h3>4.3 Archive at 1.3.0 <span class="hs-id">task-4-3</span></h3>
+              <p data-field="note">Write the specification from what was built, adding runbook-execution's "A run's progress is reported from its record", raise <code>spec.nix</code> to 1.3.0, and archive with <code>htmlspec archive show-how-far-a-run-has-come</code>, in the same pull request.</p>
+              <p data-field="note">Done on 2026-10-28. The specification adds runbook-execution's "A run's progress is reported from its record", with seven scenarios: every run on one line, one run in full, the report and preflight agreeing, an outcome no requirement shows, an empty outcome, a file that is not a run's record, and a record that is not there; with the evidence of a scratch project and this repository's publish runs, and two verifications. It modifies no accepted requirement, so <code>show --diff</code> had nothing to compare, and reported the added requirement held as stated once merged. <code>sync</code> reported the contract applied in full. <code>spec.nix</code> is 1.3.0, and <code>archive --check</code> reported the version following 1.2.2, two runbook releases staged unchanged, and three advisory warnings about the specification's evidence and verifications naming an added requirement, which every archived specification carries. Archived with <code>--yes</code> while task 4.4, which follows archival, was still open.</p>
+            </li>
+            <li class="task" id="task-4-4" data-change="added" data-state="done">
+              <h3>4.4 Record the reads, and rehearse the export <span class="hs-id">task-4-4</span></h3>
+              <p data-field="note">After archival, record each READINESS read at the content the archived tree holds, then run <code>publish/export --ref HEAD --dry-run</code> against an empty local bare repository.</p>
+              <p data-field="note">Done on 2026-10-28, after archival. Every allowlisted path whose content differs from its recorded read, ten of them, was read at the content this pull request leaves, and its row recorded in <code>publish/READINESS.md</code> with one read paragraph. That includes the publish runbook's record of the stopped 1.2.2 run, which reached <code>main</code> after the last read. <code>publish/export --ref HEAD --dry-run</code> then ran against an empty local bare repository, and its result is recorded in the pull request.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

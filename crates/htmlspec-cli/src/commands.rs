@@ -2983,8 +2983,8 @@ pub fn runbooks_to_start(project: &ProjectRoot) -> String {
         .collect();
     format!(
         "run needs a runbook. This project's runbooks:\n{}\nStart a run with `htmlspec run \
-         <runbook> --as <record>`, or report on a runbook's runs with `htmlspec run <runbook> \
-         --check`",
+         <runbook> --as <record>`, see how far its runs have come with `htmlspec run <runbook> \
+         --status`, or check what they recorded with `htmlspec run <runbook> --check`",
         rows.join("\n")
     )
 }
