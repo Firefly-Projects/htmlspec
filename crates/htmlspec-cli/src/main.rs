@@ -470,8 +470,10 @@ struct FormatArgs {
     /// differs. Leaves archived changes and run records as written, because
     /// they are history. Without this flag, formatting never adds, changes, or
     /// removes a fallback. Adding it to a runbook changes its canonical
-    /// documents, so its next archival asks for a new runbook version. With
-    /// --check, reports each document that lacks the current fallback.
+    /// documents, so its next archival asks for a new runbook version: the
+    /// report names each runbook given it, and says whether its version must
+    /// advance. With --check, reports each document that lacks the current
+    /// fallback, and each runbook that would be given it.
     #[arg(long)]
     fallback: bool,
 
@@ -485,8 +487,10 @@ struct FormatArgs {
     /// they are history. Without this flag, formatting leaves every reference to
     /// stored bytes as written, even where the store holds a newer revision.
     /// Upgrading a runbook changes its canonical documents, so its next archival
-    /// asks for a new runbook version. With --check, reports each document that
-    /// references an asset behind the store's current revision.
+    /// asks for a new runbook version: the report names each runbook upgraded,
+    /// and says whether its version must advance. With --check, reports each
+    /// document that references an asset behind the store's current revision,
+    /// and each runbook that would be upgraded.
     #[arg(long = "upgrade-assets")]
     upgrade_assets: bool,
 }

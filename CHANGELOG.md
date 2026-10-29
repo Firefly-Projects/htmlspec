@@ -7,6 +7,50 @@ find it. That check also requires every archived change to record the version it
 in, in a `VERSION` file beside its documents. Prose inside an entry is not parsed — a
 changelog exists to be read by a person.
 
+## 1.2.2 — name each runbook an asset upgrade or the fallback rewrites
+
+A patch release. `htmlspec format --upgrade-assets` rewrites a runbook's specification and procedure
+like any other living document, and so does `htmlspec format --fallback`. Either changes the
+runbook's canonical content. The next `htmlspec archive` then refused the runbook at its released
+version, and nothing between the two said the runbook now needed a release. Now both options say so,
+archival's refusal names both, and the README says it wherever it describes them.
+
+- **Both options name each runbook they rewrite.** After the per-document lines, `format
+  --upgrade-assets` and `format --fallback` report one line per runbook whose specification or
+  procedure they rewrote, and with `--check` one per runbook they would rewrite. The line reads the
+  runbook's `VERSION` and the published runbook history, as archival does, and says whether the
+  version must advance. Where an earlier archive released it, the line names that archive and asks
+  for a greater version and a heading for it in the runbook's `CHANGELOG.md` before the next
+  archival. Where the version is 0.0.0 and nothing is published, which is not a release, the line
+  asks for a first version above it. Where the version is not released yet and the changelog has no
+  heading for it, the line asks for one. Where it is not released yet and headed, the line says the
+  next archival releases the runbook as it now stands, and, for a runbook raised above what is
+  published, what its heading says moved. A runbook is what archival compares: its specification
+  and procedure, and nothing else in its directory, found where its directory resolves, so a linked
+  runbook is named by its own name. A document the formatter refuses, or cannot write, names no
+  runbook, and a run's record is history and is never named. The exit status is unchanged, and
+  `format` writes no `--json`.
+- **Archival's refusal names the likely causes.** The refusal for changed content under a released
+  runbook version adds that asset references `htmlspec format --upgrade-assets` moved, a fallback
+  stylesheet `htmlspec format --fallback` added or replaced, and a reference plain `htmlspec format`
+  filled because the store lacked the bytes it named, are changes too.
+- **Names reach the terminal shown.** A runbook's name, a document's path in `format`'s report, and
+  a runbook's name, directory, and archive in archival's release refusals are written with any
+  character a terminal would act on named by its code point, as `run` already writes a runbook's
+  name.
+- **The README says it,** in the Upgrading section's steps for a project, in the reference paragraph
+  on `--upgrade-assets`, and beside `--fallback` under "Reading the documents", and each option's
+  help says it names each runbook.
+
+### Upgrading
+
+From 1.2.1, upgrading the binary is enough, and `htmlspec init` in a project moves its instructions'
+recorded release to 1.2.2. A project that already ran `format --upgrade-assets` or `format
+--fallback` on a released runbook gives that runbook a greater version and a changelog heading
+before its next archival, as the refusal says.
+
+From 1.2.0 or 1.1.x, follow 1.2.1's notes too.
+
 ## 1.2.1 — tell users how to upgrade
 
 A patch release: the program does not change. Until now nothing told a person how to move to a new

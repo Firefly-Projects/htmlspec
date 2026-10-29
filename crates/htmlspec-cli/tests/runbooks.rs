@@ -873,3 +873,571 @@ fn a_runbook_title_reaches_the_terminal_escaped() {
         "deploy \u{1b}[31mred \u{202e}txt.exe"
     );
 }
+
+// -----------------------------------------------------------------------------
+// The upgrade names each runbook it rewrites
+// -----------------------------------------------------------------------------
+
+/// A runbook named `name`, both of its documents on an older stylesheet.
+fn a_runbook_on_an_older_stylesheet(root: &Path, name: &str) {
+    let (code, out, err) = run_in(root, &["new", "runbook", name]);
+    assert_eq!(code, SUCCESS, "new runbook failed:\n{out}{err}");
+    for document in ["specification.html", "tasks.html"] {
+        on_an_older_stylesheet(root, &format!("htmlspec/runbooks/{name}/{document}"));
+    }
+}
+
+/// A change named `name`, ready to archive with the project declaring `version`. Its specification
+/// states one decision and nothing else, so archival has no requirement to merge and no example
+/// content to refuse.
+fn a_change_ready_to_archive(root: &Path, name: &str, version: &str) {
+    let (code, out, err) = run_in(root, &["new", "change", name, "--subject", name]);
+    assert_eq!(code, SUCCESS, "new change failed:\n{out}{err}");
+    let relative = format!("htmlspec/changes/{name}/specification.html");
+    a_document(root, &relative);
+    let path = root.join(&relative);
+    let source = std::fs::read_to_string(&path).expect("readable");
+    let opening = "<main class=\"hs-main\" id=\"hs-content\">";
+    let start = source.find(opening).expect("a main") + opening.len();
+    let end = source.find("</main>").expect("a main's end");
+    let decision = format!(
+        "\n<section id=\"hs-decisions\"><h2>Decisions</h2>\
+         <section class=\"decision\" id=\"decision-{name}\" data-change=\"added\" \
+         data-status=\"accepted\"><h3>Archive {name} <span class=\"hs-id\">decision-{name}</span></h3>\
+         <p>The change {name} is archived.</p>\
+         <p data-field=\"rationale\">Archival publishes the project's runbooks.</p></section></section>\n"
+    );
+    let written = format!("{}{decision}{}", &source[..start], &source[end..])
+        .lines()
+        .filter(|line| {
+            ![
+                "hs-requirements",
+                "hs-risks",
+                "hs-evidence",
+                "hs-verification",
+            ]
+            .iter()
+            .any(|section| line.contains(&format!("href=\"#{section}\"")))
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        .replace(
+            "Replace this paragraph with what this document is for. It projects into the \
+             document's summary, so the argument the change rests on lives in the model rather \
+             than in markup the model cannot address.",
+            "A change archived to publish the project's runbooks.",
+        );
+    std::fs::write(&path, format!("{written}\n")).expect("written");
+    let (code, out, err) = run_in(root, &["format", &relative]);
+    assert_eq!(code, SUCCESS, "format failed:\n{out}{err}");
+
+    let declaration = root.join("spec.nix");
+    let text = std::fs::read_to_string(&declaration).expect("readable");
+    let current = text
+        .lines()
+        .find_map(|line| {
+            line.trim()
+                .strip_prefix("version = \"")
+                .and_then(|rest| rest.strip_suffix("\";"))
+        })
+        .expect("a declared version")
+        .to_owned();
+    std::fs::write(
+        &declaration,
+        text.replace(
+            &format!("version = \"{current}\""),
+            &format!("version = \"{version}\""),
+        ),
+    )
+    .expect("written");
+}
+
+/// Archives a change named `name` at project `version`, which publishes every runbook the project
+/// holds.
+fn archive_a_change(root: &Path, name: &str, version: &str) {
+    a_change_ready_to_archive(root, name, version);
+    let (code, out, err) = run_in(root, &["archive", name, "--yes"]);
+    assert_eq!(code, SUCCESS, "archival failed:\n{out}{err}");
+}
+
+/// A runbook released at its current version and then rewritten by the upgrade is named, in both
+/// modes, as needing a greater version, and archival agrees: it refuses until the version moves,
+/// and its refusal names the upgrade.
+#[test]
+fn upgrading_a_released_runbook_names_it_and_says_its_version_must_advance() {
+    let scratch = Scratch::project("upgrade-released-runbook");
+    a_runbook_on_an_older_stylesheet(&scratch.0, "demo");
+    archive_a_change(&scratch.0, "first", "0.1.0");
+
+    let tasks = "htmlspec/runbooks/demo/tasks.html";
+    let before = scratch.read(tasks);
+    let (code, out, err) = run_in(&scratch.0, &["format", "--check", "--upgrade-assets"]);
+    assert_eq!(code, DOCUMENT_VIOLATION, "{out}{err}");
+    assert!(
+        out.contains("the runbook demo would change with its documents")
+            && out.contains("0.1.0 is the version")
+            && out.contains("-first already released")
+            && out.contains("htmlspec/runbooks/demo/VERSION"),
+        "check mode does not say the released runbook needs a greater version:\n{out}"
+    );
+    assert_eq!(scratch.read(tasks), before, "check mode wrote the runbook");
+    assert_eq!(
+        out.matches("the runbook demo").count(),
+        1,
+        "the runbook is named once per run, not once per document:\n{out}"
+    );
+
+    let (code, out, err) = run_in(&scratch.0, &["format", "--upgrade-assets"]);
+    assert_eq!(
+        code, SUCCESS,
+        "the advice changed the exit status:\n{out}{err}"
+    );
+    assert!(
+        out.contains("the runbook demo changed with its documents")
+            && out.contains("already released"),
+        "writing does not say the released runbook needs a greater version:\n{out}"
+    );
+
+    a_change_ready_to_archive(&scratch.0, "second", "0.2.0");
+    let (code, out, err) = run_in(&scratch.0, &["archive", "second", "--check"]);
+    assert_ne!(
+        code, SUCCESS,
+        "archival accepted a rewritten runbook at a released version:\n{out}{err}"
+    );
+    assert!(
+        err.contains("demo")
+            && err.contains("0.1.0")
+            && err.contains("htmlspec format --upgrade-assets"),
+        "the refusal does not name the upgrade as the likely cause:\n{err}"
+    );
+
+    // The advice followed: a greater version with its heading, and archival accepts the runbook.
+    std::fs::write(scratch.path("htmlspec/runbooks/demo/VERSION"), "0.1.1\n").expect("written");
+    let changelog = scratch.path("htmlspec/runbooks/demo/CHANGELOG.md");
+    let text = std::fs::read_to_string(&changelog).expect("readable");
+    std::fs::write(
+        &changelog,
+        text.replacen(
+            "## 0.1.0",
+            "## 0.1.1\n\nMoves onto the current stylesheet.\n\n## 0.1.0",
+            1,
+        ),
+    )
+    .expect("written");
+    let (code, out, err) = run_in(&scratch.0, &["archive", "second", "--check"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+}
+
+/// A runbook whose version no archive has released is named as releasing at that version, and the
+/// next archival publishes it as the upgrade left it.
+#[test]
+fn upgrading_an_unreleased_runbook_says_the_next_archival_releases_it() {
+    let scratch = Scratch::project("upgrade-unreleased-runbook");
+    a_runbook_on_an_older_stylesheet(&scratch.0, "demo");
+
+    let (code, out, err) = run_in(&scratch.0, &["format", "--check", "--upgrade-assets"]);
+    assert_eq!(code, DOCUMENT_VIOLATION, "{out}{err}");
+    assert!(
+        out.contains("the runbook demo would change with its documents")
+            && out.contains("Its version, 0.1.0, is not released yet"),
+        "check mode does not say an unreleased runbook releases at its version:\n{out}"
+    );
+    let (code, out, err) = run_in(&scratch.0, &["format", "--upgrade-assets"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    assert!(
+        out.contains("the runbook demo changed with its documents")
+            && out.contains("not released yet"),
+        "{out}"
+    );
+    archive_a_change(&scratch.0, "first", "0.1.0");
+}
+
+/// Only a runbook whose own documents the upgrade rewrote is named: not a run's record, which is
+/// history and never rewritten, not a document outside every runbook, and not a runbook already on
+/// the current assets.
+#[test]
+fn the_upgrade_names_only_the_runbooks_it_rewrites() {
+    let scratch = Scratch::project("upgrade-names-only-rewritten");
+    let (code, out, err) = run_in(&scratch.0, &["new", "runbook", "current"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    let record = "htmlspec/runbooks/current/runs/first.html";
+    a_document(&scratch.0, record);
+    let kept = on_an_older_stylesheet(&scratch.0, record);
+    let relative = "htmlspec/specs/earlier.html";
+    a_document(&scratch.0, relative);
+    let moved = on_an_older_stylesheet(&scratch.0, relative);
+
+    for arguments in [
+        &["format", "--check", "--upgrade-assets"][..],
+        &["format", "--upgrade-assets"][..],
+    ] {
+        let (_, out, err) = run_in(&scratch.0, arguments);
+        assert!(
+            !out.contains("the runbook"),
+            "{arguments:?} named a runbook it did not rewrite:\n{out}{err}"
+        );
+    }
+    assert!(
+        !scratch.read(relative).contains(&moved),
+        "the document outside every runbook was not upgraded"
+    );
+    assert!(
+        scratch.read(record).contains(&kept),
+        "the run's record was rewritten"
+    );
+}
+
+/// Takes the fallback stylesheet out of the document at `relative`, as a runbook written before the
+/// fallback existed carries none.
+fn without_the_fallback(root: &Path, relative: &str) {
+    let path = root.join(relative);
+    let written = std::fs::read_to_string(&path).expect("readable");
+    let without = written.replace(&format!("    {}\n", htmlspec_assets::fallback::ELEMENT), "");
+    assert_ne!(
+        without, written,
+        "{relative} carried no fallback to take out"
+    );
+    std::fs::write(&path, without).expect("rewritten");
+}
+
+/// A released runbook the fallback is added to is named as `--upgrade-assets` names one, in both
+/// modes, and archival's refusal names the fallback. A runbook that already carries the current
+/// fallback, and a second request that changes nothing, name no runbook.
+#[test]
+fn adding_the_fallback_to_a_released_runbook_names_it() {
+    let scratch = Scratch::project("fallback-released-runbook");
+    let (code, out, err) = run_in(&scratch.0, &["new", "runbook", "demo"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    for document in ["specification.html", "tasks.html"] {
+        without_the_fallback(&scratch.0, &format!("htmlspec/runbooks/demo/{document}"));
+    }
+    let (code, out, err) = run_in(&scratch.0, &["new", "runbook", "current"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    archive_a_change(&scratch.0, "first", "0.1.0");
+
+    let tasks = "htmlspec/runbooks/demo/tasks.html";
+    let before = scratch.read(tasks);
+    let (code, out, err) = run_in(&scratch.0, &["format", "--check", "--fallback"]);
+    assert_eq!(code, DOCUMENT_VIOLATION, "{out}{err}");
+    assert!(
+        out.contains("the runbook demo would change with its documents")
+            && out.contains("0.1.0 is the version")
+            && out.contains("htmlspec/runbooks/demo/VERSION"),
+        "check mode does not say the released runbook needs a greater version:\n{out}"
+    );
+    assert_eq!(
+        out.matches("the runbook demo").count(),
+        1,
+        "the runbook is named once per run, not once per document:\n{out}"
+    );
+    assert!(
+        !out.contains("the runbook current"),
+        "a runbook already carrying the fallback is named:\n{out}"
+    );
+    assert_eq!(scratch.read(tasks), before, "check mode wrote the runbook");
+
+    let (code, out, err) = run_in(&scratch.0, &["format", "--fallback"]);
+    assert_eq!(
+        code, SUCCESS,
+        "the advice changed the exit status:\n{out}{err}"
+    );
+    assert!(
+        out.contains("the runbook demo changed with its documents")
+            && out.contains("already released")
+            && !out.contains("the runbook current"),
+        "writing does not name exactly the runbook it gave the fallback:\n{out}"
+    );
+
+    // Nothing left to change, so nothing to name.
+    for arguments in [
+        &["format", "--check", "--fallback"][..],
+        &["format", "--fallback"][..],
+    ] {
+        let (code, out, err) = run_in(&scratch.0, arguments);
+        assert_eq!(code, SUCCESS, "{arguments:?}:\n{out}{err}");
+        assert!(
+            !out.contains("the runbook"),
+            "{arguments:?} named a runbook it did not change:\n{out}{err}"
+        );
+    }
+
+    a_change_ready_to_archive(&scratch.0, "second", "0.2.0");
+    let (code, out, err) = run_in(&scratch.0, &["archive", "second", "--check"]);
+    assert_ne!(
+        code, SUCCESS,
+        "archival accepted a rewritten runbook at a released version:\n{out}{err}"
+    );
+    assert!(
+        err.contains("demo") && err.contains("htmlspec format --fallback"),
+        "the refusal does not name the fallback as a likely cause:\n{err}"
+    );
+}
+
+/// A released runbook already raised to an unreleased version, with its heading, is told what that
+/// heading says: that it now carries the fallback, and, given both requests, that it also moved onto
+/// the current assets. Without the heading it is told to add one saying so.
+#[test]
+fn the_heading_advice_says_which_requests_rewrote_the_runbook() {
+    let scratch = Scratch::project("fallback-unreleased-runbook");
+    let (code, out, err) = run_in(&scratch.0, &["new", "runbook", "demo"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    archive_a_change(&scratch.0, "first", "0.1.0");
+    std::fs::write(scratch.path("htmlspec/runbooks/demo/VERSION"), "0.1.1\n").expect("raised");
+    without_the_fallback(&scratch.0, "htmlspec/runbooks/demo/specification.html");
+
+    let (code, out, err) = run_in(&scratch.0, &["format", "--check", "--fallback"]);
+    assert_eq!(code, DOCUMENT_VIOLATION, "{out}{err}");
+    assert!(
+        out.contains(
+            "has no heading for 0.1.1: give it one, saying that it now carries the \
+             current fallback stylesheet"
+        ),
+        "the advice does not ask for a heading saying what changed:\n{out}"
+    );
+
+    let changelog = scratch.path("htmlspec/runbooks/demo/CHANGELOG.md");
+    let text = std::fs::read_to_string(&changelog).expect("readable");
+    std::fs::write(
+        &changelog,
+        text.replacen("## 0.1.0", "## 0.1.1\n\nThe fallback.\n\n## 0.1.0", 1),
+    )
+    .expect("written");
+
+    let (code, out, err) = run_in(&scratch.0, &["format", "--check", "--fallback"]);
+    assert_eq!(code, DOCUMENT_VIOLATION, "{out}{err}");
+    assert!(
+        out.contains("not released yet")
+            && out.contains("that it now carries the current fallback stylesheet")
+            && !out.contains("current assets"),
+        "the advice does not say the fallback alone changed it:\n{out}"
+    );
+
+    on_an_older_stylesheet(&scratch.0, "htmlspec/runbooks/demo/tasks.html");
+    let (code, out, err) = run_in(
+        &scratch.0,
+        &["format", "--check", "--fallback", "--upgrade-assets"],
+    );
+    assert_eq!(code, DOCUMENT_VIOLATION, "{out}{err}");
+    assert!(
+        out.contains(
+            "that it moved onto the current assets and now carries the current fallback stylesheet"
+        ),
+        "the advice does not say both requests changed it:\n{out}"
+    );
+    assert_eq!(out.matches("the runbook demo").count(), 1, "{out}");
+}
+
+// -----------------------------------------------------------------------------
+// The upgrade names a runbook only for documents it settled, and finds each as archival does
+// -----------------------------------------------------------------------------
+
+/// The runbook `name`'s procedure on an older stylesheet, with markup the formatter refuses: a
+/// stray end tag, which the parser can only recover from.
+fn a_refused_procedure(root: &Path, name: &str) {
+    let relative = format!("htmlspec/runbooks/{name}/tasks.html");
+    on_an_older_stylesheet(root, &relative);
+    let path = root.join(&relative);
+    let source = std::fs::read_to_string(&path).expect("readable");
+    let refused = source.replacen("</main>", "</span></main>", 1);
+    assert_ne!(refused, source, "the procedure has no main to spoil");
+    std::fs::write(&path, refused).expect("written");
+}
+
+/// A runbook whose only rewritten document the formatter refuses is named in neither mode: nothing
+/// of it is written, so nothing of it changed.
+#[test]
+fn a_refused_document_names_no_runbook() {
+    let scratch = Scratch::project("upgrade-refused-runbook");
+    let (code, out, err) = run_in(&scratch.0, &["new", "runbook", "demo"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    a_refused_procedure(&scratch.0, "demo");
+    let before = scratch.read("htmlspec/runbooks/demo/tasks.html");
+
+    for arguments in [
+        &["format", "--check", "--upgrade-assets"][..],
+        &["format", "--upgrade-assets"][..],
+    ] {
+        let (code, out, err) = run_in(&scratch.0, arguments);
+        assert_eq!(code, OPERATIONAL_FAILURE, "{arguments:?}:\n{out}{err}");
+        assert!(
+            err.contains("refusing to format"),
+            "{arguments:?} did not refuse the document:\n{err}"
+        );
+        assert!(
+            !out.contains("the runbook demo"),
+            "{arguments:?} named a runbook whose document it refused:\n{out}"
+        );
+    }
+    assert_eq!(
+        scratch.read("htmlspec/runbooks/demo/tasks.html"),
+        before,
+        "the refused document was written"
+    );
+}
+
+/// A runbook whose only rewritten document cannot be written is named when checking, which writes
+/// nothing, and not when writing fails.
+#[cfg(unix)]
+#[test]
+fn an_unwritable_document_names_no_runbook_when_writing() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let scratch = Scratch::project("upgrade-unwritable-runbook");
+    let (code, out, err) = run_in(&scratch.0, &["new", "runbook", "demo"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    let tasks = scratch.path("htmlspec/runbooks/demo/tasks.html");
+    on_an_older_stylesheet(&scratch.0, "htmlspec/runbooks/demo/tasks.html");
+    std::fs::set_permissions(&tasks, std::fs::Permissions::from_mode(0o444)).expect("read-only");
+
+    let (code, out, err) = run_in(&scratch.0, &["format", "--check", "--upgrade-assets"]);
+    assert_eq!(code, DOCUMENT_VIOLATION, "{out}{err}");
+    assert!(
+        out.contains("the runbook demo would change"),
+        "checking does not name the runbook:\n{out}"
+    );
+    let (code, out, err) = run_in(&scratch.0, &["format", "--upgrade-assets"]);
+    std::fs::set_permissions(&tasks, std::fs::Permissions::from_mode(0o644)).expect("writable");
+    assert_eq!(code, OPERATIONAL_FAILURE, "{out}{err}");
+    assert!(err.contains("cannot write"), "{err}");
+    assert!(
+        !out.contains("the runbook demo"),
+        "writing named a runbook whose document it could not write:\n{out}"
+    );
+}
+
+/// A file in a runbook's directory other than its specification and procedure is no part of the
+/// release archival compares, so upgrading it names no runbook.
+#[test]
+fn another_document_in_a_runbook_folder_names_no_runbook() {
+    let scratch = Scratch::project("upgrade-runbook-notes");
+    let (code, out, err) = run_in(&scratch.0, &["new", "runbook", "demo"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    let notes = "htmlspec/runbooks/demo/notes.html";
+    a_document(&scratch.0, notes);
+    let older = on_an_older_stylesheet(&scratch.0, notes);
+
+    let (code, out, err) = run_in(&scratch.0, &["format", "--upgrade-assets"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    assert!(
+        !scratch.read(notes).contains(&older),
+        "the notes were not upgraded"
+    );
+    assert!(
+        !out.contains("the runbook demo"),
+        "a document outside the release named its runbook:\n{out}"
+    );
+}
+
+/// A runbook reached through a symbolic link is the runbook archival publishes under the link's
+/// name, so the upgrade names it by that name, once, however the walk reaches its documents.
+#[cfg(unix)]
+#[test]
+fn a_linked_runbook_is_named_by_its_name() {
+    let scratch = Scratch::project("upgrade-linked-runbook");
+    let (code, out, err) = run_in(&scratch.0, &["new", "runbook", "demo"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    std::fs::create_dir_all(scratch.path("htmlspec/kept")).expect("a directory");
+    std::fs::rename(
+        scratch.path("htmlspec/runbooks/demo"),
+        scratch.path("htmlspec/kept/demo"),
+    )
+    .expect("moved");
+    std::os::unix::fs::symlink("../kept/demo", scratch.path("htmlspec/runbooks/demo"))
+        .expect("linked");
+    on_an_older_stylesheet(&scratch.0, "htmlspec/kept/demo/tasks.html");
+
+    let (code, out, err) = run_in(&scratch.0, &["format", "--check", "--upgrade-assets"]);
+    assert_eq!(code, DOCUMENT_VIOLATION, "{out}{err}");
+    assert_eq!(
+        out.matches("the runbook demo would change").count(),
+        1,
+        "the linked runbook is not named once:\n{out}"
+    );
+    assert!(
+        !out.contains("the runbook kept"),
+        "the link's target directory is named as a runbook:\n{out}"
+    );
+}
+
+/// A runbook at a version nothing released, whose changelog has no heading for it, is told to add
+/// one, because archival refuses it without one, as archival then does.
+#[test]
+fn an_unreleased_runbook_without_its_heading_is_told_to_add_one() {
+    let scratch = Scratch::project("upgrade-unheaded-runbook");
+    let (code, out, err) = run_in(&scratch.0, &["new", "runbook", "demo"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    on_an_older_stylesheet(&scratch.0, "htmlspec/runbooks/demo/tasks.html");
+    let changelog = scratch.path("htmlspec/runbooks/demo/CHANGELOG.md");
+    let text = std::fs::read_to_string(&changelog).expect("readable");
+    let unheaded = text.replacen("## 0.1.0", "## First", 1);
+    assert_ne!(unheaded, text, "the changelog had no heading to take out");
+    std::fs::write(&changelog, unheaded).expect("written");
+
+    let (code, out, err) = run_in(&scratch.0, &["format", "--upgrade-assets"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    assert!(
+        out.contains("has no heading for 0.1.0") && !out.contains("releases it as it now stands"),
+        "the line promises a release archival refuses:\n{out}"
+    );
+    a_change_ready_to_archive(&scratch.0, "first", "0.1.0");
+    let (code, out, err) = run_in(&scratch.0, &["archive", "first", "--check"]);
+    assert_ne!(
+        code, SUCCESS,
+        "archival accepted a release without its heading:\n{out}{err}"
+    );
+}
+
+/// A first release is not told what its heading says moved: the heading is the first release's.
+#[test]
+fn a_first_release_is_not_told_what_its_heading_says() {
+    let scratch = Scratch::project("upgrade-first-release-heading");
+    let (code, out, err) = run_in(&scratch.0, &["new", "runbook", "demo"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    on_an_older_stylesheet(&scratch.0, "htmlspec/runbooks/demo/tasks.html");
+
+    let (code, out, err) = run_in(&scratch.0, &["format", "--upgrade-assets"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    assert!(
+        out.contains("releases it as it now stands") && !out.contains("heading for 0.1.0 that"),
+        "a never-published runbook is told what its first heading says:\n{out}"
+    );
+}
+
+/// A runbook directory named with an escape sequence reaches the terminal with it named, in the
+/// formatter's lines and in archival's refusal, and never as the sequence itself.
+#[test]
+fn a_runbook_name_with_an_escape_reaches_the_report_shown() {
+    const NAME: &str = "de\u{1b}[31mmo";
+    let scratch = Scratch::project("upgrade-escaped-runbook");
+    let (code, out, err) = run_in(&scratch.0, &["new", "runbook", "demo"]);
+    assert_eq!(code, SUCCESS, "{out}{err}");
+    std::fs::rename(
+        scratch.path("htmlspec/runbooks/demo"),
+        scratch.path(&format!("htmlspec/runbooks/{NAME}")),
+    )
+    .expect("renamed");
+    on_an_older_stylesheet(&scratch.0, &format!("htmlspec/runbooks/{NAME}/tasks.html"));
+    archive_a_change(&scratch.0, "first", "0.1.0");
+
+    for arguments in [
+        &["format", "--check", "--upgrade-assets"][..],
+        &["format", "--upgrade-assets"][..],
+    ] {
+        let (_, out, err) = run_in(&scratch.0, arguments);
+        assert!(
+            out.contains("the runbook de<U+001B>[31mmo"),
+            "{arguments:?} does not name the runbook shown:\n{out}"
+        );
+        assert!(
+            !out.contains('\u{1b}') && !err.contains('\u{1b}'),
+            "{arguments:?} wrote an escape sequence to the terminal:\n{out}{err}"
+        );
+    }
+    a_change_ready_to_archive(&scratch.0, "second", "0.2.0");
+    let (code, out, err) = run_in(&scratch.0, &["archive", "second", "--check"]);
+    assert_ne!(code, SUCCESS, "{out}{err}");
+    assert!(
+        err.contains("de<U+001B>[31mmo") && !err.contains('\u{1b}'),
+        "archival's refusal wrote the runbook's name raw:\n{err}"
+    );
+}

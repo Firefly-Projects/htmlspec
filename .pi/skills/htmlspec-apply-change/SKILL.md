@@ -5,7 +5,7 @@ allowed-tools: Bash(htmlspec:*), Read, Write, Edit, Glob, Grep
 argument-hint: [the change to implement, or nothing to infer it]
 license: MIT
 metadata:
-  generatedBy: htmlspec 1.2.1
+  generatedBy: htmlspec 1.2.2
 ---
 
 Implement an html-spec change.

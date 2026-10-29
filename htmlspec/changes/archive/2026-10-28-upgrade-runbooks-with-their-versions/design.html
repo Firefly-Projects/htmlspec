@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Upgrade runbooks with their versions: design</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Upgrade runbooks with their versions: design</h1>
+        <p>How <code>format --upgrade-assets</code> and <code>format --fallback</code> tell a user that a runbook they rewrote needs a new release, what they read to say which, and why they tell rather than skip. Both options' behaviour and exit status stay as they are; only their report, archival's refusal wording, and the guide change.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Upgrade runbooks with their versions: design</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-problem">The gap</a></li>
+          <li><a href="#hs-contract">What the contract says</a></li>
+          <li><a href="#hs-decisions">Decisions</a></li>
+          <li><a href="#hs-risks">Risks</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-problem">
+          <h2>The gap</h2>
+          <p>Reproduced in a scratch project with 1.2.1. A runbook <code>demo</code> on an older stylesheet was published at 0.1.0 by a first archival. <code>htmlspec format --upgrade-assets</code> then rewrote <code>htmlspec/runbooks/demo/specification.html</code> and <code>tasks.html</code>, reported each move, and exited 0. A second change's <code>htmlspec archive second --check</code> refused: "the runbook demo declares 0.1.0, which 2026-10-28-first already published with different canonical content". Nothing between the two said the runbook now needed a release.</p>
+        </section>
+        <section id="hs-contract">
+          <h2>What the contract says</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Accepted requirement</th>
+                <th>Effect at archival</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>deterministic-formatting's "Formatting preserves meaning"</td>
+                <td>Modified. Its second exception, the fallback made on request, and its third, the upgrade made on request, each gain one statement: where it rewrites, or checking would rewrite, a runbook's specification or procedure, it names that runbook and says whether its version must advance before the next archival. One scenario is added for each.</td>
+              </tr>
+              <tr>
+                <td>runbook-authority's "A runbook carries an independently checked release version"</td>
+                <td>Unchanged. It is why a rewritten runbook needs a release, and nothing about it moves.</td>
+              </tr>
+              <tr>
+                <td>project-bootstrap's "Archival checks the versions of runbooks it publishes"</td>
+                <td>Unchanged. The gate compares exactly as before. Only the words of its refusal gain a sentence, and the requirement does not fix those words.</td>
+              </tr>
+              <tr>
+                <td>toolchain-packaging's "The command surface is stable within a major version"</td>
+                <td>Unchanged, and the reason this is a patch: the new lines are human-readable output, which that requirement leaves out of the stable surface, <code>format</code> writes no payload, and no flag is added. <code>tests/surface/1.2.json</code> does not move.</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>The contract is silent on what the formatter reports about the documents it rewrites beyond the blocked references the third exception already names, and silent on how a release is chosen for a runbook. The first is what this change settles. The second stays the author's.</p>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-tell-not-skip" data-change="added" data-status="accepted">
+            <h3>Tell the user, and keep upgrading runbooks <span class="hs-id">decision-tell-not-skip</span></h3>
+            <p>The upgrade keeps rewriting runbook documents, and names each runbook it rewrote at the end of its report. <code>--fallback</code> rewrites runbook documents the same way, adding or replacing the fallback stylesheet, so it names them the same way, with the same line. The README and each option's help say the same. Archival's refusal names both as likely causes.</p>
+            <p data-field="rationale">Of the four options, docs alone are forgotten by the time it matters, and the program is the one party that knows which runbooks it just rewrote. Skipping runbooks by default narrows what 1.1 and 1.2 do, so a project relying on the upgrade reaching its runbooks would stop getting it with no word, and an opt-in flag is new surface, a minor release. A runbook on an older stylesheet is exactly what the upgrade is for: the right outcome is an upgraded runbook released at a new version, which telling makes easy and skipping makes impossible. Naming the cause in archival's refusal costs one sentence and catches a user who upgraded with an older release.</p>
+          </section>
+          <section class="decision" id="decision-a-runbook-is-what-archival-compares" data-change="added" data-status="accepted">
+            <h3>Find a runbook as archival does, and record it once its document is settled <span class="hs-id">decision-a-runbook-is-what-archival-compares</span></h3>
+            <p>A runbook is what archival compares: a directory <code>runbook_release::present</code> lists in the project's runbooks directory, under the name it lists, whose release is its <code>specification.html</code> and <code>tasks.html</code> and nothing else in it. A document names a runbook only when it resolves to one of those two files in such a directory, each directory resolved, so a runbook directory that is a link is found where it resolves and named by its own name, and any other file in a runbook's directory names none. The project asked is the one the document resolves into and the one the walk reached it through. A runbook is recorded only once its document is settled: when checking, once the formatter has accepted it, and when writing, once it is written. So a document the formatter refuses, or one that cannot be written, names no runbook. What moved is recorded per runbook as one of three values, the assets, the fallback, or both, never two flags, so a runbook is only recorded with something rewritten.</p>
+            <p data-field="rationale">Finding a runbook through <code>present</code> rather than by where a directory sits keeps one definition of a runbook for archival and the line, which the review found the first version lacked: it named a runbook for any HTML file in its directory and missed one reached through a link. Recording only settled documents keeps the line from naming a change that was never made, which the review found the first version did for a document the formatter refused or could not write.</p>
+          </section>
+          <section class="decision" id="decision-what-it-says" data-change="added" data-status="accepted">
+            <h3>Say what the runbook's version needs, from the published history <span class="hs-id">decision-what-it-says</span></h3>
+            <p>For each runbook recorded, the report gains one line, in name order, after the per-document lines. It reads the runbook's <code>VERSION</code> and <code>CHANGELOG.md</code> and the project's published runbook history, which it reads once per project, the same things archival reads, and decides with <code>runbook_release::version_after_a_change</code>, the version half of archival's comparison for changed content with its heading check, which says one of six things:</p>
+            <ul>
+              <li><strong>Released at its current version, or above it:</strong> the runbook changed (or would change) and an earlier archive, named, released its version or a greater one, so its version must exceed that one, with a changelog heading for the new one, before the next <code>htmlspec archive</code>, which otherwise refuses it.</li>
+              <li><strong>Never published, at 0.0.0:</strong> the version is not a release, so it needs a first version above 0.0.0, with its heading, before the next archival.</li>
+              <li><strong>Not released yet, with no heading for it:</strong> the changelog needs a heading for the version before the next archival, which otherwise refuses it. Where an earlier version is published, the line says the heading should say what moved.</li>
+              <li><strong>Never published, at a version its changelog heads:</strong> the next archival releases the runbook as it now stands, as its first release. Its heading is the first release's, so the line says nothing about what it should say.</li>
+              <li><strong>Raised above what is published, at a version its changelog heads:</strong> the next archival releases the runbook as it now stands, and the heading for that version should say what moved: onto the current assets, the current fallback stylesheet, or both.</li>
+              <li><strong>Any of the three files, or the history, cannot be read:</strong> the runbook changed, and if its version is already released it needs a greater one before the next archival.</li>
+            </ul>
+            <p data-field="rationale">The version comparison is the gate's own question once content has changed, so the line says what archival will say without archiving. Comparing content as well would need the rewritten documents' fingerprints, which checking does not write. The version alone is the right test anyway: a runbook at a released version whose documents changed is exactly the gate's refusal, and the heading check is the gate's other refusal a changed release can meet. Stating that half of the gate as its own pure function beside <code>compare_release</code> keeps one statement of the rule, and a unit test holds the two to the same answer for every case but a changelog that heads one version twice, which the line does not judge. Running it after the walk keeps one line per runbook however many documents moved, and name order keeps the output deterministic.</p>
+          </section>
+          <section class="decision" id="decision-names-are-shown" data-change="added" data-status="accepted">
+            <h3>Show every name and path the report holds <span class="hs-id">decision-names-are-shown</span></h3>
+            <p>Every name and path the line holds, and every document's path in the report's other lines, reaches the terminal through <code>terminal::shown</code>, as <code>run</code> shows a runbook's name, and so do the runbook's name, directory, and archive in archival's release faults. A name is whatever a directory is called, so it can hold an escape sequence a terminal would act on.</p>
+            <p data-field="rationale">The review found the new lines escaping names with the listing's rendering and the per-document paths and archival's faults not escaping them at all. One rendering, the one <code>run</code> and preflight use for text that reaches a report, keeps the whole report to one rule, and the change is small: one shown path per document in <code>format</code>, and the name, directory, and archive in each release fault.</p>
+          </section>
+          <section class="decision" id="decision-where-it-goes" data-change="added" data-status="accepted">
+            <h3>Report it on standard output, and leave the exit status alone <span class="hs-id">decision-where-it-goes</span></h3>
+            <p>The lines go with the report, standard output, beside each document's "formatted" or "behind" line, not with the per-reference progress on standard error. The exit status is what it was: success for a write, and for a check, the existing rule.</p>
+            <p data-field="rationale">The line asks the user to act, so it belongs with the results a user reads rather than the progress a user scrolls past. Making it change the exit status would turn advice into a failure for a project that is about to raise the version anyway, and would change a behaviour scripts already depend on.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <section class="risk" id="risk-unfilled-references" data-change="added" data-response="accepted">
+            <h3>Plain formatting can change a runbook too, unnamed <span class="hs-id">risk-unfilled-references</span></h3>
+            <p>Plain <code>htmlspec format</code> fills a reference to an asset the store lacks, as it has since before 1.2.1, and filling changes a runbook's canonical content as the two options do. The line is not given for it.</p>
+            <p data-field="mitigation">Out of scope: the change is about the two options a user asks for. Archival's refusal names the fill beside them, a one-sentence change, so a user who meets the refusal is told of it.</p>
+          </section>
+          <section class="risk" id="risk-wrong-advice" data-change="added" data-response="mitigated">
+            <h3>The line could disagree with archival <span class="hs-id">risk-wrong-advice</span></h3>
+            <p>If the line read the history differently from archival, it could say a version is fine that archival then refuses, or the reverse.</p>
+            <p data-field="mitigation">It calls the same functions archival does, <code>runbook_release::present</code>, <code>history</code>, and <code>predecessor</code>, and decides with a function a unit test holds to <code>compare_release</code>'s answer for changed content at 0.0.0, at a first release, below, at, and above a published version, each with and without its heading. Integration tests publish a runbook, upgrade it or give it the fallback, and check that the line and <code>archive --check</code> agree before and after the version advances, and that an unheaded version is told to add the heading archival then asks for.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

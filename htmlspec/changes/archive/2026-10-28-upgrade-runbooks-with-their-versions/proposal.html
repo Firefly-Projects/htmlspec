@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Upgrade runbooks with their versions</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Upgrade runbooks with their versions</h1>
+        <p><code>htmlspec format --upgrade-assets</code> rewrites a runbook's specification and procedure along with every other living document, and a rewritten runbook needs a new release before the next archival. Nothing says so until archival refuses. This change makes the upgrade name each runbook it rewrites and say what its version needs, and makes the upgrade guide say the same, as a patch release, 1.2.2.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Upgrade runbooks with their versions</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>Release 1.1.0 added <code>htmlspec format --upgrade-assets</code>, which moves a project's living documents onto the stylesheet and scripts the current release writes. A runbook's <code>specification.html</code> and <code>tasks.html</code> are living documents, so the upgrade rewrites them too. That is right: a runbook should read with the current stylesheet as much as a specification should.</p>
+          <p>But a runbook's documents are versioned. runbook-authority's "A runbook carries an independently checked release version" gives every runbook a version of its own, and project-bootstrap's "Archival checks the versions of runbooks it publishes" refuses an archival that would publish different canonical content under a version an earlier archive already released. Moving a document's asset references changes its canonical content. So after the upgrade, the next <code>htmlspec archive</code> refuses: "the runbook demo declares 0.1.0, which 2026-10-28-first already published with different canonical content".</p>
+          <p>Nothing on the way warns the user. The upgrade reports each document it moved and exits 0. Release 1.2.1's Upgrading section in the README says the upgrade is optional and moves living documents, and says nothing about runbooks. A user following that guide learns about the runbook only at archival, perhaps days later and in a change about something else.</p>
+          <p>This happened. Bringing a project up to 1.2.1, the upgrade rewrote that project's one runbook, and the agent doing the work had to put both documents back by hand to keep the next archival from refusing. This project's own 1.1.0 knew the rule and moved its release runbook to 0.5.0 when it upgraded its assets, but a user has no way to know it.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <ul>
+            <li><strong>The upgrade names each runbook it rewrites.</strong> When <code>format --upgrade-assets</code> rewrites a runbook's specification or procedure, or with <code>--check</code> would rewrite it, it says so once per runbook at the end of its report. Where the runbook's version is one an earlier archive already released, it says that version must advance, with a changelog heading for the new one, before the next archival. Where the version is not released yet, it says the next archival releases the runbook as it now stands.</li>
+            <li><strong>The fallback does the same.</strong> <code>format --fallback</code> rewrites runbook documents the same way, adding or replacing the fallback stylesheet, so it names each runbook it rewrites with the same line.</li>
+            <li><strong>Archival's refusal names the likely causes.</strong> The refusal for changed content under a released version says that asset references the upgrade moved, and a fallback stylesheet <code>--fallback</code> added or replaced, are changes too.</li>
+            <li><strong>The guide says it.</strong> The README's Upgrading section, its paragraph on <code>--upgrade-assets</code>, and its note on <code>--fallback</code>, and each option's own help, say that a runbook either option rewrites needs a new version before the next archival.</li>
+          </ul>
+          <p>What working looks like: a user runs <code>htmlspec format --upgrade-assets --check</code> before upgrading and reads that the runbook <code>demo</code>, at 0.1.0, would change and needs a greater version. They run the upgrade, raise <code>htmlspec/runbooks/demo/VERSION</code> to 0.1.1 with a changelog heading saying the runbook moved onto the current assets, and the next archival publishes it.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <ul>
+            <li><strong>Documentation alone.</strong> Necessary and not enough: a user who has read the guide once forgets it by the time a runbook changes, and the program is the one party that knows which runbooks it just rewrote. The guide changes as well.</li>
+            <li><strong>Leaving runbooks alone unless asked.</strong> A new option, or a default that skips runbooks, would avoid the surprise by not doing the work. But it narrows what 1.1 and 1.2 do, so a project that relies on the upgrade reaching its runbooks would silently stop getting it, and a new option is new command surface, which is a minor release rather than a patch. A runbook on an older stylesheet is the case the upgrade exists for. It should be upgraded and released, not skipped.</li>
+            <li><strong>Raising the runbook's version for the user.</strong> Choosing between a patch and a minor increment, and writing the changelog's words, are the author's. project-bootstrap's archival gate compares and never edits for that reason, and the formatter should not edit what the gate leaves to the author.</li>
+          </ul>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <ul>
+            <li>It changes nothing about which documents the upgrade rewrites, how it rewrites them, or its exit status. The new lines are human-readable output, which toolchain-packaging's "The command surface is stable within a major version" leaves out of the stable surface. <code>format</code> writes no payload, so there is no field to add.</li>
+            <li>It does not raise a runbook's version, write its changelog, or block the upgrade.</li>
+            <li>It does not change archival's gate, only the words of its refusal.</li>
+            <li>It is a patch release, 1.2.2.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

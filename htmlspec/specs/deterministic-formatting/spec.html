@@ -73,8 +73,8 @@
             <p>Formatting SHALL NOT change a document's semantic content. It SHALL preserve every semantic unit, every identifier, every attribute value, every cross-reference, and the document order of content. It SHALL NOT add, remove, or reorder semantic units.</p>
             <p>One kind of attribute value is excepted. Where an asset reference names bytes the project's store does not hold, formatting SHALL fill it with the address of the bytes the toolchain ships. A reference that names bytes the store holds SHALL be left as written, even when the store also holds a newer revision, because the reference records what the document was authored against.</p>
             <p>An asset reference SHALL be the value of an attribute through which an element loads an asset. These are the same attributes that document-validation's "An asset reference must match the bytes it names" judges, so the formatter and the validator SHALL NOT disagree about which values are references. A hyperlink is a citation, not something the document loads, and SHALL NOT be filled. Text SHALL NOT be read as an asset reference. Prose that quotes one, whether as characters in a code element or escaped in an example, is content, and formatting SHALL leave it as the author wrote it.</p>
-            <p>A second exception is made only on a contributor's request. Where the request is made, formatting SHALL add the fallback stylesheet that "A document stays readable when its stylesheet cannot load" describes to a document that lacks one, SHALL replace a fallback whose text differs from the current one, and SHALL change nothing else. It SHALL NOT do so for a document of an archived change or a run's record, which are history, judged by the project the document resolves into wherever formatting is run from, whether reached directly or through a symbolic link. Without the request, formatting SHALL leave a document's fallback present, absent, or stale as written.</p>
-            <p>A third exception is made only on a contributor's request as well. Where the request is made, formatting SHALL rewrite each asset reference a document carries to the store location of the bytes the toolchain ships for the same asset, SHALL write those bytes into the store where it lacks them, from the copy the toolchain carries, and SHALL make no network request. It SHALL add no reference the document does not already carry. It SHALL leave as written a reference to an asset the toolchain ships no revision of, one whose stored bytes disagree with its address, and one the store holds other bytes for at the current revision's address, and SHALL say how to restore that file. It SHALL NOT rewrite a document of an archived change or a run's record, judged as the second exception judges them. Checking with the request SHALL name each document it would rewrite and write nothing, and SHALL succeed where it would write nothing, blocked references included.</p>
+            <p>A second exception is made only on a contributor's request. Where the request is made, formatting SHALL add the fallback stylesheet that "A document stays readable when its stylesheet cannot load" describes to a document that lacks one, SHALL replace a fallback whose text differs from the current one, and SHALL change nothing else. It SHALL NOT do so for a document of an archived change or a run's record, which are history, judged by the project the document resolves into wherever formatting is run from, whether reached directly or through a symbolic link. Without the request, formatting SHALL leave a document's fallback present, absent, or stale as written. Where the request adds or replaces the fallback in a runbook's specification or procedure, the two documents project-bootstrap's "Archival checks the versions of runbooks it publishes" compares, or checking with the request would, formatting SHALL name that runbook once, after the documents it reports, and SHALL say what the runbook's version needs before the next archival, as that requirement judges it: a version greater than the one an earlier archive released, with a changelog heading for it, where the runbook declares a released version or one below it; a first version above 0.0.0 where nothing is released and it declares 0.0.0; a changelog heading where it declares an unreleased version its changelog does not head; and otherwise that the next archival releases it as it now stands. It SHALL name a runbook only for a document it accepted, when checking, or wrote, when writing, and SHALL NOT name one for another document in a runbook's directory or for a run's record. Naming a runbook SHALL NOT change formatting's exit status.</p>
+            <p>A third exception is made only on a contributor's request as well. Where the request is made, formatting SHALL rewrite each asset reference a document carries to the store location of the bytes the toolchain ships for the same asset, SHALL write those bytes into the store where it lacks them, from the copy the toolchain carries, and SHALL make no network request. It SHALL add no reference the document does not already carry. It SHALL leave as written a reference to an asset the toolchain ships no revision of, one whose stored bytes disagree with its address, and one the store holds other bytes for at the current revision's address, and SHALL say how to restore that file. It SHALL NOT rewrite a document of an archived change or a run's record, judged as the second exception judges them. Checking with the request SHALL name each document it would rewrite and write nothing, and SHALL succeed where it would write nothing, blocked references included. Where the request rewrites a runbook's specification or procedure, or checking with it would, formatting SHALL name that runbook and say what its version needs before the next archival, as the second exception does.</p>
             <article class="scenario" id="scenario-identifiers-survive-formatting" data-change="unchanged">
               <h4>Identifiers survive formatting</h4>
               <dl>
@@ -188,6 +188,17 @@
                 <dd>that document is left as written, and the request reports it as skipped</dd>
               </dl>
             </article>
+            <article class="scenario" id="scenario-the-fallback-names-a-released-runbook" data-change="unchanged">
+              <h4>The fallback request names a released runbook it changes</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook without the fallback, which an archive released at the version it declares</dd>
+                <dt>When</dt>
+                <dd>the fallback request is made, with or without checking</dd>
+                <dt>Then</dt>
+                <dd>the report names the runbook once and says its version must advance, with a changelog heading for the new one, before the next archival, and a second request, which changes nothing, names no runbook</dd>
+              </dl>
+            </article>
             <article class="scenario" id="scenario-the-upgrade-request-moves-a-document" data-change="unchanged">
               <h4>The upgrade request moves a document onto the current assets</h4>
               <dl>
@@ -230,6 +241,17 @@
                 <dd>the upgrade request is made</dd>
                 <dt>Then</dt>
                 <dd>the reference stays as written, and the report says the stored file was edited or replaced and how to restore it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-upgrade-names-a-released-runbook" data-change="unchanged">
+              <h4>The upgrade request names a released runbook it rewrites</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a runbook on an earlier stylesheet, which an archive released at the version it declares</dd>
+                <dt>When</dt>
+                <dd>the upgrade request is made, with or without checking</dd>
+                <dt>Then</dt>
+                <dd>the report names the runbook once and says its version must advance, with a changelog heading for the new one, before the next archival, and archival refuses the runbook until it does</dd>
               </dl>
             </article>
           </section>

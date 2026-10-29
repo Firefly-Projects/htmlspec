@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="tasks" name="htmlspec-kind">
+    <title>Upgrade runbooks with their versions: tasks</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Upgrade runbooks with their versions: tasks</h1>
+        <p>The work that makes <code>format --upgrade-assets</code> name each runbook it rewrites and what its version needs, makes archival's refusal name the cause, says it in the guide, and releases 1.2.2.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">tasks</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Upgrade runbooks with their versions: tasks</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-tasks">Tasks</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-tasks">
+          <h2>Tasks</h2>
+          <p>Each task is one unit of work, individually addressable, so a state change is a change to one unit rather than to a list.</p>
+          <ul>
+            <li class="task" id="task-1-1" data-change="added" data-state="done">
+              <h3>1.1 Name each runbook the upgrade rewrites, and what its version needs <span class="hs-id">task-1-1</span></h3>
+              <p data-field="note">In <code>format</code> (crates/htmlspec-cli/src/commands.rs), collect each runbook whose <code>specification.html</code> or <code>tasks.html</code> the upgrade rewrote, or checking would rewrite, judged where the document resolves. After the walk, report one line per runbook in name order, reading its <code>VERSION</code> and the published history as decision 2 says, with the name escaped. Tests in tests/runbooks.rs: a runbook released at its current version is named as needing a greater one, in both modes, and <code>archive --check</code> refuses it; a runbook at an unreleased version is named as releasing at that version, and archival publishes it; a run's record, a document outside a runbook, and an upgrade that moved nothing add no line.</p>
+              <p data-field="deviation">Done on 2026-10-28, with more than the task's words. The decision is its own pure function, <code>runbook_release::version_after_a_change</code>, beside <code>compare_release</code>, and a unit test holds the two to the same answer for changed content in five cases. Writing it showed two cases the design's first list missed, a runbook at 0.0.0 and one below a published version, which archival also refuses, so each has its own line and the design names four outcomes. The three tests are in tests/runbooks.rs. The two that expect a line fail against 1.2.1's sources and pass with the change; the third, which names nothing for a run's record, a document outside every runbook, or a runbook already on the current assets, passes on both, as a guard.</p>
+            </li>
+            <li class="task" id="task-1-2" data-change="added" data-state="done">
+              <h3>1.2 Name the upgrade in archival's refusal for changed content <span class="hs-id">task-1-2</span></h3>
+              <p data-field="note">The refusal for changed content under a released version (crates/htmlspec-cli/src/runbook_release.rs) says that asset references <code>format --upgrade-assets</code> moved are a change too. A unit test holds the sentence.</p>
+              <p data-field="deviation">Done on 2026-10-28. The unit test <code>changed_content_without_a_bump_is_refused_naming_the_archive</code> holds the sentence, and the integration test for a released runbook checks that <code>archive --check</code>'s refusal carries it.</p>
+            </li>
+            <li class="task" id="task-1-3" data-change="added" data-state="done">
+              <h3>1.3 Name each runbook the fallback rewrites, as the upgrade does <span class="hs-id">task-1-3</span></h3>
+              <p data-field="note">Asked for after the pull request opened. <code>format --fallback</code> rewrites runbook documents the same way, so it gives the same line in both modes. Archival's refusal names <code>--fallback</code> beside <code>--upgrade-assets</code>. The option's help, the README, and the design say the same. A test shows a released runbook given the fallback is named, and that the line is absent when nothing changes. It stays a patch, with no new surface.</p>
+              <p data-field="deviation">Done on 2026-10-28. A runbook is recorded once a document's requests have all succeeded, with what was rewritten as one of three values, the assets, the fallback, or both, which the line for an unreleased version uses to say what its heading says moved. Two tests in tests/runbooks.rs: a released runbook given the fallback is named in both modes and refused by archival, whose refusal names <code>--fallback</code>, while a runbook already carrying the fallback and a second request name none; and an unreleased runbook's advice says the fallback alone, then both requests, changed it. Both fail against the pull request's first head and pass now. The unit test for the refusal checks it names both options.</p>
+            </li>
+            <li class="task" id="task-2-1" data-change="added" data-state="done">
+              <h3>2.1 Say it in the guide and the option's help <span class="hs-id">task-2-1</span></h3>
+              <p data-field="note">README.md: the Upgrading section's project steps and the paragraph on <code>--upgrade-assets</code> say that a runbook it rewrites needs a new version, with a changelog heading, before the next archival, and that the upgrade names each one. The option's help in crates/htmlspec-cli/src/main.rs says the same. The README tests keep passing.</p>
+              <p data-field="deviation">Done on 2026-10-28, in two more places than the task names. The Upgrading section's project steps gain a bullet, and the reference paragraph on <code>--upgrade-assets</code> a sentence. "What each release lets a project adopt" now counts 1.2.2 among the releases with nothing to adopt, and "Project status" gains a line for 1.2.2. The option's help already said a runbook's next archival asks for a new version, and now also says the report names each runbook. <code>scripts/check-readme-install</code>, its self-test, and the README's declaration test pass.</p>
+            </li>
+            <li class="task" id="task-2-2" data-change="added" data-state="done">
+              <h3>2.2 Write the 1.2.2 changelog entry, with its Upgrading note <span class="hs-id">task-2-2</span></h3>
+              <p data-field="note">A <code>## 1.2.2</code> entry in CHANGELOG.md naming what changed, and an Upgrading note: from 1.2.1 nothing is required beyond the binary and <code>init</code>; from 1.1.x follow the earlier notes as before.</p>
+              <p data-field="deviation">Done on 2026-10-28. The Upgrading note also says what a project that already upgraded a released runbook does: give it a greater version and a heading before its next archival. From 1.2.0 or 1.1.x it points to 1.2.1's notes, which carry the earlier ones.</p>
+            </li>
+            <li class="task" id="task-2-3" data-change="added" data-state="done">
+              <h3>2.3 Release 1.2.2 <span class="hs-id">task-2-3</span></h3>
+              <p data-field="note"><code>scripts/set-version 1.2.2</code> for the version, the pins and the lockfile, then <code>htmlspec init</code> with the 1.2.2 binary to regenerate the 45 installed instruction files, checked by <code>scripts/check-installed</code>. <code>spec.nix</code> moves at archival.</p>
+              <p data-field="deviation">Done on 2026-10-28. <code>scripts/set-version 1.2.2</code> moved the version, the five pins, and the lockfile. The 1.2.2 binary's <code>htmlspec init --tools claude,codex,pi</code> changed only the <code>generatedBy</code> line of each installed file, and <code>scripts/check-installed</code> reports the 45 files match.</p>
+            </li>
+            <li class="task" id="task-3-1" data-change="added" data-state="done">
+              <h3>3.1 Take the review, and settle each finding <span class="hs-id">task-3-1</span></h3>
+              <p data-field="note">One review of the pull request, as the merge rule requires. Each finding is fixed or answered on the pull request before archival.</p>
+              <p data-field="note">Done on 2026-10-28. Before the review the coordinator asked for <code>--fallback</code> too, which is task 1.3. One review of pull request 93 then raised seven findings, each reproduced first by a test that failed at b980f52 and settled in b4d4bc7. A runbook was named for a document the formatter refused or could not write: it is now recorded once the formatter accepts the document, when checking, or once it is written, when writing. Any HTML file in a runbook's directory named the runbook, and a runbook directory that is a link went unnamed: a runbook is now a directory <code>runbook_release::present</code> lists, named as it lists it, each directory resolved, and only its <code>specification.html</code> and <code>tasks.html</code> name it. The "not released yet" line promised a release without the changelog heading archival requires: <code>version_after_a_change</code> reads the changelog and asks for a missing heading. Names reached the terminal through the listing's rendering: the new lines, every document path in <code>format</code>'s report, and the name, directory, and archive in archival's release faults now go through <code>terminal::shown</code>, with an escape-sequence test. Among the nits, the long doc comment is wrapped, the published history is read once per project, the changelog title names both options and the entry describes the 0.0.0 line, and a never-published runbook is no longer told what its first heading says. The optional finding was a one-sentence change, so archival's refusal also names a reference plain formatting filled, and the design records the fill as an accepted risk.</p>
+            </li>
+            <li class="task" id="task-3-2" data-change="added" data-state="done">
+              <h3>3.2 Archive at 1.2.2 <span class="hs-id">task-3-2</span></h3>
+              <p data-field="note">Write the specification from what was built, restating deterministic-formatting's "Formatting preserves meaning" whole as modified, raise <code>spec.nix</code> to 1.2.2, and archive with <code>htmlspec archive upgrade-runbooks-with-their-versions</code>.</p>
+              <p data-field="note">Done on 2026-10-28. The specification restates deterministic-formatting's "Formatting preserves meaning" whole, as modified: its second exception, the fallback, and its third, the upgrade, each gain a statement, with the words marked, and one scenario each, "The fallback request names a released runbook it changes" and "The upgrade request names a released runbook it rewrites". <code>show --diff</code> reported the words marked as the author marked them, and <code>sync</code> reported the contract applied in full. <code>spec.nix</code> is 1.2.2. Archived with <code>--yes</code> while task 3.3, which follows archival, was still open.</p>
+            </li>
+            <li class="task" id="task-3-3" data-change="added" data-state="done">
+              <h3>3.3 Record the reads, and rehearse the export <span class="hs-id">task-3-3</span></h3>
+              <p data-field="note">Record each READINESS read at the content the archived tree holds, then run <code>publish/export --ref HEAD --dry-run</code> against an empty local bare repository.</p>
+              <p data-field="note">Done on 2026-10-28, after archival. Every allowlisted path whose content differs from its recorded read was read at the content this pull request leaves, and its row recorded in <code>publish/READINESS.md</code> with one read paragraph. That includes the publish runbook's record of the 1.2.1 run, which reached <code>main</code> after the last read. <code>publish/export --ref HEAD --dry-run</code> then ran against an empty local bare repository, and its result is recorded in the pull request.</p>
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>
