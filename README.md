@@ -360,6 +360,7 @@ Then commit what changed.
   ```
 
 - **`--upgrade-assets` is optional.** A document that references an older stylesheet or script still validates and still reads. The option moves living documents onto the files this release writes into new ones. It never rewrites an archived change or a run record, and it downloads nothing.
+- **A runbook it rewrites needs a new release, and so does one `--fallback` rewrites.** Moving a runbook's references, or adding or replacing its fallback stylesheet, changes its specification or procedure, and the next `htmlspec archive` refuses changed content under a version an earlier archive released. Each option names each runbook it rewrites, or with `--check` would rewrite, and says whether its version must advance. Where it must, raise the version in the runbook's `VERSION` and give the new version a heading in its `CHANGELOG.md`, saying what moved, before the next archival.
 - **A project that pins htmlspec** moves its pin too: the `htmlspec` field of `spec.nix`, or a flake input. Pin the public repository, `github:Firefly-Projects/htmlspec/vX.Y.Z`, where an older pin names another address.
 
 ### What 1.x promises
@@ -381,7 +382,7 @@ Nothing here is required. The [changelog](CHANGELOG.md) says what each release c
 - **1.1:** `htmlspec new runbook`, `format --upgrade-assets`, a `remedy` in a `preflight/v2` declaration, and `-v`.
 - **1.2:** a runbook can require a passed run of another with a `preflight/v3` `run` check, and `htmlspec list --runbooks --graph` draws who requires whom.
 
-1.1.1 and 1.2.1 give a project nothing new to adopt. 1.1.1 gave people an install path through WSL and every route without Nix, and 1.2.1 this section.
+1.1.1, 1.2.1, and 1.2.2 give a project nothing new to adopt. 1.1.1 gave people an install path through WSL and every route without Nix, 1.2.1 this section, and 1.2.2 a word from `format --upgrade-assets` and `format --fallback` about each runbook they rewrite.
 
 ## Reading the documents
 
@@ -396,7 +397,7 @@ python3 -m http.server
 # then open http://localhost:8000/htmlspec/specs/
 ```
 
-Documents written before 0.31.0 have no fallback. `htmlspec format --fallback` adds it to them.
+Documents written before 0.31.0 have no fallback. `htmlspec format --fallback` adds it to them. Adding it to a runbook changes the runbook's documents, so `--fallback` names each runbook it changes and says whether its version must advance before the next `htmlspec archive`, as `--upgrade-assets` does.
 
 ## Reference
 
@@ -436,7 +437,7 @@ htmlspec -v                                      # the version, as --version and
 
 Every project-wide command finds its project by walking up from where you run it, so each one works from any directory inside the project. A new change or runbook goes where the project keeps it, and the command reports the resolved path.
 
-`format --upgrade-assets` rewrites each document's references to the stylesheet and scripts this release writes into new documents. It never downloads anything: the current assets are compiled into the program, and any the store lacks are written into it from that copy. It adds nothing a document does not already load, and it leaves archived changes and run records as written, judging each document by the project it belongs to wherever you run it from, a link's target included. `--fallback` keeps history the same way. Where a stored file no longer matches its address, it leaves the reference as written and says how to restore the file. Without the flag, formatting leaves every reference to stored bytes as written, so a document keeps rendering with the bytes it was reviewed against until someone asks to move it.
+`format --upgrade-assets` rewrites each document's references to the stylesheet and scripts this release writes into new documents. It never downloads anything: the current assets are compiled into the program, and any the store lacks are written into it from that copy. It adds nothing a document does not already load, and it leaves archived changes and run records as written, judging each document by the project it belongs to wherever you run it from, a link's target included. `--fallback` keeps history the same way. Where a stored file no longer matches its address, it leaves the reference as written and says how to restore the file. It names each runbook whose specification or procedure it rewrites, or with `--check` would rewrite, and says whether that runbook's version must advance before the next `htmlspec archive`, which refuses changed content under a version already released. `--fallback` names the runbooks it rewrites the same way. The new version is yours to choose. Without the flag, formatting leaves every reference to stored bytes as written, so a document keeps rendering with the bytes it was reviewed against until someone asks to move it.
 
 Every operation also has a request-verb spelling, borrowed from htmx's request keywords. `get` never writes. `post` creates something that was not there. `put` creates or replaces a whole thing, and running it again leaves the same result. `patch` changes something that exists. `delete` removes something. Both spellings run the same operation, with the same arguments, options, output, and exit status.
 
@@ -794,6 +795,8 @@ Release 1.2.0 adds:
 - **the order, shown:** `list --runbooks` and a bare `run` show what each runbook requires and whether it is met now, and `list --runbooks --graph` draws it as a Mermaid flowchart
 
 Release 1.2.1 adds **a guide to upgrading**: how to upgrade the binary on each channel and bring a project up to it, under [Upgrading](#upgrading).
+
+Release 1.2.2 adds **a word about the runbooks an asset upgrade or the fallback rewrites**: `format --upgrade-assets` and `format --fallback` name each one and say whether its version must advance before the next archival, and archival's refusal names both as likely causes.
 
 **What 1.x promises** is set out under [Upgrading](#what-1x-promises): the command surface only grows, documents stay valid within the contract's major version, and the suite holds both.
 

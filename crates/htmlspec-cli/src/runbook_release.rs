@@ -29,6 +29,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use crate::terminal::shown;
 use crate::version::{ProjectVersion, RunbookVersion};
 
 /// The file a runbook declares its release version in.
@@ -753,47 +754,69 @@ pub enum ReleaseFault {
 impl std::fmt::Display for ReleaseFault {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::UnreleasedVersion { name, version } => write!(
-                f,
-                "the runbook {name} declares {version}, which is not a release: a runbook's first \
-                 published version is above 0.0.0, because 0.0.0 is the version a runbook carries \
-                 before it has been released at all. Raise {} and give the new version a changelog \
-                 heading",
-                VERSION_FILE
-            ),
+            // A runbook's name and an archive's are their directories' names, so either can hold
+            // an escape sequence a terminal would act on. Each reaches the report shown.
+            Self::UnreleasedVersion { name, version } => {
+                let name = shown(name);
+                write!(
+                    f,
+                    "the runbook {name} declares {version}, which is not a release: a runbook's \
+                     first published version is above 0.0.0, because 0.0.0 is the version a \
+                     runbook carries before it has been released at all. Raise {} and give the new \
+                     version a changelog heading",
+                    VERSION_FILE
+                )
+            }
             Self::ChangedWithoutABump {
                 name,
                 version,
                 published_in,
-            } => write!(
-                f,
-                "the runbook {name} declares {version}, which {published_in} already published with \
-                 different canonical content. A version identifies one released procedure, so a \
-                 changed one needs a greater version — and choosing the increment is the author's, \
-                 not this program's"
-            ),
+            } => {
+                let (name, published_in) = (shown(name), shown(published_in));
+                write!(
+                    f,
+                    "the runbook {name} declares {version}, which {published_in} already published \
+                     with different canonical content. A version identifies one released \
+                     procedure, so a changed one needs a greater version — and choosing the \
+                     increment is the author's, not this program's. Asset references `htmlspec \
+                     format --upgrade-assets` moved, a fallback stylesheet `htmlspec format \
+                     --fallback` added or replaced, and a reference plain `htmlspec format` filled \
+                     because the store lacked the bytes it named, are changes too, and the \
+                     likeliest ones where nobody edited the runbook"
+                )
+            }
             Self::Downgrade {
                 name,
                 current,
                 published,
                 published_in,
-            } => write!(
-                f,
-                "the runbook {name} declares {current}, which is ordered before the {published} \
-                 that {published_in} published. Publishing it would move the runbook backwards, so \
-                 a reader on another machine could not tell which of the two a copy came from"
-            ),
-            Self::NoHeading { name, version } => write!(
-                f,
-                "the runbook {name} declares {version} and its {CHANGELOG_FILE} has no heading \
-                 naming it. A carried runbook identifies its release by the pair, so a version \
-                 nothing headings is one a reader cannot find"
-            ),
-            Self::RepeatedHeading { name, version } => write!(
-                f,
-                "the runbook {name}'s {CHANGELOG_FILE} heads {version} twice, so it cannot say \
-                 which entry is the release. One heading per release"
-            ),
+            } => {
+                let (name, published_in) = (shown(name), shown(published_in));
+                write!(
+                    f,
+                    "the runbook {name} declares {current}, which is ordered before the \
+                     {published} that {published_in} published. Publishing it would move the \
+                     runbook backwards, so a reader on another machine could not tell which of the \
+                     two a copy came from"
+                )
+            }
+            Self::NoHeading { name, version } => {
+                let name = shown(name);
+                write!(
+                    f,
+                    "the runbook {name} declares {version} and its {CHANGELOG_FILE} has no heading \
+                     naming it. A carried runbook identifies its release by the pair, so a version \
+                     nothing headings is one a reader cannot find"
+                )
+            }
+            Self::RepeatedHeading { name, version } => {
+                let name = shown(name);
+                write!(
+                    f,
+                    "the runbook {name}'s {CHANGELOG_FILE} heads {version} twice, so it cannot say \
+                     which entry is the release. One heading per release"
+                )
+            }
             Self::MissingInventory {
                 archive,
                 project,
@@ -827,12 +850,16 @@ impl std::fmt::Display for ReleaseFault {
                 name,
                 directory,
                 problem,
-            } => write!(
-                f,
-                "the runbook {name} at {directory} cannot be read as a release: {problem}. A \
-                 runbook that cannot be read is refused rather than left out, because an inventory \
-                 that silently omitted it would publish a history missing a runbook the project holds"
-            ),
+            } => {
+                let (name, directory) = (shown(name), shown(directory));
+                write!(
+                    f,
+                    "the runbook {name} at {directory} cannot be read as a release: {problem}. A \
+                     runbook that cannot be read is refused rather than left out, because an \
+                     inventory that silently omitted it would publish a history missing a runbook \
+                     the project holds"
+                )
+            }
             Self::UnreadableAdoption { marker, problem } => write!(
                 f,
                 "the {ADOPTION_FILE} marker at {marker} cannot be read: {problem}. The marker says \
@@ -965,6 +992,61 @@ pub fn compare_release(
         Ok(PublishableRelease { release: current })
     } else {
         Err(ReleaseFaults(faults))
+    }
+}
+
+/// What a runbook's version needs before the next archival, once its canonical content differs
+/// from what was last published under its name, or would.
+///
+/// The version half of [`compare_release`], and its heading check, for a caller that knows the
+/// content changed but has no release to compare: `htmlspec format --upgrade-assets` in check mode
+/// writes nothing to fingerprint. Each variant carries what the caller reports, so it cannot name a
+/// version it did not compare.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum VersionAfterAChange {
+    /// An archive released a version at or above this one, so this one must exceed it.
+    MustExceed {
+        /// The version last published.
+        published: RunbookVersion,
+        /// The archive that published it.
+        published_in: String,
+    },
+    /// Nothing is published and the version is 0.0.0, which is not a release.
+    NeedsAFirstRelease,
+    /// The version is above anything published, but the changelog has no heading for it.
+    NeedsAHeading(RunbookVersion),
+    /// Nothing is published, and the next archival releases the runbook at this version, which its
+    /// changelog heads, as its first release.
+    FirstRelease(RunbookVersion),
+    /// An earlier version is published, and the next archival releases the runbook at this greater
+    /// one, which its changelog heads.
+    Advances(RunbookVersion),
+}
+
+/// What `version` needs after a change, given what was last published under the runbook's name and
+/// the runbook's changelog.
+///
+/// Total and pure, and agrees with [`compare_release`] for changed content whose changelog heads no
+/// version twice: it answers [`VersionAfterAChange::FirstRelease`] or
+/// [`VersionAfterAChange::Advances`] exactly when that comparison raises no fault.
+pub fn version_after_a_change(
+    previous: &PreviousRelease,
+    version: RunbookVersion,
+    changelog: &str,
+) -> VersionAfterAChange {
+    match previous {
+        PreviousRelease::Snapshot(published) if version <= published.release.version => {
+            VersionAfterAChange::MustExceed {
+                published: published.release.version,
+                published_in: published.archive.clone(),
+            }
+        }
+        PreviousRelease::None if !version.is_released() => VersionAfterAChange::NeedsAFirstRelease,
+        _ if !changelog_headings(changelog).contains(&version) => {
+            VersionAfterAChange::NeedsAHeading(version)
+        }
+        PreviousRelease::None => VersionAfterAChange::FirstRelease(version),
+        PreviousRelease::Snapshot(_) => VersionAfterAChange::Advances(version),
     }
 }
 
@@ -1606,6 +1688,83 @@ mod tests {
             text.contains("one released procedure"),
             "the report does not say why a version cannot be reused: {text}"
         );
+        assert!(
+            text.contains("htmlspec format --upgrade-assets")
+                && text.contains("htmlspec format --fallback"),
+            "the report does not name the asset upgrade and the fallback, the likeliest unedited \
+             causes: {text}"
+        );
+    }
+
+    /// What a changed runbook's version needs is what archival decides for it: a release exactly
+    /// where the comparison of changed content raises no fault.
+    #[test]
+    fn what_a_changed_version_needs_agrees_with_archival() {
+        let published = release("release", "0.1.0", 1, "# Changelog\n\n## 0.1.0\n\nFirst.\n");
+        let after =
+            || PreviousRelease::Snapshot(snapshot("2026-01-01-one", "0.15.0", published.clone()));
+        let must_exceed = || VersionAfterAChange::MustExceed {
+            published: version("0.1.0"),
+            published_in: "2026-01-01-one".to_owned(),
+        };
+        for (previous, declared, headed, wanted) in [
+            (
+                PreviousRelease::None,
+                "0.0.0",
+                true,
+                VersionAfterAChange::NeedsAFirstRelease,
+            ),
+            (
+                PreviousRelease::None,
+                "0.1.0",
+                true,
+                VersionAfterAChange::FirstRelease(version("0.1.0")),
+            ),
+            (
+                PreviousRelease::None,
+                "0.1.0",
+                false,
+                VersionAfterAChange::NeedsAHeading(version("0.1.0")),
+            ),
+            (after(), "0.0.9", true, must_exceed()),
+            (after(), "0.1.0", true, must_exceed()),
+            (after(), "0.1.0", false, must_exceed()),
+            (
+                after(),
+                "0.1.1",
+                true,
+                VersionAfterAChange::Advances(version("0.1.1")),
+            ),
+            (
+                after(),
+                "0.1.1",
+                false,
+                VersionAfterAChange::NeedsAHeading(version("0.1.1")),
+            ),
+        ] {
+            // Changed content, with one heading for the declared version or none, so only the
+            // version and its heading decide.
+            let changelog = if headed {
+                format!("# Changelog\n\n## {declared}\n\nChanged.\n")
+            } else {
+                "# Changelog\n\nChanged.\n".to_owned()
+            };
+            let needs = version_after_a_change(&previous, version(declared), &changelog);
+            assert_eq!(
+                needs, wanted,
+                "{declared}, headed {headed}, after {previous:?}"
+            );
+            let verdict = compare_release(previous, release("release", declared, 2, &changelog));
+            assert_eq!(
+                matches!(
+                    needs,
+                    VersionAfterAChange::FirstRelease(_) | VersionAfterAChange::Advances(_)
+                ),
+                verdict.is_ok(),
+                "{declared}, headed {headed}: the advice {needs:?} and archival's {verdict:?} \
+                 disagree"
+            );
+        }
     }
 
     /// A changed specification alone moves the release, and so does a changed procedure alone.

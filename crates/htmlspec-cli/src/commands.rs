@@ -25,7 +25,7 @@ use serde::Serialize;
 use crate::exit::Outcome;
 use crate::output::Streams;
 use crate::project::ProjectRoot;
-use crate::terminal::printable;
+use crate::terminal::{printable, shown};
 use crate::tools::ToolId;
 
 /// The version recorded in generated instruction files.
@@ -697,12 +697,19 @@ struct Placed {
     is_history: bool,
     /// Whether the resolved document is within a change's evidence, which no operation rewrites.
     is_evidence: bool,
+    /// Each runbook whose specification or procedure this document is, with its project: none for
+    /// any other document. A rewritten runbook needs a release before the next archival, so the
+    /// asset upgrade and the fallback name it.
+    runbooks: Vec<(ProjectRoot, String)>,
 }
 
-/// The project each directory resolves into, asked once per directory.
+/// The project each directory resolves into, asked once per directory, and the runbooks each
+/// project holds, read once per project.
 #[derive(Default)]
 struct Places {
     projects: std::collections::HashMap<PathBuf, Option<ProjectRoot>>,
+    /// Each project's runbooks, by name, with each directory resolved: what archival publishes.
+    runbooks: std::collections::HashMap<PathBuf, Vec<(String, PathBuf)>>,
 }
 
 impl Places {
@@ -712,24 +719,77 @@ impl Places {
     /// given and has no history to leave alone, as a walk outside any project always had.
     fn place(&mut self, path: &Path) -> Placed {
         let real = path.canonicalize().unwrap_or_else(|_| path.to_owned());
-        let directory = crate::project::directory_of(&real);
-        let project = self
-            .projects
-            .entry(directory.clone())
-            .or_insert_with(|| ProjectRoot::resolve(&directory).ok());
-        let (is_history, is_evidence) = match project {
+        let project = self.project_of(&crate::project::directory_of(&real));
+        let (is_history, is_evidence) = match &project {
             Some(project) => (
                 project.is_history(&real),
                 project.is_within_change_evidence(&real),
             ),
             None => (false, false),
         };
+        // Asked of the project the document resolves into, and of the one the walk reached it
+        // through, because a runbook directory that is a link resolves outside the runbooks
+        // directory archival lists it in. History is never a runbook's own document.
+        let runbooks = if is_history {
+            Vec::new()
+        } else {
+            let walked = self.project_of(&crate::project::directory_of(path));
+            let mut runbooks: Vec<(ProjectRoot, String)> = Vec::new();
+            for project in [project, walked].into_iter().flatten() {
+                for name in self.runbooks_of(&project, &real) {
+                    if !runbooks
+                        .iter()
+                        .any(|(held, named)| held.path() == project.path() && *named == name)
+                    {
+                        runbooks.push((project.clone(), name));
+                    }
+                }
+            }
+            runbooks
+        };
         Placed {
             path: path.to_owned(),
             real,
             is_history,
             is_evidence,
+            runbooks,
         }
+    }
+
+    /// The project `directory` resolves into, if any.
+    fn project_of(&mut self, directory: &Path) -> Option<ProjectRoot> {
+        self.projects
+            .entry(directory.to_owned())
+            .or_insert_with(|| ProjectRoot::resolve(directory).ok())
+            .clone()
+    }
+
+    /// The names of `project`'s runbooks whose specification or procedure the resolved document at
+    /// `real` is.
+    ///
+    /// The one definition archival compares by: a runbook is a directory
+    /// [`crate::runbook_release::present`] lists, named as it lists it, and its release is its
+    /// [`crate::runs::CONTRACT`] and [`crate::runs::PROCEDURE`] and nothing else in it. Each listed
+    /// directory is resolved, so a runbook reached through a link is found where it resolves.
+    fn runbooks_of(&mut self, project: &ProjectRoot, real: &Path) -> Vec<String> {
+        let released = real
+            .file_name()
+            .is_some_and(|file| file == crate::runs::CONTRACT || file == crate::runs::PROCEDURE);
+        let Some(directory) = real.parent().filter(|_| released) else {
+            return Vec::new();
+        };
+        self.runbooks
+            .entry(project.path().to_owned())
+            .or_insert_with(|| {
+                crate::runbook_release::present(&project.runbooks())
+                    .into_iter()
+                    .map(|(name, held)| (name, crate::project::canonical(&held)))
+                    .collect()
+            })
+            .iter()
+            .filter(|(_, held)| held == directory)
+            .map(|(name, _)| name.clone())
+            .collect()
     }
 }
 
@@ -784,7 +844,7 @@ pub fn format<O: Write, E: Write>(
                     "refusing to write {}: it is a change's evidence, a record kept as it was \
                      written, and no operation rewrites one. `htmlspec format --check` and \
                      `htmlspec validate` still check it",
-                    record.display()
+                    shown(&record.display().to_string())
                 ));
             }
             let _ = streams.failure("nothing was written");
@@ -797,19 +857,30 @@ pub fn format<O: Write, E: Write>(
     let mut failed = 0usize;
     // The stores this run has already given the current assets, so each is written once.
     let mut established: Vec<PathBuf> = Vec::new();
+    // The runbooks whose documents the asset upgrade or the fallback rewrote, or checking would
+    // rewrite, with what was rewritten, keyed by project and name so each is named once and in a
+    // stable order.
+    let mut rewritten_runbooks: std::collections::BTreeMap<
+        (PathBuf, String),
+        (ProjectRoot, RunbookRewrite),
+    > = std::collections::BTreeMap::new();
 
     for Placed {
         path,
         real,
         is_history,
+        runbooks,
         ..
     } in &placed
     {
+        // Each report names the document as the walk found it, shown, because a path is whatever
+        // its directories are called and can hold an escape sequence a terminal would act on.
+        let named = shown(&path.display().to_string());
         let source = match std::fs::read_to_string(real) {
             Ok(source) => source,
             Err(error) => {
                 failed += 1;
-                let _ = streams.failure(&format!("cannot read {}: {error}", path.display()));
+                let _ = streams.failure(&format!("cannot read {}: {error}", named));
                 continue;
             }
         };
@@ -822,6 +893,9 @@ pub fn format<O: Write, E: Write>(
         // Whether `--check` found the document behind the store's current assets. Reported apart
         // from canonical form, because a canonical document can be behind and the reverse.
         let mut behind = false;
+        // What the asset upgrade or the fallback changed in this document's canonical content, or
+        // checking would change, which a runbook's next archival compares.
+        let mut rewrote: Option<RunbookRewrite> = None;
 
         // The upgrade, only when asked for and never in history: an archived change renders with
         // what it was reviewed against, and a run's record is history rather than contract. Before
@@ -830,7 +904,7 @@ pub fn format<O: Write, E: Write>(
             if *is_history {
                 let _ = streams.progress(&format!(
                     "{}: history, so its asset references are left as written",
-                    path.display()
+                    named
                 ));
             } else {
                 let upgraded = htmlspec_format::upgrade(&source, &store, &prefix);
@@ -840,26 +914,20 @@ pub fn format<O: Write, E: Write>(
                          than the bytes that address names: that file was edited or replaced. \
                          Restore it from version control, or delete it and run `htmlspec format \
                          --upgrade-assets` again, which writes this program's own copy there",
-                        path.display(),
-                        blocked.was,
-                        blocked.now
+                        named, blocked.was, blocked.now
                     ));
                 }
                 if !upgraded.upgraded.is_empty() {
+                    rewrote = Some(RunbookRewrite::Assets.and(rewrote));
                     for moved in &upgraded.upgraded {
                         let _ = streams.progress(&match mode {
                             FormatMode::Write => format!(
                                 "{}: {} now names the store's current revision, {}",
-                                path.display(),
-                                moved.name,
-                                moved.now
+                                named, moved.name, moved.now
                             ),
                             FormatMode::Check => format!(
                                 "{}: {} names {}, and the store's current revision is {}",
-                                path.display(),
-                                moved.name,
-                                moved.was,
-                                moved.now
+                                named, moved.name, moved.was, moved.now
                             ),
                         });
                     }
@@ -886,7 +954,7 @@ pub fn format<O: Write, E: Write>(
                             behind = true;
                             let _ = streams.report(&format!(
                                 "{}: references an asset behind the store's current revision\n",
-                                path.display()
+                                named
                             ));
                         }
                     }
@@ -906,7 +974,7 @@ pub fn format<O: Write, E: Write>(
             if let htmlspec_format::ReferenceChange::Filled { name, now, .. } = change {
                 let _ = streams.progress(&format!(
                     "{}: {name} now names the bytes stored at {now}",
-                    path.display()
+                    named
                 ));
             }
         }
@@ -919,22 +987,22 @@ pub fn format<O: Write, E: Write>(
             if *is_history {
                 let _ = streams.progress(&format!(
                     "{}: history, so its fallback stylesheet is left as written",
-                    path.display()
+                    named
                 ));
             } else {
                 match htmlspec_format::fallback::apply(&settled) {
                     Ok(applied) => {
                         match applied.change {
                             htmlspec_format::fallback::FallbackChange::Added => {
-                                let _ = streams.progress(&format!(
-                                    "{}: gains the fallback stylesheet",
-                                    path.display()
-                                ));
+                                rewrote = Some(RunbookRewrite::Fallback.and(rewrote));
+                                let _ = streams
+                                    .progress(&format!("{}: gains the fallback stylesheet", named));
                             }
                             htmlspec_format::fallback::FallbackChange::Refreshed => {
+                                rewrote = Some(RunbookRewrite::Fallback.and(rewrote));
                                 let _ = streams.progress(&format!(
                                     "{}: its fallback stylesheet is replaced by the current one",
-                                    path.display()
+                                    named
                                 ));
                             }
                             htmlspec_format::fallback::FallbackChange::Current => {}
@@ -943,7 +1011,7 @@ pub fn format<O: Write, E: Write>(
                     }
                     Err(error) => {
                         refused += 1;
-                        let _ = streams.failure(&format!("{}: {error}", path.display()));
+                        let _ = streams.failure(&format!("{}: {error}", named));
                         continue;
                     }
                 }
@@ -956,10 +1024,14 @@ pub fn format<O: Write, E: Write>(
             Ok(outcome) => outcome,
             Err(error) => {
                 refused += 1;
-                let _ = streams.failure(&format!("{}: {error}", path.display()));
+                let _ = streams.failure(&format!("{}: {error}", named));
                 continue;
             }
         };
+        // Checking settles the document here: the formatter accepted it, and nothing is written.
+        if mode == FormatMode::Check {
+            record_rewrite(&mut rewritten_runbooks, rewrote, runbooks);
+        }
         // Canonical means "identical to what should be on disk", which now includes the
         // filled references. A document whose serialization is canonical but whose
         // references name absent bytes is not yet settled, and check mode must say so.
@@ -972,7 +1044,7 @@ pub fn format<O: Write, E: Write>(
             if behind {
                 changed.push(path.clone());
             } else {
-                let _ = streams.progress(&format!("{} is canonical", path.display()));
+                let _ = streams.progress(&format!("{} is canonical", named));
             }
             continue;
         }
@@ -981,18 +1053,32 @@ pub fn format<O: Write, E: Write>(
         match mode {
             FormatMode::Check => {
                 // Check mode names the document and modifies nothing.
-                let _ = streams.report(&format!("{}: not canonically formatted\n", path.display()));
+                let _ = streams.report(&format!("{}: not canonically formatted\n", named));
             }
             FormatMode::Write => {
                 // Written where the document resolves, which is where it was read from.
                 if let Err(error) = std::fs::write(real, &outcome.canonical) {
                     failed += 1;
-                    let _ = streams.failure(&format!("cannot write {}: {error}", path.display()));
+                    let _ = streams.failure(&format!("cannot write {}: {error}", named));
                     continue;
                 }
-                let _ = streams.report(&format!("{}: formatted\n", path.display()));
+                // Writing settles it only once it is written, so a document that could not be
+                // written names no runbook.
+                record_rewrite(&mut rewritten_runbooks, rewrote, runbooks);
+                let _ = streams.report(&format!("{}: formatted\n", named));
             }
         }
+    }
+
+    // Each project's published history is read once, however many of its runbooks are named.
+    let mut histories = std::collections::HashMap::new();
+    for ((root, name), (project, rewrite)) in &rewritten_runbooks {
+        let history = histories.entry(root.clone()).or_insert_with(|| {
+            crate::runbook_release::history(&project.archive(), &project.runbook_releases())
+        });
+        let _ = streams.report(&rewritten_runbook_line(
+            project, name, history, *rewrite, mode,
+        ));
     }
 
     if failed > 0 || refused > 0 {
@@ -1003,6 +1089,156 @@ pub fn format<O: Write, E: Write>(
         // it usable as a continuous-integration gate.
         FormatMode::Check if !changed.is_empty() => Outcome::DocumentViolation,
         _ => Outcome::Success,
+    }
+}
+
+/// What `format` changed in a runbook's own documents on request, so the report can say it.
+///
+/// A sum rather than two flags, so a runbook is only ever recorded with something rewritten.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RunbookRewrite {
+    /// `--upgrade-assets` moved asset references onto the store's current revision.
+    Assets,
+    /// `--fallback` added the fallback stylesheet, or replaced a stale one.
+    Fallback,
+    /// Both, in one document or across the runbook's two.
+    Both,
+}
+
+impl RunbookRewrite {
+    /// This rewrite together with what was already recorded, if anything was.
+    fn and(self, recorded: Option<Self>) -> Self {
+        match recorded {
+            None => self,
+            Some(recorded) if recorded == self => self,
+            Some(_) => Self::Both,
+        }
+    }
+
+    /// What a changelog heading for the runbook's next release says changed.
+    fn described(self) -> &'static str {
+        match self {
+            Self::Assets => "it moved onto the current assets",
+            Self::Fallback => "it now carries the current fallback stylesheet",
+            Self::Both => {
+                "it moved onto the current assets and now carries the current fallback stylesheet"
+            }
+        }
+    }
+}
+
+/// Records that `rewrite`, where there was one, changed each of `runbooks`' own documents, or
+/// checking would change them.
+fn record_rewrite(
+    recorded: &mut std::collections::BTreeMap<(PathBuf, String), (ProjectRoot, RunbookRewrite)>,
+    rewrite: Option<RunbookRewrite>,
+    runbooks: &[(ProjectRoot, String)],
+) {
+    let Some(rewrite) = rewrite else {
+        return;
+    };
+    for (project, name) in runbooks {
+        recorded
+            .entry((project.path().to_owned(), name.clone()))
+            .and_modify(|(_, held)| *held = rewrite.and(Some(*held)))
+            .or_insert_with(|| (project.clone(), rewrite));
+    }
+}
+
+/// What a runbook whose documents the asset upgrade or the fallback rewrote, or checking would
+/// rewrite, needs before the next archival, as one line of the report.
+///
+/// runbook-authority's "A runbook carries an independently checked release version" versions a
+/// runbook's documents, and project-bootstrap's "Archival checks the versions of runbooks it
+/// publishes" refuses changed content under a version an earlier archive released. Moving asset
+/// references, and adding or replacing the fallback stylesheet, change the canonical content, so a
+/// runbook either request rewrote at a released version is one archival will refuse. Reads what
+/// that gate reads, the runbook's `VERSION` and `CHANGELOG.md` and the project's published
+/// `history`, and decides with [`crate::runbook_release::version_after_a_change`], so the line says
+/// what archival would say without archiving. Advice, never a gate: the exit status is the
+/// formatter's, and choosing the new version is the author's.
+fn rewritten_runbook_line(
+    project: &ProjectRoot,
+    name: &str,
+    history: &Result<
+        (
+            Option<crate::runbook_release::Adoption>,
+            Vec<crate::runbook_release::Snapshot>,
+        ),
+        crate::runbook_release::ReleaseFaults,
+    >,
+    rewrite: RunbookRewrite,
+    mode: FormatMode,
+) -> String {
+    use crate::runbook_release::{
+        PreviousRelease, VersionAfterAChange, CHANGELOG_FILE, VERSION_FILE,
+    };
+
+    // A runbook's name is its directory's, so it is shown, as `run` shows it.
+    let runbook = shown(name);
+    let changed = match mode {
+        FormatMode::Write => "changed with its documents",
+        FormatMode::Check => "would change with its documents",
+    };
+    let directory = project.runbook(name);
+    // The file itself, as the per-document lines name theirs, so the line is unambiguous from any
+    // directory and across the projects one run can format.
+    let version_file = shown(&directory.join(VERSION_FILE).display().to_string());
+    let version = crate::runbook_release::read_version(&directory);
+    let changelog = std::fs::read_to_string(directory.join(CHANGELOG_FILE));
+    let (Ok(version), Ok(changelog), Ok((_, snapshots))) = (version, changelog, history) else {
+        return format!(
+            "the runbook {runbook} {changed}. If its version is already released, give it a \
+             greater one in {version_file}, with a heading in its {CHANGELOG_FILE}, before the \
+             next `htmlspec archive`\n"
+        );
+    };
+    let previous = crate::runbook_release::predecessor(snapshots, name);
+    match crate::runbook_release::version_after_a_change(&previous, version, &changelog) {
+        VersionAfterAChange::MustExceed {
+            published,
+            published_in,
+        } if published == version => format!(
+            "the runbook {runbook} {changed}, and {version} is the version {} already released: \
+             give it a greater version in {version_file}, and a heading for that version in its \
+             {CHANGELOG_FILE}, before the next `htmlspec archive`, which otherwise refuses it\n",
+            shown(&published_in)
+        ),
+        VersionAfterAChange::MustExceed {
+            published,
+            published_in,
+        } => format!(
+            "the runbook {runbook} {changed}, and its version, {version}, is below {published}, \
+             the version {} already released: give it a version greater than {published} in \
+             {version_file}, and a heading for that version in its {CHANGELOG_FILE}, before the \
+             next `htmlspec archive`, which otherwise refuses it\n",
+            shown(&published_in)
+        ),
+        VersionAfterAChange::NeedsAFirstRelease => format!(
+            "the runbook {runbook} {changed}, and its version, {version}, is not a release: give \
+             it a first version above it in {version_file}, and a heading for that version in its \
+             {CHANGELOG_FILE}, before the next `htmlspec archive`, which otherwise refuses it\n"
+        ),
+        // A first release's heading is the first release's, so only a later one is told what to say.
+        VersionAfterAChange::NeedsAHeading(version) => format!(
+            "the runbook {runbook} {changed}, and its version, {version}, is not released yet, but \
+             its {CHANGELOG_FILE} has no heading for {version}: give it one{}, before the next \
+             `htmlspec archive`, which otherwise refuses it\n",
+            match previous {
+                PreviousRelease::None => String::new(),
+                PreviousRelease::Snapshot(_) => format!(", saying that {}", rewrite.described()),
+            }
+        ),
+        VersionAfterAChange::FirstRelease(version) => format!(
+            "the runbook {runbook} {changed}. Its version, {version}, is not released yet, so the \
+             next `htmlspec archive` releases it as it now stands, as its first release\n"
+        ),
+        VersionAfterAChange::Advances(version) => format!(
+            "the runbook {runbook} {changed}. Its version, {version}, is not released yet, so the \
+             next `htmlspec archive` releases it as it now stands. Say in its {CHANGELOG_FILE} \
+             heading for {version} that {}\n",
+            rewrite.described()
+        ),
     }
 }
 
