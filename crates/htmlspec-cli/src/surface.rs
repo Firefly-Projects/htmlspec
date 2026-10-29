@@ -139,6 +139,17 @@ fn argument(argument: &clap::Arg) -> (String, Value) {
         argument.get_action().takes_values().into(),
     );
     record.insert("required".into(), argument.is_required_set().into());
+    // An option whose value may be left out, as `run --status` takes a record or none. Recorded
+    // only where it holds, so every argument a released surface recorded keeps its record, and a
+    // later release that made the value required would break `run <runbook> --status` while
+    // `takesValue` stayed true. The change `show-how-far-a-run-has-come`, its design's decision 7.
+    if argument.get_action().takes_values()
+        && argument
+            .get_num_args()
+            .is_some_and(|range| range.min_values() == 0)
+    {
+        record.insert("valueOptional".into(), true.into());
+    }
     if let Some(short) = argument.get_short() {
         record.insert("short".into(), short.to_string().into());
     }
@@ -491,7 +502,7 @@ fn schema_facts(node: &Value, at: &str, out: &mut BTreeMap<String, String>) {
 
 /// Every fact one argument's record states.
 fn argument_facts(record: &Value, at: &str, out: &mut BTreeMap<String, String>) {
-    for key in ["action", "takesValue", "short"] {
+    for key in ["action", "takesValue", "valueOptional", "short"] {
         if let Some(value) = record.get(key) {
             out.insert(format!("{at}/{key}"), value.to_string());
         }
@@ -929,6 +940,40 @@ mod tests {
         assert_eq!(
             lost,
             vec!["operations/validate/arguments/--strict/optional: optional, now absent"]
+        );
+    }
+
+    #[test]
+    fn only_a_value_that_may_be_left_out_is_recorded_as_optional() {
+        let mut built = clap::Command::new("program")
+            .arg(clap::Arg::new("later").long("later").num_args(0..=1))
+            .arg(clap::Arg::new("now").long("now"))
+            .arg(
+                clap::Arg::new("flag")
+                    .long("flag")
+                    .action(clap::ArgAction::SetTrue),
+            );
+        built.build();
+        let recorded: Map<String, Value> = built.get_arguments().map(argument).collect();
+        assert_eq!(recorded["--later"]["valueOptional"], json!(true));
+        assert_eq!(recorded["--now"].get("valueOptional"), None);
+        assert_eq!(recorded["--flag"].get("valueOptional"), None);
+    }
+
+    #[test]
+    fn an_optional_value_made_required_is_a_loss() {
+        let mut released = current();
+        released["operations"]["run"]["arguments"]["--later"] = json!({
+            "action": "Set", "takesValue": true, "valueOptional": true, "required": false
+        });
+        let mut later = released.clone();
+        later["operations"]["run"]["arguments"]["--later"]
+            .as_object_mut()
+            .expect("the option's record")
+            .remove("valueOptional");
+        assert_eq!(
+            losses(&released, &later),
+            vec!["operations/run/arguments/--later/valueOptional: true, now absent"]
         );
     }
 

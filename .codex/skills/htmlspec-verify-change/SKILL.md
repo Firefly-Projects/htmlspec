@@ -5,7 +5,7 @@ allowed-tools: Bash(htmlspec:*), Read, Glob, Grep
 argument-hint: [the change to check, or nothing to infer it]
 license: MIT
 metadata:
-  generatedBy: htmlspec 1.2.2
+  generatedBy: htmlspec 1.3.0
 ---
 
 Check an implemented html-spec change against its own artifacts, before archival.

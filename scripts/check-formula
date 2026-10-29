@@ -6,11 +6,22 @@
 # makes a tap for the purpose. `brew tap-new --no-git` creates it, the formula rendered from
 # DIST's SHA256SUMS goes into it with addresses pointing at the tarballs in DIST, and then
 # `brew audit --strict`, `brew install`, and `brew test` each name the formula through that tap.
-# The formula's test runs `htmlspec --version`. The install and the tap are removed afterwards,
-# whatever the outcome.
+# The formula's test runs `htmlspec --version`. The install, the tap, and the trust below are
+# removed afterwards, whatever the outcome.
+#
+# From Homebrew 6, a formula from a tap Homebrew does not maintain loads only once it or its tap
+# is trusted, so the audit is refused until then (https://docs.brew.sh/Tap-Trust). The check
+# trusts the one formula it wrote, with `brew trust --formula`, and not the tap, and takes that
+# trust back with `brew untrust --formula` as it removes the tap, so it leaves trust.json's entries
+# as it found them. A trust left behind would also trust the formula of any real tap of that name
+# someone later added, so when the untrust fails the check says so and names the command to run.
+# An older Homebrew has no tap trust and no `trust` command, so the check asks whether the command
+# exists rather than assume it does.
 #
 # Homebrew is kept from updating itself and from sending analytics while it runs, so the check
-# makes no request beyond what an install from a local file needs.
+# makes no request beyond what an install from a local file needs. It is also kept from
+# autoremoving, so the cleanup's uninstall removes htmlspec and none of the machine's other
+# leftover dependencies.
 #
 # Usage:
 #   scripts/check-formula DIST    DIST holds the four tarballs and SHA256SUMS
@@ -32,6 +43,7 @@ export HOMEBREW_NO_AUTO_UPDATE=1
 export HOMEBREW_NO_ANALYTICS=1
 export HOMEBREW_NO_INSTALL_CLEANUP=1
 export HOMEBREW_NO_ENV_HINTS=1
+export HOMEBREW_NO_AUTOREMOVE=1
 
 # A name for a tap that exists only for the length of this check, on this machine.
 tap="htmlspec-check/local"
@@ -50,9 +62,25 @@ fi
 # installs afterwards.
 developer="$(brew developer 2>/dev/null | head -n 1 || true)"
 
+# Whether this Homebrew has tap trust. An unknown command's `--help` fails, a known one's succeeds.
+if brew trust --help >/dev/null 2>&1; then
+  trust=yes
+else
+  trust=no
+fi
+
 cleanup() {
   brew uninstall --formula "$tap/htmlspec" >/dev/null 2>&1 || true
   brew untap "$tap" >/dev/null 2>&1 || true
+  # After the untap. Where the uninstall failed and the formula is still installed, `brew untap`
+  # loads it, and an untrusted formula makes the untap fail and leaves the tap behind. A successful
+  # uninstall may already have taken the trust back, and the untrust then finds nothing to remove.
+  if [[ "$trust" == yes ]]; then
+    brew untrust --formula "$tap/htmlspec" >/dev/null 2>&1 \
+      || printf 'warning: %s %s\n' "Homebrew still trusts $tap/htmlspec, and would trust that formula" \
+        "in any tap of that name; run: brew untrust --formula $tap/htmlspec" >&2 \
+      || true
+  fi
   case "$developer" in
     *disabled*) brew developer off >/dev/null 2>&1 || true ;;
   esac
@@ -62,6 +90,9 @@ trap cleanup EXIT
 brew tap-new --no-git "$tap"
 formula="$(brew --repository "$tap")/Formula/htmlspec.rb"
 scripts/render-formula --sums "$dist/SHA256SUMS" --base-url "file://$dist" > "$formula"
+if [[ "$trust" == yes ]]; then
+  brew trust --formula "$tap/htmlspec"
+fi
 
 printf '\n=== brew audit --strict ===\n'
 brew audit --strict "$tap/htmlspec"

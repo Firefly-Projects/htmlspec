@@ -2,7 +2,7 @@
 description: Bring an existing OpenSpec project into html-spec — survey what it holds, read what each document does, plan every entity's destination, then stage and promote the whole project. Use once, on a project that is not html-spec yet.
 allowed-tools: Bash(htmlspec:*), Read, Write, Edit, Glob, Grep
 argument-hint: [the OpenSpec project to migrate, or nothing to infer it]
-generatedBy: htmlspec 1.2.2
+generatedBy: htmlspec 1.3.0
 ---
 
 Bring an existing OpenSpec project into html-spec.
