@@ -5,7 +5,7 @@ allowed-tools: Bash(htmlspec:*), Read, Write, Edit, Glob, Grep
 argument-hint: [the OpenSpec project to migrate, or nothing to infer it]
 license: MIT
 metadata:
-  generatedBy: htmlspec 1.2.2
+  generatedBy: htmlspec 1.3.0
 ---
 
 Bring an existing OpenSpec project into html-spec.

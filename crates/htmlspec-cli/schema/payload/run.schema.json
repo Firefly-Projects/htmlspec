@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://html-spec.dev/schema/payload/1/run.schema.json",
   "title": "htmlspec run --json",
-  "description": "The payload `htmlspec run --json` (`post run`) writes, in one of three shapes: the run it started with --as, what every run recorded with --check, and the preflight report --as writes in place of a run when the machine falls short. A later 1.x release can add a property to any object in this payload, and only a major release removes, renames, or retypes one, so a consumer ignores a property it does not know.",
+  "description": "The payload `htmlspec run --json` (`post run`) writes, in one of four shapes: the run it started with --as, what every run recorded with --check, the preflight report --as writes in place of a run when the machine falls short, and how far each run has come with --status. A later 1.x release can add a property to any object in this payload, and only a major release removes, renames, or retypes one, so a consumer ignores a property it does not know.",
   "oneOf": [
     {
       "type": "object",
@@ -111,6 +111,25 @@
     },
     {
       "$ref": "#/definitions/preflightReport"
+    },
+    {
+      "description": "What --status writes: every run of the runbook in name order, or the one run --status named. Name order says nothing about which run came first.",
+      "type": "object",
+      "required": [
+        "runbook",
+        "records"
+      ],
+      "properties": {
+        "runbook": {
+          "type": "string"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/runStatus"
+          }
+        }
+      }
     }
   ],
   "definitions": {
@@ -297,6 +316,176 @@
           }
         }
       }
+    },
+    "runStatus": {
+      "description": "One file under the runbook's runs/, as --status reports it. Read as a record, it carries its steps, its requirements, any other verifications' outcomes, and its release, and its state is the rule a preflight/v3 run check applies, without atLeast. Not read as one, it carries the first reason. A record's name, a step's identifier, heading, and reason, a requirement's identifier, and an outcome are the raw text. A record-level reason is the rule's sentence in the form preflight's notSatisfying reason carries, with each character a terminal would act on written by its code point, as <U+202E>.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "record",
+            "state",
+            "done",
+            "dropped",
+            "total",
+            "steps",
+            "requirements",
+            "release"
+          ],
+          "properties": {
+            "record": {
+              "type": "string"
+            },
+            "state": {
+              "description": "passed: finished and passed, so a run check naming this runbook counts it. open: a step is neither done nor dropped. not-passed: every step is settled and the rule's first reason, in reason, says why the run check does not count it.",
+              "type": "string",
+              "enum": [
+                "passed",
+                "open",
+                "not-passed"
+              ]
+            },
+            "reason": {
+              "description": "The rule's first reason the record does not count, present in every state but passed.",
+              "type": "string"
+            },
+            "done": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dropped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "number",
+                  "state"
+                ],
+                "properties": {
+                  "number": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "heading": {
+                    "description": "The step's heading as a reader names it, without its identifier.",
+                    "type": "string"
+                  },
+                  "state": {
+                    "description": "The state the record gives the step, and undeclared where it gives none the task vocabulary holds.",
+                    "type": "string",
+                    "enum": [
+                      "todo",
+                      "in-progress",
+                      "done",
+                      "dropped",
+                      "undeclared"
+                    ]
+                  },
+                  "reason": {
+                    "description": "The reason the record gives for the step, which a dropped step states.",
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "requirements": {
+              "description": "Each requirement the record owes an outcome for, in the record's order: each it carries with an identifier and does not mark withdrawn.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "outcomes"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "outcomes": {
+                    "description": "Each outcome a verification referencing the requirement states, in the record's order, and empty where none does. A verification with an empty outcome states none.",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "otherOutcomes": {
+              "description": "Each verification that references no requirement in requirements, in the record's order: one that references nothing, or only a requirement the record withdraws or does not carry. The rule reads every verification, so one of these can be the reason a record does not pass. Present in every read record from 1.3.0 on, and empty where there is none.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "description": "What the rule calls the verification: the requirement it references first, or else its own identifier. Absent where it has neither.",
+                    "type": "string"
+                  },
+                  "outcome": {
+                    "description": "The outcome it records. Absent where it records none, or an empty one.",
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "release": {
+              "description": "The runbook release the record's head states: one, with its version; none; one that is malformed, with the text given; or several.",
+              "type": "object",
+              "required": [
+                "stated"
+              ],
+              "properties": {
+                "stated": {
+                  "type": "string",
+                  "enum": [
+                    "one",
+                    "none",
+                    "malformed",
+                    "several"
+                  ]
+                },
+                "version": {
+                  "type": "string"
+                },
+                "given": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "record",
+            "state",
+            "reason"
+          ],
+          "properties": {
+            "record": {
+              "type": "string"
+            },
+            "state": {
+              "const": "unreadable"
+            },
+            "reason": {
+              "description": "The first reason the file was not read as one of this runbook's records: it is a link, cannot be read, needs error recovery, or is not a tasks document.",
+              "type": "string"
+            }
+          }
+        }
+      ]
     }
   }
 }

@@ -152,10 +152,11 @@
           buildPhaseCargoCommand = ''
             patchShebangs scripts/check scripts/check-prompt scripts/check-release scripts/check-installed \
               scripts/check-publish-crates scripts/publish-crates scripts/crate-notices \
-              scripts/check-crate-notices scripts/check-readme-install
+              scripts/check-crate-notices scripts/check-readme-install \
+              scripts/check-check-formula scripts/check-formula scripts/render-formula
             ./scripts/check
           '';
-          # `python3` for the prompt, release, and publisher checks, all standard library
+          # `python3` for the prompt, release, publisher, and formula checks, all standard library
           # only. The prompt one drives a real pty, which is why it is not a `cargo test`; the
           # release one reads facts about this repository, which a shipped crate's tests
           # must not depend on. The publisher's serves a stub index on the loopback interface,

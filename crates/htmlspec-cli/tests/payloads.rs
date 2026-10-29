@@ -650,6 +650,70 @@ fn every_field_a_payload_schema_declares_is_produced() {
         "a refused run names no record: {refused:#}"
     );
 
+    // How far each run has come. backup holds a finished, passed run and an open one, and gains a
+    // record whose dropped step gives its reason and whose head states a malformed release, and a
+    // stray file that is no record, so the report carries every state and every field.
+    let backup = runbook.path("htmlspec/runbooks/backup/runs");
+    let finished = std::fs::read_to_string(backup.join("finished.html")).expect("the record reads");
+    let mut dropped = finished.replace(
+        "content=\"0.1.0\" name=\"htmlspec-runbook-release\"",
+        "content=\"one\" name=\"htmlspec-runbook-release\"",
+    );
+    assert_ne!(dropped, finished, "the record states its release");
+    let step = dropped
+        .find("data-state=\"done\"")
+        .expect("the record has a step done");
+    dropped.replace_range(
+        step..step + "data-state=\"done\"".len(),
+        "data-state=\"dropped\"",
+    );
+    let heading = step
+        + dropped[step..]
+            .find("</h3>")
+            .expect("the step has a heading")
+        + 5;
+    dropped.insert_str(
+        heading,
+        "<p data-field=\"reason\">Not needed this time.</p>",
+    );
+    // And a verification that references no requirement, which the report lists apart.
+    let verification = dropped
+        .find("<section class=\"verification\"")
+        .expect("the record has a verification");
+    let after = verification
+        + dropped[verification..]
+            .find("</section>")
+            .expect("the verification closes")
+        + "</section>".len();
+    dropped.insert_str(
+        after,
+        "<section class=\"verification\" id=\"verify-extra\" data-change=\"unchanged\" \
+         data-outcome=\"failed\"><h3>Also checked</h3><p data-field=\"method\">Looked.</p>\
+         </section>",
+    );
+    std::fs::write(backup.join("dropped.html"), dropped).expect("written");
+    std::fs::write(backup.join("stray.html"), "").expect("written");
+    let every = runs.payload(&runbook.0, &["run", "backup", "--status"]);
+    let states: Vec<&serde_json::Value> = every["records"]
+        .as_array()
+        .expect("records")
+        .iter()
+        .map(|record| &record["state"])
+        .collect();
+    assert_eq!(
+        states,
+        ["not-passed", "passed", "open", "unreadable"],
+        "{every:#}"
+    );
+    let one = runs.payload(&runbook.0, &["run", "backup", "--status", "dropped"]);
+    assert_eq!(one["records"].as_array().map(Vec::len), Some(1), "{one:#}");
+    assert_eq!(one["records"][0]["release"]["given"], "one", "{one:#}");
+    assert_eq!(
+        one["records"][0]["otherOutcomes"],
+        serde_json::json!([{ "name": "verify-extra", "outcome": "failed" }]),
+        "{one:#}"
+    );
+
     // A promotion's coverage gate.
     let migration = project(&mut runs, "migration");
     runs.ok(

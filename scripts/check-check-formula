@@ -1,0 +1,335 @@
+#!/usr/bin/env python3
+"""The formula check's tests, against a stub brew.
+
+`scripts/check-formula` audits, installs, and tests the Homebrew formula in a tap it makes for the
+purpose, and it runs for real only in the release workflow's formula job, on a macOS runner with a
+stock Homebrew. A fault in its steps is first seen there, and one was: Homebrew 6 refused the audit,
+because nothing had trusted the check's tap. So its steps are tested here, on every run of the
+suite, against a stub `brew` that records each command it is given and keeps its taps, its trust
+store, and its install in a scratch directory.
+
+The stub answers as Homebrew 6 and 7 do where the check depends on it. It loads a formula from a tap
+only once the formula is trusted, except that `brew install` naming the formula in full trusts it
+first, and it keeps the trusted names in a trust.json of its own, which it deletes when nothing is
+left in it. `brew uninstall` needs no trust, and once it succeeds it removes the formula's trust
+itself. `brew untap` loads a formula of the tap that is still installed, so it fails while that
+formula is untrusted. And an uninstall that autoremoves, because HOMEBREW_NO_AUTOREMOVE is not set,
+leaves a mark. Or the stub answers as a Homebrew from before tap trust, which has no `trust` or
+`untrust` command and loads any formula.
+
+The cases:
+
+- with tap trust, the check trusts its formula by its full name, and nothing wider, after writing
+  it and before the audit; untrusts it after the untap; uninstalls without autoremoving; and leaves
+  the trust store holding what it held before;
+- the same when the audit fails, because the cleanup runs whatever the outcome;
+- when the uninstall fails, the untap still runs while the formula is trusted, and the trust is
+  gone at the end;
+- when the untrust fails, the check says so, naming the command that finishes it;
+- without tap trust, the check passes, and asks for `trust` only to learn that it is absent.
+
+Nothing here reaches the real Homebrew. The stub is first on PATH, HOME is a scratch directory, and
+each test refuses to start the check unless `brew` resolves to the stub. The stub's first line
+names this interpreter, so it runs inside the Nix sandbox, where `/usr/bin/env` does not exist.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+CHECK = HERE / "check-formula"
+
+sys.path.insert(0, str(HERE))
+from release_facts import TARGETS  # noqa: E402
+
+# Spelled out rather than read from the script: these are the names the check must use, and a test
+# that read them from the code under test would pass whatever that code said.
+TAP = "htmlspec-check/local"
+FORMULA = f"{TAP}/htmlspec"
+VERSION = "9.8.7"
+
+# What the check prints when every step passed.
+PASSED = "the formula audits, installs, and passes its test"
+
+# The stub. It finds its state beside the directory it is in, so nothing is formatted into it but
+# its first line. Each command is one line of `calls.jsonl`, in the order it was given, with the
+# formulae trusted when it was given.
+STUB_BREW = r'''
+import json, os, shutil, sys
+from pathlib import Path
+
+state = Path(__file__).resolve().parent.parent / "state"
+args = sys.argv[1:]
+config = json.loads((state / "config.json").read_text())
+store = state / "trust.json"
+installed = state / "installed"
+prefix = state / "prefix"
+
+
+def refuse(message):
+    print("Error: " + message, file=sys.stderr)
+    sys.exit(1)
+
+
+def tap_path(name):
+    user, repository = name.split("/")
+    return state / "Taps" / user / ("homebrew-" + repository)
+
+
+def taps():
+    root = state / "Taps"
+    if not root.is_dir():
+        return []
+    return sorted(user.name + "/" + tap.name[len("homebrew-"):]
+                  for user in root.iterdir() for tap in user.iterdir())
+
+
+def trusted():
+    return json.loads(store.read_text()) if store.exists() else {}
+
+
+def keep(entries):
+    entries = {key: sorted(set(names)) for key, names in entries.items() if names}
+    if entries:
+        store.write_text(json.dumps(entries, indent=2, sort_keys=True) + "\n")
+    elif store.exists():
+        store.unlink()
+
+
+def load(name):
+    tap, formula = name.rsplit("/", 1)
+    if not (tap_path(tap) / "Formula" / (formula + ".rb")).is_file():
+        refuse("No available formula with the name " + repr(name) + ".")
+    if config["trust"] and name not in trusted().get("trustedformulae", []):
+        refuse("Refusing to load formula " + name + " from untrusted tap " + tap + ".\n"
+               "Run `brew trust --formula " + name + "` or `brew trust " + tap + "` to trust it.")
+
+
+with (state / "calls.jsonl").open("a") as log:
+    log.write(json.dumps({"args": args, "trusted": trusted().get("trustedformulae", [])}) + "\n")
+
+command, rest = (args[0], args[1:]) if args else ("", [])
+if command in ("trust", "untrust") and not config["trust"]:
+    refuse("Unknown command: brew " + command)
+elif command == "trust" and rest == ["--help"]:
+    print("Usage: brew trust [--tap] [--formula] [--cask] [--command] [target ...]")
+elif command in ("trust", "untrust"):
+    if len(rest) != 2 or rest[0] != "--formula":
+        refuse("the stub trusts and untrusts only --formula NAME, and was given " + repr(rest))
+    if command == "untrust" and config.get("untrust_fails"):
+        refuse("the stub's untrust fails")
+    entries = trusted()
+    names = set(entries.get("trustedformulae", []))
+    names = names | {rest[1]} if command == "trust" else names - {rest[1]}
+    entries["trustedformulae"] = list(names)
+    keep(entries)
+elif command == "tap" and not rest:
+    for name in taps():
+        print(name)
+elif command == "tap-new" and rest[:1] == ["--no-git"] and len(rest) == 2:
+    (tap_path(rest[1]) / "Formula").mkdir(parents=True)
+elif command == "--repository" and len(rest) == 1:
+    print(tap_path(rest[0]))
+elif command == "--prefix" and not rest:
+    print(prefix)
+elif command == "list":
+    if not installed.exists():
+        sys.exit(1)
+    print("htmlspec")
+elif command == "developer":
+    if not rest:
+        print("Developer mode is disabled.")
+elif command == "audit":
+    load(rest[-1])
+    if config.get("audit_fails"):
+        refuse("htmlspec: the stub's audit refuses it")
+elif command == "install":
+    if config["trust"]:
+        entries = trusted()
+        entries["trustedformulae"] = entries.get("trustedformulae", []) + [rest[-1]]
+        keep(entries)
+    load(rest[-1])
+    (prefix / "bin").mkdir(parents=True, exist_ok=True)
+    binary = prefix / "bin" / "htmlspec"
+    binary.write_text("#!" + sys.executable + "\nprint('htmlspec " + config["version"] + "')\n")
+    binary.chmod(0o755)
+    installed.write_text(rest[-1])
+elif command == "test":
+    load(rest[-1])
+elif command == "uninstall":
+    if installed.exists():
+        if config.get("uninstall_fails"):
+            refuse("the stub's uninstall fails, and " + rest[-1] + " stays installed")
+        installed.unlink()
+        (prefix / "bin" / "htmlspec").unlink()
+        if os.environ.get("HOMEBREW_NO_AUTOREMOVE") != "1":
+            (state / "autoremoved").write_text("")
+        entries = trusted()
+        if rest[-1].rsplit("/", 1)[0] not in entries.get("trustedtaps", []):
+            entries["trustedformulae"] = [name for name in entries.get("trustedformulae", [])
+                                          if name != rest[-1]]
+            keep(entries)
+elif command == "untap" and len(rest) == 1:
+    if installed.exists():
+        load(installed.read_text())
+    if rest[0] not in taps():
+        refuse("No available tap " + rest[0] + ".")
+    shutil.rmtree(tap_path(rest[0]))
+    if not any(tap_path(rest[0]).parent.iterdir()):
+        tap_path(rest[0]).parent.rmdir()
+else:
+    refuse("the stub does not answer brew " + " ".join(args))
+'''
+
+
+class Check(unittest.TestCase):
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        root = Path(self.scratch.name)
+        self.state = root / "state"
+        self.state.mkdir()
+        (self.state / "calls.jsonl").write_text("")
+        self.home = root / "home"
+        self.home.mkdir()
+        self.bin = root / "bin"
+        self.bin.mkdir()
+        brew = self.bin / "brew"
+        brew.write_text(f"#!{sys.executable}\n" + STUB_BREW)
+        brew.chmod(0o755)
+        # The digests are never checked: nothing is downloaded, and the stub installs its own
+        # binary. The file only has to be one `render-formula` accepts.
+        self.dist = root / "dist"
+        self.dist.mkdir()
+        (self.dist / "SHA256SUMS").write_text("".join(
+            f"{'0' * 64}  htmlspec-{VERSION}-{target}.tar.gz\n" for target in TARGETS
+        ))
+
+    def tearDown(self):
+        self.scratch.cleanup()
+
+    def homebrew(self, *, trust, audit_fails=False, uninstall_fails=False, untrust_fails=False,
+                 trusted=None):
+        (self.state / "config.json").write_text(json.dumps({
+            "trust": trust,
+            "audit_fails": audit_fails,
+            "uninstall_fails": uninstall_fails,
+            "untrust_fails": untrust_fails,
+            "version": VERSION,
+        }))
+        if trusted is not None:
+            (self.state / "trust.json").write_text(json.dumps(trusted, indent=2, sort_keys=True) + "\n")
+
+    def run_check(self):
+        environment = {key: value for key, value in os.environ.items()
+                       if not key.startswith("HOMEBREW_") and key != "XDG_CONFIG_HOME"}
+        environment["PATH"] = f"{self.bin}{os.pathsep}{environment.get('PATH', '')}"
+        environment["HOME"] = str(self.home)
+        found = shutil.which("brew", path=environment["PATH"])
+        if found is None or Path(found).resolve() != (self.bin / "brew").resolve():
+            self.fail(f"brew resolves to {found}, not the stub, so the check is not run against it")
+        return subprocess.run(
+            [str(CHECK), str(self.dist)],
+            capture_output=True,
+            text=True,
+            env=environment,
+            timeout=120,
+            check=False,
+        )
+
+    def records(self):
+        """Each command the stub was given, with the formulae trusted when it was given."""
+        return [json.loads(line) for line in (self.state / "calls.jsonl").read_text().splitlines()]
+
+    def calls(self):
+        return [record["args"] for record in self.records()]
+
+    def store(self):
+        path = self.state / "trust.json"
+        return json.loads(path.read_text()) if path.exists() else None
+
+    def tap_left(self):
+        return (self.state / "Taps").exists() and any((self.state / "Taps").iterdir())
+
+    def assert_trust_given_and_taken_back(self, calls):
+        """The formula is trusted after it is written and before the audit, by its full name and
+        nothing wider, and untrusted only after the untap, which loads it if it is still installed."""
+        trust = ["trust", "--formula", FORMULA]
+        untrust = ["untrust", "--formula", FORMULA]
+        self.assertEqual([call for call in calls if call[:1] == ["trust"]], [["trust", "--help"], trust])
+        self.assertEqual([call for call in calls if call[:1] == ["untrust"]], [untrust])
+        self.assertLess(calls.index(["tap-new", "--no-git", TAP]), calls.index(trust))
+        self.assertLess(calls.index(trust), calls.index(["audit", "--strict", FORMULA]))
+        self.assertLess(calls.index(["untap", TAP]), calls.index(untrust))
+
+    def test_with_tap_trust_the_formula_is_trusted_before_the_audit_and_untrusted_in_cleanup(self):
+        before = {"trustedformulae": ["someone/tools/other"], "trustedtaps": ["someone/tools"]}
+        self.homebrew(trust=True, trusted=before)
+        result = self.run_check()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(PASSED, result.stdout)
+        self.assert_trust_given_and_taken_back(self.calls())
+        self.assertEqual(self.store(), before)
+        self.assertFalse(self.tap_left(), "the check's tap is left behind")
+        self.assertFalse((self.state / "installed").exists(), "the install is left behind")
+        self.assertFalse((self.state / "autoremoved").exists(),
+                         "the cleanup's uninstall would autoremove the machine's other leftovers")
+        self.assertNotIn("warning", result.stderr)
+
+    def test_a_failed_uninstall_is_untapped_while_still_trusted_and_untrusted_last(self):
+        self.homebrew(trust=True, uninstall_fails=True)
+        result = self.run_check()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(PASSED, result.stdout)
+        records = self.records()
+        calls = [record["args"] for record in records]
+        self.assert_trust_given_and_taken_back(calls)
+        untap = records[calls.index(["untap", TAP])]
+        self.assertIn(FORMULA, untap["trusted"], "the untap loads the formula still installed")
+        self.assertFalse(self.tap_left(), "the untap was refused, so the check's tap is left behind")
+        self.assertIsNone(self.store(), "the formula is still trusted after the check")
+
+    def test_with_tap_trust_a_failed_audit_still_takes_the_trust_back(self):
+        self.homebrew(trust=True, audit_fails=True)
+        result = self.run_check()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("the stub's audit refuses it", result.stderr)
+        self.assertNotIn(PASSED, result.stdout)
+        calls = self.calls()
+        self.assert_trust_given_and_taken_back(calls)
+        self.assertNotIn(["install", FORMULA], calls)
+        self.assertIsNone(self.store(), "a store the check found absent is left absent")
+
+    def test_an_untrust_that_fails_is_named_with_the_command_that_finishes_it(self):
+        self.homebrew(trust=True, audit_fails=True, untrust_fails=True)
+        result = self.run_check()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.store(), {"trustedformulae": [FORMULA]})
+        self.assertIn(f"brew untrust --formula {FORMULA}", result.stderr)
+        calls = self.calls()
+        self.assertLess(calls.index(["untrust", "--formula", FORMULA]), calls.index(["developer", "off"]),
+                        "a failed untrust stops the rest of the cleanup")
+
+    def test_without_tap_trust_the_check_passes_and_asks_only_whether_trust_exists(self):
+        self.homebrew(trust=False)
+        result = self.run_check()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(PASSED, result.stdout)
+        calls = self.calls()
+        for call in calls:
+            if call[:1] in (["trust"], ["untrust"]):
+                self.assertEqual(call, ["trust", "--help"], "a Homebrew without trust has no command to call")
+        for step in (["audit", "--strict", FORMULA], ["install", FORMULA], ["test", FORMULA]):
+            self.assertIn(step, calls)
+        self.assertIsNone(self.store())
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

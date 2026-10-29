@@ -2,7 +2,7 @@
 description: Implement an html-spec change — work its tasks, settle each task's state as the work lands, and record what the implementation revealed. Use when a change has its artifacts and the work is ready to start.
 allowed-tools: Bash(htmlspec:*), Read, Write, Edit, Glob, Grep
 argument-hint: [the change to implement, or nothing to infer it]
-generatedBy: htmlspec 1.2.2
+generatedBy: htmlspec 1.3.0
 ---
 
 Implement an html-spec change.

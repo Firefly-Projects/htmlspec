@@ -146,6 +146,17 @@ steps=(
   # request on Linux alone meets a template that drifted, not only the macOS-gated formula job.
   "notices-self-test:scripts/check-crate-notices"
   "notices:scripts/crate-notices --check"
+  # The formula check's steps, `scripts/check-formula` run against a stub `brew`.
+  #
+  # The check runs for real only in the release workflow's macOS formula job, so a fault in its
+  # steps is first seen there. One was: Homebrew 6 refused the audit until the check's formula was
+  # trusted. Here the stub answers as Homebrew 6 and 7 do and as an older Homebrew without tap trust
+  # does, and the stage holds the check to trusting its formula alone before the audit, taking the
+  # trust back after the untap whatever the outcome and saying so when it cannot, uninstalling
+  # without autoremoving, and passing without tap trust.
+  # It reaches no real Homebrew. A stage rather than a `cargo test` because its subject is a script,
+  # as with `publish-crates`.
+  "formula-self-test:scripts/check-check-formula"
   # Release hygiene: every archived change records the version it shipped in, every
   # version above the baseline is distinct, and every version has a changelog entry.
   #

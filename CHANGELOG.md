@@ -7,6 +7,54 @@ find it. That check also requires every archived change to record the version it
 in, in a `VERSION` file beside its documents. Prose inside an entry is not parsed — a
 changelog exists to be read by a person.
 
+## 1.3.0 — see how far a run has come
+
+A minor release, and the next published one after 1.2.1: it also carries 1.2.2, below, which was
+archived and not published. A run's record holds every step's state and every outcome the run
+recorded, and until now no command read them back: to learn how far a run had come, a person or an
+agent opened the record and counted. Now `run` reports it.
+
+- **`htmlspec run <runbook> --status`** prints one line per run of the runbook, in name order: the
+  steps done of the total, the steps dropped, and either the step in progress, or the next step
+  where none is, or that the run finished. A finished run says whether it passed by the rule a
+  `preflight/v3` run check applies, without `atLeast`, and where it did not, the first reason, in
+  preflight's words. A file under `runs/` that is not a run's record is named with its reason. Name
+  order says nothing about which run came first, because a record states no time.
+- **`htmlspec run <runbook> --status <record>`** shows one run: every step in order with its state
+  and heading, each dropped step's reason, each requirement the record owes an outcome for with the
+  outcome recorded or `no outcome`, the outcome of any other verification, such as one under a
+  withdrawn requirement, which the verdict also reads, the runbook release the record's head
+  states, and whether it is finished and passed. The record is matched by its name, byte for byte, and one that is not there
+  is refused, exit 2, naming the records there are.
+- **Both write nothing and exit 0** whatever the runs say. With `--json` they write a fourth shape
+  of `run`'s payload, `runbook` and `records`, which `run.schema.json` states and
+  `tests/surface/1.3.json` records. `--status` takes neither `--as` nor `--check`, and a bare `run`
+  names it beside them.
+- **The report and the run check share one reading of a record.** The rule that decides whether a
+  record meets a prerequisite is the one the report applies, so the two cannot disagree about a run.
+- **The command surface records an optional value.** `--status` is the first option whose value may
+  be left out, and the recorded surface now holds that fact, so a later 1.x release cannot make the
+  record required.
+- **The README and the instructions for a new runbook** describe the option.
+- **The formula's check trusts the formula in its throwaway tap,** which Homebrew 6's tap trust
+  requires before the audit, takes the trust back afterwards, and runs as before on a Homebrew
+  without tap trust; a new suite stage, `formula-self-test`, holds it to that against a stub `brew`.
+  The README says how a Homebrew install made before Homebrew 6 upgrades.
+
+### Upgrading
+
+1.2.2 was archived and not published, so no channel ever shipped it, and 1.3.0 carries it. From
+1.2.1, follow 1.2.2's note below as well as this one: upgrade the binary, and run `htmlspec init` in
+a project to move its instructions' recorded release to 1.3.0, which also adds the sentence about
+`--status` to the instructions for a new runbook. Nothing in a project has to change, and a record
+written by any earlier release reads under `--status`; one from before 1.2.0 states no release.
+
+A Homebrew install made before Homebrew 6 can refuse `brew upgrade htmlspec` with a message about an
+untrusted tap: run `brew trust --formula Firefly-Projects/tap/htmlspec` once, or upgrade by the full
+name, `brew upgrade Firefly-Projects/tap/htmlspec`, which trusts the formula as it upgrades.
+
+From 1.2.0 or 1.1.x, follow 1.2.1's notes too.
+
 ## 1.2.2 — name each runbook an asset upgrade or the fallback rewrites
 
 A patch release. `htmlspec format --upgrade-assets` rewrites a runbook's specification and procedure
