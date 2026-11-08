@@ -248,15 +248,19 @@ fn the_version_several_changes_share_is_reported_with_all_of_them() {
         "this repository has a shared version and none was reported"
     );
 
-    // Cross-checked against the release script's own baseline, so the two cannot disagree about
-    // which version the exception covers.
-    let script = std::fs::read_to_string(repository().join("scripts/check-release"))
-        .expect("the release script is readable");
+    // Cross-checked against the baseline the release check exempts, which this repository states
+    // in `xtask/release-facts.json`, so the two cannot disagree about which version the exception
+    // covers.
+    let facts = std::fs::read_to_string(repository().join("xtask/release-facts.json"))
+        .expect("the release facts are readable");
+    let facts: serde_json::Value = serde_json::from_str(&facts).expect("the facts are JSON");
+    let baseline = facts["sharedReleaseBaseline"]
+        .as_str()
+        .expect("the facts state a shared release baseline");
     for version in shared.keys() {
-        let baseline = version.replace('.', ", ");
-        assert!(
-            script.contains(&format!("({baseline})")),
-            "version {version} is shared by several changes but is not the release script's \
+        assert_eq!(
+            version, baseline,
+            "version {version} is shared by several changes but is not the release check's \
              baseline, so a migrated project would fail its own release check"
         );
     }

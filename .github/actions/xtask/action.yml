@@ -1,0 +1,35 @@
+# This run's tools binary, made ready for the job that needs it.
+#
+# The release workflow builds the tools once for each platform that runs them: its verify job on
+# Linux, uploaded as `xtask-linux`, and its aarch64-apple-darwin build on macOS, uploaded as
+# `xtask-macos`. Each artifact holds `xtask.tar`, a tar of the one binary, because an artifact loses
+# file modes and a tar keeps the executable bit. This downloads the named artifact, unpacks it
+# outside the checkout, runs `xtask --help` so a binary that cannot run on this runner fails here
+# rather than in the step that needs it, and puts its directory on the job's PATH, so the steps after
+# it run `xtask TOOL`. Every job that takes the tools takes them through this action, so the jobs
+# that run only on a tag get theirs by the steps a pull request's sums and formula jobs have run.
+name: xtask
+description: Take this run's tools binary from its artifact, check it runs, and put it on the PATH.
+
+inputs:
+  artifact:
+    description: The artifact holding the tools as xtask.tar, xtask-linux or xtask-macos.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.artifact }}
+        path: ${{ runner.temp }}/xtask
+
+    - name: Unpack the tools, and check they run
+      shell: bash
+      env:
+        DIRECTORY: ${{ runner.temp }}/xtask
+      run: |
+        set -euo pipefail
+        tar -xf "$DIRECTORY/xtask.tar" -C "$DIRECTORY"
+        "$DIRECTORY/xtask" --help
+        echo "$DIRECTORY" >> "$GITHUB_PATH"

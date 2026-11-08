@@ -7,13 +7,13 @@
 # it record what it changed? Neither fact is in the tree, so neither can be a stage in
 # that suite without breaking the property that makes the suite trustworthy.
 #
-# It contains no rules. It reads the event, hands the facts to `scripts/check-pull-request`,
-# and reports what that script says — for the same reason `check.yml` contains no list of
-# checks. A rule that lives only in workflow YAML is a rule nobody can rehearse before
+# It contains no rules. It reads the event, hands the facts to the pull-request rules, the binary
+# of `xtask/pull-request`, whose code `cargo xtask check-pull-request` runs too, and reports what
+# that tool says — for the same reason `check.yml` contains no list of checks. A rule that lives only in workflow YAML is a rule nobody can rehearse before
 # pushing, and a gate a contributor cannot run is a gate that teaches nothing until it
 # fails.
 #
-# To change what a pull request must satisfy, change `scripts/check-pull-request`.
+# To change what a pull request must satisfy, change `xtask/pull-request/src/lib.rs`.
 
 name: pr-guard
 
@@ -44,7 +44,35 @@ jobs:
           # depth 1; this cannot.
           fetch-depth: 0
 
-      # The event's facts reach the script as environment variables, never as `${{ }}`
+      # rustup is on the runner image. Installing the toolchain explicitly reads
+      # rust-toolchain.toml, as the other workflows do.
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+
+      # The guard runs on every edit of a title or a label, so it builds the rules' own member,
+      # `htmlspec-pull-request`, which depends on `clap` and `serde_json` alone, rather than the
+      # tools crate, which compiles the program's library first, and keeps the registry and the
+      # build between runs. A cache a pull request writes is read by that pull request's later
+      # runs and by no run of the default branch, and what it holds builds this tool, which judges
+      # a title and ships nothing, so a stale or tampered one can at worst misjudge a title. The
+      # key names the lockfile and the toolchain, so a change to either builds from what the last
+      # key left.
+      - name: Keep the build between runs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: pr-guard-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+          restore-keys: |
+            pr-guard-${{ runner.os }}-
+
+      - name: Build the pull-request rules
+        run: cargo build --locked -p htmlspec-pull-request
+
+      # The event's facts reach the tool as environment variables, never as `${{ }}`
       # interpolated into the shell. A pull request title is attacker-controlled text —
       # anyone who can open a pull request chooses it — and interpolation would splice it
       # into the script the runner executes. As an environment variable it is a value,
@@ -58,7 +86,7 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --no-tags origin "+refs/heads/$PR_BASE:refs/remotes/origin/$PR_BASE"
-          scripts/check-pull-request \
+          cargo run --quiet --locked -p htmlspec-pull-request -- \
             --title "$PR_TITLE" \
             --base "origin/$PR_BASE" \
             --labels-json "$PR_LABELS"

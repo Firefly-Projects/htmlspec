@@ -28,17 +28,6 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # a missing newline.
 steps=(
   "format:cargo fmt --all -- --check"
-  # The README's install and upgrade blocks, the commands a reader on Linux, WSL, or macOS pastes.
-  # Each marked block must exist, carry the right kind of marker, and pass `bash -n`, the Linux
-  # block must check its download first and ask only for a target the release builds, and its
-  # reading of SHA256SUMS must find each Linux tarball in the file `pack-release --sums` writes.
-  # Upgrade blocks are only parsed: running one would upgrade the machine the suite runs on. The
-  # self-test first proves each of those checks refuses what it should.
-  #
-  # Here, near the front, because it takes a second and needs no build. The downloads themselves need
-  # a published release and the network, so the release workflow's `install` job runs the block
-  # against every release instead, and that job is outside this suite for that reason alone.
-  "readme-install:scripts/check-readme-install --self-test && scripts/check-readme-install"
   "lint:cargo clippy --workspace --all-targets --locked -- -D warnings"
   # The whole workspace's tests, which include:
   #   - the conformance suite            (htmlspec-conformance)
@@ -48,8 +37,35 @@ steps=(
   #   - the asset lockfile verification  (htmlspec-assets)
   #   - the enhancement-script budget    (htmlspec-assets)
   #   - the CLI's exit-code contract     (htmlspec-cli)
+  #   - the interactive prompt           (htmlspec-cli, tests/prompt.rs)
+  #   - the crate publisher              (htmlspec-xtask)
+  #   - the release check, set-version,
+  #     check-installed, release-notes   (htmlspec-xtask)
+  #   - the crates' notices, the packer,
+  #     the formula's renderer and check,
+  #     and the README's install check   (htmlspec-xtask)
+  #   - the pull-request rules           (htmlspec-pull-request)
+  #   - the runbook-release fixtures     (htmlspec-cli, runbook_release.rs)
   # They are one step because they are one command; splitting them here would be the
   # duplicated step list this script exists to avoid.
+  #
+  # The prompt's test drives the binary through a pseudo-terminal from `nix`'s safe `openpty`, so
+  # it is a test like the others rather than a script: what it covers no other test reaches, that
+  # a fresh repository opens with every row checked, that an empty confirmation is refused, and that
+  # cancelling exits 3. The publisher runs for real only at a release, and what it publishes cannot
+  # be taken back, so its tests meet the answers a release can meet, HTTP 429 and a spent budget
+  # among them, on a clock passed in that waits no real time, and hold every request it sends to
+  # the fixed User-Agent with a real `curl` against a listener on the loopback interface.
+  #
+  # The notices' generator is held to its rules on synthetic crates: an OR choice, a refused
+  # license, a crate with no text and no reviewed row, an MPL source line, which build dependencies
+  # count. The formula check runs for real only in the release workflow's macOS formula job, so a
+  # fault in its steps is first seen there, and one was: Homebrew 6 refused the audit until the
+  # check's formula was trusted. Its tests pass a Homebrew held in memory, which answers as Homebrew
+  # 6 and 7 do and as an older one without tap trust does, and hold the check to trusting its
+  # formula alone before the audit, taking the trust back after the untap whatever the outcome and
+  # saying so when it cannot, and passing without tap trust. No test can reach a real Homebrew,
+  # because no test is handed one.
   "test:cargo test --workspace --all-targets --locked"
   # `--all-targets` skips doctests, so they are run separately or they would not run
   # at all. A documented example that no longer compiles is stale documentation.
@@ -93,19 +109,32 @@ steps=(
   # for bytes it holds twice and compared with none. So the stage does not report the source copy
   # as the project's second store, or a revision the project's store also holds as a duplicate.
   "self-assets:cargo run --quiet --locked --bin htmlspec -- assets ."
-  # The interactive prompt, driven through a pseudo-terminal.
+  # The ban of the interpreter this change removes, and of any program outside a Cargo
+  # workspace but four shell files, this one among them. It reads every tracked file: in the Nix
+  # sandbox the tree the flake names in HTMLSPEC_SOURCE_TREE, and elsewhere the files Git's index
+  # lists, as the working tree holds them, so an untracked scratch file or bytecode never counts and
+  # a staged one does. The allow-list in `xtask/src/no_python/allowed.rs` names each exempt path
+  # exactly, and by its text the one line of the flake that asks whether the suite's sandbox or the
+  # development shell supplies an interpreter, and `publish/no-python`, where that list exists,
+  # permits the export's launcher. Nothing else excuses a finding.
   #
-  # Not a `cargo test` because it cannot be: `openpty` is an `unsafe` FFI call and this
-  # workspace sets `unsafe_code = "forbid"`. The alternative is a pinned pty crate and
-  # its subtree vendored into the flake, for one test binary. Python's `pty` is
-  # standard-library, so the script costs nothing to depend on.
+  # A stage rather than a test inside `test`, so a failure says `FAILED: no-python` and `--list`
+  # shows it, and here, after the stages that build, because `cargo xtask` builds the tools crate
+  # the `test` stage has already compiled.
+  "no-python:cargo xtask no-python"
+  # The README's install and upgrade blocks, the commands a reader on Linux, WSL, or macOS pastes.
+  # Each marked block must exist, carry the right kind of marker, and pass `bash -n`, the Linux
+  # block must check its download first and ask only for a target the release builds, and its
+  # reading of SHA256SUMS must find each Linux tarball in the file `cargo xtask pack-release --sums`
+  # writes, which the check writes with the packer's own code. Upgrade blocks are only parsed:
+  # running one would upgrade the machine the suite runs on, and nothing the check runs installs
+  # anything. Its cases, each check refusing what it should, are tests in `test`.
   #
-  # It covers the three things no Rust test reaches: that a fresh repository opens with
-  # every row checked, that an empty confirmation is refused rather than accepted, and
-  # that cancelling exits 3 — the one exit code no other test reads from a real process.
-  #
-  # Depends on the debug binary, so it follows the steps that build it.
-  "prompt:cargo build --quiet --locked --bin htmlspec && scripts/check-prompt"
+  # Here, after the stages that build, because `cargo xtask` builds the tools crate the `test` stage
+  # has already compiled. The downloads themselves need a published release and the network, so
+  # the release workflow's `install` jobs run the block against every release instead, and they are
+  # outside this suite for that reason alone.
+  "readme-install:cargo xtask check-readme-install"
   # This repository's own installed instruction files, against what the binary writes.
   #
   # The bodies are compiled in, so an agent reads the copy under `.claude/`, `.codex/`,
@@ -119,44 +148,22 @@ steps=(
   # A stage rather than a `cargo test` because the subject is the working tree's
   # committed files, and the test suites run inside a sandbox holding a filtered
   # snapshot. It is the same reason `self-assets` is a stage.
-  "installed:scripts/check-installed"
-  # The crate publisher, against a stub index on 127.0.0.1 and a stub cargo.
-  #
-  # `scripts/publish-crates` runs for real only at a release, and what it publishes cannot be
-  # taken back, so a fault in it would first be seen on crates.io. Here it meets the answers a
-  # release can meet: some of the six already published, HTTP 429 answered once, a wait longer
-  # than its budget, and a run after an interruption. It also asserts that every request carries
-  # the fixed User-Agent and nothing else, and that the publishing order puts each crate after
-  # the ones it depends on, read from this repository's manifests.
-  #
-  # A stage rather than a `cargo test` because the subject is a script, as with `prompt`.
-  "publish-crates:scripts/check-publish-crates"
+  "installed:cargo xtask check-installed"
   # The notices of the Rust crates the binary is built from, which every channel ships beside it.
   #
-  # Two stages, as `release-fixtures` and `release` are, because they answer different questions.
-  # The first holds the generator to its rules on synthetic crates: an OR choice, a refused license,
-  # a crate with no text and no reviewed row, an MPL source line, which build dependencies count.
-  # The second regenerates `crates/htmlspec-cli/CRATE-LICENSES` from Cargo.lock and fails on any
+  # It regenerates `crates/htmlspec-cli/CRATE-LICENSES` from Cargo.lock and fails on any
   # difference, naming each crate added, removed, or changed. A dependency update is an ordinary
-  # pull request, and the notices it makes wrong would otherwise ship at the next release.
+  # pull request, and the notices it makes wrong would otherwise ship at the next release. The
+  # generator's own rules are held by its tests in `test`.
   #
   # `cargo metadata --locked` reads the sources a build has fetched, or that the Nix sandbox
   # vendored, and reaches no network then: the stages above have built, so the sources are here.
-  # `notices` also holds the Homebrew formula's template to what the notices credit, so a pull
-  # request on Linux alone meets a template that drifted, not only the macOS-gated formula job.
-  "notices-self-test:scripts/check-crate-notices"
-  "notices:scripts/crate-notices --check"
-  # The formula check's steps, `scripts/check-formula` run against a stub `brew`.
-  #
-  # The check runs for real only in the release workflow's macOS formula job, so a fault in its
-  # steps is first seen there. One was: Homebrew 6 refused the audit until the check's formula was
-  # trusted. Here the stub answers as Homebrew 6 and 7 do and as an older Homebrew without tap trust
-  # does, and the stage holds the check to trusting its formula alone before the audit, taking the
-  # trust back after the untap whatever the outcome and saying so when it cannot, uninstalling
-  # without autoremoving, and passing without tap trust.
-  # It reaches no real Homebrew. A stage rather than a `cargo test` because its subject is a script,
-  # as with `publish-crates`.
-  "formula-self-test:scripts/check-check-formula"
+  # `notices` also holds the Homebrew formula's template to what the notices credit and to what
+  # `htmlspec-assets` declares it embeds, so a pull request on Linux alone meets a template that
+  # drifted, not only the macOS-gated formula job. It is the one place that rule is held, because
+  # only a manifest states what the assets crate embeds, and the jobs that render the formula
+  # install no toolchain to read one.
+  "notices:cargo xtask crate-notices --check"
   # Release hygiene: every archived change records the version it shipped in, every
   # version above the baseline is distinct, and every version has a changelog entry.
   #
@@ -170,22 +177,14 @@ steps=(
   # to its last. The archive is a settled record, so the question has a right answer at
   # every moment.
   #
-  # The release checker's own reading of the runbook-release format, against the fixtures it shares
-  # with the Rust reader.
+  # It reads the archive, the changelog, and the runbooks through the code archival runs, so the
+  # two cannot disagree about a version or a runbook's release, and the fixtures of that format are
+  # tests of its one reader, in `test`. A second reader, with a stage of its own to keep it honest,
+  # disagreed with the first where no fixture looked, and is gone.
   #
-  # A stage of its own rather than folded into `release`, because the two answer different questions
-  # and a failure line that says only `release` would leave a contributor guessing whether this
-  # repository's history is wrong or the checker is. This one is about the checker: two programs read
-  # one format, they cannot share code because this script runs where no build has happened, and a
-  # rule stated twice is a rule that diverges. The fixtures are what they share instead.
-  #
-  # Before `release`, which is the cheapest-first ordering again: a checker that reads the format
-  # wrongly would report the repository's history wrongly, and the second stage's failure would be
-  # about the first.
-  "release-fixtures:scripts/check-release --self-test"
   # Last because it is fast but least likely to be what someone is iterating on, which
   # is the same cheapest-first reasoning as the ordering comment above.
-  "release:scripts/check-release"
+  "release:cargo xtask check-release"
 )
 
 if [[ "${1:-}" == "--list" ]]; then

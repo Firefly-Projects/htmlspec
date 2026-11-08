@@ -3993,11 +3993,12 @@ pub fn migrate_survey<O: Write, E: Write>(
 
     // A change with no recorded version is named rather than counted. The plan has to record
     // that the source carried none, and that is a different fact from a version being dropped —
-    // so a contributor needs the name, not the total.
+    // so a contributor needs the name, not the total. A `VERSION` holding text that is no
+    // version counts as none, as archival reads it.
     let versionless: Vec<&str> = survey
         .changes
         .iter()
-        .filter(|change| change.version.is_none())
+        .filter(|change| change.recorded_version().is_none())
         .map(|change| change.name.as_str())
         .collect();
     if versionless.is_empty() {
@@ -6730,7 +6731,7 @@ fn check_version<O: Write, E: Write>(streams: &mut Streams<O, E>) -> Option<Outc
 ///
 /// An archived change records the version it shipped in inside a [`RECORDED_VERSION`] file,
 /// which is the form `toolchain-packaging`'s release-hygiene requirement asks for and the form
-/// `scripts/check-release` already reads. A change recording no version is skipped rather than
+/// `cargo xtask check-release` already reads. A change recording no version is skipped rather than
 /// failing the run — an archive predating the convention should not block archival — and the
 /// greatest version found wins, so the answer does not depend on directory order.
 ///
@@ -6763,7 +6764,7 @@ fn last_archived_version(project: &ProjectRoot) -> crate::version::Version {
 /// cases can be distinguished from the others in a way that would change what the gate should
 /// compare against.
 ///
-/// Reporting a malformed `VERSION` belongs to `scripts/check-release`, which names the change
+/// Reporting a malformed `VERSION` belongs to `cargo xtask check-release`, which names the change
 /// that carries it. That is a report a contributor can act on. Refusing here would block
 /// archival over a file that has nothing to do with the change being archived.
 fn recorded_version(directory: &Path) -> Option<crate::version::Version> {

@@ -416,6 +416,8 @@ python3 -m http.server
 # then open http://localhost:8000/htmlspec/specs/
 ```
 
+Run it in an ordinary terminal, outside `nix develop`. Inside this repository's development shell on macOS, `python3` reaches the system's stub, which asks the developer tools for an interpreter the shell's SDK does not have, and stops with `error: tool 'python3' not found`.
+
 Documents written before 0.31.0 have no fallback. `htmlspec format --fallback` adds it to them. Adding it to a runbook changes the runbook's documents, so `--fallback` names each runbook it changes and says whether its version must advance before the next `htmlspec archive`, as `--upgrade-assets` does.
 
 ## Reference
@@ -705,8 +707,7 @@ nix flake check        # the full check suite, in the build sandbox
 
 - [rustup](https://rustup.rs/), then `rustup toolchain install` in the repository, which reads `rust-toolchain.toml` and installs the pinned Rust with `rustfmt`, `clippy`, and `rust-src`;
 - a C linker for cargo to link with: `build-essential` on Ubuntu, the Xcode command-line tools on macOS;
-- Python 3, standard library only. Python 3.9.6 and 3.13.14 were checked here, and continuous integration runs Ubuntu's own;
-- bash and git.
+- bash, git, and curl, which the crate publisher's tests run against a listener on the loopback interface.
 
 ```sh
 rustup toolchain install       # in the repository: the toolchain rust-toolchain.toml pins
@@ -715,15 +716,15 @@ cargo run --bin htmlspec -- --help
 scripts/check                  # every stage; scripts/check --list prints them
 ```
 
-With those, `scripts/check` runs every stage continuous integration runs. If you set `CARGO_TARGET_DIR`, the prompt stage finds the binary there, as cargo builds it.
+With those, `scripts/check` runs every stage continuous integration runs.
 
-A few things only the Nix sandbox and continuous integration check, because they need the flake: that every file a stage reads is tracked and survives the flake's source filter, the provenance of the vendored browser libraries, which are fetched again from their pinned addresses, and a reproducible `nix build`. Publishing a release is a maintainer's job, and its runbook requires the flake's development shell.
+A few things only the Nix sandbox and continuous integration check, because they need the flake: that every file a stage reads is tracked, that neither the suite's sandbox nor the development shell supplies a Python interpreter, the provenance of the vendored browser libraries, which are fetched again from their pinned addresses, and a reproducible `nix build`. Publishing a release is a maintainer's job, and its runbook requires the flake's development shell.
 
 The packaged binary needs no source checkout and no Nix at runtime.
 
 ### Checks
 
-One command runs everything: formatting, lints, every test, the conformance fixtures, the asset lockfile hashes, the enhancement-script byte budget, and this project's own documents, checked through the built binary.
+One command runs everything: formatting, lints, every test, the conformance fixtures, the asset lockfile hashes, the enhancement-script byte budget, and this project's own documents, checked through the built binary. Its `no-python` stage fails on any Python the repository holds or runs, and on any program the repository runs that no Cargo workspace builds, but four shell files it names, `scripts/check` among them. The repository's own tools are the subcommands of one crate, `xtask/`, run from the root as `cargo xtask TOOL`.
 
 ```sh
 scripts/check
@@ -747,7 +748,7 @@ Then the loop is ordinary:
 git switch -c a-branch-naming-the-change
 # work, commit
 scripts/check
-scripts/check-pull-request --title "The title you will give the pull request"
+cargo xtask check-pull-request --title "The title you will give the pull request"
 git push -u origin HEAD
 gh pr create
 ```
@@ -757,10 +758,10 @@ Three workflows check what arrives, and a branch ruleset guards `main`:
 | Workflow | Asks | Runs |
 | --- | --- | --- |
 | `check.yml` | is this revision healthy? | `scripts/check`, on every pull request and every push to `main` |
-| `check-without-nix.yml` | does the suite still run without Nix? | `scripts/check` with rustup and Ubuntu's Python, weekly and on pull requests that touch what it builds from |
-| `pr-guard.yml` | is this a well-formed proposal? | `scripts/check-pull-request`, on the pull request's title and diff |
+| `check-without-nix.yml` | does the suite still run without Nix? | `scripts/check` with rustup, a C linker, bash, git, and curl, weekly and on pull requests that touch what it builds from |
+| `pr-guard.yml` | is this a well-formed proposal? | `cargo xtask check-pull-request`, on the pull request's title and diff |
 
-`pr-guard` enforces two things. The title becomes the squash commit's subject, so it must read the way this project's history reads: imperative prose under 72 characters, no Conventional Commits prefix, no trailing period. And the diff must touch `CHANGELOG.md`, unless the pull request carries the `skip-changelog` label to state that there is nothing worth recording. Both rules live in `scripts/check-pull-request`, which you can run before you push. The workflow only supplies it with the event's facts.
+`pr-guard` enforces two things. The title becomes the squash commit's subject, so it must read the way this project's history reads: imperative prose under 72 characters, no Conventional Commits prefix, no trailing period. And the diff must touch `CHANGELOG.md`, unless the pull request carries the `skip-changelog` label to state that there is nothing worth recording. Both rules live in `cargo xtask check-pull-request`, which you can run before you push. The workflow only supplies it with the event's facts.
 
 The ruleset on `main` requires a pull request and has no bypass, so GitHub refuses a direct push, a force-push, or a deletion of `main` outright. The hook stops the same mistake earlier, on your machine, before anything leaves it.
 
@@ -784,7 +785,8 @@ The variable exists so the escape is visible. `--no-verify` skips every hook sil
 | `crates/htmlspec-cli` | the `htmlspec` binary |
 | `conformance` | the fixture harness, driving the crates' public APIs only |
 | `fixtures` | conformance, projection, parse-error, and hand-authored example documents |
-| `packaging` | the Homebrew formula's template, which `scripts/render-formula` fills for each release |
+| `packaging` | the Homebrew formula's template, which `cargo xtask render-formula` fills for each release |
+| `xtask` | this repository's own tools, unpublished, run from the root as `cargo xtask TOOL`: the suite's stages that read the working tree, the release workflow's steps, and the release runbook's |
 | `htmlspec` | this repository's own project: its specifications, changes, archive, and release runbook |
 
 The public contract is three pieces, not one: `crates/htmlspec-schema/schema/document.schema.json` for the shape of the model, `crates/htmlspec-schema/doc/projection.md` for the HTML-to-model mapping, and the fixtures that pin it. An implementation written from those reproduces the model with no access to this source.

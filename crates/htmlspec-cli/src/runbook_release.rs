@@ -18,19 +18,20 @@
 //! that tried to tell an editorial edit from a substantive one would be a judgment, and
 //! `artifact-kinds` reserves judgment for an agent.
 //!
-//! # Two readers, one format
+//! # One reader
 //!
-//! The inventory and the adoption marker are read here and by `scripts/check-release`, which cannot
-//! call into this crate because it runs where no build has happened. The two share their fixtures
-//! under `fixtures/release/` rather than sharing code, and `the_shared_fixtures_say_what_both_readers
-//! _read` is the test that keeps them from diverging: a version-ordering rule stated twice is a rule
-//! that disagrees with itself the first time one side changes.
+//! The inventory, the adoption marker, and a changelog's headings are read here and nowhere else.
+//! Archival reads them through this module, and so does `cargo xtask check-release`, through the
+//! library this crate exports for the repository's tools. Until 1.3.1 the release check had its
+//! own reader, in Python, kept in step with this one by shared fixtures, and the two disagreed
+//! where no fixture looked. The fixtures under `fixtures/release/` are this reader's cases now, and
+//! `the_release_fixtures_say_what_this_reader_decides` holds it to them.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use crate::terminal::shown;
-use crate::version::{ProjectVersion, RunbookVersion};
+use crate::version::{ProjectVersion, RunbookVersion, VersionKind};
 
 /// The file a runbook declares its release version in.
 ///
@@ -158,8 +159,8 @@ pub struct RunbookRelease {
 impl RunbookRelease {
     /// The changelog headings naming a released version, in the order they appear.
     ///
-    /// Read as headings rather than parsed as prose, which is what `scripts/check-release` already
-    /// does for the project's own changelog and what `runbook-authority` asks of an author: "one
+    /// Read as headings rather than parsed as prose, which is how `cargo xtask check-release` reads
+    /// the project's own changelog too, and what `runbook-authority` asks of an author: "one
     /// heading per runbook release". A version appearing in body prose is not a release heading, and
     /// counting it would let an entry satisfy the gate without being one.
     pub fn headings(&self) -> Vec<RunbookVersion> {
@@ -181,23 +182,40 @@ impl RunbookRelease {
 
 /// Every version a changelog's headings name, in order.
 ///
-/// A heading is a line beginning `#`, and a version in it is any dotted numeric run — the same rule
-/// `scripts/check-release` applies to the project changelog, so the two cannot disagree about what a
-/// heading is. Repeats are kept: [`duplicate_headings`] asks about them and an order-sensitive caller
-/// should see what the file holds.
+/// [`changelog_versions`] at a runbook's kind of version, the reading `cargo xtask check-release`
+/// applies to the project changelog too, so the two cannot disagree about what a heading is.
+/// Repeats are kept: [`duplicate_headings`] asks about them and an order-sensitive caller should
+/// see what the file holds.
 pub fn changelog_headings(changelog: &str) -> Vec<RunbookVersion> {
-    let mut found = Vec::new();
-    for line in changelog.lines() {
-        if !line.starts_with('#') {
-            continue;
-        }
-        for candidate in dotted_numbers(line) {
-            if let Ok(version) = RunbookVersion::parse(candidate) {
-                found.push(version);
-            }
-        }
+    changelog_versions(changelog)
+}
+
+/// Every version a changelog's headings name, in order and with repeats kept, read as the kind of
+/// version the changelog records: a [`RunbookVersion`] for a runbook's, a [`ProjectVersion`] for
+/// the project's own.
+///
+/// **The one reading of a changelog's headings.** A runbook's changelog, the project's, a migrated
+/// project's release record, and a release's notes are each read through it, so no two of them can
+/// disagree about which versions a heading names.
+pub fn changelog_versions<V: VersionKind>(changelog: &str) -> Vec<V> {
+    changelog.lines().flat_map(heading_versions).collect()
+}
+
+/// Every version one line of a changelog names, if the line is a heading.
+///
+/// A heading is a line beginning `#`, and a version in it is a maximal run of ASCII digits and dots
+/// that holds exactly two dots and reads as a version. So `## 0.11.0 — arriving` names 0.11.0, and
+/// `## 1.2.3.`, `## 1.2.3.4`, `## 0.1`, and `## 2026` name nothing, while `## 01.2.3` names 1.2.3,
+/// as [`crate::version::Version::parse`] reads it. A line that is not a heading names nothing,
+/// whatever it holds.
+pub fn heading_versions<V: VersionKind>(line: &str) -> Vec<V> {
+    if !line.starts_with('#') {
+        return Vec::new();
     }
-    found
+    dotted_numbers(line)
+        .into_iter()
+        .filter_map(|run| V::read(run).ok())
+        .collect()
 }
 
 /// Every dotted numeric run in a line.
@@ -1182,8 +1200,8 @@ pub fn history(
                 // change, and a gate blocking the project on that has no route back through this
                 // operation. `last_archived_version` already draws the line here for the project
                 // version gate, for the stated reason that reporting a malformed `VERSION` belongs to
-                // `scripts/check-release` — which names the change carrying it, and which asks about
-                // every archive's version independently of this reader.
+                // `cargo xtask check-release` — which names the change carrying it, and which asks
+                // about every archive's version beside this walk.
                 Err(_) => continue,
             },
             // An archive predating the recorded-version convention is old history, and
@@ -1239,7 +1257,7 @@ pub fn history(
 
     // Ordered by the recorded project version, with the directory name breaking a tie so the
     // ordering is total: two archives recording one version is already a fault
-    // `scripts/check-release` reports, and an unstable sort would make the predecessor depend on
+    // `cargo xtask check-release` reports, and an unstable sort would make the predecessor depend on
     // the order the filesystem happened to list them in.
     snapshots.sort_by(|left, right| {
         left.project
@@ -1457,6 +1475,55 @@ mod tests {
                 "{changelog:?} produced a heading"
             );
         }
+    }
+
+    /// The one reading of a heading, on the lines its readers disagreed about before they were one.
+    ///
+    /// The release check's Python found a version wherever a heading held three numbers between
+    /// dots, so `## 1.2.3.` and `## 1.2.3..4` named 1.2.3 there, and its reading of the project's
+    /// changelog took any count of parts, so `## 0.1` and `## 1.2.3.4` named versions too. The
+    /// release notes compared a heading's text with their argument, so `## 01.2.3` named nothing
+    /// there that the check read as 1.2.3. Migration's reading kept a heading's text, so its
+    /// `01.2.3` explained no archive's 1.2.3. One reading now answers for all of them, whichever
+    /// kind of version its caller holds.
+    #[test]
+    fn a_heading_names_the_same_versions_whoever_reads_it() {
+        let read = |line: &str| -> Vec<String> {
+            heading_versions::<crate::version::Version>(line)
+                .iter()
+                .map(ToString::to_string)
+                .collect()
+        };
+        for (line, versions) in [
+            ("## 0.11.0 — arriving from OpenSpec", &["0.11.0"][..]),
+            ("## v1.2.3, then 1.2.4", &["1.2.3", "1.2.4"]),
+            ("## 1.2.3-rc.1", &["1.2.3"]),
+            ("#1.2.3", &["1.2.3"]),
+            ("## 01.2.3", &["1.2.3"]),
+            ("## 1.2.3.", &[]),
+            ("## .1.2.3", &[]),
+            ("## 1.2.3..4", &[]),
+            ("## 1.2.3.4", &[]),
+            ("## 0.1", &[]),
+            ("## 2026", &[]),
+            ("## ١.٢.٣", &[]),
+            ("1.2.3 in prose", &[]),
+            (" ## 1.2.3", &[]),
+        ] {
+            assert_eq!(read(line), versions, "{line:?}");
+        }
+        let changelog = "# Changelog\n\n## 0.2.0\n\nProse naming 0.1.0.\n\n## 0.1.0\n";
+        assert_eq!(
+            changelog_versions::<ProjectVersion>(changelog)
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            changelog_headings(changelog)
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            "a project's changelog and a runbook's were read two ways"
+        );
     }
 
     /// An inventory round-trips, and an empty one is a record rather than an omission.
@@ -2079,15 +2146,14 @@ mod tests {
         assert_eq!(ordered[1].archive, "b", "0.10.0 was ordered before 0.9.0");
     }
 
-    /// The shared fixtures are what both readers read, and this reader agrees with them.
+    /// The release fixtures say what this reader decides of each case, and it does.
     ///
-    /// **The test that keeps two implementations of one format honest.** `scripts/check-release`
-    /// reads the same files in Python, because it runs where no build has happened; a fixture set
-    /// only one side reads would let the two disagree about version ordering or about what a legacy
-    /// archive is, and the disagreement would surface as a suite that passes locally and fails in
-    /// continuous integration.
+    /// The format's cases, in `fixtures/release/`, each with the reason it exists. They were shared
+    /// with a second reader in Python until 1.3.1, and the cases added when it was deleted are the
+    /// inputs the two decided differently: a version of two parts or four, one with a space, a sign,
+    /// another script's numerals, or no ceiling, and a heading whose version runs into a dot.
     #[test]
-    fn the_shared_fixtures_say_what_both_readers_read() {
+    fn the_release_fixtures_say_what_this_reader_decides() {
         let cases = std::fs::read_to_string(fixtures().join("cases.json"))
             .expect("the shared fixture manifest is readable");
         let cases: serde_json::Value = serde_json::from_str(&cases).expect("the manifest is JSON");

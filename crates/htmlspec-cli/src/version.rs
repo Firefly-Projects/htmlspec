@@ -170,7 +170,7 @@ impl std::fmt::Display for ProjectVersion {
 ///
 /// A third meaning over the same three numbers, and a distinct type for the same reason as the
 /// other two: a tool's version is compared against a declaration, never against a project's release
-/// or a runbook's. Keeping them apart is what lets [`crate::preflight`] compare numerically without
+/// or a runbook's. Keeping them apart is what lets `crate::preflight` compare numerically without
 /// a reader wondering which of the three a function was handed.
 ///
 /// The declared and the observed forms are one type, which is the point: `runbook-portability`
@@ -198,6 +198,137 @@ impl std::fmt::Display for ToolVersion {
 impl From<Version> for ProjectVersion {
     fn from(version: Version) -> Self {
         Self(version)
+    }
+}
+
+/// A meaning a version read from text can take: a bare [`Version`], a [`RunbookVersion`], or a
+/// [`ProjectVersion`].
+///
+/// Each reads by [`Version::parse`], so a reading generic over the kind, such as
+/// `runbook_release::changelog_versions`, finds the same versions whichever meaning its caller
+/// asks for, and the caller still says which meaning it holds. Sealed, so no other crate adds a
+/// kind that reads by another grammar: the four grammars the release tools once had were four
+/// kinds of this.
+pub trait VersionKind: sealed::Sealed + Sized {
+    /// Reads a version of this kind.
+    fn read(text: &str) -> Result<Self, VersionError>;
+}
+
+impl VersionKind for Version {
+    fn read(text: &str) -> Result<Self, VersionError> {
+        Self::parse(text)
+    }
+}
+
+impl VersionKind for RunbookVersion {
+    fn read(text: &str) -> Result<Self, VersionError> {
+        Self::parse(text)
+    }
+}
+
+impl VersionKind for ProjectVersion {
+    fn read(text: &str) -> Result<Self, VersionError> {
+        Self::parse(text)
+    }
+}
+
+mod sealed {
+    /// What only this module's kinds of version are.
+    pub trait Sealed {}
+    impl Sealed for super::Version {}
+    impl Sealed for super::RunbookVersion {}
+    impl Sealed for super::ProjectVersion {}
+}
+
+/// The project's version as a **release** names it: in a tag, a crate, a tarball, and a formula.
+///
+/// A [`ProjectVersion`] whose text is exactly its own canonical rendering: three numbers with no
+/// leading zero, no sign, and no space, and nothing before or after them. The release tools take
+/// one wherever a release's version is given to them, in an argument or a tag, and for the version
+/// the published crates declare, because a tag, a crate, and a formula must all name the same
+/// string, and a version that renders other than it was written is one the release could not
+/// carry. [`Version::parse`] is more forgiving, trimming spaces and reading `01` as `1`, and stays
+/// so wherever a version is read from a file the program already read in 1.x: a `spec.nix`, a
+/// runbook's `VERSION`, and an archived change's `VERSION`, which the release check reads as a
+/// [`ProjectVersion`], as archival does.
+///
+/// The one grammar is still [`Version::parse`]'s. This type refuses what it reads but would render
+/// differently, and adds no rule of its own.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct ReleaseVersion(ProjectVersion);
+
+/// Why text is not a release's version.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ReleaseVersionError {
+    /// Not a version at all, by [`Version::parse`].
+    NotAVersion {
+        /// The text as given.
+        text: String,
+        /// Why the one grammar refused it.
+        reason: VersionError,
+    },
+    /// A version, written otherwise than it renders.
+    NotCanonical {
+        /// The text as given.
+        text: String,
+        /// The version as a release names it.
+        canonical: ProjectVersion,
+    },
+}
+
+impl std::fmt::Display for ReleaseVersionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NotAVersion { text, reason } => write!(
+                f,
+                "{text:?} is not a release version: {reason}. Give three numbers, as in 0.33.0"
+            ),
+            Self::NotCanonical { text, canonical } => write!(
+                f,
+                "{text:?} is not a release version as written: a release names it {canonical}, \
+                 three numbers with no leading zero, sign, or space"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for ReleaseVersionError {}
+
+impl ReleaseVersion {
+    /// Reads a release's version, refusing any text that is not its own canonical rendering.
+    pub fn parse(text: &str) -> Result<Self, ReleaseVersionError> {
+        let version = Version::parse(text).map_err(|reason| ReleaseVersionError::NotAVersion {
+            text: text.to_owned(),
+            reason,
+        })?;
+        if version.to_string() == text {
+            Ok(Self(ProjectVersion(version)))
+        } else {
+            Err(ReleaseVersionError::NotCanonical {
+                text: text.to_owned(),
+                canonical: ProjectVersion(version),
+            })
+        }
+    }
+
+    /// The project version this release is, to compare with what an archive or a changelog
+    /// records.
+    pub const fn project(self) -> ProjectVersion {
+        self.0
+    }
+}
+
+impl std::fmt::Display for ReleaseVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::str::FromStr for ReleaseVersion {
+    type Err = ReleaseVersionError;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        Self::parse(text)
     }
 }
 
@@ -346,6 +477,92 @@ mod tests {
             ToolVersion::parse("3.13.2").expect("parses").to_string(),
             "3.13.2"
         );
+    }
+
+    /// A release's version is the one grammar's, refused wherever its text is not its rendering.
+    ///
+    /// The inputs on which the release tools' four grammars disagreed before they became one:
+    ///
+    /// | Input        | check-release | set-version | release-notes | `Version::parse` | here    |
+    /// | ------------ | ------------- | ----------- | ------------- | --------------- | ------- |
+    /// | `0.1`        | 0.1           | refused     | refused       | refused         | refused |
+    /// | `0.1.0.0`    | 0.1.0.0       | refused     | refused       | refused         | refused |
+    /// | `01.2.3`     | 1.2.3         | refused     | `01.2.3`      | 1.2.3           | refused |
+    /// | `1. 2.3`     | refused       | refused     | refused       | 1.2.3           | refused |
+    /// | `1.2.3`      | 1.2.3         | 1.2.3       | `1.2.3`       | 1.2.3           | 1.2.3   |
+    ///
+    /// release-notes compared its argument with a heading as text, so its `01.2.3` named no
+    /// heading that check-release read as 1.2.3. The rest are the ones found while porting them.
+    #[test]
+    fn a_release_version_is_its_own_canonical_rendering() {
+        assert_eq!(
+            ReleaseVersion::parse("1.2.3").map(|version| version.to_string()),
+            Ok(String::from("1.2.3"))
+        );
+        assert_eq!(
+            ReleaseVersion::parse("1.2.3").map(ReleaseVersion::project),
+            Ok(ProjectVersion::parse("1.2.3").expect("parses"))
+        );
+        for (text, found) in [("0.1", 2), ("0.1.0.0", 4)] {
+            assert_eq!(
+                ReleaseVersion::parse(text),
+                Err(ReleaseVersionError::NotAVersion {
+                    text: text.to_owned(),
+                    reason: VersionError::Shape { found }
+                }),
+                "{text:?}"
+            );
+        }
+        // What `Version::parse` reads as 1.2.3 but writes otherwise: a leading zero and a space
+        // the explainer found, and a sign, a space around it, and a line's end found in the port.
+        // `u64`'s own parser takes a `+`, which no grammar before the port did.
+        for text in ["01.2.3", "1. 2.3", "+1.2.3", " 1.2.3", "1.2.3\n"] {
+            assert_eq!(
+                ReleaseVersion::parse(text),
+                Err(ReleaseVersionError::NotCanonical {
+                    text: text.to_owned(),
+                    canonical: ProjectVersion::parse("1.2.3").expect("parses"),
+                }),
+                "{text:?}"
+            );
+        }
+        // Python's `\d` matched every script's decimal digits and its `int` read them, and its
+        // numbers had no ceiling. The one grammar reads ASCII digits into a `u64`.
+        for text in ["١.٢.٣", "１.２.３", "18446744073709551616.0.0"] {
+            assert!(
+                matches!(
+                    ReleaseVersion::parse(text),
+                    Err(ReleaseVersionError::NotAVersion {
+                        reason: VersionError::Component { .. },
+                        ..
+                    })
+                ),
+                "{text:?} was read as a release version"
+            );
+        }
+    }
+
+    /// What the program accepts in a `spec.nix` or a runbook's `VERSION` did not change when the
+    /// release tools took a stricter type: the forgiving inputs still read.
+    #[test]
+    fn the_one_grammar_still_forgives_what_it_forgave() {
+        for text in ["01.2.3", "1. 2.3", " 1.2.3\n"] {
+            assert_eq!(Version::parse(text), Version::parse("1.2.3"), "{text:?}");
+            assert_eq!(
+                RunbookVersion::parse(text).map(|version| version.to_string()),
+                Ok(String::from("1.2.3")),
+                "{text:?}"
+            );
+        }
+    }
+
+    /// A rejection of a release version says what one looks like.
+    #[test]
+    fn a_release_version_rejection_says_what_to_give() {
+        let shape = ReleaseVersion::parse("0.1").expect_err("refused");
+        assert!(shape.to_string().contains("as in 0.33.0"), "{shape}");
+        let written = ReleaseVersion::parse("01.2.3").expect_err("refused");
+        assert!(written.to_string().contains("names it 1.2.3"), "{written}");
     }
 
     /// A project version is the same three numbers, and is not a runbook version.

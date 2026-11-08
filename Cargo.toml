@@ -1,12 +1,17 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", "conformance"]
+members = ["crates/*", "conformance", "xtask", "xtask/pull-request"]
+# A command with no package named builds the published crates alone. `conformance`, `xtask`, and
+# `xtask/pull-request`, the repository's own test harness, tools, and pull-request rules, are reached
+# only by a command that names them or says `--workspace`, as `scripts/check`'s stages do, so
+# `cargo build --release` builds what ships.
+default-members = ["crates/*"]
 
 [workspace.metadata.crane]
 name = "htmlspec"
 
 [workspace.package]
-version = "1.3.0"
+version = "1.3.1"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/Firefly-Projects/htmlspec"
@@ -45,6 +50,20 @@ command-group = "=5.0.1"
 # dependency reached through another crate is one a bump can remove without notice. Pinned exactly
 # like every other dependency.
 signal-hook = "=0.3.18"
+# A pseudo-terminal for the test that drives `init`'s prompt, `crates/htmlspec-cli/tests/prompt.rs`.
+# Already in the tree through `command-group`, at this version, so this adds no package: the test
+# names it for `openpty`, a safe function behind the `term` feature, and for `poll`, which
+# `command-group` already enables. Pinned exactly like every other dependency, and only a
+# development dependency, so nothing that ships calls it.
+nix = { version = "=0.27.1", default-features = false }
+# The release tarballs, written by the tools crate's packer: a tar archive whose every entry's owner,
+# mode, and time is fixed, compressed with a gzip header that holds no time or name, so the same
+# binary packs to the same bytes. Pinned exactly, with the default features off: `tar`'s would add
+# `xattr` and move `rustix`, and `flate2`'s would add `zlib-rs`, so with them off the lockfile gains
+# seven packages and moves none. Only `htmlspec-xtask` depends on them, so no published crate, and
+# nothing the binary is built from, does.
+tar = { version = "=0.4.46", default-features = false }
+flate2 = { version = "=1.1.10", default-features = false, features = ["rust_backend"] }
 anyhow = "1.0"
 thiserror = "2.0"
 typify = "0.7.0"
@@ -55,14 +74,35 @@ insta = "1.43"
 proptest = "1.7"
 pretty_assertions = "1.4"
 
-htmlspec-schema = { version = "=1.3.0", path = "crates/htmlspec-schema" }
-htmlspec-parse = { version = "=1.3.0", path = "crates/htmlspec-parse" }
-htmlspec-format = { version = "=1.3.0", path = "crates/htmlspec-format" }
-htmlspec-validate = { version = "=1.3.0", path = "crates/htmlspec-validate" }
-htmlspec-assets = { version = "=1.3.0", path = "crates/htmlspec-assets" }
+htmlspec-schema = { version = "=1.3.1", path = "crates/htmlspec-schema" }
+htmlspec-parse = { version = "=1.3.1", path = "crates/htmlspec-parse" }
+htmlspec-format = { version = "=1.3.1", path = "crates/htmlspec-format" }
+htmlspec-validate = { version = "=1.3.1", path = "crates/htmlspec-validate" }
+htmlspec-assets = { version = "=1.3.1", path = "crates/htmlspec-assets" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
 
 [workspace.lints.clippy]
 unwrap_used = "warn"
+
+# The packer compresses each 40 MB binary with `flate2`, and the release workflow runs the tools as
+# verify built them, in the dev profile, where an unoptimised deflate took six seconds a tarball.
+# So the gzip path alone is optimised in that profile: the compressor, the checksums the gzip and
+# zlib formats carry, and `flate2` around them. Only the tools crate depends on any of them, so no
+# published crate and nothing the binary is built from compiles differently, and the release profile
+# is untouched.
+[profile.dev.package.flate2]
+opt-level = 3
+
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+
+[profile.dev.package.crc32fast]
+opt-level = 3
+
+[profile.dev.package.adler2]
+opt-level = 3
+
+[profile.dev.package.simd-adler32]
+opt-level = 3

@@ -48,7 +48,7 @@
         <section id="hs-purpose">
           <h2>What this runbook is for</h2>
           <p>Shipping a version of html-spec is four steps, and this project has run them five times. Each of those five runs retyped the steps into a new <code>tasks.md</code>, under a section number that was different every time — 6, 8, 6, 9, 7 — because nothing was shared.</p>
-          <p><strong>The procedure has been got wrong, and the same lesson was learned twice.</strong> That is what makes this a runbook rather than a note. A procedure whose steps are exact belongs in a script, and this project keeps those in <code>scripts/</code>; what a script cannot hold is the step whose content is judgment, and the release contains one that this project has already decided is judgment. <code>archive.md</code> says so: deciding whether the change earned a patch, a minor, or a major increment is judgment, so it is the contributor's, and whether one version follows another is exact, so it is the program's.</p>
+          <p><strong>The procedure has been got wrong, and the same lesson was learned twice.</strong> That is what makes this a runbook rather than a note. A procedure whose steps are exact belongs in a script, and this project keeps those in its tools crate, <code>xtask/</code>; what a script cannot hold is the step whose content is judgment, and the release contains one that this project has already decided is judgment. <code>archive.md</code> says so: deciding whether the change earned a patch, a minor, or a major increment is judgment, so it is the contributor's, and whether one version follows another is exact, so it is the program's.</p>
           <p>The requirements below are what this runbook requires of a run. <strong>They are not obligations of the project</strong> — the project's contract is what its accepted specifications state, and a runbook is a procedure the project keeps.</p>
         </section>
         <section id="hs-requirements">
@@ -89,9 +89,9 @@
             </article>
           </section>
           <section class="requirement" id="req-the-version-moves-with-its-pins" data-change="unchanged">
-            <h3>The version moves only through the script that moves its pins <span class="hs-id">req-the-version-moves-with-its-pins</span></h3>
-            <p>A run of this procedure MUST advance the workspace version only by running <code>scripts/set-version</code> with the new version, and MUST NOT edit <code>version</code> under <code>[workspace.package]</code>, or any <code>htmlspec-*</code> entry in <code>[workspace.dependencies]</code>, by hand.</p>
-            <p>Since 0.33.0 the six crates release together, so each internal dependency names the workspace's exact version, <code>version = "=X.Y.Z"</code>, beside its path. Cargo cannot read the workspace version into those entries, so they are strings, and a version raised without them leaves every one naming the old version. The offline relock then fails, and so does every stage of the suite that builds, before the release check could name the stale pin. The script writes the version and every pin in one edit, relocks offline, and puts the manifest back when the relock fails.</p>
+            <h3>The version moves only through the tool that moves its pins <span class="hs-id">req-the-version-moves-with-its-pins</span></h3>
+            <p>A run of this procedure MUST advance the workspace version only by running <code>cargo xtask set-version</code> with the new version, and MUST NOT edit <code>version</code> under <code>[workspace.package]</code>, or any <code>htmlspec-*</code> entry in <code>[workspace.dependencies]</code>, by hand.</p>
+            <p>Since 0.33.0 the six crates release together, so each internal dependency names the workspace's exact version, <code>version = "=X.Y.Z"</code>, beside its path. Cargo cannot read the workspace version into those entries, so they are strings, and a version raised without them leaves every one naming the old version. The offline relock then fails, and so does every stage of the suite that builds, before the release check could name the stale pin. The tool writes the version and every pin in one edit, reads the edit back through <code>cargo metadata</code>, relocks offline, and puts back every file it wrote when a step fails.</p>
             <article class="scenario" id="scenario-the-version-raised-by-hand" data-change="unchanged">
               <h4>The version raised by hand, its pins left behind</h4>
               <dl>
@@ -100,7 +100,7 @@
                 <dt>When</dt>
                 <dd>A run raises <code>version</code> under <code>[workspace.package]</code> to 0.32.1 by hand and runs <code>cargo update --workspace --offline</code>.</dd>
                 <dt>Then</dt>
-                <dd>cargo exits 101 with "failed to select a version for the requirement <code>htmlspec-parse = "=0.32.0"</code>". <code>scripts/set-version 0.32.1</code> on the same tree writes the five pins and relocks, changing only the workspace's own entries in <code>Cargo.lock</code>.</dd>
+                <dd>cargo exits 101 with "failed to select a version for the requirement <code>htmlspec-parse = "=0.32.0"</code>". <code>cargo xtask set-version 0.32.1</code> on the same tree writes the five pins and relocks, changing only the workspace's own entries in <code>Cargo.lock</code>.</dd>
               </dl>
             </article>
             <article class="scenario" id="scenario-a-stale-pin" data-change="unchanged">
@@ -111,7 +111,7 @@
                 <dt>When</dt>
                 <dd>A run reaches the release check.</dd>
                 <dt>Then</dt>
-                <dd><code>scripts/check-release</code> fails, naming the entry, the version it pins, the version the workspace declares, and <code>scripts/set-version</code> as the repair.</dd>
+                <dd><code>cargo xtask check-release</code> fails, naming the entry, the version it pins, the version the workspace declares, and <code>cargo xtask set-version</code> as the repair.</dd>
               </dl>
             </article>
           </section>
@@ -158,7 +158,7 @@
           <section class="requirement" id="req-the-increment-is-judgment" data-change="unchanged">
             <h3>The size of the increment is the contributor's decision <span class="hs-id">req-the-increment-is-judgment</span></h3>
             <p>A run of this procedure MUST NOT derive the version increment from anything the program can compute, and the run MUST state the reasoning for the increment it chose.</p>
-            <p>This is a reservation the project already took and wrote down, and it is why the release cannot be a script end to end. The release-hygiene check's own docstring explains why the automated version is impossible rather than merely unbuilt: a change under way legitimately has not advanced the version, because the patch-versus-minor decision is best made once the work's shape is known, so a stage asking about it would be red from a change's first commit to its last — and a suite that is always red is one a contributor learns to skip.</p>
+            <p>This is a reservation the project already took and wrote down, and it is why the release cannot be a script end to end. The release-hygiene check's own documentation explains why the automated version is impossible rather than merely unbuilt: a change under way legitimately has not advanced the version, because the patch-versus-minor decision is best made once the work's shape is known, so a stage asking about it would be red from a change's first commit to its last — and a suite that is always red is one a contributor learns to skip.</p>
             <p>What remains automatable is checked automatically. Whether one version is ordered after another is exact, so archival compares them and refuses on the comparison alone.</p>
             <article class="scenario" id="scenario-increment-chosen" data-change="unchanged">
               <h4>An increment chosen and reasoned</h4>
@@ -215,23 +215,11 @@
           </section>
           <section class="requirement" id="req-the-pinned-toolchain-is-what-runs" data-change="unchanged">
             <h3>The toolchain the flake pins is the one the run uses <span class="hs-id">req-the-pinned-toolchain-is-what-runs</span></h3>
-            <p>A run MUST start with <code>cargo</code>, <code>rustc</code>, and <code>python3</code> resolving to the development shell <code>flake.nix</code> pins, and MUST NOT start from a toolchain or an interpreter installed beside it.</p>
-            <p data-field="note">preflight/v1 {"kind":"toolchain","manifest":"flake.nix","shell":"default","tools":["cargo","rustc","python3"]}</p>
+            <p>A run MUST start with <code>cargo</code> and <code>rustc</code> resolving to the development shell <code>flake.nix</code> pins, and MUST NOT start from a toolchain installed beside it.</p>
+            <p data-field="note">preflight/v1 {"kind":"toolchain","manifest":"flake.nix","shell":"default","tools":["cargo","rustc"]}</p>
             <p>The declaration names the manifest rather than a version, and that is the point of it: <code>rust-toolchain.toml</code> already pins the compiler, and a version restated here would be a second pin that drifts from the first. What the check establishes is provenance — that the executables this run invokes are the ones the pin selects.</p>
             <p><strong>This is stricter than the procedure strictly needs, and the cost is named rather than discovered at step three.</strong> A contributor whose <code>cargo</code> comes from rustup reading the same <code>rust-toolchain.toml</code> has a working toolchain and will be refused, because nothing observable from outside distinguishes it from an unpinned one. The remedy the refusal names is to enter the shell; the alternative was a check that accepts any <code>cargo</code> and therefore establishes nothing about the pin. The <code>~/.cargo/bin/cargo</code> broken symlink this procedure has met is the case that makes the distinction worth paying for: it resolves, and it does not run.</p>
-            <p><code>python3</code> is declared beside the compiler because the shell supplies it and a step cannot run without it. On macOS the <code>python3</code> outside the shell is <code>/usr/bin/python3</code>, a stub that runs the interpreter the developer tools at <code>DEVELOPER_DIR</code> hold, and the shell points <code>DEVELOPER_DIR</code> at the Nix SDK, which holds none. The stub resolves and then exits with "error: tool 'python3' not found". This runbook's 0.2.0 changelog records the release check failing that way, and the publish runbook's first run met it at its second step. The <code>toolchain</code> form states no version, so declaring <code>python3</code> in it pins nothing the flake does not already pin.</p>
             <p><code>git</code> is deliberately not declared. A tool check states an exact version, and this procedure needs any <code>git</code> that stages a file, and the shell does not supply one, so the <code>toolchain</code> form would refuse every run. It stays an obligation of the run, stated in the procedure's own prose and recorded by whoever runs it.</p>
-            <article class="scenario" id="scenario-an-interpreter-outside-the-shell" data-change="unchanged">
-              <h4>An interpreter that resolves outside the shell</h4>
-              <dl>
-                <dt>Given</dt>
-                <dd>A macOS machine whose search path resolves <code>python3</code> to <code>/usr/bin/python3</code>, the developer-tools stub, because the run was started outside <code>nix develop</code>.</dd>
-                <dt>When</dt>
-                <dd>The prerequisites are checked before the run starts.</dd>
-                <dt>Then</dt>
-                <dd>The check reports that <code>python3</code> resolves to <code>/usr/bin/python3</code>, which is not inside the declared environment, and the run does not start.</dd>
-              </dl>
-            </article>
             <article class="scenario" id="scenario-a-shadowed-toolchain" data-change="unchanged">
               <h4>A toolchain installed beside the pinned one</h4>
               <dl>
@@ -278,8 +266,8 @@
           </section>
           <section class="risk" id="risk-the-inputs-are-prose" data-change="unchanged">
             <h3>The inputs are prose that nothing checks <span class="hs-id">risk-the-inputs-are-prose</span></h3>
-            <p>This procedure requires a toolchain, an interpreter, a clean working tree, and a repository whose project is in place. The first two are checked before a run starts. The other two are prose in the tasks document, so a run on a machine missing one discovers it partway through — at the step that needs it, with the version already advanced.</p>
-            <p data-field="mitigation">Partly held down. The toolchain and the interpreter are a machine requirement, <code>req-the-pinned-toolchain-is-what-runs</code>, which preflight checks and which gates starting a run. The pinned development shell supplies both, and preflight refuses a <code>python3</code> from outside it, because on macOS the system's cannot run inside that shell. A runbook has no notion of an input, which is an open finding of the change that established runbooks, so the other two stay prose.</p>
+            <p>This procedure requires a toolchain, a clean working tree, and a repository whose project is in place. The first is checked before a run starts. The other two are prose in the tasks document, so a run on a machine missing one discovers it partway through — at the step that needs it, with the version already advanced.</p>
+            <p data-field="mitigation">Partly held down. The toolchain is a machine requirement, <code>req-the-pinned-toolchain-is-what-runs</code>, which preflight checks and which gates starting a run. The pinned development shell supplies it, and the tools every step runs are built from this repository by that toolchain, so they need nothing else installed. A runbook has no notion of an input, which is an open finding of the change that established runbooks, so the other two stay prose.</p>
           </section>
         </section>
         <section id="hs-evidence">
@@ -307,8 +295,8 @@
             <p data-field="method">Run the installed-files check before advancing the version and again after, with nothing else changed between the two runs. The first passes and the second fails, which establishes that the version alone is the trigger. The 0.12.0 release performed exactly this and recorded both outcomes; the diff after regeneration was one line in each of 45 files, and inspecting the whole diff found nothing but the version stamp.</p>
           </section>
           <section class="verification" id="verify-the-version-moves-with-its-pins" data-change="unchanged" data-outcome="passed" data-refs="req-the-version-moves-with-its-pins">
-            <h3>The version raised alone, and then through the script <span class="hs-id">verify-the-version-moves-with-its-pins</span></h3>
-            <p data-field="method">On the tree that pinned each internal dependency at <code>=0.32.0</code>, raise <code>version</code> under <code>[workspace.package]</code> to 0.32.1 by hand and run <code>cargo update --workspace --offline</code> with the pinned cargo 1.90: it exited 101 with "failed to select a version for the requirement <code>htmlspec-parse = "=0.32.0"</code>". Then run <code>scripts/set-version 0.32.1</code> on the same tree: it wrote the five pins and relocked, changing only the seven workspace entries in <code>Cargo.lock</code>, and with the instruction files regenerated and a trial changelog heading all 13 stages of <code>scripts/check</code> passed. With one pin set to <code>=0.31.0</code>, <code>scripts/check-release</code> exited 1 naming the entry and the script. Recorded on 2026-10-19 by <code>ship-through-four-channels</code>, and the trial was reverted.</p>
+            <h3>The version raised alone, and then through the tool <span class="hs-id">verify-the-version-moves-with-its-pins</span></h3>
+            <p data-field="method">On the tree that pinned each internal dependency at <code>=0.32.0</code>, raise <code>version</code> under <code>[workspace.package]</code> to 0.32.1 by hand and run <code>cargo update --workspace --offline</code> with the pinned cargo 1.90: it exited 101 with "failed to select a version for the requirement <code>htmlspec-parse = "=0.32.0"</code>". Then run the tool on the same tree: it wrote the five pins and relocked, changing only the seven workspace entries in <code>Cargo.lock</code>, and with the instruction files regenerated and a trial changelog heading all 13 stages of <code>scripts/check</code> passed. With one pin set to <code>=0.31.0</code>, the release check exited 1 naming the entry and the tool. Recorded on 2026-10-19 by <code>ship-through-four-channels</code>, with the tool's Python predecessor, and the trial was reverted. At this runbook's 0.6.0, <code>cargo xtask set-version 1.3.2</code> on a scratch copy of the repository at 1.3.1 made the same diff as that predecessor, its version and five pins in <code>Cargo.toml</code> and its eight workspace entries in <code>Cargo.lock</code>; the tool's tests raise a scratch workspace's version by hand, where cargo exits 101, and through the tool, which relocks; and with <code>htmlspec-parse</code> pinned at <code>=1.3.0</code>, <code>cargo xtask check-release</code> exited 1 naming the pin, the version it pins, the version declared, and <code>cargo xtask set-version</code>.</p>
           </section>
           <section class="verification" id="verify-the-project-is-left-in-place" data-change="unchanged" data-outcome="passed" data-refs="req-regenerating-leaves-the-project-in-place">
             <h3>Nothing is left to remove, and removing is what destroys <span class="hs-id">verify-the-project-is-left-in-place</span></h3>
@@ -316,7 +304,7 @@
           </section>
           <section class="verification" id="verify-the-increment-is-not-derived" data-change="unchanged" data-outcome="passed" data-refs="req-the-increment-is-judgment">
             <h3>Nothing in the suite derives the increment <span class="hs-id">verify-the-increment-is-not-derived</span></h3>
-            <p data-field="method">Read the release-hygiene check and confirm which questions it asks. It asks four of the archive — that every archived change records a version, that every recorded version above the baseline is distinct, that every recorded version has a changelog entry, and that every runbook release the archive publishes is accounted for — plus three of the workspace: that the declared version has a changelog entry, that every internal dependency pins it, and that every published crate carries the root <code>LICENSE</code>. Given a tag, it also asks whether the tag names the declared version. None of them computes what the next version should be, and the file's own docstring states that a check which did would be red from a change's first commit to its last. So the reservation holds by the absence of a gate rather than by a gate enforcing it, which is what this verification records.</p>
+            <p data-field="method">Read the release-hygiene check and confirm which questions it asks. It asks four of the archive — that every archived change records a version, that every recorded version above the baseline is distinct, that every recorded version has a changelog entry, and that every runbook release the archive publishes is accounted for — plus three of the workspace: that the declared version has a changelog entry, that every internal dependency pins it, and that every published crate carries the root <code>LICENSE</code>. Given a tag, it also asks whether the tag names the declared version. None of them computes what the next version should be, and its own documentation states that a check which did would be red from a change's first commit to its last. So the reservation holds by the absence of a gate rather than by a gate enforcing it, which is what this verification records.</p>
           </section>
           <section class="verification" id="verify-the-recorded-version-cannot-be-early" data-change="unchanged" data-outcome="passed" data-refs="req-the-recorded-version-waits-for-archival">
             <h3>The archived directory does not exist before archival <span class="hs-id">verify-the-recorded-version-cannot-be-early</span></h3>

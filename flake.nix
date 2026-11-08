@@ -33,6 +33,12 @@
 
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
+        # The package's source, which the binary and the dependency derivation are built from. The
+        # suite's derivation below no longer reads through this filter: it takes the whole tracked
+        # tree. The filter stays as narrow as it was, so a change to a workflow or a document does not
+        # rebuild the binary, and the reasons below say why each kind of file was kept when the
+        # suite ran in this same source.
+        #
         # Keep JSON schema assets, HTML fixtures, and vendored browser libraries in
         # the build source, because build scripts and tests read them from disk.
         # `scripts/` is kept because the check suite *is* `scripts/check`, and a
@@ -116,6 +122,36 @@
           else if self ? dirtyRev then "${builtins.substring 0 12 self.dirtyRev}-dirty"
           else null;
 
+        # The question the suite's derivation and the development shell's check each ask before
+        # anything else: whether an interpreter resolves where none may. A name it finds fails the
+        # build that asks, printing where it resolved. Stated once, so this file names the
+        # interpreter on one line, which the ban's allow-list, in the tools crate, names by its
+        # exact text; nothing else in this file may name it. An `if`, rather than each lookup
+        # negated with `!` and joined by `&&`, because a build phase runs under `set -e`, which
+        # ignores a failure that `!` inverts or that a `&&` list does not end on, so that form would
+        # print what it found and carry on.
+        noInterpreterIn = place: ''
+          if command -v python3 || command -v python; then
+            echo "${place} supplies an interpreter it must not; take it out of its inputs" >&2
+            exit 1
+          fi
+        '';
+
+        # The development shell, and its check below, which builds with exactly the shell's inputs.
+        # No interpreter, as the suite's derivation has none: the repository's tools are built from
+        # its Cargo workspaces, and nothing it holds runs one.
+        #
+        # `curl` because the crate publisher asks the index with it, and its tests run it, as the
+        # suite's derivation supplies it.
+        developmentShell = craneLib.devShell {
+          packages = [
+            rustToolchain
+            pkgs.cargo-nextest
+            pkgs.jq
+            pkgs.curl
+          ];
+        };
+
         # The binary's notices go where a Nix user's documentation goes, as every other channel
         # ships them beside the binary: htmlspec's own license, the JavaScript libraries' it embeds,
         # and the Rust crates' it is built from.
@@ -140,35 +176,41 @@
         #
         # The script's own comments say what each step covers. Nothing about the
         # suite's contents is decided here.
+        #
+        # The suite runs in the whole tracked tree, the flake's own source, and not in the package's
+        # filtered one, so every file a stage reads in a checkout is here too. Through the filter,
+        # each kind of file it did not name passed locally and failed here, one extension at a time.
+        # `HTMLSPEC_SOURCE_TREE` names the same tree, as Nix copied it, to the stage that holds the
+        # ban, which reads every tracked file: the build directory the stages run in is a copy of it
+        # that fills with build output and patched scripts, and is no record of what is tracked.
         checkSuite = craneLib.mkCargoDerivation (commonArgs // {
           inherit cargoArtifacts;
+          src = ./.;
+          HTMLSPEC_SOURCE_TREE = "${./.}";
           pnameSuffix = "-check-suite";
-          # Every script, not just the entry point. `scripts/check` runs the others as
-          # programs, so the sandbox resolves each of their shebangs too — and an
-          # unpatched one took CI red for five merges with `/usr/bin/env: bad
-          # interpreter`. Patching only the script this phase names is the mistake that
-          # hid, because the failure surfaces one level in. A script added to the suite
-          # must be added here in the same change.
+          # Every script under `scripts/`, not a list of them. `scripts/check` runs the others as
+          # programs, so the sandbox resolves each of their shebangs too, and a hand-kept list
+          # missed one and took CI red for five merges with `/usr/bin/env: bad interpreter`.
+          #
+          # The sandbox supplies no interpreter for a script that slipped past the suite's ban to
+          # run in, and the question above checks it before the suite runs.
           buildPhaseCargoCommand = ''
-            patchShebangs scripts/check scripts/check-prompt scripts/check-release scripts/check-installed \
-              scripts/check-publish-crates scripts/publish-crates scripts/crate-notices \
-              scripts/check-crate-notices scripts/check-readme-install \
-              scripts/check-check-formula scripts/check-formula scripts/render-formula
+            ${noInterpreterIn "the suite's sandbox"}
+            patchShebangs scripts
             ./scripts/check
           '';
-          # `python3` for the prompt, release, publisher, and formula checks, all standard library
-          # only. The prompt one drives a real pty, which is why it is not a `cargo test`; the
-          # release one reads facts about this repository, which a shipped crate's tests
-          # must not depend on. The publisher's serves a stub index on the loopback interface,
-          # which the build sandbox provides, and reaches nothing beyond it.
-          #
-          # `gitMinimal` because that check runs `git init` per case: the prompt's
+          # `gitMinimal` because the prompt's test runs `git init` per case: the prompt's
           # project resolution stops at a repository boundary, so a scratch directory
           # that is not a repository does not exercise the behavior under test. The
-          # script refuses outright when `git` is absent rather than testing something
-          # else. Minimal rather than full `git` — `git init` is the only command it
-          # runs, and full `git` pulls a Perl closure this suite has no use for.
-          nativeBuildInputs = [ rustToolchain pkgs.bash pkgs.python3 pkgs.gitMinimal ];
+          # test fails outright when `git` is absent rather than testing something
+          # else. The ban's own tests also make scratch repositories, with
+          # `git init` and `git add`, and read them with `git ls-files`. Minimal rather
+          # than full `git`, which pulls a Perl closure this suite has no use for.
+          #
+          # `curl` because the crate publisher asks the index with it, and its tests run the real
+          # one against a listener on the loopback interface, which the build sandbox provides, and
+          # reach nothing beyond it.
+          nativeBuildInputs = [ rustToolchain pkgs.bash pkgs.gitMinimal pkgs.curl ];
         });
 
         # The provenance half of the asset lockfile check.
@@ -255,22 +297,20 @@
           # Requires network access to re-fetch the pinned archives, so it is a
           # separate check rather than part of the offline suite.
           assetProvenance = assetProvenance;
+          # The development shell's derivation itself, its build phase replaced by the question, so
+          # it builds with exactly the shell's packages on its search path and nothing of the
+          # machine's: a package added to the shell that brings an interpreter, under any package's
+          # name, fails here. `nix develop` puts the caller's own search path after the shell's,
+          # which this does not read, because a contributor's machine is theirs.
+          shellHasNoInterpreter = developmentShell.overrideAttrs (_: {
+            buildPhase = ''
+              ${noInterpreterIn "the development shell"}
+              touch "$out"
+            '';
+          });
         };
 
-        # `python3` because the suite's Python stages, `publish/export`, and the scripts both
-        # runbooks run are Python, and a runbook's preflight requires this shell. On macOS the
-        # `python3` a shell would otherwise find is `/usr/bin/python3`, a stub that asks the
-        # developer tools where the real one is, and inside this shell `DEVELOPER_DIR` names the
-        # Nix SDK, which holds none: the stub resolves and then fails with "tool 'python3' not
-        # found". The suite's derivation above supplies the same interpreter for the same scripts.
-        devShells.default = craneLib.devShell {
-          packages = [
-            rustToolchain
-            pkgs.cargo-nextest
-            pkgs.jq
-            pkgs.python3
-          ];
-        };
+        devShells.default = developmentShell;
 
         formatter = pkgs.nixpkgs-fmt;
       });

@@ -5,6 +5,37 @@ What this runbook's releases are. A release is the pair of canonical documents â
 identifies one such pair. Nothing else moves it: a run's record is history rather than procedure, so
 adding or editing one is not a release.
 
+## 0.6.0
+
+Published with the project's 1.3.1 release.
+
+**The steps run the repository's Rust tools, and a run needs no `python3`.** The version step runs
+`cargo xtask set-version`, the regeneration step names `cargo xtask check-installed` as the check it
+answers to, the changelog step names `cargo xtask check-release` as the reader of its heading, and
+the last step, now "Confirm the release check passes", runs `cargo xtask check-release`. The Python
+scripts they replace are deleted. `req-the-version-moves-with-its-pins` names `cargo xtask
+set-version` in its statement, its prose, and its scenario of the version raised by hand, and
+`cargo xtask check-release` in its scenario of a stale pin, and its heading says "the tool" for "the
+script". The tool also reads its edit back through `cargo metadata`, and restores the lockfiles as
+well as the manifest when a step fails.
+
+**`python3` is no longer declared.** `req-the-pinned-toolchain-is-what-runs` names `cargo` and
+`rustc` alone, and its preflight declaration's tools are `["cargo","rustc"]`, so `htmlspec preflight
+release` no longer asks for an interpreter. The paragraph that explained declaring `python3` is gone,
+and so is the scenario of an interpreter that resolves outside the shell, which 0.4.0 added. The list
+of what a run consumes drops its `python3` entry and says that `cargo` builds and runs the tools. The
+risk that the inputs are prose no longer counts an interpreter among them. The purpose says this
+project keeps its exact steps in its tools crate, `xtask/`, rather than in `scripts/`.
+
+**The verification of the version step records both tools.** It names the Python script as what ran
+at 0.33.0, and adds what `cargo xtask set-version` and `cargo xtask check-release` did at this
+release: the same diff on a scratch copy of the repository, and the stale pin named.
+
+**What this release does not do.** The four steps and their order are unchanged, and so is what each
+step asks of a run but the command it types. The other five requirements are unchanged, but that
+`req-the-increment-is-judgment` calls the release check's own explanation its documentation, where
+it said docstring. `git` stays undeclared.
+
 ## 0.5.0
 
 Published with the project's 1.1.0 release.

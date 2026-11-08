@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Keep Python out of the repository</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Keep Python out of the repository</h1>
+        <p>The contract this change leaves: the repository holds and runs no Python, every program it runs is built from one of its Cargo workspaces but four shell files named by path, and neither the development shell nor the suite's sandbox supplies an interpreter, which the flake checks of each before anything else runs. The no-python stage of the check suite holds it, with an exact allow-list. One accepted scenario that named the shell's interpreter is withdrawn, and the release refuses a tag naming another version before it builds anything the release ships. The program's surface does not change, and the project archives at 1.3.1.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Keep Python out of the repository</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-toolchain-packaging">toolchain-packaging</a></li>
+          <li><a href="#hs-what-was-built">What was built</a></li>
+          <li><a href="#hs-what-the-contract-leaves">What the contract leaves as it was</a></li>
+          <li><a href="#hs-risks">Risks</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-toolchain-packaging">
+          <h2>toolchain-packaging</h2>
+          <section class="requirement" id="req-the-repository-holds-and-runs-no-python" data-change="added">
+            <h3>The repository holds and runs no Python <span class="hs-id">req-the-repository-holds-and-runs-no-python</span></h3>
+            <p>The repository's tools, tests, and checks SHALL run no Python interpreter. No file the repository tracks, outside the allow-list, SHALL be a Python program, by a Python file name or by a first line that runs a Python interpreter. No file that runs SHALL name a Python interpreter, or a launcher that runs one, in any case: a workflow, a composite action, a shell script, a Git hook, Cargo's configuration, a Nix expression, a Makefile, a justfile, <code>.envrc</code>, a Dockerfile, or a pre-commit configuration. No runbook's preflight declaration SHALL name one as a tool, and no Rust source SHALL start one through <code>Command::new</code>.</p>
+            <p>Every program the repository runs SHALL be built from a member of one of its Cargo workspaces, except four shell files: <code>scripts/check</code>, <code>scripts/install-hooks</code>, <code>.githooks/pre-push</code>, and <code>publish/export</code>, each of which SHALL begin <code>#!/usr/bin/env bash</code>. The check suite SHALL fail on any other tracked file that begins with <code>#!</code>, carries the executable bit, bears a shell script's name, or sits under <code>scripts/</code>, and on any other tracked file that a file that runs hands to a shell or an interpreter to run.</p>
+            <p>Only an allow-list SHALL excuse what the check suite finds, and it SHALL name each exempt path exactly, never a prefix, with the reason it stays. It SHALL admit the archived evidence and survey fixtures that are data nothing runs, which SHALL never carry the executable bit; the three permitted shell files that cross to the public repository; and, by its exact text, the one line of <code>flake.nix</code> that asks whether the suite's sandbox or the development environment supplies an interpreter. That line SHALL be excused once, for the names it asks about and for no other finding, and the same text in another file, or a second time, SHALL be a finding. <code>publish/export</code> never crosses, and SHALL be permitted by a list that never crosses either, <code>publish/no-python</code>, which SHALL permit it and nothing else. An allow-listed path or line the tracked files no longer hold SHALL fail the check suite.</p>
+            <p>Neither the development environment nor the build sandbox the check suite runs in SHALL supply a Python interpreter, and the flake SHALL fail a build where either resolves one, printing where: the suite's derivation before the suite runs, and a check built with exactly the development environment's packages, and nothing of the machine's, on its search path.</p>
+            <p>The check suite SHALL read every tracked file, the flake's source in the build sandbox and Git's index elsewhere, each as the working tree holds it, and no untracked or ignored file. It SHALL fail on each violation, naming the file, the line where there is one, and what in it is Python or a program, and SHALL fail rather than pass where it cannot tell tracked files from anything else.</p>
+            <p>What the check suite SHALL refuse is what an ordinary edit adds: a new file, a new first line, a new step, a new stage, a new hook, a new input to the flake, a new <code>Command::new</code>, and a script handed to a shell by its tracked path. A handoff a reader cannot see without running the line is outside what it SHALL refuse, and is left to the review each pull request takes: a program named through a variable, a computed value, or a workflow expression; <code>eval</code> of a string the line builds; a Rust program named by anything but a string literal; a file that is not tracked when the suite runs; and Python inside a container image or a fetched artifact. Prose SHALL NOT be a finding: Markdown, the changelogs, run records, HTML other than a preflight declaration, YAML that neither runs nor is a workflow or an action, and a Rust string that no <code>Command::new</code> takes. The requirement covers what the repository holds and runs, and no contributor's machine.</p>
+            <article class="scenario" id="scenario-a-python-file-added" data-change="added">
+              <h4>A Python file added</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd><code>scripts/tidy.py</code>, or a file whose first line is <code>#!/usr/bin/env python3</code>, added and staged</dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>the <code>no-python</code> stage fails, naming the file and each rule it broke, under a line naming this requirement</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-step-that-runs-python" data-change="added">
+              <h4>A step that runs Python</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a step that runs <code>python3</code> is added to a workflow or a composite action, <code>pkgs.python3</code> to the flake, or <code>python3</code> to a runbook's preflight declaration</dd>
+                <dt>Then</dt>
+                <dd>the stage fails, naming the file and the line</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-script-outside-the-four-shell-files" data-change="added">
+              <h4>A script outside the four shell files</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a tracked file other than the four shell files that begins with <code>#!</code> or carries the executable bit, in any language: a bash script under <code>scripts/</code>, a new hook under <code>.githooks/</code>, or a file with the executable bit and no <code>#!</code></dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>the stage fails, naming the file as none of the four permitted shell files</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-allow-listed-file-removed" data-change="added">
+              <h4>An allow-listed file removed</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>one of the four archived <code>prove-*.py</code> files, or <code>scripts/install-hooks</code>, is deleted</dd>
+                <dt>Then</dt>
+                <dd>the stage fails, saying the path is allow-listed and absent, so the list cannot outlive what it names</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-allowed-line-changed" data-change="added">
+              <h4>The allowed line changed</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>the line of <code>flake.nix</code> that asks for the interpreter, changed by one byte, written twice, or written into another file that runs</dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>each line that names the interpreter outside the one allowed is a finding, and where <code>flake.nix</code> no longer holds the line, the allowance is reported absent</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-second-shell-file-in-the-private-list" data-change="added">
+              <h4>A second shell file in the private list</h4>
+              <dl>
+                <dt>When</dt>
+                <dd><code>publish/no-python</code> permits a path other than <code>publish/export</code>, or holds an entry that would pin Python</dd>
+                <dt>Then</dt>
+                <dd>the stage stops, naming the list's line and why it may not hold it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-untracked-file-is-not-read" data-change="added">
+              <h4>An untracked file is not read</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd><code>scripts/tidy.py</code> in the working tree, and not in Git's index</dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>the stage passes, and fails once the file is staged</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-prose-that-names-python" data-change="added">
+              <h4>Prose that names Python</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>the README's <code>python3 -m http.server</code>, the changelog's history of the port, and the preflight tests' sample string <code>"python3"</code></dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>none of them is a finding</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-sandbox-supplies-no-interpreter" data-change="added">
+              <h4>The sandbox supplies no interpreter</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a script that slipped past the stage, naming its interpreter through a variable</dd>
+                <dt>When</dt>
+                <dd>the suite runs in the build sandbox, or a contributor runs it in the development shell with nothing but the shell on the search path</dd>
+                <dt>Then</dt>
+                <dd><code>python3</code> and <code>python</code> are not found, so it cannot run</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-interpreter-put-back-in-the-sandbox" data-change="added">
+              <h4>An interpreter put back in the sandbox</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>the suite's derivation with <code>pkgs.python3</code> put back among its inputs</dd>
+                <dt>When</dt>
+                <dd>it builds</dd>
+                <dt>Then</dt>
+                <dd>it fails before any stage runs, printing where the interpreter resolved</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-interpreter-brought-into-the-shell" data-change="added">
+              <h4>An interpreter brought into the shell</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a package added to the development environment that puts <code>python3</code> or <code>python</code> on its search path, under its own name</dd>
+                <dt>When</dt>
+                <dd>the flake's checks build</dd>
+                <dt>Then</dt>
+                <dd>the shell's check fails, printing where the interpreter resolved</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-the-toolchain-builds-reproducibly-from-pinned-inputs" data-change="modified">
+            <h3>The toolchain builds reproducibly from pinned inputs <span class="hs-id">req-the-toolchain-builds-reproducibly-from-pinned-inputs</span></h3>
+            <p>The project SHALL be buildable from fully pinned inputs, including the compiler toolchain, every dependency, and every vendored browser-side library. Building the same revision SHALL produce equivalent results regardless of what is already installed on the machine.</p>
+            <article class="scenario" id="scenario-clean-machine-build" data-change="unchanged">
+              <h4>Clean machine build</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a machine with no project toolchain installed beyond the packaging tool</dd>
+                <dt>When</dt>
+                <dd>a contributor builds the project</dd>
+                <dt>Then</dt>
+                <dd>the build succeeds without installing dependencies by hand</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-two-machines-agree" data-change="unchanged">
+              <h4>Two machines agree</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>two machines building the same revision</dd>
+                <dt>When</dt>
+                <dd>each runs the toolchain against the same document</dd>
+                <dt>Then</dt>
+                <dd>the validation results and formatted output are identical</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-unpinned-dependency-rejected" data-change="unchanged">
+              <h4>Unpinned dependency rejected</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a dependency is introduced without a pinned version and integrity hash</dd>
+                <dt>Then</dt>
+                <dd>the project's own checks fail</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-shell-runs-its-own-interpreter" data-change="removed">
+              <h4>The development shell runs its own interpreter</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a machine whose own <code>python3</code> cannot run inside the development shell, as macOS's cannot</dd>
+                <dt>When</dt>
+                <dd>a contributor runs the project's suite or a runbook's scripts inside the development shell</dd>
+                <dt>Then</dt>
+                <dd>they run the interpreter the shell supplies from the pinned inputs, and not the machine's</dd>
+              </dl>
+            </article>
+          </section>
+          <section class="requirement" id="req-a-release-reaches-every-channel-from-one-tag" data-change="modified">
+            <h3>A release reaches every channel from one tag <span class="hs-id">req-a-release-reaches-every-channel-from-one-tag</span></h3>
+            <p>Every release SHALL be cut from one tag, <code>vX.Y.Z</code>, whose version equals the version the workspace declares, and the binaries, the crates, and the Homebrew formula the release produces SHALL each name that version. The release SHALL refuse a tag that names another version before it builds anything<ins> the release ships</ins>.</p>
+            <p>Publication SHALL begin only from a version tag in the public repository, <code>Firefly-Projects/htmlspec</code>, only for a commit that repository's <code>main</code> holds, and only after the check suite has passed on that commit. A tag in any other repository SHALL publish nothing. A release SHALL publish only from a run in which the binary of every target it releases was built and the formula passed its check, though runs elsewhere leave some of those jobs out.</p>
+            <p>A publication interrupted partway SHALL finish when run again, and SHALL NOT publish any version twice: the crates publish one at a time, a version the registry already holds is skipped, and a rate limit is waited out within a stated budget, after which the run stops and names the crates that remain. Every request the release makes to crates.io SHALL carry a fixed User-Agent that names the project, and no personal information.</p>
+            <p>Each channel that ships the binary SHALL ship its notices with it: each release tarball holds them beside the program, the Homebrew formula installs them, and the Nix package installs them under <code>share/doc/htmlspec/</code>. The formula SHALL declare exactly the licenses the binary credits. The check suite SHALL fail when <code>CRATE-LICENSES</code> differs from what the lockfile reaches, naming each crate added, removed, or changed, and when the formula's template declares other licenses than the binary credits, so a pull request that changes either meets it, on Linux as well as where the macOS jobs run.</p>
+            <p>A release SHALL become the repository's latest, the release <code>releases/latest</code> names, only when its version is the highest among the repository's published releases, and only that release SHALL reach the Homebrew tap, whose formula holds one version. A release on an older line SHALL NOT be made the latest, and its run SHALL leave the tap as it was.</p>
+            <p>After a release that is the repository's latest is published, its workflow SHALL install it through the README's documented Linux commands, verbatim, on both Linux targets, and through the README's Homebrew-on-Linux commands once the formula is in the tap. The run SHALL fail when an installed binary does not name the tag's version. A release on an older line SHALL be reported as untested by the Linux commands, not failed, and the Homebrew commands SHALL not run for it.</p>
+            <p>The check suite SHALL hold the README's install and upgrade commands without the network: each marked install or upgrade block SHALL parse, each upgrade block the README gives SHALL be present and marked as an upgrade block, no upgrade block SHALL be run, the Linux block SHALL check its download against <code>SHA256SUMS</code> before it unpacks or installs it, SHALL ask only for a target the release builds, and SHALL read <code>SHA256SUMS</code> as the release writes it.</p>
+            <article class="scenario" id="scenario-a-tag-naming-another-version" data-change="unchanged">
+              <h4>A tag naming another version</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a workspace that declares 0.33.0</dd>
+                <dt>When</dt>
+                <dd>the release runs on the tag <code>v9.9.9</code></dd>
+                <dt>Then</dt>
+                <dd>it refuses before any build, naming both versions</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tag-in-another-repository" data-change="unchanged">
+              <h4>A tag in another repository</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a version tag is pushed to a repository other than the public one</dd>
+                <dt>Then</dt>
+                <dd>the workflow verifies and builds, and its release, crates, and tap jobs publish nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-tag-on-a-commit-main-does-not-hold" data-change="unchanged">
+              <h4>A tag on a commit main does not hold</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>a version tag in the public repository names a commit that its <code>main</code> does not hold</dd>
+                <dt>Then</dt>
+                <dd>the release refuses it, and nothing publishes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-artifact-names-the-version" data-change="unchanged">
+              <h4>Every artifact names the version</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release builds from a tag</dd>
+                <dt>Then</dt>
+                <dd>each binary reports that version, each crate is packaged at it, and the formula installs it</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-the-formula-matches-the-release" data-change="unchanged">
+              <h4>The formula matches the release</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the formula is rendered for a release</dd>
+                <dt>Then</dt>
+                <dd>each target's digest is the one the release's <code>SHA256SUMS</code> records, and the rendered formula passes Homebrew's strict audit, installs, and passes its test in a local tap</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-publication-stopped-by-the-rate-limit" data-change="unchanged">
+              <h4>A publication stopped by the rate limit</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a crates publication that published some crates and stopped on the registry's rate limit</dd>
+                <dt>When</dt>
+                <dd>it runs again</dd>
+                <dt>Then</dt>
+                <dd>it skips the crates already published, publishes the rest, and publishes nothing twice</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-every-request-names-the-project" data-change="unchanged">
+              <h4>Every request names the project</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the release sends a request to crates.io</dd>
+                <dt>Then</dt>
+                <dd>its User-Agent names the project and its public repository, and no header carries personal information</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-missing-a-target-publishes-nothing" data-change="unchanged">
+              <h4>A run missing a target publishes nothing</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a run on a version tag in the public repository in which a build failed, the formula's check did not pass, or <code>SHA256SUMS</code> names no tarball for one of the four targets</dd>
+                <dt>When</dt>
+                <dd>the run reaches the release</dd>
+                <dt>Then</dt>
+                <dd>the release job is skipped, or its first step refuses, and nothing publishes</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-dependency-added-without-its-notices" data-change="unchanged">
+              <h4>A dependency added without its notices</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a pull request that adds a crate to the binary's dependencies and leaves <code>CRATE-LICENSES</code> as it was</dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>it fails, naming each crate the lockfile now reaches that the notices do not credit</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-formula-that-drifted-from-the-notices" data-change="unchanged">
+              <h4>A formula that drifted from the notices</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>the formula's template, declaring licenses other than the binary credits</dd>
+                <dt>When</dt>
+                <dd>the check suite runs, on Linux</dd>
+                <dt>Then</dt>
+                <dd>it fails, naming the licenses the template states and the ones the binary credits</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-readme-commands-that-stopped-working" data-change="unchanged">
+              <h4>README commands that stopped working</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a release whose README, at its tag, holds a Linux install block that no longer installs it</dd>
+                <dt>When</dt>
+                <dd>the release is published and its workflow runs the block verbatim on both Linux targets</dd>
+                <dt>Then</dt>
+                <dd>the install job fails after publication, which it cannot undo, and its trace shows the line the block stopped at</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-patch-on-an-older-line" data-change="unchanged">
+              <h4>A patch on an older line</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a repository whose latest release is <code>v1.1.0</code></dd>
+                <dt>When</dt>
+                <dd>the release runs on the tag <code>v1.0.2</code></dd>
+                <dt>Then</dt>
+                <dd><code>v1.0.2</code> is published and not made the latest, the Linux install job reports it as untested with a notice, and the tap is left holding the formula for <code>v1.1.0</code></dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-install-block-that-skips-its-checksum" data-change="unchanged">
+              <h4>An install block that skips its checksum</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a README whose Linux install block unpacks its download before it runs <code>sha256sum --check</code> against <code>SHA256SUMS</code>, or never runs it</dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>it fails, naming the block</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-an-upgrade-block-missing-or-mismarked" data-change="unchanged">
+              <h4>An upgrade block missing or mismarked</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a README whose Homebrew, cargo, Nix, or project upgrade block is missing, is marked as an install block, or does not parse</dd>
+                <dt>When</dt>
+                <dd>the check suite runs</dd>
+                <dt>Then</dt>
+                <dd>it fails, naming the block, and it runs no upgrade block, so the machine it runs on is not upgraded</dd>
+              </dl>
+            </article>
+          </section>
+        </section>
+        <section id="hs-what-was-built">
+          <h2>What was built</h2>
+          <p><strong>The repository's tools are Rust.</strong> The nineteen Python files of 1.3.0, fifteen under <code>scripts/</code> and four under <code>publish/</code>, and the bash <code>scripts/check-formula</code> are gone. The public tools are the subcommands of one unpublished member, <code>xtask/</code>, run from the root as <code>cargo xtask TOOL</code> through <code>.cargo/config.toml</code>'s alias, with the pull-request rules in a member of their own, <code>xtask/pull-request</code>. The export is a workspace of its own under <code>publish/</code>, which never crosses, and <code>publish/export</code> is a launcher of it. The tools read versions, changelog headings, the archive, and the runbook inventory through a library target on <code>htmlspec-cli</code> that exports three modules hidden from its documentation, and the workspace through <code>cargo metadata</code>. Their clocks, the crate index, cargo, Homebrew, git, and GitHub are values their tests replace. <code>scripts/</code> holds <code>check</code> and <code>install-hooks</code>, and the suite has 14 stages.</p>
+          <p><strong>The ban is the <code>no-python</code> stage,</strong> <code>cargo xtask no-python</code>, which holds <code>req-the-repository-holds-and-runs-no-python</code>. Its allow-list is the typed constants <code>ALLOW_LIST</code>, the four archived data files and three shell files by exact path, and <code>ALLOWED_LINES</code>, the one line of <code>flake.nix</code>, both in <code>xtask/src/no_python/allowed.rs</code>; <code>publish/no-python</code> permits <code>publish/export</code>. The debt that pinned the Python while the port removed it, <code>xtask/python-debt</code> and its reader, is deleted.</p>
+          <p><strong>The flake supplies no interpreter.</strong> The development shell and the suite's derivation lost <code>pkgs.python3</code>, and the flake states one question, <code>if command -v python3 || command -v python; then</code>, which prints what it found and exits 1. The suite's derivation asks it before the suite, and a check, <code>shellHasNoInterpreter</code>, asks it in place of the development shell's own build phase, so it builds with exactly the shell's packages on its search path; <code>check.yml</code> builds it beside the suite. The form the tasks first named, each lookup negated with <code>!</code> and joined by <code>&amp;&amp;</code>, never fails under the <code>set -e</code> a Nix build phase runs under.</p>
+          <p><strong>The runbooks' requirements changed in the runbooks.</strong> A runbook's specification is its own contract, so each changed there, in the pull request that moved it, and takes a release. The release runbook, at 0.6.0: <code>req-the-version-moves-with-its-pins</code> is "The version moves only through the tool that moves its pins" and names <code>cargo xtask set-version</code> and <code>cargo xtask check-release</code> in its statement, its prose, and its scenarios; <code>req-the-pinned-toolchain-is-what-runs</code> names <code>cargo</code> and <code>rustc</code>, its declaration's tools are <code>["cargo","rustc"]</code>, the paragraph that explained declaring <code>python3</code> and the scenario of an interpreter outside the shell are withdrawn, and the risk that the inputs are prose counts no interpreter. The publish runbook, at 0.4.0: <code>req-the-pinned-toolchain-is-what-runs</code> changed as the release runbook's did; <code>req-the-tag-names-the-public-merge-commit-and-the-archived-version</code> names the release check's <code>--tag</code> mode, <code>xtask check-release --tag</code>, in its prose and its scenario "A tag naming another version". The publish runbook's <code>req-the-public-repository-is-reached-only-through-the-export-and-the-api</code> and the release runbook's <code>req-version-before-regenerate</code> are unchanged. Both runbooks' tasks documents name the Rust tools.</p>
+          <p><strong>The probe runner's deadline is read from a clock passed in,</strong> so the preflight host's two tests of a real child, stopped at the deadline and cancelled while it runs, wait no real time. The binary passes the monotonic clock, as before.</p>
+        </section>
+        <section id="hs-what-the-contract-leaves">
+          <h2>What the contract leaves as it was</h2>
+          <p>The design's contract table names each accepted requirement the change reaches. Beside the three this specification states, these hold as accepted, and the change was built inside them.</p>
+          <p>toolchain-packaging's <code>req-project-checks-are-runnable-as-one-command</code>: <code>scripts/check</code> is still the one command, every stage reads the working tree, and the stages' names stay distinct. Its "Every file a stage reads SHALL be present in that snapshot" is why the suite's derivation receives the whole tracked tree, and why the ban reads the flake's source there. <code>req-a-development-environment-is-provided</code>: the shell still supplies the compiler, the test runner, and the project's tools, which build with the compiler; it lost <code>python3</code> and gained <code>curl</code>. <code>req-the-public-repository-receives-only-reviewed-exports</code>: the export's Rust, its allowlist, rewrites, pattern file, and tests stay in the private repository, and the title rules the export holds a pull request to are the exported tree's own, now built from it. <code>req-the-command-surface-is-stable-within-a-major-version</code>: no operation, flag, or exit code changed, and every payload keeps each field's name, type, and meaning. One reading changed, for malformed input alone: <code>htmlspec migrate survey</code>'s <code>greatestVersion</code> and <code>sharedVersions</code> order and group recorded versions as archival reads them, so a <code>VERSION</code> of four parts is no longer the greatest, <code>01.2.3</code> and <code>1.2.3</code> are one shared version, and a <code>VERSION</code> that is no version is listed among those that record none. A library target is not command surface. <code>req-the-project-records-what-changed-in-each-version-it-ships</code>: the changelog has a 1.3.1 entry.</p>
+          <p>project-bootstrap's <code>req-archival-requires-the-project-version-to-advance</code>: <code>spec.nix</code> moves to 1.3.1 at this archival. <code>req-archival-checks-the-versions-of-runbooks-it-publishes</code>: each runbook whose canonical documents changed took a greater release, with a changelog heading. <code>req-the-release-suite-checks-published-runbook-version-history</code>: <code>cargo xtask check-release</code> asks it, through the code archival runs.</p>
+          <p>The contract is silent on the language the tools are written in beyond what the new requirement states, on where they live inside the Cargo workspaces, on how they are invoked, on the workflows' shape, on the test framework, and on how long the suite takes. The design decided each.</p>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <section class="risk" id="risk-a-disguised-handoff" data-change="added" data-response="accepted">
+            <h3>A handoff the stage cannot see <span class="hs-id">risk-a-disguised-handoff</span></h3>
+            <p>A contributor who means to hide Python can: a program named through a variable or a workflow expression, a constructed <code>eval</code>, a Rust program named by a constant, a file a step downloads, or a spelling no word on the line names. Accepted, because a check that chased every spelling would never end and would refuse ordinary work on the way, and <code>req-the-repository-holds-and-runs-no-python</code> leaves these to the review each pull request takes. For Python itself in the sandbox, the missing interpreter holds the variable-named case: the script cannot start there.</p>
+          </section>
+          <section class="risk" id="risk-the-toolchain-ships-scripts-that-name-python" data-change="added" data-response="accepted">
+            <h3>The pinned toolchain ships scripts that name Python <span class="hs-id">risk-the-toolchain-ships-scripts-that-name-python</span></h3>
+            <p>Five helper scripts of the stdenv's clang, <code>analyze-build</code>, <code>hmaptool</code>, <code>intercept-build</code>, <code>run-clang-tidy</code>, and <code>scan-build-py</code>, sit on the development shell's search path, and gettext's <code>spit</code> is in the suite derivation's closure, each beginning <code>#!/usr/bin/env python3</code>. In the sandbox none can start, because no interpreter is there; in the shell, one run by hand would reach a machine's own <code>python3</code> after the shell's entries. Accepted, because they come with the compiler the flake pins and no file the repository holds runs them, which is what the requirement covers.</p>
+          </section>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-the-suite-before-and-after" data-change="added" data-refs="req-the-repository-holds-and-runs-no-python">
+            <h3>The suite before and after the port <span class="hs-id">evidence-the-suite-before-and-after</span></h3>
+            <p>Measured by one method on one laptop, an Apple M5 Max of 18 cores on macOS 27.2, under a shared lock, and recorded in this change's <code>evidence/the-suite-before-2026-10-30.md</code> and <code>evidence/the-suite-after-2026-11-05.md</code>. At <code>09e3a5a</code>, <code>scripts/check</code> took 249.5 seconds from an empty target directory and 216.6 and 213.5 warm, and the nine stages that ran Python took 72.2 and 72.3 of the warm passes, about 57 of them tests waiting on a real clock. At <code>200e8d6</code> it took 179.3, 135.8, and 138.5, and the work those nine stages did took 4.2 and 6.8 seconds: the four that remain, as Rust tools, and the cases the other five became, in one process. No test sleeps: the last two that waited on real time, the probe runner's, took 10.04 seconds and a 200-millisecond sleep, and take 0.049 and 0.047. Design decision 18's two goals, under 10 seconds and no fixed sleep, are met; neither gates anything, and the contract is silent on suite time.</p>
+          </section>
+          <section class="evidence" id="evidence-the-interpreter-put-back" data-change="added" data-refs="scenario-an-interpreter-put-back-in-the-sandbox">
+            <h3>The interpreter put back, and the assertion's two forms <span class="hs-id">evidence-the-interpreter-put-back</span></h3>
+            <p>A scratch flake took the suite's derivation from this repository's branch and added <code>pkgs.python3</code> to its inputs. Its build failed in the build phase, printing <code>/nix/store/…-python3-3.13.14/bin/python3</code> and "the suite's sandbox supplies an interpreter it must not; take it out of nativeBuildInputs", and no stage's marker appeared. Beside it, a derivation with the same input running <code>! command -v python3 &amp;&amp; ! command -v python</code> printed the interpreter's path and built, and one running the <code>if</code> form failed. After the review of the archived head the question moved into one function the flake calls twice, and the scratch flake ran again from the working tree: the suite's derivation with the interpreter put back failed, now printing "the suite's sandbox supplies an interpreter it must not; take it out of its inputs"; <code>shellHasNoInterpreter</code> built as it is; and <code>shellHasNoInterpreter</code> with the interpreter put back failed, printing the interpreter's path and "the development shell supplies an interpreter it must not; take it out of its inputs".</p>
+          </section>
+          <section class="evidence" id="evidence-the-closures" data-change="added" data-refs="scenario-the-sandbox-supplies-no-interpreter">
+            <h3>What the shell and the sandbox can reach <span class="hs-id">evidence-the-closures</span></h3>
+            <p>On 2026-11-05, on the laptop. The development shell, entered with <code>nix develop --ignore-environment</code>, puts 34 store paths on its search path, and their runtime closure is 103 store paths; none is named for Python or PyPy, none holds a <code>bin/python</code>, <code>bin/python3</code>, or <code>bin/python3.N</code>, and <code>command -v python3</code> there finds nothing. The suite's derivation has 34 input outputs and sources, of which 26 are present, the other eight being documentation and headers nothing realised; their runtime closure is 370 store paths, none named for Python and none holding such an executable. The six scripts <code>risk-the-toolchain-ships-scripts-that-name-python</code> names are the only executables in the suite derivation's closure whose first line names Python, and clang's five the only ones on the shell's search path. The derivations that built those inputs do include Python, 123 of 1,777, as compilers' builds do; none of them is in the sandbox.</p>
+          </section>
+          <section class="evidence" id="evidence-the-ban-refuses" data-change="added" data-refs="req-the-repository-holds-and-runs-no-python">
+            <h3>What the ban refuses, case by case <span class="hs-id">evidence-the-ban-refuses</span></h3>
+            <p>Each case made, staged where it says, run against the built tools binary, and undone, at the change's last head: <code>scripts/tidy.py</code> staged; a staged file whose first line runs <code>python3</code>; a <code>python3</code> step in <code>check.yml</code>, in <code>pr-guard.yml</code>, and in the composite action; <code>python3</code> in a second preflight declaration; an allow-listed <code>prove-listing.py</code> deleted; a line naming Python added to <code>flake.nix</code>; <code>pkgs.python3</code> put back in the suite's inputs; the allowed line changed; <code>publish/no-python</code> moved away; a <code>program</code> entry added to it; <code>xtask/python-debt</code> put back pinning a new Python file; a staged bash <code>scripts/tidy</code>; a staged file with the executable bit and no <code>#!</code>; a new <code>.githooks/post-commit</code>; <code>scripts/install-hooks</code> deleted; and <code>scripts/check-pull-request</code> put back as it was at the change's base. Every one failed the stage, exit 1, or exit 2 for the entry the private list may not hold, naming the file. An untracked <code>scripts/tidy.py</code> passed, and the tree as it stands passed: the allow-list's 7 paths and 1 line excused 19 findings, and the private list's permit 2.</p>
+          </section>
+          <section class="evidence" id="evidence-what-working-looks-like" data-change="added" data-refs="req-the-repository-holds-and-runs-no-python">
+            <h3>The proposal's account of working, at the last head <span class="hs-id">evidence-what-working-looks-like</span></h3>
+            <p>Each item of the proposal's "What working looks like" was checked at <code>c06c269</code>, but the archival half of the fifth, which needs the specification and <code>spec.nix</code> at 1.3.1, ran at <code>752402f</code>, and each is met; <code>evidence/the-suite-after-2026-11-05.md</code> records how. The flake names no Python package, the shell and the sandbox resolve no <code>python3</code>. <code>scripts/check --list</code> prints 14 stages, and <code>scripts/</code> holds <code>check</code> and <code>install-hooks</code>, both bash. A staged <code>scripts/tidy.py</code>, a <code>python3</code> first line, and a <code>python3</code> step each fail the stage, named, under the requirement's name; the stage's word for the step is "names python3", where the proposal wrote "runs". A deleted <code>prove-*.py</code>, a new bash script, and a new hook fail it. The publisher's tests run on a virtual clock, the prompt's wait for the text they expect, and no test sleeps. <code>cargo xtask check-release</code> and archival each refuse an inventory entry at <code>0.1</code>. The release runbook runs <code>cargo xtask set-version X.Y.Z</code> and <code>cargo xtask check-release</code>, the publish runbook runs <code>publish/export</code> and takes the User-Agent from <code>cargo xtask facts user-agent</code>, and preflight on either checks <code>cargo</code> and <code>rustc</code>. <code>release.yml</code> names no Python, and its verify job builds the tools once for the Linux jobs after it. The suite is measured before and after against the two goals.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-the-ban" data-change="added" data-outcome="passed" data-refs="req-the-repository-holds-and-runs-no-python scenario-a-python-file-added scenario-a-step-that-runs-python scenario-a-script-outside-the-four-shell-files scenario-an-allow-listed-file-removed scenario-the-allowed-line-changed scenario-a-second-shell-file-in-the-private-list scenario-an-untracked-file-is-not-read scenario-prose-that-names-python">
+            <h3>The ban refuses what it should, and passes the tree <span class="hs-id">verify-the-ban</span></h3>
+            <p data-field="method"><code>cargo test -p htmlspec-xtask</code> passed the stage's 67 tests, among them each matcher's samples it must refuse and pass, the allowed line excused once and only as it stands, a handoff on an allowed line's text still refused, the same text in another file refused, the private list permitting <code>publish/export</code> alone and refusing a <code>program</code> or <code>line</code> entry, and an untracked file passing until it is staged. The allowed line made to excuse every rule failed two of them. The cases <code>evidence-the-ban-refuses</code> records each failed the stage, and the tree passed it in the laptop's checkout, in the build sandbox, reading 1,700 files from the source tree <code>HTMLSPEC_SOURCE_TREE</code> names, and in the export's dry runs, reading 1,672 from the exported tree's index with no private list. The README's <code>python3 -m http.server</code>, the changelogs, and the preflight tests' samples are in the tree it passed.</p>
+          </section>
+          <section class="verification" id="verify-no-interpreter-in-the-flake" data-change="added" data-outcome="passed" data-refs="req-the-repository-holds-and-runs-no-python scenario-the-sandbox-supplies-no-interpreter scenario-an-interpreter-put-back-in-the-sandbox scenario-an-interpreter-brought-into-the-shell">
+            <h3>Neither the shell nor the sandbox supplies an interpreter <span class="hs-id">verify-no-interpreter-in-the-flake</span></h3>
+            <p data-field="method"><code>nix flake check</code> passed all 14 stages on the laptop, its build phase finding no interpreter before the suite, and the <code>check</code> job of pull request 104 passed them in continuous integration's Nix sandbox. The suite's derivation with <code>pkgs.python3</code> put back failed at the line that asks, as <code>evidence-the-interpreter-put-back</code> records, and the closures were searched as <code>evidence-the-closures</code> records. After the review of the archived head, <code>nix flake check</code> on the laptop also built <code>shellHasNoInterpreter</code>, the development shell's derivation asking the same question with exactly its packages on its search path, and that check with <code>pkgs.python3</code> put back among its inputs failed, printing the interpreter's path and "the development shell supplies an interpreter it must not".</p>
+          </section>
+          <section class="verification" id="verify-the-build-from-pinned-inputs" data-change="added" data-outcome="partial" data-refs="req-the-toolchain-builds-reproducibly-from-pinned-inputs scenario-clean-machine-build">
+            <h3>The toolchain builds from pinned inputs, with no interpreter among them <span class="hs-id">verify-the-build-from-pinned-inputs</span></h3>
+            <p data-field="method"><code>nix flake check</code> built the dependencies, the package, and the suite from the flake's pinned inputs and <code>Cargo.lock</code> on the laptop, and the <code>check</code> job of pull request 104 did the same on a fresh runner, in the Nix sandbox, which reaches none of the runner's own toolchains. <code>tar</code>, <code>flate2</code>, and the five crates they bring, which the port added, are pinned exactly in the lockfile, and the notices stage credits the same 170 crates.</p>
+            <p data-field="unchecked">The validation results and formatted output of two machines were not compared against each other, so "Two machines agree" was not checked by this change.</p>
+            <p data-field="unchecked">No dependency was introduced without a pin to see the project's checks fail, so "Unpinned dependency rejected" was not checked by this change.</p>
+          </section>
+          <section class="verification" id="verify-the-tag-is-refused-before-the-release-is-built" data-change="added" data-outcome="partial" data-refs="req-a-release-reaches-every-channel-from-one-tag scenario-a-tag-naming-another-version">
+            <h3>A tag naming another version is refused before anything the release ships is built <span class="hs-id">verify-the-tag-is-refused-before-the-release-is-built</span></h3>
+            <p data-field="method"><code>a_tag_that_does_not_name_the_declared_version_fails</code> holds <code>cargo xtask check-release --tag</code> to refusing a tag that names another version than the workspace declares, naming both. In <code>release.yml</code>, verify builds the tools crate and runs that check before any other job starts, and <code>build</code>, <code>sums</code>, and <code>release</code> each need verify, directly or through another job, so a refused tag stops the run before a binary, a crate, or the formula is built. Pull request 104's run of the workflow, labelled <code>release-check</code>, passed verify, plan, the four builds, sums, and formula.</p>
+            <p data-field="unchecked">No version tag ran in this change, so the refusal was not seen on a tag's own run; the first tag the reshaped workflow meets is <code>v1.3.1</code>.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

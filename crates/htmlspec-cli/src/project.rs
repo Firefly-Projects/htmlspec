@@ -70,7 +70,7 @@ pub const DECLARATION: &str = "spec.nix";
 /// The file an archived change records the version it shipped in.
 ///
 /// `toolchain-packaging` requires each archived change to record its version *in a form the
-/// project's own suite can read without version control history*, and `scripts/check-release`
+/// project's own suite can read without version control history*, and `cargo xtask check-release`
 /// already reads this file. The archival version gate reads the same one, so the check that
 /// reports a missing version and the gate that compares versions cannot disagree about where
 /// a version lives.

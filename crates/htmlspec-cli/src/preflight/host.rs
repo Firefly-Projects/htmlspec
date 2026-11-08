@@ -208,6 +208,38 @@ pub struct SystemRunner;
 
 impl CommandRunner for SystemRunner {
     fn run(&self, request: &ProbeRequest, cancellation: &Cancellation) -> RunResult {
+        self.run_on(request, cancellation, &Monotonic)
+    }
+}
+
+/// The clock a running probe's deadline is read from.
+///
+/// **Passed in rather than read**, so a test can stop a real child at the deadline, or cancel one
+/// while it runs, without waiting the deadline out or sleeping until the child has started. The
+/// runner asks it only once it has found the child still running, so a test's clock that answers
+/// "past the deadline", or raises the cancellation, does so while a real process is there to stop.
+trait DeadlineClock {
+    /// How long the probe has run since it was started at `started`.
+    fn elapsed_since(&self, started: Instant) -> Duration;
+}
+
+/// The real clock: the monotonic time since the child started.
+struct Monotonic;
+
+impl DeadlineClock for Monotonic {
+    fn elapsed_since(&self, started: Instant) -> Duration {
+        started.elapsed()
+    }
+}
+
+impl SystemRunner {
+    /// Runs one bounded probe, its deadline read from `clock`.
+    fn run_on(
+        &self,
+        request: &ProbeRequest,
+        cancellation: &Cancellation,
+        clock: &dyn DeadlineClock,
+    ) -> RunResult {
         let mut command = Command::new(&request.program);
         command
             .args(&request.arguments)
@@ -252,7 +284,7 @@ impl CommandRunner for SystemRunner {
             match child.try_wait() {
                 Ok(Some(status)) => break status,
                 Ok(None) => {
-                    if started.elapsed() > DEADLINE {
+                    if clock.elapsed_since(started) > DEADLINE {
                         let _ = child.kill();
                         let _ = child.wait();
                         drain(readers);
@@ -1760,72 +1792,127 @@ mod tests {
         }
     }
 
-    /// **A real child process is stopped at the deadline and reaped.**
+    /// A deadline clock that answers as the test says, and counts each time it was asked.
     ///
-    /// The one test here that runs a program, and it exists because a scripted timeout proves the
-    /// mapping from `TimedOut` to unavailable readiness and nothing about termination. The assertion
-    /// is that the call returns, as a timeout, well inside the child's own thirty seconds.
-    #[test]
-    fn a_real_child_process_is_stopped_at_the_deadline() {
+    /// The runner asks it only after finding the child still running, so its answers stand for
+    /// time passing while a real process runs, and none of it is waited for.
+    struct ScriptedClock {
+        /// How many times the runner asked before this one, each answered with no time passed.
+        within: usize,
+        /// What the answer after them does: say the deadline has passed, or raise a cancellation.
+        then: AfterThem,
+        asked: std::cell::Cell<usize>,
+    }
+
+    enum AfterThem {
+        PastTheDeadline,
+        Cancel(Cancellation),
+    }
+
+    impl ScriptedClock {
+        fn new(within: usize, then: AfterThem) -> Self {
+            Self {
+                within,
+                then,
+                asked: std::cell::Cell::new(0),
+            }
+        }
+    }
+
+    impl DeadlineClock for ScriptedClock {
+        fn elapsed_since(&self, _started: Instant) -> Duration {
+            let asked = self.asked.get();
+            self.asked.set(asked + 1);
+            if asked < self.within {
+                return Duration::ZERO;
+            }
+            match &self.then {
+                AfterThem::PastTheDeadline => DEADLINE + Duration::from_millis(1),
+                AfterThem::Cancel(cancellation) => {
+                    cancellation.cancel();
+                    Duration::ZERO
+                }
+            }
+        }
+    }
+
+    /// A child that will not finish by itself: `sleep 30`.
+    fn sleeping_child() -> ProbeRequest {
         let Some(sleep) = real_executable("sleep") else {
             // No `sleep` means no way to start a child that will not finish. Named rather than
             // passed over silently, because a skipped assertion is not an assertion.
             panic!("this test needs a `sleep` executable to start a process that will not finish");
         };
+        ProbeRequest {
+            program: sleep,
+            arguments: vec![String::from("30")],
+            workdir: std::env::temp_dir(),
+        }
+    }
+
+    /// **A real child process is stopped at the deadline and reaped.**
+    ///
+    /// The one test here that runs a program until it is stopped, and it exists because a scripted
+    /// timeout proves the mapping from `TimedOut` to unavailable readiness and nothing about
+    /// termination. The deadline is read from a clock passed in, which says it has passed on its
+    /// third asking, so the runner stops a real child at its deadline without the test waiting the
+    /// deadline's ten seconds out. The assertions are that the call returns as a timeout, that it did
+    /// not return before its clock said the deadline had passed, and that it returned at once.
+    #[test]
+    fn a_real_child_process_is_stopped_at_the_deadline() {
+        let clock = ScriptedClock::new(2, AfterThem::PastTheDeadline);
         let started = Instant::now();
-        let result = SystemRunner.run(
-            &ProbeRequest {
-                program: sleep,
-                arguments: vec![String::from("30")],
-                workdir: std::env::temp_dir(),
-            },
-            &Cancellation::new(),
-        );
+        let result = SystemRunner.run_on(&sleeping_child(), &Cancellation::new(), &clock);
         let elapsed = started.elapsed();
 
         assert_eq!(result, RunResult::TimedOut, "the child was not stopped");
-        assert!(
-            elapsed < Duration::from_secs(30),
-            "the probe waited for the child rather than stopping it: {elapsed:?}"
+        assert_eq!(
+            clock.asked.get(),
+            3,
+            "the probe returned before its clock said the deadline had passed, or ran past it"
         );
         assert!(
-            elapsed >= DEADLINE,
-            "the probe returned before its deadline, so the deadline was not what stopped it: \
-             {elapsed:?}"
+            elapsed < Duration::from_secs(5),
+            "the probe waited for the child rather than stopping it: {elapsed:?}"
         );
     }
 
     /// **A real cancellation stops a running child before the call returns.**
     ///
     /// The other half of the transition the design specifies: "Cancellation stops and reaps
-    /// outstanding processes … before returning." Asserted by raising the signal from another thread
-    /// while the child runs, and requiring the call to come back as cancelled rather than as a
-    /// timeout — which it can only do by observing the flag mid-flight.
+    /// outstanding processes … before returning." Asserted by raising the signal while the child
+    /// runs, and requiring the call to come back as cancelled rather than as a timeout — which it can
+    /// only do by observing the flag mid-flight. The signal is raised by the clock the runner asks
+    /// once it has found the child still running, rather than by a thread that sleeps first, so the
+    /// child is known to be running when it is raised and nothing waits for it to start.
     #[test]
     fn a_real_cancellation_stops_a_running_child() {
-        let Some(sleep) = real_executable("sleep") else {
-            panic!("this test needs a `sleep` executable to start a process that will not finish");
-        };
         let cancellation = Cancellation::new();
-        let signaller = cancellation.clone();
-        std::thread::spawn(move || {
-            std::thread::sleep(Duration::from_millis(200));
-            signaller.cancel();
-        });
+        let clock = ScriptedClock::new(1, AfterThem::Cancel(cancellation.clone()));
         let started = Instant::now();
-        let result = SystemRunner.run(
-            &ProbeRequest {
-                program: sleep,
-                arguments: vec![String::from("30")],
-                workdir: std::env::temp_dir(),
-            },
-            &cancellation,
-        );
+        let result = SystemRunner.run_on(&sleeping_child(), &cancellation, &clock);
+
         assert_eq!(result, RunResult::Cancelled, "the child was not stopped");
+        assert_eq!(
+            clock.asked.get(),
+            2,
+            "the flag raised mid-flight was not what stopped the child at the next look"
+        );
         assert!(
             started.elapsed() < Duration::from_secs(5),
             "cancellation did not reach the running probe"
         );
+    }
+
+    /// The real deadline clock reads the monotonic time since the child started.
+    #[test]
+    fn the_real_deadline_clock_reads_the_time_since_the_start() {
+        let started = Instant::now();
+        let earlier = started.checked_sub(DEADLINE).unwrap_or(started);
+        assert!(Monotonic.elapsed_since(started) < DEADLINE);
+        if earlier < started {
+            assert!(Monotonic.elapsed_since(earlier) >= DEADLINE);
+        }
     }
 
     /// A real child is started in its own process group, so a probe that forks can be stopped whole.

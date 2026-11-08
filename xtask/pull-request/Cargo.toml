@@ -1,0 +1,30 @@
+[package]
+name = "htmlspec-pull-request"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "The pull-request guard's rules, which `cargo xtask check-pull-request` runs"
+# A part of the tools crate with a member of its own, so the pull-request guard, which runs on every
+# edit of a title or a label, builds it without the program's library the rest of the tools read
+# through. It is never published, and the root manifest's `default-members` leaves it out of every
+# default build, as it does the tools crate.
+publish = false
+
+[lints]
+workspace = true
+
+[lib]
+name = "htmlspec_pull_request"
+path = "src/lib.rs"
+
+# The guard's own binary, the rules alone. `cargo xtask check-pull-request` runs the same code.
+[[bin]]
+name = "check-pull-request"
+path = "src/main.rs"
+
+# Both already reach the published crates' build, so the guard compiles nothing the tools do not.
+[dependencies]
+clap = { workspace = true }
+serde_json = { workspace = true }
