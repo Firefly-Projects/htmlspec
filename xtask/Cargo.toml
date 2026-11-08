@@ -1,0 +1,47 @@
+[package]
+name = "htmlspec-xtask"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "This repository's own tools, run from its root as `cargo xtask TOOL`"
+# The tools check and release this repository, and nothing outside it uses them. So they are never
+# published, and the root manifest's `default-members` keeps them out of every default build: a
+# plain `cargo build` or `cargo test` at the root compiles the published crates alone.
+publish = false
+
+[lints]
+workspace = true
+
+# The tools themselves, with their command line behind one entry point. The private working
+# repository's export depends on this crate by path, for the modules the library exports.
+[lib]
+name = "htmlspec_xtask"
+path = "src/lib.rs"
+
+# One binary, whose subcommands are the tools. `.cargo/config.toml` names the alias that runs it.
+[[bin]]
+name = "xtask"
+path = "src/main.rs"
+
+# The first four already reach the published crates' build. `serde` and `serde_json` read the
+# release's facts, `cargo metadata`, and the crate index, and `sha2` writes `SHA256SUMS`. `tar` and
+# `flate2` pack the release tarballs, and this is the only crate that depends on them, so they reach
+# no published crate and nothing the binary is built from: the root manifest says why they are
+# pinned as they are.
+[dependencies]
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+tar = { workspace = true }
+flate2 = { workspace = true }
+# The program's library, for the one reader of each format the release tools read: a version, a
+# changelog's headings, a runbook's release record, and where a project keeps its archive. By path
+# alone, with no version: this crate is never published, so nothing outside the workspace resolves
+# the dependency, and `cargo xtask set-version` has no pin here to move.
+htmlspec-cli = { path = "../crates/htmlspec-cli" }
+# The pull-request rules, and the report every tool ends with, in a member of their own, so the
+# pull-request guard builds them without the program's library. By path alone, as above.
+htmlspec-pull-request = { path = "pull-request" }

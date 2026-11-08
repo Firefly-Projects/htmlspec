@@ -4,7 +4,7 @@
 //! module reports what is absent, instead of the runbook carrying copies of the things it needs.
 //! `runbook-portability` states the boundary, and the reason it exists is measured in this
 //! repository — a vendored copy of generated content goes stale the moment its source moves, which
-//! is what `scripts/check-installed` was written to catch.
+//! is what `cargo xtask check-installed` exists to catch.
 //!
 //! # Three separations, each one load-bearing
 //!

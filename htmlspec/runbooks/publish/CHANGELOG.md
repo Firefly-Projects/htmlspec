@@ -5,6 +5,35 @@ What this runbook's releases are. A release is the pair of canonical documents â
 identifies one such pair. Nothing else moves it: a run's record is history rather than procedure, so
 adding or editing one is not a release.
 
+## 0.4.0
+
+Published with the project's 1.3.1 release.
+
+**The export and the steps run the repository's Rust tools, and a run needs no `python3`.**
+`publish/export` keeps its path and its command line, and is now a launcher of the export's Rust,
+the private workspace `publish/Cargo.toml`, which holds every refusal the Python held. The export
+holds its pull request's title to the exported tree's own rules, `cargo xtask check-pull-request`,
+which it builds and runs in the tree it exports, before the suite. "Watch the release workflow to
+its end" names the crates job's publisher, `xtask publish-crates`; "First release only: add the
+co-owner" takes the User-Agent from `cargo xtask facts user-agent`, where `python3
+scripts/release_facts.py user-agent` had printed nothing since 1.3.1's fourth pull request; and
+"Land the record" checks its title from the branch with `cargo xtask check-pull-request --title
+"TITLE" --labels-json '["skip-changelog"]'`, the arguments as the record's pull request takes them.
+The Python they replace is deleted. `req-the-tag-names-the-public-merge-commit-and-the-archived-version` names the release
+check's `--tag` mode, `xtask check-release --tag`, which the verify job runs, in its prose and in its
+scenario of a tag naming another version.
+
+**`python3` is no longer declared.** `req-the-pinned-toolchain-is-what-runs` names `cargo` and
+`rustc` alone, and its preflight declaration's tools are `["cargo","rustc"]`, so `htmlspec preflight
+publish` no longer asks for an interpreter. The paragraph that explained declaring `python3` is
+gone, and so is the scenario of an interpreter that resolves outside the shell. The paragraph on the
+suite says the export is Rust that `cargo` builds. The list of what a run consumes drops its
+`python3` entry and says that `cargo` builds and runs the export and the tools.
+
+**What this release does not do.** The nine steps, their order, the six requirements, and every
+command a person types but the two tool names are unchanged. It is a minor release because a
+requirement changed, as the release runbook's 0.6.0 is.
+
 ## 0.3.0
 
 Published with the project's 1.1.1 release.

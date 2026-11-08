@@ -2,10 +2,184 @@
 
 What changed in each version this project has shipped, newest first.
 
-One entry per version, and each heading names its version so `scripts/check-release` can
+One entry per version, and each heading names its version so `cargo xtask check-release` can
 find it. That check also requires every archived change to record the version it shipped
 in, in a `VERSION` file beside its documents. Prose inside an entry is not parsed — a
 changelog exists to be read by a person.
+
+## 1.3.1 — keep Python out of the repository
+
+A patch release about this repository rather than the program. A contributor gets a repository
+with no Python that runs. The nineteen Python files that held its tools, tests, and checks at 1.3.0
+are Rust now, or gone where the Rust crates already did their work, and every tool is a subcommand
+of one crate, run from the root as `cargo xtask TOOL`. A new stage of the suite, `no-python`,
+refuses any Python the repository holds or runs outside an exact allow-list, neither the development
+shell nor the suite's sandbox supplies an interpreter, and both runbooks run the Rust tools and no
+longer ask for `python3`: the release runbook is 0.6.0 and the publish runbook 0.4.0.
+
+The program, its command surface, and what each channel ships do not change, but for one line of
+`CRATE-LICENSES`' header, which names the tool that writes it; tarballs compressed by another
+deflate, so their bytes and digests differ; and how `htmlspec migrate survey` reads a malformed
+recorded version, below. The one change crates.io sees is a library target on `htmlspec-cli`, which
+exports three modules, hidden from its documentation, for this repository's tools, and promises no
+stability.
+
+- **A tools crate, `xtask/`.** One unpublished member of the workspace, run from the repository's
+  root as `cargo xtask TOOL` through the alias in `.cargo/config.toml`. The root manifest's
+  `default-members` is now the six published crates, so a plain `cargo build` or `cargo test` at the
+  root builds those alone and no longer compiles `conformance`. `scripts/check` passes `--workspace`
+  and reaches every member as before.
+- **A new stage of the suite, `no-python`.** `cargo xtask no-python` reads every tracked file and
+  fails on a Python file name, a first line that runs Python, an interpreter or a launcher such as
+  `uv` or `pip` named in any case in a file that runs (a workflow, an action, a shell script, a Git
+  hook, Cargo's configuration, a Nix expression, a Makefile, a justfile, `.envrc`, a Dockerfile, or
+  a pre-commit configuration), a runbook's preflight declaration that names one, and a Rust
+  `Command::new` that runs one, itself or through `env`, a shell, or `nix`. It also fails on any
+  tracked file that begins with `#!`, carries the executable bit, bears a shell script's name, or
+  sits under `scripts/`, and on a tracked file that a file that runs hands to a shell or another
+  interpreter, except `scripts/check`, `scripts/install-hooks`, `.githooks/pre-push`, and the
+  private working repository's export, each of which must begin `#!/usr/bin/env bash`. A
+  submodule, a link out of the repository or to an interpreter, and a local action outside
+  `.github/` or one that runs a program fail it too. A handoff the shell would compute, such as
+  `bash "$f"`, is left to review. An allow-list names each path that stays exactly, the four
+  archived data files and the three permitted shell files that cross, and one line of `flake.nix` by
+  its exact text, the flake's question whether the suite's sandbox or the development shell
+  supplies an interpreter. Nothing else excuses a finding.
+- **The suite's Nix sandbox holds the whole tracked tree,** not the package's filtered source, so a
+  stage reads there what it reads in a checkout, and every script under `scripts/` has its shebang
+  patched, where a hand-kept list once missed one.
+- **No interpreter in the flake.** The development shell and the suite's sandbox no longer supply
+  `python3`. The flake asks whether either supplies `python3` or `python`, failing the build and
+  printing where it resolved if one does: the suite's derivation before the suite runs, and a new
+  check, `checks.SYSTEM.shellHasNoInterpreter`, the development shell's own derivation built with
+  exactly its packages on the search path, which `check.yml` builds beside the suite. `.gitignore`
+  no longer names `__pycache__/`.
+- **`htmlspec-cli` has a library target.** The binary's modules moved into `src/lib.rs`, which exports
+  three of them, hidden from its documentation, for this repository's tools, and promises no
+  stability. The binary is unchanged and stays the supported interface.
+- **`release.yml` and `check-without-nix.yml` run** on a pull request that changes the tools crate or
+  its alias.
+- **The prompt's check is a `cargo test`.** `crates/htmlspec-cli/tests/prompt.rs` drives `htmlspec
+  init` through a pseudo-terminal from `nix`'s safe `openpty`, with no controlling terminal and no
+  `unsafe`, and each key waits for the line it repaints rather than for a fixed time. Its five cases
+  take under a second, where `scripts/check-prompt`'s four took nine.
+- **The crate publisher is `cargo xtask publish-crates`.** It reads the crates a release publishes,
+  and their order, from `cargo metadata`, so the hand-kept list is gone. It asks the crate index
+  through `curl` with the release's fixed User-Agent, and takes its clock, its index, and its cargo
+  as values, so its tests run on a virtual clock and finish in a fraction of a second, where the
+  Python's waited about fifty seconds on a real one. The release workflow's crates job runs it, and
+  its plan job runs `cargo xtask publish-crates --plan` on a pull request, which says what a tag
+  would publish and publishes nothing. The development shell and the suite's sandbox gain `curl`,
+  which the publisher's tests run, and building without Nix needs it too.
+- **The release's facts are data,** `xtask/release-facts.json`: the targets with their runners, the
+  public repository, and the User-Agent. `cargo xtask facts` prints them, and the release workflow
+  reads them with `jq` before it builds anything.
+- **One reader of a version, a changelog's headings, and a runbook's release.** `cargo xtask
+  check-release` asks the release check's seven questions, reading the archive, the changelog, and
+  the runbooks through `htmlspec-cli`'s library, the code archival runs, and the workspace through
+  `cargo metadata`. The release check's second reader of the runbook-release format, in Python,
+  disagreed with archival where no shared fixture looked: it accepted a runbook version of `0.1`.
+  It is gone, with its `release-fixtures` stage, and `fixtures/release/` holds the one reader's
+  cases, twelve more of them, one for each input the two decided differently. So the release check
+  now reads a version as archival does: an archived change's `VERSION` of two parts or four, which
+  archival leaves out of its ordering, is reported as no version; an inventory entry or an adoption
+  marker of two parts or four, which archival refuses, is refused; and a heading whose version runs
+  into another dot names nothing. It reads a tag more strictly than archival reads anything, as a
+  release writes its version, so `v01.2.3`, which it read as `v1.2.3`, is no release tag.
+- **`cargo xtask set-version`, `check-installed`, and `release-notes`.** The version step reads its
+  edit back through `cargo metadata`, replaces each file whole, restores the lockfiles as well as
+  the manifest when a step fails, and relocks the private workspace's lockfile where one exists. A
+  version given to it or to `release-notes` must be written as a release writes it, so `01.2.3` is
+  a usage error. The installed-file check and the release notes print what the Python printed, byte
+  for byte, on this repository, and the release workflow writes a release's notes with
+  `release-notes`.
+- **`htmlspec migrate survey` reads a recorded version as archival does.** Its `greatestVersion` and
+  `sharedVersions`, in `--json` and in its report, order and group the versions archival reads, so
+  they change for malformed input only: a `VERSION` of `1.2.3.4` is no longer the greatest, `01.2.3`
+  and `1.2.3` are one shared `1.2.3`, and a change whose `VERSION` is no version is listed among
+  those that record none. Each change's own `version` is still the text it records.
+- **A build in a Git worktree, or with no repository, stops recompiling `htmlspec-cli` every
+  time.** Its build script watched `../../.git/HEAD` and `../../.git/refs`, which a worktree and the
+  Nix sandbox lack, and cargo reran it for a missing path on every build. It now watches the HEAD
+  and refs Git names, where they exist. The revision the binary reports is unchanged.
+- **The release runbook is 0.6.0.** Its steps run the three tools, its last step is "Confirm the
+  release check passes", and its preflight declaration names `cargo` and `rustc`, so `htmlspec
+  preflight release` no longer asks for `python3`.
+- **`cargo xtask crate-notices`, `pack-release`, `render-formula`, `check-formula`, and
+  `check-readme-install`.** The notices read each release target's resolved graph through `cargo
+  metadata`, with a crate's license expression read into the accepted licenses and the reviewed
+  table into typed rows; `CRATE-LICENSES` is the same file, its header naming the tool. The packer
+  writes each tarball's entries with a fixed owner, mode, and time, through `tar` and `flate2`,
+  which join the lockfile pinned exactly with their default features off, seven packages that no
+  published crate depends on, and names its tarballs with the version the tools were built at,
+  which `cargo xtask facts version` prints. The formula's check gives Homebrew its commands through
+  a value its tests replace with a Homebrew held in memory, so no test can reach a machine's own,
+  and it renders the formula before it gives Homebrew any. The formula's licenses are held to what
+  the binary credits by `cargo xtask crate-notices --check` alone, in the `notices` stage. The
+  README's install check writes its `SHA256SUMS` with the packer's own code, and runs `bash` with a
+  scratch directory as its home. On this repository each prints what the Python printed, byte for
+  byte, but where the Python's words named a script now deleted, and the packer's archives hold the
+  same entries and files as the Python's.
+- **The release workflow builds the tools once.** verify reads the build matrix and the
+  User-Agent from `xtask/release-facts.json` with `jq`, builds the tools, runs the release check,
+  writes the version's notes, prints the README's two install blocks for the install jobs, and
+  hands the tools on as a tar that keeps the executable bit; the `aarch64-apple-darwin` build does
+  the same for the macOS formula job. A composite action, `.github/actions/xtask`, takes them in
+  every job that runs them, so no job but verify and that build compiles the tools, and the plan
+  and crates jobs no longer build their own. sums packs every target's bare binary, writes
+  `SHA256SUMS`, and renders the formula the tap job pushes. `release.yml` names no Python, and
+  `check-without-nix.yml` no longer asks Ubuntu's `python3` for its version.
+- **`cargo xtask check-pull-request`.** The pull-request guard's two rules, the title's and the
+  changelog's, are a subcommand of the tools crate, with a test for each rule and for the three-dot
+  diff on a scratch repository, where the script had none. On this repository's last 50 merged
+  titles, and on titles breaking each rule, it prints what the script printed, byte for byte, and
+  exits the same. `--title-only` checks a title alone. The rules are a workspace member of their
+  own, `xtask/pull-request`, unpublished and outside every default build, which depends on `clap`
+  and `serde_json` alone, so `pr-guard.yml`, which installs the toolchain and keeps its build
+  between runs, builds and runs their binary without the program's library. The README's
+  contributor commands and the pre-push hook's advice name `cargo xtask check-pull-request`, which
+  runs the same code.
+- **The tools crate has a library target,** its command line behind one entry point, for the
+  private working repository's export, which depends on it by path and holds its pull request's
+  title to the exported tree's own `cargo xtask check-pull-request --title-only`. The release check
+  and the export read a release's version through one `Workspace::release_version`. The crate is
+  still never published.
+- **The publish runbook is 0.4.0.** Its steps name the Rust tools, `cargo xtask facts user-agent`
+  and `cargo xtask check-pull-request` among them, and its preflight declaration names `cargo` and
+  `rustc`, so `htmlspec preflight publish` no longer asks for `python3`. No runbook asks for one
+  now.
+- **The suite has 14 stages, where 1.3.0's had 18.** `no-python` joins it. `prompt`,
+  `publish-crates`, `notices-self-test`, and `formula-self-test` leave it, because their cases are
+  tests in `test` now, and `release-fixtures` leaves with the second reader it kept honest.
+  `readme-install`, `installed`, `notices`, and `release` keep their names and their questions and
+  run the tools crate, and `readme-install` now runs after `no-python`.
+- **Every Python file the repository ran is deleted,** the fifteen under `scripts/` and the private
+  working repository's four under `publish/`, with the bash `scripts/check-formula`, which is
+  `cargo xtask check-formula` now. `scripts/` holds `check` and `install-hooks` alone, and the four
+  archived data files the allow-list names are the only Python the repository holds.
+- **The preflight's probe runner takes its deadline's clock as a value,** so its two tests of a
+  real child, stopped at the deadline and cancelled while it runs, no longer wait out the ten-second
+  deadline or sleep before they cancel. The binary passes the monotonic clock, as before.
+- **The contract states the ban.** toolchain-packaging gains "The repository holds and runs no
+  Python", which the `no-python` stage holds: outside an exact allow-list, no Python program,
+  nothing that runs one, and no program outside the Cargo workspaces but the four shell files it
+  names; and an interpreter in neither the development shell nor the suite's sandbox. "The toolchain builds
+  reproducibly from pinned inputs" loses its scenario of the shell's own interpreter, and "A release
+  reaches every channel from one tag" now refuses a mismatched tag before it builds anything the
+  release ships, since the release check is a tool that must itself be built. The change is archived
+  as `2026-11-05-keep-python-out-of-the-repository`.
+
+### Upgrading
+
+From 1.3.0, upgrading the binary is enough, and `htmlspec init` in a project only moves its
+instructions' recorded release to 1.3.1. A project needs nothing else.
+
+A contributor to this repository needs no Python. Building without Nix asks for rustup, a C linker,
+bash, git, and curl, nothing here runs a `python3` of the contributor's own, and `htmlspec
+preflight` no longer asks for one before either of this repository's runbooks. On macOS, the
+README's `python3 -m http.server`, which serves the documents to Safari, runs in an ordinary
+terminal: inside `nix develop`, whose shell no longer supplies `python3`, it reaches the system's
+stub and stops with `error: tool 'python3' not found`.
 
 ## 1.3.0 — see how far a run has come
 

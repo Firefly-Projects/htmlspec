@@ -1361,7 +1361,7 @@ fn a_change_ready_to_archive(scratch: &Scratch, name: &str) -> PathBuf {
 /// An archived change, recording `version` where one is given.
 ///
 /// The version goes in a `VERSION` file, which is where `toolchain-packaging` requires an
-/// archived change to record it and where `scripts/check-release` reads it. A fixture that
+/// archived change to record it and where `cargo xtask check-release` reads it. A fixture that
 /// encoded the version in the directory name instead is what let the gate's defect survive:
 /// the suite built names in a shape nothing else in the project ever wrote, so the gate passed
 /// against fixtures and compared against `0.0.0` in every real project.
@@ -1410,7 +1410,7 @@ fn the_version_gate_reads_the_recorded_version_not_the_directory_name() {
 ///
 /// This feeds a `max`, so a change with no `VERSION` — one archived before the convention
 /// existed — must be skipped rather than treated as `0.0.0`. Reporting it belongs to
-/// `scripts/check-release`, which names the change; refusing here would block an archival over
+/// `cargo xtask check-release`, which names the change; refusing here would block an archival over
 /// a file belonging to some other change.
 #[test]
 fn an_archived_change_recording_no_version_does_not_lower_the_gate() {

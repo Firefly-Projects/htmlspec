@@ -10,6 +10,12 @@ readme = "README.md"
 
 build = "build.rs"
 
+# The program's modules, behind one entry point the binary calls. It exists for this repository's
+# tools, which read three of its modules, and every item it exports is hidden from its documentation
+# and promises no stability: the binary is the supported interface.
+[lib]
+path = "src/lib.rs"
+
 [[bin]]
 name = "htmlspec"
 path = "src/main.rs"
@@ -55,3 +61,10 @@ sha2 = { workspace = true }
 # validator, pinned and without its remote resolver, that checks documents against the contract, so
 # this adds nothing to the dependency tree.
 jsonschema = { workspace = true }
+
+# The prompt's test drives the binary through a pseudo-terminal: `openpty` under `term`, `poll` to
+# wait for the text it expects with a deadline rather than for a fixed time, and `signal` to stop a
+# child that passes its deadline. Unix only, as the test is. The workspace pins the version
+# `command-group` already brings, with `poll` and `signal` already on, so this adds no package.
+[target.'cfg(unix)'.dev-dependencies]
+nix = { workspace = true, features = ["term", "poll", "signal"] }

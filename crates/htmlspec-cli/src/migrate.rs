@@ -25,6 +25,8 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use crate::version::ProjectVersion;
+
 /// The directory an OpenSpec project occupies within its repository.
 pub const DIRECTORY: &str = "openspec";
 
@@ -246,6 +248,17 @@ pub struct Change {
     pub configuration: Option<ChangeConfiguration>,
 }
 
+impl Change {
+    /// The version this change records, as archival reads a recorded version: through
+    /// [`ProjectVersion::parse`], the one grammar. `None` where it records none, or where its
+    /// `VERSION` holds text that is no version, which archival treats alike.
+    pub fn recorded_version(&self) -> Option<ProjectVersion> {
+        self.version
+            .as_deref()
+            .and_then(|text| ProjectVersion::parse(text).ok())
+    }
+}
+
 /// Everything a source project holds.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Survey {
@@ -398,14 +411,14 @@ impl Survey {
     /// to advance past its real history rather than past an initial value. Compared
     /// component-wise rather than as text, because `0.10.0` is ordered after `0.9.0` and
     /// string comparison says otherwise — the defect a migration would carry into the version
-    /// gate.
+    /// gate. Read as archival reads a recorded version, through [`ProjectVersion::parse`], and
+    /// given as it renders: a `VERSION` archival would read as no version is not the greatest.
     pub fn greatest_version(&self) -> Option<String> {
         self.changes
             .iter()
-            .filter_map(|change| change.version.as_deref())
-            .filter_map(|version| Some((components(version)?, version)))
+            .filter_map(Change::recorded_version)
             .max()
-            .map(|(_, version)| version.to_owned())
+            .map(|version| version.to_string())
     }
 
     /// The versions recorded by more than one change.
@@ -413,19 +426,23 @@ impl Survey {
     /// A migrated project inherits these, and the destination requires recorded versions to be
     /// distinct — with a release-record entry naming the changes that shipped together. So
     /// migration reports them rather than resolving them: inventing distinct versions would
-    /// record releases that never existed.
+    /// record releases that never existed. Grouped as archival reads each, so `01.2.3` and
+    /// `1.2.3` are one shared 1.2.3, and a `VERSION` that is no version shares nothing.
     pub fn shared_versions(&self) -> BTreeMap<String, Vec<String>> {
-        let mut by_version: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        let mut by_version: BTreeMap<ProjectVersion, Vec<String>> = BTreeMap::new();
         for change in &self.changes {
-            if let Some(version) = &change.version {
+            if let Some(version) = change.recorded_version() {
                 by_version
-                    .entry(version.clone())
+                    .entry(version)
                     .or_default()
                     .push(change.name.clone());
             }
         }
-        by_version.retain(|_, changes| changes.len() > 1);
         by_version
+            .into_iter()
+            .filter(|(_, changes)| changes.len() > 1)
+            .map(|(version, changes)| (version.to_string(), changes))
+            .collect()
     }
 
     /// The structured payload the coverage gate consumes.
@@ -660,14 +677,6 @@ fn directories(directory: &Path) -> Vec<PathBuf> {
     found
 }
 
-/// A version's numeric components, for ordering.
-fn components(version: &str) -> Option<Vec<u64>> {
-    version
-        .split('.')
-        .map(|part| part.parse::<u64>().ok())
-        .collect()
-}
-
 /// `path` relative to `root`, or `path` where it is not beneath it.
 fn relative(root: &Path, path: &Path) -> PathBuf {
     path.strip_prefix(root).unwrap_or(path).to_owned()
@@ -900,6 +909,43 @@ mod tests {
         }
         let survey = Survey::of(&scratch.0).expect("surveyed");
         assert_eq!(survey.greatest_version().as_deref(), Some("0.10.0"));
+    }
+
+    /// The survey reads a recorded version as archival does, through the one grammar.
+    ///
+    /// It kept each `VERSION` as text, ordered by any count of dotted parts, and grouped by the
+    /// text, so `1.2.3.4` was the greatest of these three and nothing was shared, where archival
+    /// reads `1.2.3.4` as no version and `01.2.3` and `1.2.3` as one 1.2.3. Each change's own
+    /// recorded text is kept as it was found, which the plan carries.
+    #[test]
+    fn recorded_versions_are_read_as_archival_reads_them() {
+        let scratch = Scratch::new("one-reader");
+        for (name, version) in [("a", "01.2.3"), ("b", "1.2.3"), ("c", "1.2.3.4")] {
+            scratch.write(
+                &format!("openspec/changes/archive/2026-08-04-{name}/VERSION"),
+                version,
+            );
+        }
+        let survey = Survey::of(&scratch.0).expect("surveyed");
+        assert_eq!(survey.greatest_version().as_deref(), Some("1.2.3"));
+        let shared = survey.shared_versions();
+        assert_eq!(
+            shared.into_iter().collect::<Vec<_>>(),
+            vec![(
+                String::from("1.2.3"),
+                vec![String::from("2026-08-04-a"), String::from("2026-08-04-b")]
+            )]
+        );
+        let recorded: Vec<Option<&str>> = survey
+            .changes
+            .iter()
+            .map(|change| change.version.as_deref())
+            .collect();
+        assert_eq!(
+            recorded,
+            vec![Some("01.2.3"), Some("1.2.3"), Some("1.2.3.4")]
+        );
+        assert_eq!(survey.changes[2].recorded_version(), None);
     }
 
     /// Several changes recording one version is reported rather than resolved. The destination

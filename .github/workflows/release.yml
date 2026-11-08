@@ -18,6 +18,21 @@
 # until it passes. The binaries are released before the crates, because a crate published to
 # crates.io cannot be withdrawn, only yanked.
 #
+# The tools, `xtask`, are built once for each platform that runs them, in a job that already
+# builds: verify builds them for the Linux jobs, and the aarch64-apple-darwin build for the macOS
+# formula job. Each travels to the jobs after it as an artifact holding a tar of the one binary,
+# because an artifact loses file modes and a tar keeps the executable bit, and every job takes it
+# through one composite action, `.github/actions/xtask`, which unpacks it, runs it once, and puts it
+# on the job's PATH. sums takes it on every pull request that touches the release, and formula on
+# every one labelled `release-check`, so the jobs that run only on a tag get their tool by steps a
+# pull request has already run. No job restores a build from a cache: a tag's run would read caches
+# the default branch wrote, and a restored target directory is a build input no lockfile pins.
+#
+# The Linux tools link the runner's glibc, so every job that builds or runs them names one image,
+# `ubuntu-24.04`, rather than `ubuntu-latest`: while GitHub moves that label to a newer image, the
+# jobs of one run can land on two, and a tool built against the newer glibc would not start on the
+# older, in the release job or in the crates job after the release exists.
+#
 # The Nix flake is the fourth channel, and it needs no job: `nix run
 # github:Firefly-Projects/htmlspec` builds from the tag's source.
 #
@@ -30,12 +45,14 @@ name: release
 
 # A pull request runs this when it touches anything the builds and the formula check read: the
 # manifests and the pinned toolchain, every crate's source and license text, the root license the
-# tarballs carry, the template, the workflow, and every script, the ones it runs and the module
-# they share. A list that named only the release's own files missed the crates themselves, so a
-# change that broke a musl build would have been found by a tag. The list stays rather than going,
-# because macOS minutes cost ten times as much on a private repository, and a pull request that
-# changes only documents builds nothing new. What else the release reads, the archive and the
-# changelog, `scripts/check-release` reads on every pull request as a stage of the suite.
+# tarballs carry, the template, the workflow, the scripts, and the tools crate, its alias, and the
+# composite action that hands the tools from job to job. A list that named only the release's own
+# files missed the crates themselves, so a change that broke a musl build would have been found by a
+# tag. The list stays rather than going, because macOS minutes cost ten times as much on a private
+# repository, and a pull request that changes only documents builds nothing new. What else the
+# release reads, the archive and the changelog, `cargo xtask check-release` reads on every pull
+# request as a stage of the suite, and the README's install blocks, which verify prints for the
+# install jobs, the suite's `readme-install` stage reads through the same code.
 #
 # `labeled` is among the pull request's events, so adding `release-check` starts the run that
 # builds on macOS without another push. Any other label starts the same run a push would, so its
@@ -51,6 +68,9 @@ on:
       - crates/**
       - packaging/**
       - scripts/**
+      - xtask/**
+      - .cargo/**
+      - .github/actions/**
       - .github/workflows/release.yml
   push:
     tags: ["v*"]
@@ -78,7 +98,7 @@ env:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       macos: ${{ steps.targets.outputs.macos }}
       matrix: ${{ steps.targets.outputs.matrix }}
@@ -90,24 +110,25 @@ jobs:
           fetch-depth: 0
 
       # The one place this workflow decides whether the macOS jobs run. The build matrix and the
-      # number of tarballs `sums` expects follow from it, and both come from
-      # scripts/release_facts.py, which states the targets and their runners once.
+      # number of tarballs `sums` expects follow from it, and both are read with `jq` from
+      # xtask/release-facts.json, which states the targets and their runners once, before any
+      # toolchain is installed. A target that builds on macOS is one whose triple ends in
+      # -apple-darwin, as the tools read it.
       - name: Choose the targets this run builds
         id: targets
         env:
           MACOS: ${{ github.repository == 'Firefly-Projects/htmlspec' || contains(github.event.pull_request.labels.*.name, 'release-check') }}
         run: |
           set -euo pipefail
-          without=()
-          if [ "$MACOS" != true ]; then
-            without=(--without-macos)
-          fi
+          # The single quotes are the point: `$macos` is jq's variable, which --argjson sets.
+          # shellcheck disable=SC2016
+          built='[.targets[] | select($macos or (.target | endswith("-apple-darwin") | not))]'
           {
             echo "macos=$MACOS"
-            echo "matrix=$(python3 scripts/release_facts.py matrix "${without[@]}")"
-            echo "count=$(python3 scripts/release_facts.py targets "${without[@]}" | wc -l | tr -d ' ')"
+            echo "matrix=$(jq -c --argjson macos "$MACOS" "{include: $built}" xtask/release-facts.json)"
+            echo "count=$(jq --argjson macos "$MACOS" "$built | length" xtask/release-facts.json)"
           } >> "$GITHUB_OUTPUT"
-          python3 scripts/release_facts.py targets "${without[@]}"
+          jq -r --argjson macos "$MACOS" "$built | .[].target" xtask/release-facts.json
 
       # A release is made from what main holds. A tag on a commit main does not hold, such as one
       # on a pull request's branch, publishes nothing.
@@ -121,37 +142,105 @@ jobs:
             exit 1
           fi
 
-      # The User-Agent above is stated again in scripts/release_facts.py, which the crate
+      # The User-Agent above is stated again in xtask/release-facts.json, which the crate
       # publisher sends. The two are compared here rather than trusted to agree.
       - name: Check the User-Agent is the publisher's
         run: |
           set -euo pipefail
-          test "$CARGO_HTTP_USER_AGENT" = "$(python3 scripts/release_facts.py user-agent)"
+          test "$CARGO_HTTP_USER_AGENT" = "$(jq -r .userAgent xtask/release-facts.json)"
 
       # rust-toolchain.toml pins the compiler, so every job builds with the version a
       # contributor and `nix flake check` use.
       - name: Install the pinned toolchain
         run: rustup toolchain install
 
+      # The tools, built once for every Linux job of this run, from the same lockfile.
+      - name: Build the tools
+        run: cargo build --locked -p htmlspec-xtask
+
       # On a tag, `--tag` adds the question that refuses a tag naming another version than
-      # Cargo.toml's, before anything is built. The tag reaches the script through the
-      # runner's own variables, never interpolated into the shell.
+      # Cargo.toml's, before anything the release ships is built. The check reads the archive, the
+      # changelog, and the runbooks through the code archival runs. The tag reaches the tool
+      # through the runner's own variables, never interpolated into the shell.
       - name: Check the release record, and the tag against Cargo.toml
         run: |
           set -euo pipefail
           if [ "$GITHUB_REF_TYPE" = tag ]; then
-            scripts/check-release --tag "$GITHUB_REF_NAME"
+            target/debug/xtask check-release --tag "$GITHUB_REF_NAME"
           else
-            scripts/check-release
+            target/debug/xtask check-release
           fi
+
+      # The notes the release job writes, for the version this commit declares, which on a tag the
+      # step above has held to the tag. So a changelog entry the release could not use fails here,
+      # on the pull request.
+      - name: Write the notes of the version's changelog entry
+        run: |
+          set -euo pipefail
+          target/debug/xtask release-notes "$(target/debug/xtask facts version)"
+
+      # The README's blocks the install jobs run, printed here, where the tools run, because the
+      # ARM runner of the install job cannot run an x86 binary. Each is the README's text at this
+      # commit, byte for byte, as the suite's `readme-install` stage checks it.
+      - name: Print the README's install blocks the install jobs run
+        run: |
+          set -euo pipefail
+          mkdir -p readme-blocks
+          target/debug/xtask check-readme-install --print linux-release > readme-blocks/linux-release
+          target/debug/xtask check-readme-install --print linux-homebrew > readme-blocks/linux-homebrew
 
       # Each crate packaged and built from its own directory, in dependency order, and nothing
       # uploaded.
       - name: Package every crate
         run: cargo publish --workspace --dry-run --locked
 
+      # A tar of the one binary, which keeps its executable bit through the artifact.
+      - name: Pack the tools
+        run: tar -C target/debug -cf xtask.tar xtask
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xtask-linux
+          path: xtask.tar
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: readme-blocks
+          path: readme-blocks/
+          if-no-files-found: error
+
+  # What the crates job would publish, in its order, read from the live index with the User-Agent
+  # above, and published nowhere: the plan is given no cargo to publish with. On a pull request, so
+  # a change to the publisher or to the workspace's crates shows its plan before a tag runs it. In
+  # the private repository the plan says the workspace names another repository, which a real run
+  # refuses.
+  #
+  # A job of its own that no job needs, because it alone of the pull request's jobs reads a service
+  # outside GitHub: an index that is down or slow fails this job and nothing else, and the builds,
+  # the sums, and the formula still run. Its budget is two minutes, so an index that answers 429
+  # with a long wait ends the plan, saying so, rather than holding a runner for half an hour. It
+  # takes the tools verify built, and installs the toolchain only for the `cargo metadata` the
+  # publisher reads the workspace with, as the crates job does.
+  plan:
+    if: github.event_name == 'pull_request'
+    needs: verify
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+
+      - uses: ./.github/actions/xtask
+        with:
+          artifact: xtask-linux
+
+      - name: Plan the crates' publication
+        run: xtask publish-crates --plan --budget 120
+
   # One entry per target this run builds: all four, or the two static musl targets alone, each on
-  # the runner scripts/release_facts.py names. musl, so a Linux binary runs on any distribution.
+  # the runner xtask/release-facts.json names. musl, so a Linux binary runs on any distribution.
   build:
     needs: verify
     strategy:
@@ -196,13 +285,30 @@ jobs:
             file "$binary" | grep -Eq 'static(ally|-pie) linked'
           fi
 
-      - name: Pack the binary with its license texts
-        run: scripts/pack-release "$TARGET" "target/$TARGET/release/htmlspec" dist
-
+      # The bare binary. sums packs every target's with its license texts, on Linux, setting each
+      # entry's mode in the tarball, because the artifact loses the executable bit.
       - uses: actions/upload-artifact@v4
         with:
-          name: tarball-${{ matrix.target }}
-          path: dist/*.tar.gz
+          name: binary-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/htmlspec
+          if-no-files-found: error
+
+      # The tools for the macOS formula job, built by the macOS build that is already running, in
+      # the same profile, target, and revision as the binary, so it reuses that build.
+      - name: Build the tools for the formula job
+        if: matrix.target == 'aarch64-apple-darwin'
+        run: |
+          set -euo pipefail
+          HTMLSPEC_REVISION="$(git rev-parse --short=12 HEAD)"
+          export HTMLSPEC_REVISION
+          cargo build --release --locked --target "$TARGET" -p htmlspec-xtask
+          tar -C "target/$TARGET/release" -cf xtask.tar xtask
+
+      - uses: actions/upload-artifact@v4
+        if: matrix.target == 'aarch64-apple-darwin'
+        with:
+          name: xtask-macos
+          path: xtask.tar
           if-no-files-found: error
 
   # The suite, as the check workflow runs it on every pull request and on main. That workflow
@@ -222,26 +328,36 @@ jobs:
       - name: Run the check suite
         run: nix build --print-build-logs .#checks.x86_64-linux.default
 
-  # Over the tarballs this run built, which is every entry of its matrix: four, or two where the
-  # macOS jobs do not run. Any build that failed skips this job, and everything after it.
+  # Over the binaries this run built, which is every entry of its matrix: four, or two where the
+  # macOS jobs do not run. Any build that failed skips this job, and everything after it. It packs
+  # each tarball, writes SHA256SUMS, and, where all four targets were built, renders the formula
+  # the tap job publishes, from those SHA256SUMS, at the release's own address.
   sums:
     needs: [verify, build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
+      - uses: ./.github/actions/xtask
+        with:
+          artifact: xtask-linux
+
       - uses: actions/download-artifact@v4
         with:
-          pattern: tarball-*
-          path: dist
-          merge-multiple: true
+          pattern: binary-*
+          path: binaries
 
-      - name: Write SHA256SUMS over the tarballs this run built
+      - name: Pack each binary this run built, and write SHA256SUMS over the tarballs
         env:
           COUNT: ${{ needs.verify.outputs.count }}
         run: |
           set -euo pipefail
-          scripts/pack-release --sums dist
+          for directory in binaries/binary-*/; do
+            target="${directory#binaries/binary-}"
+            target="${target%/}"
+            xtask pack-release "$target" "${directory}htmlspec" dist
+          done
+          xtask pack-release --sums dist
           cat dist/SHA256SUMS
           test "$(wc -l < dist/SHA256SUMS)" -eq "$COUNT"
 
@@ -251,11 +367,27 @@ jobs:
           path: dist/
           if-no-files-found: error
 
+      - name: Render the formula from SHA256SUMS
+        if: needs.verify.outputs.macos == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p formula
+          xtask render-formula --sums dist/SHA256SUMS > formula/htmlspec.rb
+          cat formula/htmlspec.rb
+
+      - uses: actions/upload-artifact@v4
+        if: needs.verify.outputs.macos == 'true'
+        with:
+          name: formula
+          path: formula/htmlspec.rb
+          if-no-files-found: error
+
   # The formula, rendered from this run's SHA256SUMS with addresses pointing at its tarballs,
   # checked in a tap made for the purpose on a runner with a stock Homebrew: audited, installed,
   # and tested. On a pull request as on a tag, so a formula that would fail reaches neither the
   # tap nor a release. It is a macOS job, and it needs the macOS tarballs, so it runs where they
-  # were built; where it is skipped, the jobs that publish are skipped with it.
+  # were built; where it is skipped, the jobs that publish are skipped with it. Its tool is the
+  # macOS build's.
   formula:
     needs: [verify, sums]
     if: needs.verify.outputs.macos == 'true'
@@ -263,13 +395,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: ./.github/actions/xtask
+        with:
+          artifact: xtask-macos
+
       - uses: actions/download-artifact@v4
         with:
           name: release
           path: dist
 
       - name: Audit, install, and test the formula in a local tap
-        run: scripts/check-formula dist
+        run: xtask check-formula dist
 
   # The first job that publishes. Its condition is false on a pull request, and on a tag in any
   # repository but the public one, so there it is skipped, and the two jobs that need it with
@@ -279,7 +415,7 @@ jobs:
   release:
     needs: [sums, formula, suite]
     if: github.repository == 'Firefly-Projects/htmlspec' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     outputs:
@@ -287,33 +423,45 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: ./.github/actions/xtask
+        with:
+          artifact: xtask-linux
+
       - uses: actions/download-artifact@v4
         with:
           name: release
           path: dist
 
-      # A release holds every target, whatever the matrix built. This repeats what the formula's
-      # rendering already refused, in the job that publishes, so the guarantee does not rest on a
-      # job that could be skipped.
-      - name: Check SHA256SUMS names a tarball for every target
+      # A release holds every target, at the tag's version, whatever the matrix built. This repeats
+      # what the formula's rendering already refused, in the job that publishes, so the guarantee
+      # does not rest on a job that could be skipped: each target's line must be a digest and the
+      # tarball of this tag's version for that target, and a target with no such line stops it.
+      - name: Check SHA256SUMS names this version's tarball for every target
         run: |
           set -euo pipefail
-          for target in $(python3 scripts/release_facts.py targets); do
-            if ! grep -q -- "-$target\.tar\.gz\$" dist/SHA256SUMS; then
-              echo "SHA256SUMS names no tarball for $target" >&2
+          version="${GITHUB_REF_NAME#v}"
+          version="${version//./\\.}"
+          for target in $(xtask facts targets); do
+            if ! grep -Eq -- "^[0-9a-f]{64}  htmlspec-$version-$target\.tar\.gz\$" dist/SHA256SUMS; then
+              echo "SHA256SUMS names no tarball of $GITHUB_REF_NAME for $target" >&2
               exit 1
             fi
           done
 
       - name: Write the notes from the version's changelog entry
-        run: scripts/release-notes "${GITHUB_REF_NAME#v}" > notes.md
+        run: xtask release-notes "${GITHUB_REF_NAME#v}" > notes.md
 
       # GitHub marks a new release "Latest" unless told otherwise, and `releases/latest` is where the
       # README's Linux block downloads from. A patch on an older line, 1.0.2 after 1.1.0, must not
       # become the latest, or every reader of the README would install the older line. So the tag is
       # the latest only when it is the highest version among the published releases and itself. The
       # answer is this job's output, which `tap` reads too: the formula holds one version, and an
-      # older line's formula would downgrade every Homebrew install.
+      # older line's formula would downgrade every Homebrew install. Every name compared is a
+      # published release's tag, and each was held to the version it declares before it was
+      # released: by the script the tools crate replaced, up to v1.3.0, and from v1.3.1 by `xtask
+      # check-release --tag`, which takes only vX.Y.Z, three numbers with no leading zero. The
+      # releases this repository's publish runs record before v1.3.1 are all named that way, so
+      # `sort -V` orders three numbers, as the tools would.
       - name: Decide whether this tag is the newest release
         id: latest
         env:
@@ -352,25 +500,31 @@ jobs:
   crates:
     needs: release
     if: github.repository == 'Firefly-Projects/htmlspec' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The publisher's budget is 30 minutes on the clock, publishing and waiting together, and it
     # stops itself, naming what remains, before it begins a step past that. One publish begun
-    # just inside the budget builds a crate, a few minutes at most, and the toolchain takes one
-    # more. So the job is killed only when something has hung, never partway through a release
-    # the publisher would have finished or stopped cleanly.
+    # just inside the budget builds a crate, a few minutes at most, and the toolchain's install,
+    # before its budget starts, takes less than one. So the job is killed only when something has
+    # hung, never partway through a release the publisher would have finished or stopped cleanly.
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
+      # cargo publish builds each crate before it uploads it, so this job needs the toolchain the
+      # tools do not.
       - name: Install the pinned toolchain
         run: rustup toolchain install
+
+      - uses: ./.github/actions/xtask
+        with:
+          artifact: xtask-linux
 
       # One crate at a time, in dependency order, skipping each version the index already
       # holds, so a rerun of this job after an interruption publishes only what is missing.
       - name: Publish the crates crates.io lacks
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: scripts/publish-crates
+        run: xtask publish-crates
 
   # Only the latest release reaches the tap. Its formula holds one version, so a patch on an older
   # line would replace the newer formula and downgrade every Homebrew install. On an older line this
@@ -380,20 +534,16 @@ jobs:
     if: github.repository == 'Firefly-Projects/htmlspec' && startsWith(github.ref, 'refs/tags/v') && needs.release.outputs.latest == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
+      # Rendered by sums from the SHA256SUMS this run wrote and the release now holds, so each digest
+      # in the formula is the digest of the tarball it names, at the release's own address. This job
+      # runs no tool and reads nothing of the repository.
       - uses: actions/download-artifact@v4
         with:
-          name: release
-          path: dist
+          name: formula
+          path: formula
 
-      # Rendered from the SHA256SUMS this run wrote and the release now holds, so each digest in
-      # the formula is the digest of the tarball it names, at the release's own address.
-      - name: Render the formula
-        run: |
-          set -euo pipefail
-          scripts/render-formula --sums dist/SHA256SUMS > htmlspec.rb
-          cat htmlspec.rb
+      - name: Show the formula
+        run: cat formula/htmlspec.rb
 
       # HOMEBREW_TAP_TOKEN can write to the tap and nothing else. A credential helper reads it
       # from the environment when git asks, so it is never in a command line, a remote address,
@@ -412,7 +562,7 @@ jobs:
           git -C tap config credential.helper ""
           git -C tap config --add credential.helper "$helper"
           mkdir -p tap/Formula
-          cp htmlspec.rb tap/Formula/htmlspec.rb
+          cp formula/htmlspec.rb tap/Formula/htmlspec.rb
           cd tap
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -432,7 +582,8 @@ jobs:
   #
   # It comes after `release`, beside `crates` and `tap`, so it never holds up a publish. A failure
   # here says the README's commands are broken for this release, and the publish runbook's step 8
-  # records it and stays open until a patch release's run of this job passes.
+  # records it and stays open until a patch release's run of this job passes. It reads nothing of the
+  # repository: the block is the one verify printed from the README at this tag.
   install:
     needs: release
     if: github.repository == 'Firefly-Projects/htmlspec' && startsWith(github.ref, 'refs/tags/v')
@@ -442,8 +593,6 @@ jobs:
         runner: [ubuntu-24.04, ubuntu-24.04-arm]
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
-
       # GitHub moves `releases/latest` to a new release a moment after creating it, and the block
       # reads `latest`. So wait, about five minutes at most, for `latest` to name this tag, rather
       # than test the release before. A tag older than the latest release is a patch on an older
@@ -479,15 +628,20 @@ jobs:
           echo "latest is not $want: after five minutes the latest release is ${latest:-unknown}" >&2
           exit 1
 
-      # The block is printed from the README at this tag by the same script `scripts/check` uses,
-      # and run with `bash -x`, so a failure names the line it stopped at. HOME is an empty
-      # directory, as on a machine that never had htmlspec.
+      # The blocks verify printed from the README at this tag, by the code `scripts/check` uses.
+      - uses: actions/download-artifact@v4
+        if: steps.latest.outputs.ready == 'true'
+        with:
+          name: readme-blocks
+          path: ${{ runner.temp }}/readme-blocks
+
+      # Run with `bash -x`, so a failure names the line it stopped at. HOME is an empty directory, as
+      # on a machine that never had htmlspec.
       - name: Run the README's Linux block verbatim, in an empty HOME
         if: steps.latest.outputs.ready == 'true'
         run: |
           set -euo pipefail
-          block="$RUNNER_TEMP/linux-release.sh"
-          scripts/check-readme-install --print linux-release > "$block"
+          block="$RUNNER_TEMP/readme-blocks/linux-release"
           home="$RUNNER_TEMP/home"
           mkdir -p "$home"
           HOME="$home" bash -x "$block"
@@ -507,19 +661,22 @@ jobs:
   # The README's Homebrew-on-Linux block, run verbatim once the formula is in the tap. It needs
   # `tap` rather than `release`, so it never races the formula's push, and an expired tap token
   # fails `tap` and this job and nothing else. The runner image carries Homebrew under
-  # /home/linuxbrew, off the PATH, which is the case the block's first line exists for.
+  # /home/linuxbrew, off the PATH, which is the case the block's first line exists for. Like
+  # `install`, it reads nothing of the repository: the block is the one verify printed.
   install-homebrew:
     needs: tap
     if: github.repository == 'Firefly-Projects/htmlspec' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: readme-blocks
+          path: ${{ runner.temp }}/readme-blocks
 
       - name: Run the README's Homebrew-on-Linux block verbatim
         run: |
           set -euo pipefail
-          block="$RUNNER_TEMP/linux-homebrew.sh"
-          scripts/check-readme-install --print linux-homebrew > "$block"
+          block="$RUNNER_TEMP/readme-blocks/linux-homebrew"
           bash -x "$block"
           installed="$(/home/linuxbrew/.linuxbrew/bin/htmlspec --version)"
           echo "installed: $installed"

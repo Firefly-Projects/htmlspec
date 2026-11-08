@@ -42,6 +42,12 @@ jobs:
       - name: Run the check suite
         run: nix build --print-build-logs .#checks.${{ runner.arch == 'ARM64' && 'aarch64' || 'x86_64' }}-linux.default
 
+      # The development shell's own derivation, built with exactly its packages on the search
+      # path, failing where they bring an interpreter. The suite above asks the same of its
+      # sandbox; this asks it of what `nix develop` supplies.
+      - name: Check the development shell supplies no interpreter
+        run: nix build --print-build-logs .#checks.${{ runner.arch == 'ARM64' && 'aarch64' || 'x86_64' }}-linux.shellHasNoInterpreter
+
       # The provenance half of the asset check, separate because it needs the network:
       # it re-fetches each vendored library from its pinned URL and verifies the
       # committed bytes match. This is what makes the committed third-party build

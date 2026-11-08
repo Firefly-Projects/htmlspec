@@ -2,7 +2,7 @@
 description: Start an html-spec change — create it, then write its proposal, its design, and its tasks. Use when the work is decided and the change does not exist yet.
 allowed-tools: Bash(htmlspec:*), Read, Write, Edit, Glob, Grep
 argument-hint: [a description of the work]
-generatedBy: htmlspec 1.3.0
+generatedBy: htmlspec 1.3.1
 ---
 
 Start an html-spec change.

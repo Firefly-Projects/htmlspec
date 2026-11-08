@@ -27,7 +27,7 @@
 //! `option_env!` cannot express it: `env!` in a match arm is expanded whichever arm is
 //! taken, so the build would fail exactly when Git was missing.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// The length a commit hash is shortened to, whichever source names it.
@@ -60,11 +60,47 @@ fn main() {
     // Rerun when the checked-out commit moves. Without this the recorded revision
     // would be whatever it was when the crate last compiled, which is worse than
     // reporting nothing: it would be confidently wrong.
-    println!("cargo:rerun-if-changed=../../.git/HEAD");
-    println!("cargo:rerun-if-changed=../../.git/refs");
+    //
+    // Git names the files that say which commit is checked out, because they are not always
+    // under `../../.git`: in a worktree `.git` is a file, HEAD lives under the main repository's
+    // `worktrees/`, and the refs are the main repository's. Only paths that exist are named,
+    // because cargo reads a missing path as changed and would rerun this, and recompile the
+    // crate, on every build. With no repository at all, as in the Nix sandbox, nothing is
+    // watched but `HTMLSPEC_REVISION`, and the revision is that or `unknown`; a tree made a
+    // repository after it was built keeps `unknown` until something reruns this.
+    for watched in watched_git_paths() {
+        println!("cargo:rerun-if-changed={}", watched.display());
+    }
 
     let revision = git_revision().unwrap_or_else(|| String::from("unknown"));
     println!("cargo:rustc-env=HTMLSPEC_REVISION={revision}");
+}
+
+/// The files whose change moves the checked-out commit, as Git names them, that exist: this
+/// checkout's HEAD, and the repository's loose and packed refs.
+fn watched_git_paths() -> Vec<PathBuf> {
+    let Some(answer) = run(&[
+        "rev-parse",
+        "--path-format=absolute",
+        "--git-path",
+        "HEAD",
+        "--git-common-dir",
+    ]) else {
+        return Vec::new();
+    };
+    let mut lines = answer.lines();
+    let (Some(head), Some(common)) = (lines.next(), lines.next()) else {
+        return Vec::new();
+    };
+    let common = Path::new(common);
+    [
+        PathBuf::from(head),
+        common.join("refs"),
+        common.join("packed-refs"),
+    ]
+    .into_iter()
+    .filter(|path| path.exists())
+    .collect()
 }
 
 /// The commit a packaged crate records, shortened, with a `-dirty` marker when cargo

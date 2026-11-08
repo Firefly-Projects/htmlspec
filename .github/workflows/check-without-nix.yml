@@ -1,10 +1,11 @@
 # The check suite, without Nix.
 #
 # `check.yml` runs `scripts/check` inside the Nix sandbox, and that is what this repository is held
-# to. The README also tells a contributor that the same script runs every stage with rustup, a C
-# linker, Python 3, bash, and git, and no Nix. Nothing else checks that claim, and a claim about
-# every stage drifts as stages are added, so this job runs the same script that way. It keeps no
-# list of steps of its own: to change what it checks, change `scripts/check`.
+# to. The README also tells a contributor that the same script runs every stage with what its
+# section on building without Nix lists, and no Nix. Nothing else checks that claim, and a claim
+# about every stage drifts as stages are added, so this job runs the same script that way, with
+# rustup, a C linker, bash, git, and curl. It keeps no list of steps of its own: to change what it
+# checks, change `scripts/check`.
 #
 # It runs weekly, for the slow drift of the runner image, and on pull requests that touch what the
 # suite builds from. Its minutes are Linux minutes, at the normal rate even in a private repository,
@@ -28,6 +29,8 @@ on:
       - Cargo.lock
       - crates/**
       - scripts/**
+      - xtask/**
+      - .cargo/**
       - flake.nix
       - .github/workflows/check-without-nix.yml
 
@@ -55,9 +58,9 @@ jobs:
           set -euo pipefail
           rustc --version
           cargo --version
-          python3 --version
           bash --version | head -n 1
           git --version
+          curl --version | head -n 1
 
       - name: Run the check suite
         run: scripts/check

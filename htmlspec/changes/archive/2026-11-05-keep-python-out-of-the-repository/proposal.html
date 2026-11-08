@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Keep Python out of the repository</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Keep Python out of the repository</h1>
+        <p>The repository's own tools, tests, and checks are 19 Python files and 7,243 lines, plus seven <code>python3</code> lines in three workflows. This change rewrites each of them in Rust, or deletes it where the Rust crates already do its job, drops <code>python3</code> from the development shell, the suite's sandbox, and every workflow, and makes the ban a stage of the suite: a Python file outside an exact-path allow-list of four archived data files fails <code>scripts/check</code>, naming the file. It answers the user's three concerns: tests standing in for types, a catch-all language that slows the suite, and scripts nothing governs. The program does not change, and the change archives as 1.3.1.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Keep Python out of the repository</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>The user asked for this in their own words: "I am inclined to ban all of them and drop the python 3 from the library. It tends to be the case that when we let any python in it is katy bar the door." They named three things to avoid: relying on Python tests instead of solid type definitions, Python as a catch-all that ends in slow suite runs, and disparate, ungovernable scripts all over the place. An explainer they commissioned swept the repository at <code>a11ff12</code> and measured its suite. The base of this change, <code>4d0a6fd</code>, differs from it by one run record, and every count below was checked again at the base. The timings are the explainer's and are not measured again here.</p>
+          <p>What is there today: 19 live Python files, 15 under <code>scripts/</code> and 4 under <code>publish/</code>, every one standard library only. They hold 117 <code>unittest</code> cases in 4 suites (65 in <code>publish/test</code>, 28 in <code>scripts/check-crate-notices</code>, 19 in <code>scripts/check-publish-crates</code>, 5 in <code>scripts/check-check-formula</code>). They fill 9 of the 18 stages of <code>scripts/check</code>, and all 10 jobs of <code>release.yml</code> run Python, the suite job included. Each of the three concerns holds.</p>
+          <h3>Tests standing in for types</h3>
+          <p>The Rust crates already type the release record: <code>version.rs</code> has one three-part <code>Version</code> and the wrappers <code>ProjectVersion</code>, <code>RunbookVersion</code>, and <code>ToolVersion</code>, and <code>runbook_release.rs</code> gives a content digest its own type. The Python restates the same facts as tuples, strings, and dictionaries, and then tests and fixtures try to keep the restatement honest:</p>
+          <ul>
+            <li><strong>Four grammars for one version.</strong> <code>Version::parse</code> refuses anything that is not three parts. <code>scripts/check-release</code>'s <code>parse_version</code> takes any number of parts, <code>scripts/set-version</code> refuses a leading zero, and <code>scripts/release-notes</code> takes one. Every pair disagrees on at least one input. Python's inventory reader accepts a runbook version of <code>"0.1"</code>, which the Rust reader refuses, and none of the 23 cases the two readers share covers a version of two or four parts, so both pass while they disagree.</li>
+            <li><strong>A second reader kept honest by a stage.</strong> The runbook-release format has two readers that share no code, so they share 12 JSON fixtures, a manifest of 23 cases, a Python self-test, a Rust test, and the <code>release-fixtures</code> stage. About 350 lines of <code>check-release</code> restate the Rust reader. One Rust test reads <code>check-release</code>'s source text and searches it for <code>(0, 1, 0)</code>, so reformatting the Python breaks a Rust test.</li>
+            <li><strong>A predicate, then a partial function.</strong> <code>publish/publishing.py</code> checks a commit identity with <code>identity_fault</code>, and <code>split_identity</code> matches it again and assumes the match succeeded. It is safe only because the export calls the first 255 lines before the second. AGENTS.md asks for "parsers or smart constructors that return a trusted domain value over predicates that return only a boolean".</li>
+            <li><strong>Lists kept by hand and guarded by tests.</strong> <code>CRATES</code> in <code>scripts/release_facts.py</code> names the six published crates in publishing order, and two tests exist only to check it against the manifests, which Cargo already reads. Six functions read <code>Cargo.toml</code> line by line with regular expressions, one of them because <code>tomllib</code> is standard library only from Python 3.11.</li>
+          </ul>
+          <h3>A catch-all that slows the suite</h3>
+          <p>The concern holds, though not for the reason it names. The interpreter is cheap: a Python start costs 9.6 ms here. The nine Python stages cost 69 to 83 seconds per suite run, across nine CI runs and laptop passes, and about 57 of those seconds are tests waiting on a real clock. In <code>scripts/check-publish-crates</code>, five tests spend 50.2 of the stage's 58.2 seconds in real waits of at least 10 seconds after an HTTP 429. In <code>scripts/check-prompt</code>, fixed drains and keystroke pauses take at least 7.3 of 8.4 seconds, because the drain loop has no exit for a finished paint. Python does not force those waits, but the script shape pushes toward them: a script has no module boundary, so its tests drive it as a subprocess, and a subprocess runs on the real clock. Where a suite loads its subject in-process, as <code>check-crate-notices</code> does, its 28 cases take 0.03 seconds.</p>
+          <p>So removing Python will not by itself make the suite fast. In CI, compilation and <code>cargo test</code> dominate, and the Python stages are 7 to 14 percent of a run. On a warm laptop build they are a third of it. What retires the 57 seconds is injecting the clock, which a Rust port with narrow capabilities does as a matter of course.</p>
+          <h3>Scripts nothing governs</h3>
+          <ul>
+            <li>The scripts live in two directories and run from four places: <code>scripts/check</code>, the workflow YAML, the two runbooks, and each other. They reach each other four ways: eleven files put a directory on <code>sys.path</code>, two load another script by file path, <code>publish/publishing.py</code> reads <code>scripts/check-pull-request</code>'s text at a Git ref and runs it with <code>exec</code>, and the rest start processes.</li>
+            <li>Nothing checks the Python. There is no linter, type checker, or formatter configuration and no stage that runs one, while fourteen <code># noqa</code> comments silence a linter nobody runs. Every Rust file must pass <code>cargo fmt --check</code> and <code>clippy -D warnings</code>.</li>
+            <li>Three scripts on the release path have no test of their own: <code>release-notes</code>, <code>set-version</code>, and all of <code>pack-release</code> but its <code>--sums</code> mode.</li>
+            <li>One rule lives in human memory. <code>flake.nix</code> keeps a hand-written <code>patchShebangs</code> list, and its comment records that a script missing from it "took CI red for five merges".</li>
+            <li>The one reason the repository gives for Python is false. <code>scripts/check</code> says at line 98 that the prompt check cannot be a <code>cargo test</code> because "<code>openpty</code> is an <code>unsafe</code> FFI call". <code>nix</code> 0.27.1 is already in <code>Cargo.lock</code>, through <code>command-group</code>, and its <code>openpty</code> is a safe function behind the <code>term</code> feature, which adds no crate.</li>
+          </ul>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <ul>
+            <li><strong>One crate for the repository's tools.</strong> An unpublished workspace member, <code>xtask/</code>, holds every tool the suite, the workflows, and the release runbook run, as subcommands of one binary under the names the scripts had: <code>cargo xtask check-release</code>, <code>cargo xtask set-version</code>, and so on. rustfmt and clippy govern it like every other crate.</li>
+            <li><strong>The export stays private.</strong> Its Rust lives in a Cargo workspace of its own under <code>publish/</code>, which never crosses to the public repository, and <code>publish/export</code> stays the command the publish runbook runs.</li>
+            <li><strong>One reader for each format.</strong> The tools read versions, changelog headings, the archive, and the release inventory through the code archival already uses, so the four version grammars become one and the second reader of the runbook-release format, with its <code>release-fixtures</code> stage, is deleted. The workspace is read through <code>cargo metadata</code>, so the hand-kept crate list goes too.</li>
+            <li><strong>Clocks and outside programs are passed in.</strong> The publisher takes a clock, a registry, and a cargo, the formula check takes a brew, and the export takes its git and its GitHub, so each test passes a fake and nothing waits on real time or shadows a program on <code>PATH</code>.</li>
+            <li><strong>The ban is a check.</strong> A new stage, <code>no-python</code>, fails the suite on any Python outside an exact-path allow-list, and the flake supplies no interpreter, so a script that slips past the stage still cannot run in the sandbox. The accepted contract gains a requirement stating the ban, which the stage enforces, and loses the one scenario that names an interpreter. The requirement also says where tools live: every program the repository runs is built from a Cargo workspace, except four shell files named by exact path, and the stage fails on any other file that begins with <code>#!</code> or carries the executable bit, so the next catch-all cannot be bash either.</li>
+            <li><strong>The runbooks follow.</strong> Both declare <code>cargo</code> and <code>rustc</code> to preflight, and no longer <code>python3</code>, and their steps name the Rust tools. Each takes a new release, the publish runbook 0.4.0 and the release runbook 0.6.0.</li>
+          </ul>
+        </section>
+        <section id="hs-what-working-looks-like">
+          <h2>What working looks like</h2>
+          <ol>
+            <li>The flake names no Python package. The development shell adds no <code>python3</code> to the path, and inside the suite's build sandbox, which the machine's own path does not reach, <code>python3</code> is not found.</li>
+            <li><code>scripts/check --list</code> prints fourteen stages and none of them runs Python. <code>scripts/</code> holds two files, <code>check</code> and <code>install-hooks</code>, both bash.</li>
+            <li>
+              <p>A contributor adds <code>scripts/tidy.py</code> to the repository, or a file whose first line is <code>#!/usr/bin/env python3</code>, or a workflow step that runs <code>python3</code>, and runs <code>scripts/check</code>. Once the file is tracked, staged or committed, the <code>no-python</code> stage fails and names each one:</p>
+              <pre><code>Python outside the allow-list, which toolchain-packaging's "The repository holds and runs no Python" forbids:
+  scripts/tidy.py: a Python file name
+  .github/workflows/check.yml:31: runs python3</code></pre>
+              <p>Deleting one of the four allow-listed <code>prove-*.py</code> files fails the stage too, saying the path is allow-listed and absent, so the list cannot outlive what it names. So does a new bash script, or a new Git hook: outside <code>scripts/check</code>, <code>scripts/install-hooks</code>, <code>.githooks/pre-push</code>, and <code>publish/export</code>, a tracked file that begins with <code>#!</code> or carries the executable bit fails the stage, whatever its language.</p>
+            </li>
+            <li>The publisher's tests run on a fake clock and finish in well under a second, and the prompt test waits for the text it expects rather than for a fixed time. No test in the suite sleeps to let something happen.</li>
+            <li><code>cargo xtask check-release</code> refuses a runbook inventory entry at version <code>"0.1"</code> exactly as archival does, because both call the same parser.</li>
+            <li>The release runbook's steps run <code>cargo xtask set-version X.Y.Z</code> and <code>cargo xtask check-release</code>. The publish runbook still runs <code>publish/export</code>, now a launcher of the export's Rust, and its co-owner step takes the User-Agent from <code>cargo xtask facts user-agent</code>. <code>htmlspec preflight</code> on either runbook checks <code>cargo</code> and <code>rustc</code>.</li>
+            <li><code>release.yml</code> holds no <code>python3</code>. Its Linux jobs run one tools binary, built once in its first job.</li>
+            <li>The suite's time is measured before the first pull request and after the last, by the explainer's method, and the change records both numbers against the two goals the user set: no test sleeps on a fixed timer, and the work the nine former Python stages did takes under 10 seconds on a warm laptop build, from 69 to 83 today.</li>
+          </ol>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <ul>
+            <li><strong>Lint and type-check the Python.</strong> ruff and mypy as stages would answer part of the third concern. They leave every second reader in place, so the first concern stands, and they add a Python toolchain to pin and keep current.</li>
+            <li><strong>Freeze the Python: no new files, keep the 19.</strong> The interpreter stays in the shell and in every workflow, the four grammars stay, and so do the 57 seconds. An interpreter on the path is the open door the user described.</li>
+            <li><strong>Keep <code>publish/</code> in Python because it is private and the largest port.</strong> The shell would then keep <code>python3</code> for the export alone, and the export's own readings of the version and of the pull-request rules would stay second copies of what the public tools read.</li>
+            <li><strong>Port the small tools to bash.</strong> Bash has no types and no linter in this suite, so it would rebuild the third concern in another language.</li>
+            <li><strong>Only take the sleeps out of the Python tests.</strong> That recovers the 57 seconds and answers neither of the other two concerns.</li>
+          </ul>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <ul>
+            <li><strong>The program does not change.</strong> No operation, flag, exit code, or payload changes, and each channel ships the binary it ships today. The one change to a published crate is a library target on <code>htmlspec-cli</code> that exports three modules the tools read, hidden from its documentation, and 1.3.1 puts it on crates.io for the first time.</li>
+            <li><strong>Bash stays in four files, named by path.</strong> <code>scripts/check</code>, <code>scripts/install-hooks</code>, and <code>.githooks/pre-push</code> stay bash, and <code>publish/export</code> becomes a few lines of bash that start the Rust. No other shell script or hook is permitted.</li>
+            <li><strong>Prose about Python is not Python.</strong> The changelog's history, archived changes, run records, and fixtures are left as written. The README's build requirements and its workflow table change, because they describe what the repository needs. Its advice to readers to serve documents with <code>python3 -m http.server</code> names a tool on the reader's machine that the project never runs, so it stays.</li>
+            <li><strong>Four data files stay.</strong> Two archived evidence scripts and their two copies in the migration fixture are data that nothing runs, and an allow-list keeps them by exact path.</li>
+            <li><strong>No new published crate, and no speed gate.</strong> The suite's time is measured against its two goals and never gated, so a slow machine fails nothing.</li>
+            <li><strong>No publish run.</strong> Publishing 1.3.1 is a run of the publish runbook, with the user's go at each public step.</li>
+            <li><strong>No contributor's machine is policed.</strong> The ban covers what the repository holds and runs, not what is installed beside it.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

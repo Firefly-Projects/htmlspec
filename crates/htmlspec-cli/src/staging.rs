@@ -457,28 +457,18 @@ fn version_faults(project: &ProjectRoot, destination: &Path) -> Vec<Fault> {
 /// unrelated `0.1.10` entry, and any prose containing those digits satisfied it — so a real
 /// unexplained collision passed the gate silently. A review of the pull request found it.
 ///
-/// This is the rule `scripts/check-release` already applies to the same file, which is what keeps
-/// the two from disagreeing about whether a version has an entry.
+/// Read through `runbook_release::changelog_versions`, the one reading of a changelog's headings,
+/// which `cargo xtask check-release` applies to the same file, so the two cannot disagree about
+/// whether a version has an entry.
 fn release_record_versions(path: &Path) -> BTreeSet<String> {
     let Ok(text) = std::fs::read_to_string(path) else {
         return BTreeSet::new();
     };
-    text.lines()
-        .filter(|line| line.starts_with('#'))
-        .flat_map(dotted_numbers)
-        .collect()
-}
-
-/// The dotted numbers in one line, as whole tokens.
-///
-/// Split on anything that is not a digit or a dot, so `## 0.11.0 — arriving from OpenSpec` yields
-/// `0.11.0` and nothing else. A token is kept only where it holds a dot and parses as a version,
-/// which is what stops a bare year or a section number from reading as one.
-fn dotted_numbers(line: &str) -> Vec<String> {
-    line.split(|byte: char| !byte.is_ascii_digit() && byte != '.')
-        .filter(|token| token.contains('.'))
-        .filter(|token| crate::version::Version::parse(token).is_ok())
-        .map(str::to_owned)
+    // Each as it renders, as the archives' versions are keyed above, so a heading's `01.2.3`
+    // explains the 1.2.3 an archive records.
+    crate::runbook_release::changelog_versions::<crate::version::ProjectVersion>(&text)
+        .into_iter()
+        .map(|version| version.to_string())
         .collect()
 }
 
@@ -856,7 +846,7 @@ mod tests {
     /// changes record `0.1.0`**, because they were archived before the distinctness obligation
     /// existed. `toolchain-packaging` — "An archived change records the version it shipped in" —
     /// provides for exactly that with a baseline changelog entry naming them, and
-    /// `scripts/check-release` holds `BASELINE = (0, 1, 0)` for it.
+    /// `cargo xtask check-release` exempts the baseline `xtask/release-facts.json` states, 0.1.0.
     ///
     /// So a migration of this repository inherits the collision. A migrated project whose release
     /// record lost the entry fails its own release check the moment it arrives, with a diagnostic
@@ -1016,7 +1006,7 @@ mod tests {
 
     /// Versions are read from the record's headings, parsed rather than matched as text.
     ///
-    /// The rule `scripts/check-release` already applies to the same file, which is what keeps the
+    /// The reading `cargo xtask check-release` applies to the same file, which is what keeps the
     /// two from disagreeing about whether a version has an entry.
     #[test]
     fn release_record_versions_come_from_headings() {
