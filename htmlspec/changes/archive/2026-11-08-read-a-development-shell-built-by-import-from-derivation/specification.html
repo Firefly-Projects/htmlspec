@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="specification" name="htmlspec-kind">
+    <title>Read a development shell built by import from a derivation</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Read a development shell built by import from a derivation</h1>
+        <p>What this change established. A toolchain check over a local locked Nix flake reads a development shell that imports from a derivation whose output this machine's store holds, refuses one whose output the store lacks without building it, locally or on a remote builder, or substituting it, whatever the machine's configuration says, and quotes the package manager's error that states the cause. A download the shell asks Nix's own downloader for fails without leaving the machine. runbook-portability's "Package manifests retain authority over package pins" gains two scenarios that say so; its statements are unchanged. No command, flag, exit code, or payload field changed, and the release is the patch 1.3.2.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">specification</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Read a development shell built by import from a derivation</dd>
+        </dl>
+      </header>
+      <nav class="hs-nav" aria-label="Document sections">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#hs-runbook-portability">runbook-portability</a></li>
+          <li><a href="#hs-evidence">Evidence</a></li>
+          <li><a href="#hs-verification">Verification</a></li>
+        </ul>
+      </nav>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-runbook-portability">
+          <h2>runbook-portability</h2>
+          <section class="requirement" id="req-package-manifests-retain-authority-over-package-pins" data-change="modified">
+            <h3>Package manifests retain authority over package pins <span class="hs-id">req-package-manifests-retain-authority-over-package-pins</span></h3>
+            <p>A requirement for a package-managed toolchain SHALL identify the existing manifest, selected
+            environment, and tools needed from it rather than repeat the manifest's versions in the runbook.
+            Preflight SHALL delegate interpretation of pins to that package manager's supported read-only
+            adapter and check the tools the invocation would actually use against that environment.</p>
+            <p>The initial supported package-manager adapter SHALL cover a local locked Nix flake's development
+            shell. Preflight SHALL NOT install, build, download, update locks, enter a shell, or alter the
+            working environment. Missing cached dependencies, an unsupported manifest, an unavailable manager,
+            or an inability to establish a tool's provenance SHALL refuse readiness with an explanation.
+            The existence of a manifest or a shell marker alone SHALL NOT count as evidence of readiness.</p>
+            <article class="scenario" id="scenario-the-wrong-executable-shadows-a-pinned-tool" data-change="unchanged">
+              <h4>The wrong executable shadows a pinned tool</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a locally available pinned environment supplying the required tool</dd>
+                <dt>When</dt>
+                <dd>the invocation's search path resolves that tool to another installation</dd>
+                <dt>Then</dt>
+                <dd>preflight reports the differing provenance and refuses readiness</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-pin-changes-in-the-manifest" data-change="unchanged">
+              <h4>A pin changes in the manifest</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the manifest selects a different toolchain</dd>
+                <dt>Then</dt>
+                <dd>preflight checks that toolchain without requiring a duplicate version edit in the runbook</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-resolving-the-environment-would-require-provisioning" data-change="unchanged">
+              <h4>Resolving the environment would require provisioning</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>the selected pinned environment cannot be inspected using locally available data</dd>
+                <dt>Then</dt>
+                <dd>preflight reports it as unavailable and performs no provisioning or lock update</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-shell-imports-from-a-derivation-the-store-holds" data-change="added">
+              <h4>A development shell imports from a derivation this machine has built</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a local locked flake whose selected development shell imports a file that a derivation builds, and that derivation's output in this machine's store</dd>
+                <dt>When</dt>
+                <dd>preflight checks a toolchain declared over that shell</dd>
+                <dt>Then</dt>
+                <dd>it reads the shell's inputs from the store and checks each tool's provenance against them, building and downloading nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-shell-imports-from-a-derivation-the-store-lacks" data-change="added">
+              <h4>A development shell imports from a derivation this machine has not built</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a local locked flake whose selected development shell imports a file that a derivation builds, and that derivation's output absent from this machine's store</dd>
+                <dt>When</dt>
+                <dd>preflight checks a toolchain declared over that shell</dd>
+                <dt>Then</dt>
+                <dd>it reports the environment as unavailable, builds the derivation neither on this machine nor on a remote builder, nor substitutes it, and its explanation quotes the package manager's error that states the cause rather than the trace that came before it</dd>
+              </dl>
+            </article>
+          </section>
+          <p>The adapter that meets these scenarios is <code>evaluation_arguments</code> in <code>crates/htmlspec-cli/src/preflight/host.rs</code>. It evaluates with <code>--offline</code>, <code>--option allow-import-from-derivation true</code>, <code>--max-jobs 0</code>, <code>--builders ''</code>, <code>--option substitute false</code>, <code>--option connect-timeout 1</code>, and <code>--no-write-lock-file</code>, in place of the <code>--no-allow-import-from-derivation</code> it passed from 0.15.0 to 1.3.1, which refused every import from a derivation, built or not. <code>--option substitute false</code> is stated because <code>--offline</code> turns substitution off only where no configuration set it. The evaluation's child has every proxy variable the operator set removed, <code>http_proxy</code>, <code>https_proxy</code>, and <code>all_proxy</code>, in both cases, pointed at <code>127.0.0.1:1</code>, a closed local port, and <code>GIT_PROXY_COMMAND</code> and <code>GIT_SSH_COMMAND</code> set to <code>false</code>, so a download the evaluation asks libcurl or <code>git</code> for, a shell's own or a missing locked flake input's, is refused on this machine at once; a <code>git</code> input fetched with libgit2 where no <code>git</code> is on the search path, an <code>s3://</code> fetch's credential lookup, and any other route are not covered. A failed evaluation's reason is quoted by <code>evaluator_excerpt</code>, from the first line that opens with <code>error:</code> and states something, or the first bare one followed by its message rather than a trace, to the end within 300 characters, without Nix's <code>Hint:</code> lines and terminal escapes; output with no such line is quoted from its first lines, and no other probe's quoting changed. No other accepted requirement changes: "Preflight gates the creation of a run" holds as it was, because a run observes through the same adapter, and toolchain-packaging's "The command surface is stable within a major version" holds because only the wording of a refusal's observed text and remedy changed. The release runbook's verification of its own toolchain check now describes the settings, so that runbook is 0.6.1.</p>
+        </section>
+        <section id="hs-evidence">
+          <h2>Evidence</h2>
+          <section class="evidence" id="evidence-the-refusal-at-1-3-1" data-change="added" data-refs="req-package-manifests-retain-authority-over-package-pins">
+            <h3>The refusal at 1.3.1, measured <span class="hs-id">evidence-the-refusal-at-1-3-1</span></h3>
+            <p>On 2026-11-08, on an aarch64-darwin laptop running Nix 2.34.6 (Determinate Nix 3.19.0), whose client is not a trusted user and which has one remote aarch64-linux builder configured. The reporting project's development shell builds a tool with import from a derivation. The 1.3.1 binary built from <code>main</code> at <code>f4fc2a2</code> refused that project's toolchain checks, observing <code>the manifest could not be evaluated read-only: error: /        … while calling the 'map' builtin /          at «string»:1:217:</code>. The adapter's own command, run by hand, failed in one second and ended on <code>error: cannot build '/nix/store/…​.drv^out' during evaluation because the option 'allow-import-from-derivation' is disabled</code>, though that output was in the store. With <code>--option allow-import-from-derivation true --max-jobs 0 --builders ''</code> in place of the flag, the same command returned the shell's store paths and exited 0 in two seconds.</p>
+            <p>On a scratch flake whose shell imports a file one tiny derivation writes, the 1.3.1 flags refused the import with that same error whether or not its output was built. With the new settings a built import was read; one the store had never held was refused in under a second with <code>error: Cannot build '…-htmlspec-import-from-derivation-fixture.drv'. / Reason: local builds are disabled (max-jobs = 0)</code>, and no output path appeared, for this machine's system and for aarch64-linux, which the remote builder could build. With the import allowed under <code>--read-only</code> instead, Nix built a fresh import's derivation, so <code>--read-only</code> is not a guard against building.</p>
+          </section>
+          <section class="evidence" id="evidence-the-tests-against-1-3-1" data-change="added" data-refs="req-package-manifests-retain-authority-over-package-pins">
+            <h3>The new tests fail on the 1.3.1 adapter, and catch a build slot <span class="hs-id">evidence-the-tests-against-1-3-1</span></h3>
+            <p>Run against the 1.3.1 adapter before it changed, the argument test failed on the missing settings; the scripted evaluation that fails with a trace reported <code>error: /        … while calling the 'map' builtin /          at «string»:1:193:</code>; the real-Nix test of a built import failed on the refusal; and the real-Nix test of a missing import failed on its native case's reason, which quoted the trace. After the change all of them pass. With <code>--max-jobs 0</code> changed to 1 for one run, the test of a missing import failed: its native import was built and the check went on to another refusal.</p>
+          </section>
+          <section class="evidence" id="evidence-the-review-of-pull-request-106" data-change="added" data-refs="req-package-manifests-retain-authority-over-package-pins">
+            <h3>What the review of pull request 106 found, and what settled it <span class="hs-id">evidence-the-review-of-pull-request-106</span></h3>
+            <p>The review confirmed against Nix's source that the daemon honours <code>--max-jobs 0</code> and <code>--builders ''</code> from an untrusted client, and found that without <code>--builders ''</code> the import built on a remote builder. It found three defects. First, a regression: <code>--offline</code> turns substitution off only where no configuration set <code>substitute</code>, so with <code>NIX_CONFIG='substitute = true'</code> the adapter downloaded a shell's missing dependency from a binary cache and reported it ready, where 1.3.1 refused. Measured here: <code>nix config show substitute</code> under that configuration printed <code>true</code> with <code>--offline</code> alone and with the adapter's earlier settings, and <code>false</code> once <code>--option substitute false</code> was added. Second, older than 1.3.2: a shell's <code>builtins.fetchurl</code> reached a listener on the loopback interface under the adapter's settings, 174 bytes of request, and with the child's proxy variables pointed at <code>192.0.2.1</code> and <code>connect-timeout</code> at one second nothing reached it and the fetch failed in 1.1 seconds. Third, where an import's own dependency was missing, the last <code>error:</code> line was <code>Build failed due to failed dependency</code>, and the cause came first; and a foreign import's <code>platform mismatch</code> fell past the excerpt's third line.</p>
+            <p>The real-Nix tests that settle the first two were each shown to fail without their fix: with <code>--option substitute false</code> removed, the substitution test and the argument test failed; with the child's proxy variables removed, the fetch test failed on a request reaching its listener. Under <code>cargo test</code>, <code>DYLD_LIBRARY_PATH</code>, which the harness sets for a test binary, made this machine's Nix start its first download ten seconds late, so the fetch test runs its request without that variable; the installed binary runs with no such path.</p>
+            <p>The new step of <code>check.yml</code> ran the real-Nix tests on Nix 2.22.1, which <code>install-nix-action</code> installs, and the test of a missing import failed there: the reason quoted the trace. Run here from that release's own binary, against a store in a scratch directory so its own worker declined the build, Nix 2.22.1 ends on a bare <code>error:</code> whose message, <code>Unable to start any build; either increase '--max-jobs' or enable remote builds.</code>, follows on the next lines, for this machine's system and for another, and names no derivation. The excerpt now also starts at a bare <code>error:</code> followed by its message rather than a trace frame, joined to that message; the recorded output is pinned, and the test accepts either release's wording of the declined build.</p>
+            <p>The review's re-verification found nothing substituted under seven configurations and the excerpt right, and found the fetch closure incomplete. libcurl prefers the proxy variable named for a URL's scheme, so an operator's exported <code>ftp_proxy</code> carried an <code>ftp://</code> <code>builtins.fetchurl</code> to that proxy past the child's <code>all_proxy</code>. <code>git</code> connected directly for <code>git://</code> and SSH: its listener received <code>git-upload-pack</code> and an SSH connection. A missing <code>git+https</code> input timed out at the deadline, because <code>git</code> honours the proxy and not <code>connect-timeout</code>. And <code>--offline</code> had never kept a missing locked <code>tarball</code>, <code>github:</code>, or <code>git+http</code> input from being downloaded, in 1.3.1 as in 1.3.2. The child now has every variable ending in <code>_proxy</code> removed before the six are set, at a closed local port, <code>127.0.0.1:1</code>, and <code>GIT_PROXY_COMMAND</code> and <code>GIT_SSH_COMMAND</code> at <code>false</code>; measured here, an <code>ftp://</code> fetch through an operator's <code>ftp_proxy</code>, <code>git://</code> and SSH fetches, and missing locked tarball and <code>git+https</code> inputs were each refused in under 0.2 seconds, and nothing reached the listener. The real-Nix tests now run their Nix with a cache directory of their own, so none touches the cache in this machine's home.</p>
+          </section>
+        </section>
+        <section id="hs-verification">
+          <h2>Verification</h2>
+          <section class="verification" id="verify-the-invocation-builds-nothing" data-change="added" data-outcome="passed" data-refs="req-package-manifests-retain-authority-over-package-pins">
+            <h3>The invocation allows the import and forbids every build, substitution, and download <span class="hs-id">verify-the-invocation-builds-nothing</span></h3>
+            <p data-field="method"><code>the_adapter_invocation_is_read_only_and_names_no_verb_that_provisions</code>, in <code>crates/htmlspec-cli/src/preflight/host.rs</code>, compares every argument before the expression with a literal, because Nix takes the last value it is given for a setting and a later one would undo an earlier: <code>eval</code>, <code>--offline</code>, <code>--option allow-import-from-derivation true</code>, <code>--max-jobs 0</code>, <code>--builders ''</code>, <code>--option substitute false</code>, <code>--option connect-timeout 1</code>, <code>--no-write-lock-file</code>, <code>--impure</code>, <code>--json</code>, and <code>--expr</code>. It asserts the child's environment whole: every variable ending in <code>_proxy</code> removed, the six proxy variables at <code>http://127.0.0.1:1</code>, and <code>GIT_PROXY_COMMAND</code> and <code>GIT_SSH_COMMAND</code> at <code>false</code>; <code>an_operators_proxy_variables_do_not_reach_the_evaluation</code> computes the child's environment from an inherited one holding an operator's <code>ftp_proxy</code>, <code>socks_proxy</code>, and <code>no_proxy</code> and finds only the six; and that none of <code>develop</code>, <code>build</code>, <code>shell</code>, <code>fetch</code>, <code>run</code>, <code>profile</code>, or <code>install</code> is an argument. <code>a_failed_evaluation_quotes_the_error_rather_than_the_trace</code> asserts the adapter sends exactly that environment, and <code>a_probes_environment_reaches_its_child_alone</code> that the real runner applies it to the child and not to this process. Repeat with <code>cargo test -p htmlspec-cli --lib preflight::host</code>.</p>
+          </section>
+          <section class="verification" id="verify-a-held-import-is-read" data-change="added" data-outcome="passed" data-refs="req-package-manifests-retain-authority-over-package-pins scenario-a-shell-imports-from-a-derivation-the-store-holds">
+            <h3>A shell whose import the store holds is read, with real Nix <span class="hs-id">verify-a-held-import-is-read</span></h3>
+            <p data-field="method"><code>real_nix_reads_an_import_from_a_derivation_the_store_holds</code> writes a flake whose <code>default</code> shell imports a Nix file one <code>/bin/sh</code> derivation writes, with a fresh nonce, and whose one input is a directory holding an executable, then builds the import with <code>nix build</code>. Through the real runner and the adapter's own arguments, the evaluation names that input, realized, and the declared toolchain check, observed with <code>observe_all</code> and judged with <code>assess</code>, is ready with its tool attributed to the input. Ran on 2026-11-08 on Nix 2.34.6 as an untrusted client. The suite runs in the Nix build sandbox, so the test is ignored there; <code>check.yml</code> runs it in a step of its own, as a trusted client, and <code>cargo test -p htmlspec-cli --lib -- --ignored real_nix</code> runs it where Nix is installed.</p>
+          </section>
+          <section class="verification" id="verify-a-missing-import-is-refused-unbuilt" data-change="added" data-outcome="passed" data-refs="req-package-manifests-retain-authority-over-package-pins scenario-a-shell-imports-from-a-derivation-the-store-lacks scenario-resolving-the-environment-would-require-provisioning">
+            <h3>A shell whose import the store lacks is refused, unbuilt, with real Nix <span class="hs-id">verify-a-missing-import-is-refused-unbuilt</span></h3>
+            <p data-field="method"><code>real_nix_refuses_an_import_from_a_derivation_the_store_lacks_without_building_it</code> writes the same flake with a fresh nonce and never builds the import, once for this machine's system and once for another system, aarch64-linux here, which this machine's configured remote builder could build. Each time the check is unavailable, its observed text starts at Nix's <code>error:</code>, quotes the build Nix declined, naming the derivation on Nix 2.34 and saying it can start no build on Nix 2.22, and quotes no trace, and the import's output path is absent from the store afterwards. Ran on 2026-11-08 with the same Nix and the same command.</p>
+          </section>
+          <section class="verification" id="verify-no-configuration-turns-substitution-on" data-change="added" data-outcome="partial" data-refs="req-package-manifests-retain-authority-over-package-pins scenario-a-shell-imports-from-a-derivation-the-store-lacks">
+            <h3>No configuration turns substitution back on, with real Nix <span class="hs-id">verify-no-configuration-turns-substitution-on</span></h3>
+            <p data-field="method"><code>real_nix_substitutes_nothing_whatever_the_configuration_says</code> runs <code>nix config show substitute</code> with <code>NIX_CONFIG='substitute = true'</code> on that child alone: without the adapter's settings it prints <code>true</code>, so the configuration reached the child, and with exactly the settings <code>evaluation_settings</code> returns it prints <code>false</code>. Ran on 2026-11-08 with the same Nix and the same command; with <code>--option substitute false</code> removed it failed.</p>
+            <p data-field="unchecked">No test substitutes an import from a binary cache: this machine's daemon ignores a substituter an untrusted client names, measured, so a cache in a scratch directory never reaches it, and a test against a public cache would need the network. The setting the substitution turns on is what is checked.</p>
+          </section>
+          <section class="verification" id="verify-a-shells-fetch-goes-nowhere" data-change="added" data-outcome="partial" data-refs="req-package-manifests-retain-authority-over-package-pins">
+            <h3>Nothing the evaluation fetches leaves the machine, with real Nix <span class="hs-id">verify-a-shells-fetch-goes-nowhere</span></h3>
+            <p data-field="method"><code>real_nix_fetches_nothing_a_shell_asks_for</code> listens on the loopback interface, which stands in for the network and for an operator's own <code>ftp_proxy</code>, and evaluates through <code>evaluate_inputs</code>, with the adapter's arguments and environment, seven shells: one whose input is <code>builtins.fetchurl</code>, <code>builtins.fetchTarball</code>, an <code>ftp://</code> <code>builtins.fetchurl</code>, or <code>builtins.fetchGit</code> over <code>git://</code> or SSH, of a URL on that listener, and two whose locked flake input, a tarball and a <code>git+https</code> repository on it, no store or cache holds. Each is refused within five seconds, under 0.2 seconds measured here, on a failed fetch, which Nix 2.34 words with the URL it could not fetch and Nix 2.22 as the Git reference it then could not resolve, and no connection reaches the listener; Nix 2.22.1's own binary, run with the adapter's environment, refused the <code>git://</code>, SSH, and <code>https</code> fetches the same way, in under 0.4 seconds. Ran on 2026-11-08 with the same Nix and the same command, with a cache directory of the test's own. With the removal of the operator's proxy variables, <code>GIT_PROXY_COMMAND</code>, or <code>GIT_SSH_COMMAND</code> taken out alone, a request reached the listener; with the proxy at <code>192.0.2.1:9</code>, the missing <code>git+https</code> input timed out at the deadline.</p>
+            <p data-field="unchecked">A <code>git</code> input fetched with libgit2, where no <code>git</code> is on the search path, an <code>s3://</code> fetch's credential lookup, and any other route outside libcurl, <code>git</code>, and the variables named are not checked, and the child's environment does not reach them.</p>
+          </section>
+          <section class="verification" id="verify-the-quoted-error" data-change="added" data-outcome="passed" data-refs="req-package-manifests-retain-authority-over-package-pins scenario-a-shell-imports-from-a-derivation-the-store-lacks">
+            <h3>A refusal quotes the error that states the cause <span class="hs-id">verify-the-quoted-error</span></h3>
+            <p data-field="method"><code>the_evaluators_excerpt_starts_at_the_first_error_that_states_a_cause</code> pins <code>evaluator_excerpt</code> on what Nix 2.34.6 wrote for the 1.3.1 refusal, for one missing import, for one built for another platform, whose <code>platform mismatch</code> and required system now show, for an import whose own dependency is missing, which quotes the build Nix declined rather than <code>Build failed due to failed dependency</code>, for a missing shell, and, recorded from Nix 2.22.1, the release continuous integration installs, for a build it cannot start, whose message follows a bare <code>error:</code> and names no derivation; and <code>excerpt</code>, which every other probe quotes through, on the first, where it still gives the trace. <code>the_first_error_that_states_a_cause_starts_the_excerpt</code> holds that the bare <code>error:</code> that opens a trace starts nothing, that the lines after the first stated error follow it trimmed with no limit of lines, and the 300-character bound on a character's boundary. <code>an_evaluation_without_an_error_line_is_quoted_as_any_probe_is</code> holds the fallback, and <code>a_coloured_refusal_is_quoted_as_a_plain_one</code> that terminal escapes change nothing quoted. <code>a_failed_evaluation_quotes_the_error_rather_than_the_trace</code> drives a scripted failed evaluation through the toolchain probe and checks the reason starts at the error and the remedy names an import from a derivation.</p>
+          </section>
+          <section class="verification" id="verify-the-reported-case" data-change="added" data-outcome="passed" data-refs="req-package-manifests-retain-authority-over-package-pins scenario-a-shell-imports-from-a-derivation-the-store-holds scenario-the-wrong-executable-shadows-a-pinned-tool">
+            <h3>The reported case reads ready, and still refuses a shadowing tool <span class="hs-id">verify-the-reported-case</span></h3>
+            <p data-field="method">With the binary built from <code>9358387</code>, the review's fixes, <code>htmlspec preflight</code> ran for each of the reporting project's runbooks that declares a toolchain check, inside its <code>nix develop</code>: each was ready, in 3 to 4 seconds counting the shell's entry, with every declared tool attributed to the shell's own store paths, and <code>--json</code> wrote <code>"ready": true</code>. Outside the shell, a runbook whose declared tool this machine also installs elsewhere was unmet: the tool resolved to that other installation, outside the declared environment. No run was started, and that project's lock and run records were unchanged. The same held with the binary built at <code>167541e</code>, before the review.</p>
+          </section>
+          <section class="verification" id="verify-the-whole-suite" data-change="added" data-outcome="passed" data-refs="req-package-manifests-retain-authority-over-package-pins">
+            <h3>The whole suite <span class="hs-id">verify-the-whole-suite</span></h3>
+            <p data-field="method"><code>scripts/check</code> passed all 14 stages after the review's fixes, with 1,974 tests passing, none failing, and 5 ignored: the surface's recording test and the four real-Nix tests, which <code>check.yml</code> runs in a step of its own. Among them, the payload and surface tests hold that preflight's payload shape and exit codes did not change. Repeat with <code>scripts/check</code>.</p>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

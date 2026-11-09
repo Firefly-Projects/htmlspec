@@ -42,6 +42,15 @@ jobs:
       - name: Run the check suite
         run: nix build --print-build-logs .#checks.${{ runner.arch == 'ARM64' && 'aarch64' || 'x86_64' }}-linux.default
 
+      # The preflight tests that run the runner's own Nix against its store: a development shell
+      # that imports from a derivation, substitution a configuration turns on, and a fetch to a
+      # listener. The suite above runs in the build sandbox, which has no daemon and no store to
+      # write, so they are ignored there and run here. `install-nix-action` makes the runner a
+      # trusted user, so this exercises the trusted client's path; an untrusted client's, whose
+      # settings the daemon filters, is checked by hand.
+      - name: Run the real-Nix preflight tests
+        run: nix develop --command cargo test -p htmlspec-cli --lib --locked -- --ignored real_nix
+
       # The development shell's own derivation, built with exactly its packages on the search
       # path, failing where they bring an interpreter. The suite above asks the same of its
       # sandbox; this asks it of what `nix develop` supplies.

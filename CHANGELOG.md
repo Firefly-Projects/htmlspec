@@ -7,6 +7,90 @@ find it. That check also requires every archived change to record the version it
 in, in a `VERSION` file beside its documents. Prose inside an entry is not parsed — a
 changelog exists to be read by a person.
 
+## 1.3.2 — read a development shell built by import from a derivation
+
+A patch release. A runbook's toolchain check refused every Nix development shell that imports from a
+derivation, such as a shell over a package `callCabal2nix` builds, even when the store already held
+what the import reads, and its report quoted Nix's trace instead of the error that said why. Now the
+check reads such a shell from the store, building and substituting nothing, and a refusal quotes the
+error that states the cause. The check also stops letting what the evaluation fetches reach the
+network: a shell's own downloads, and a locked flake input this machine lacks, which every release
+since 0.15.0 downloaded during the check.
+
+No command, flag, exit code, or payload field changes. Only the words of a refused toolchain
+check's `observed` text and remedy change, which the stable command surface does not cover.
+
+- **The evaluation allows an import from a derivation and forbids every build.** It no longer
+  passes `--no-allow-import-from-derivation`, which refused every such import, built or not.
+  It passes `--option allow-import-from-derivation true --max-jobs 0 --builders ''`: an import
+  whose output the store holds is read, and one whose output it lacks is refused without a build,
+  here or on a remote builder, as unavailable readiness. `--read-only` was measured and is not a
+  guard: with the import allowed, Nix built under it.
+- **Nor does it substitute one.** It passes `--option substitute false` as well. `--offline` turns
+  substitution off only where no configuration set it, so on a machine whose `nix.conf` or
+  `NIX_CONFIG` says `substitute = true`, the check would otherwise download an import's missing
+  dependency from a binary cache and report the shell ready. Stated on the command line, the
+  setting holds whatever the configuration says.
+- **What the evaluation fetches goes nowhere.** `--offline` never stopped a download: every
+  release from 0.15.0 to 1.3.1 let a shell's `builtins.fetchurl`, `builtins.fetchTarball`, or
+  `builtins.fetchGit` reach the network during the check, and downloaded a locked flake input this
+  machine lacked, a tarball, a `github:` input, or a `git` one, to read it. The evaluation's child
+  now has every proxy variable the operator set removed, since libcurl prefers the one named for a
+  URL's scheme, such as `ftp_proxy`; `http_proxy`, `https_proxy`, and `all_proxy`, in both cases,
+  pointed at a closed local port, `127.0.0.1:1`; and `GIT_PROXY_COMMAND` and `GIT_SSH_COMMAND` set
+  to `false`, so `git` opens no `git://` or SSH connection of its own. Such a fetch, and such an
+  input, is refused at once on this machine, with Nix's or git's error, and the check is refused.
+  A closed port rather than an address nothing answers, because `git` does not read
+  `--option connect-timeout`, so a missing `git+https` input would otherwise wait out the check's
+  ten seconds. Three routes stay open: where no `git` is on the search path, Nix fetches a `git`
+  input with libgit2, which ignores proxy variables; an `s3://` fetch looks its credentials up from
+  the cloud's metadata endpoints directly; and any program the evaluation runs by some other
+  route.
+- **A refusal quotes the error that states the cause.** The excerpt of a failed evaluation starts
+  at the first line that opens with `error:` and says something after it, or that is a bare
+  `error:` with its message on the next line, as Nix 2.22 writes `Unable to start any build`,
+  past the bare `error:` that opens a trace, so where 1.3.1 printed `error: / … while calling the 'map' builtin /
+  at «string»:1:217:`, the report now reads, for an import whose output is gone,
+  `error: Cannot build '/nix/store/….drv'. / Reason: local builds are disabled (max-jobs = 0)`,
+  and where the import's own dependency is gone, the build Nix declined rather than the failed
+  dependency it ends on. It runs to the end of the output within 300 characters, with no limit of
+  lines, so a foreign import's `platform mismatch` and the system it needs show; it leaves out
+  Nix's hint to change `max-jobs`, which the check sets; and it removes terminal colour first.
+  Output with no such line is quoted as before, and no other probe's quoting changes. The remedy
+  says that what a shell imports from a derivation must already be built, and that entering the
+  shell once builds it.
+- **Four tests run real Nix.** Against a flake whose shell imports a file one tiny derivation
+  writes: with the import built, the check is ready; without it, for this machine's system and
+  for another a remote builder could build, the check is unavailable with Nix's error and nothing
+  appears in the store. With `NIX_CONFIG='substitute = true'` on the child alone, the check's
+  settings leave substitution off. And against a listener on the loopback interface, standing in
+  for the network and for an operator's `ftp_proxy`, a shell's `fetchurl`, `fetchTarball`, `ftp://`
+  fetch, and `fetchGit` over `git://` and SSH, and a missing locked tarball and `git+https` input,
+  are each refused in under a second without a request reaching it. The suite runs in the Nix
+  build sandbox and without Nix, so they are ignored there; `check.yml` runs them in a step of its
+  own, and `cargo test -p htmlspec-cli --lib -- --ignored real_nix` runs them by hand. The README
+  says so under Checks.
+- **The README and the release runbook describe the settings,** where both said the evaluation
+  ran with import-from-derivation disabled. The release runbook's verification text changed, so
+  it is 0.6.1; its steps and requirements are unchanged.
+- **The contract names the case.** runbook-portability's "Package manifests retain authority over
+  package pins", which says the adapter covers a local locked Nix flake's development shell and
+  builds nothing, gains two scenarios: a shell importing from a derivation the store holds is read,
+  and one the store lacks is refused, neither built nor substituted, with the package manager's
+  own error. Its statements are unchanged. The change is archived as
+  `2026-11-08-read-a-development-shell-built-by-import-from-derivation`.
+
+### Upgrading
+
+From 1.3.1, upgrading the binary is enough, and `htmlspec init` in a project only moves its
+instructions' recorded release to 1.3.2. A project needs nothing else. A runbook whose toolchain
+check names a shell that imports from a derivation starts passing once that shell has been entered
+on the machine, and every machine that runs it needs 1.3.2; a machine on an earlier release still
+refuses it. A shell whose import a garbage collection removed is refused until the shell is entered
+again. A shell that fetches while it is evaluated, and a locked input this machine lacks, which
+earlier releases downloaded, are now refused: enter the shell once, online, so the inputs are in
+the store before the check.
+
 ## 1.3.1 — keep Python out of the repository
 
 A patch release about this repository rather than the program. A contributor gets a repository

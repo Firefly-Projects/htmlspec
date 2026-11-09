@@ -145,6 +145,62 @@ pub struct ProbeRequest {
     pub arguments: Vec<String>,
     /// Where it runs, which is the invocation's working directory.
     pub workdir: PathBuf,
+    /// What the child's environment changes from the one it inherits, and nothing more.
+    pub environment: &'static [EnvironmentChange],
+}
+
+/// One change a probe's child makes to the environment it inherits.
+///
+/// **Static, and that is the narrowness.** Every name and value is a `&'static str` this module
+/// spells, so a carried runbook can no more set a variable on a probe than choose its arguments,
+/// and the change reaches the child alone: this process's environment is never touched, which is
+/// what keeps one probe's settings out of every other.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EnvironmentChange {
+    /// The variable `name` is `value` for the child.
+    Set {
+        /// The variable.
+        name: &'static str,
+        /// Its value.
+        value: &'static str,
+    },
+    /// Every variable whose name ends in `suffix`, in either case, is absent from the child's
+    /// environment, whether it was inherited or set by an earlier change. For a family of
+    /// variables whose members this module cannot list, such as the proxy a client reads for each
+    /// scheme it knows.
+    RemoveEveryEndingIn {
+        /// The ending, compared without regard to case.
+        suffix: &'static str,
+    },
+}
+
+/// The environment a probe's child runs with: `inherited`, changed as `changes` say, in order.
+///
+/// Pure, so what reaches the child is a fact a test can assert without changing this process's
+/// environment, which another test running beside it would see.
+fn child_environment(
+    inherited: impl IntoIterator<Item = (std::ffi::OsString, std::ffi::OsString)>,
+    changes: &[EnvironmentChange],
+) -> Vec<(std::ffi::OsString, std::ffi::OsString)> {
+    let mut environment: Vec<_> = inherited.into_iter().collect();
+    for change in changes {
+        match *change {
+            EnvironmentChange::Set { name, value } => {
+                environment.retain(|(present, _)| present != name);
+                environment.push((name.into(), value.into()));
+            }
+            EnvironmentChange::RemoveEveryEndingIn { suffix } => {
+                let suffix = suffix.to_ascii_lowercase();
+                environment.retain(|(present, _)| {
+                    !present
+                        .to_string_lossy()
+                        .to_ascii_lowercase()
+                        .ends_with(&suffix)
+                });
+            }
+        }
+    }
+    environment
 }
 
 /// What a bounded invocation produced.
@@ -250,6 +306,10 @@ impl SystemRunner {
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        // The whole environment, stated: what this process inherited, as the request changes it.
+        command
+            .env_clear()
+            .envs(child_environment(std::env::vars_os(), request.environment));
 
         let mut child = match command.group_spawn() {
             Ok(child) => child,
@@ -669,6 +729,7 @@ impl<R: CommandRunner> Host<R> {
             program,
             arguments,
             workdir: self.workdir.clone(),
+            environment: &[],
         };
         let Ok(RunResult::Exited {
             status: 0, stdout, ..
@@ -761,6 +822,7 @@ impl<R: CommandRunner> HostProbe for Host<R> {
             program: resolved.clone(),
             arguments: vec![VERSION_ARGUMENT.to_owned()],
             workdir: self.workdir.clone(),
+            environment: &[],
         };
         let result = self.run(request)?;
         let RunResult::Exited {
@@ -1104,6 +1166,7 @@ impl<R: CommandRunner> Host<R> {
                 String::from("--ignore-submodules=none"),
             ],
             workdir: self.workdir.clone(),
+            environment: &[],
         };
         let result = self.run(request)?;
         let RunResult::Exited {
@@ -1158,11 +1221,27 @@ impl<R: CommandRunner> Host<R> {
 
     /// Evaluates a development shell's declared inputs, read-only and offline.
     ///
-    /// The flags are the requirement rather than a preference: `--offline` so no fetch can happen,
-    /// `--no-write-lock-file` so the lock cannot change, `--no-allow-import-from-derivation` so an
-    /// input that would need a build to be understood is refused rather than built, and
-    /// `--expr` with no `develop`, `build`, or `shell` anywhere in the invocation. A test asserts
-    /// the assembled argument vector, so this is a property of what the program sends.
+    /// The settings are the requirement rather than a preference, and [`evaluation_settings`] says
+    /// what each one closes: no substitution, whatever the machine's configuration says, no local
+    /// build slot, no remote builder, and no lock written. `--expr` is the one verb's input, with no
+    /// `develop`, `build`, or `shell` anywhere in the invocation. An import from a derivation is
+    /// allowed, because reading one whose output the store holds builds nothing: a shell that
+    /// imports one whose output is missing is refused, neither built nor substituted.
+    ///
+    /// **What the settings do not close.** `--offline` does not stop a download: an expression can
+    /// ask Nix's downloader for a URL, through `builtins.fetchurl` or `builtins.fetchTarball`, and
+    /// a locked flake input this machine lacks, a tarball, a `github:` input, or a `git` one, is
+    /// fetched to read it. So the child's environment, [`EVALUATION_ENVIRONMENT`], sends every
+    /// connection libcurl or `git` would make to a closed local port, whatever proxy the operator
+    /// set, and keeps `git` from opening a `git://` or SSH connection of its own: such a fetch is
+    /// refused on this machine at once. What those variables do not reach, `libgit2` where no `git`
+    /// is on the search path, an `s3://` fetch's credential lookup, and any other route, the design
+    /// records as accepted risks.
+    ///
+    /// A test asserts the assembled argument vector and environment, so this is a property of what
+    /// the program sends, and the real-Nix tests hold it against a shell that imports from a
+    /// derivation, a configuration that turns substitution on, and shells that fetch from a
+    /// listener by every route the environment closes.
     ///
     /// `--impure` is here because the expression reads `builtins.currentSystem`, and the system is
     /// a fact about the machine being checked rather than something a runbook should restate.
@@ -1190,6 +1269,7 @@ impl<R: CommandRunner> Host<R> {
             program: nix.to_owned(),
             arguments: evaluation_arguments(location, shell),
             workdir: directory.to_owned(),
+            environment: EVALUATION_ENVIRONMENT,
         };
         let result = self.run(request)?;
         let RunResult::Exited {
@@ -1204,19 +1284,21 @@ impl<R: CommandRunner> Host<R> {
             });
         };
         if status != 0 {
-            // Whatever the evaluator said is the reason. Missing locked sources, an evaluation that
-            // would need a build, a shell the manifest does not define, and an unsupported Nix all
-            // arrive here, and they are all unavailable readiness: this probe will not provision
-            // its way to an answer.
+            // Whatever the evaluator said is the reason. Missing locked sources, an import from a
+            // derivation whose output the store lacks, a shell the manifest does not define, and an
+            // unsupported Nix all arrive here, and they are all unavailable readiness: this probe
+            // will not provision its way to an answer.
             return Err(ProbeFault::Unavailable {
                 reason: format!(
                     "the manifest could not be evaluated read-only: {}",
-                    excerpt(&said(&stdout, &stderr))
+                    evaluator_excerpt(&said(&stdout, &stderr))
                 ),
                 remedy: String::from(
                     "make the environment inspectable from what this machine already holds — its \
-                     locked inputs in the store and the shell the declaration names in the \
-                     manifest. This probe fetches, builds, and updates nothing",
+                     locked inputs in the store, any file the shell imports from a derivation \
+                     built there already, and the shell the declaration names in the manifest. \
+                     Entering the shell once realizes them. This probe builds, substitutes, and \
+                     updates nothing, and lets none of Nix's own downloads leave the machine",
                 ),
             });
         }
@@ -1275,31 +1357,134 @@ pub fn evaluation_inputs(output: &str) -> Result<Vec<PathBuf>, ProbeFault> {
     Ok(inputs)
 }
 
-/// The exact argument vector the adapter sends, as one function so a test can assert all of it.
+/// The Nix settings the evaluation runs under, as one function a test can hand to `nix config show`.
 ///
-/// Every flag here is a promise the design makes about what preflight does not do, which is why
-/// they are assembled in one readable place rather than scattered through a builder chain.
-pub fn evaluation_arguments(directory: &str, shell: &ShellName) -> Vec<String> {
+/// Every setting here is a promise the design makes about what preflight does not do, or, for the
+/// one that allows an import from a derivation, about what it reads without doing anything, which is
+/// why they are assembled in one readable place rather than scattered through a builder chain. Each
+/// is stated on the command line, which outranks `nix.conf` and `NIX_CONFIG`, so no configuration
+/// of the machine being checked can loosen one.
+pub fn evaluation_settings() -> Vec<String> {
     vec![
+        // The fetcher cache is trusted as it stands and the flake registry is not asked. Alone it
+        // does not keep a locked input this machine lacks from being downloaded: 1.3.1 fetched a
+        // missing `tarball`, `github:`, and `git+http` input under it. What refuses those is
+        // `EVALUATION_ENVIRONMENT`, which sends every client's connection nowhere.
+        String::from("--offline"),
+        // An import from a derivation is read where this machine already holds its output. A shell
+        // `callCabal2nix` builds is a local locked flake's development shell like any other, and
+        // `runbook-portability` says this adapter covers one: refusing every such import, as
+        // `--no-allow-import-from-derivation` did until 1.3.2, refused imports that needed no build.
+        String::from("--option"),
+        String::from("allow-import-from-derivation"),
+        String::from("true"),
+        // And nothing builds one whose output is missing: no local build slot, and no remote
+        // builder, so the evaluation is refused, unbuilt, and Nix says what it would have built.
+        // `--read-only` is not this guard: with the import allowed, Nix built under it.
+        String::from("--max-jobs"),
+        String::from("0"),
+        String::from("--builders"),
+        // The empty list of builders, which the daemon accepts from any client.
+        String::new(),
+        // Nor is one substituted. `--offline` turns substitution off only where nothing configured
+        // it, and a `substitute` line in `nix.conf` or `NIX_CONFIG` counts as configured, so with
+        // `--offline` alone such a machine downloaded an import's output and reported it ready.
+        // Stated, it holds whatever the configuration says, and the daemon applies it for any
+        // client.
+        String::from("--option"),
+        String::from("substitute"),
+        String::from("false"),
+        // A download Nix's own downloader makes meets the closed port `EVALUATION_ENVIRONMENT`
+        // names, which refuses it at once. Should something drop that connection rather than
+        // refuse it, this bounds the wait: one second, rather than the default fifteen, which
+        // would outlast the probe's deadline. `git` does not read it.
+        String::from("--option"),
+        String::from("connect-timeout"),
+        String::from("1"),
+    ]
+}
+
+/// The exact argument vector the adapter sends, as one function so a test can assert all of it.
+pub fn evaluation_arguments(directory: &str, shell: &ShellName) -> Vec<String> {
+    let mut arguments = vec![
         String::from("--extra-experimental-features"),
         String::from("nix-command flakes"),
         String::from("eval"),
-        // No network, so a missing input is a refusal rather than a download.
-        String::from("--offline"),
+    ];
+    arguments.extend(evaluation_settings());
+    arguments.extend([
         // The lock is read, never moved: a check that changed what it was checking would leave the
         // tree it promised not to modify.
         String::from("--no-write-lock-file"),
-        // An input that can only be understood by building it is not understood. Refused rather
-        // than built.
-        String::from("--no-allow-import-from-derivation"),
         // `builtins.currentSystem` is a fact about this machine, and reading it is what makes the
         // expression impure.
         String::from("--impure"),
         String::from("--json"),
         String::from("--expr"),
         evaluation_expression(directory, shell),
-    ]
+    ]);
+    arguments
 }
+
+/// A proxy that refuses every connection at once: port 1 of the loopback interface.
+///
+/// A closed local port rather than an address nothing answers, because `git` reads the proxy
+/// variables and not `connect-timeout`: with `192.0.2.1`, which the first version named, a missing
+/// `git+https` input waited out the probe's deadline and was reported as timed out with nothing
+/// known, where a refused connection fails it within a second with git's own error. Port 1 is
+/// TCP's port-service multiplexer, which nothing serves in practice, and binding it on Linux takes
+/// root; a process that did listen there would still be on this machine. Port 0, which no process
+/// can listen on, was measured to refuse as fast, and was not chosen: libcurl reads a proxy port of
+/// 0 as "use the default", 1080, in one of its interfaces, and 1080 is where a local SOCKS proxy
+/// commonly runs, so a client that took a URL's `:0` that way would hand the request to one.
+const CLOSED_PROXY: &str = "http://127.0.0.1:1";
+
+/// What the evaluation's child changes in the environment it inherits.
+///
+/// First every variable whose name ends in `_proxy`, in either case, is removed: libcurl prefers
+/// the variable named for a URL's scheme over `all_proxy`, so an operator's `ftp_proxy` would carry
+/// an `ftp://` fetch past the settings below, and `no_proxy` would except hosts from them. Then
+/// six are set, to [`CLOSED_PROXY`]: `http_proxy`, `https_proxy`, and `all_proxy`, in both cases,
+/// because libcurl and `git` read those, every scheme without a variable of its own falls to
+/// `all_proxy`, and `HTTP_PROXY`, which libcurl ignores, is set for any other client that reads it.
+/// `GIT_PROXY_COMMAND` and `GIT_SSH_COMMAND` are `false`, so `git` opens no `git://` or SSH
+/// connection of its own, which it would make directly, past any proxy. A request the evaluation
+/// asks Nix or `git` for is therefore refused on this machine at once.
+pub const EVALUATION_ENVIRONMENT: &[EnvironmentChange] = &[
+    EnvironmentChange::RemoveEveryEndingIn { suffix: "_proxy" },
+    EnvironmentChange::Set {
+        name: "http_proxy",
+        value: CLOSED_PROXY,
+    },
+    EnvironmentChange::Set {
+        name: "HTTP_PROXY",
+        value: CLOSED_PROXY,
+    },
+    EnvironmentChange::Set {
+        name: "https_proxy",
+        value: CLOSED_PROXY,
+    },
+    EnvironmentChange::Set {
+        name: "HTTPS_PROXY",
+        value: CLOSED_PROXY,
+    },
+    EnvironmentChange::Set {
+        name: "all_proxy",
+        value: CLOSED_PROXY,
+    },
+    EnvironmentChange::Set {
+        name: "ALL_PROXY",
+        value: CLOSED_PROXY,
+    },
+    EnvironmentChange::Set {
+        name: "GIT_PROXY_COMMAND",
+        value: "false",
+    },
+    EnvironmentChange::Set {
+        name: "GIT_SSH_COMMAND",
+        value: "false",
+    },
+];
 
 /// The expression the adapter evaluates.
 ///
@@ -1428,15 +1613,147 @@ fn excerpt(output: &str) -> String {
         .filter(|line| !line.trim().is_empty())
         .take(3)
         .collect();
-    let mut text = taken.join(" / ");
-    if text.chars().count() > 300 {
-        let truncated: String = text.chars().take(300).collect();
-        text = format!("{truncated}…");
-    }
+    bounded(taken.join(" / "))
+}
+
+/// The most of a program's output a report quotes, in characters.
+const QUOTE_BOUND: usize = 300;
+
+/// `text`, cut at [`QUOTE_BOUND`] characters and marked where it was cut, or `nothing`.
+///
+/// Counted in characters rather than bytes, so a cut never falls inside one.
+fn bounded(text: String) -> String {
     if text.is_empty() {
         return String::from("nothing");
     }
+    if text.chars().count() > QUOTE_BOUND {
+        let truncated: String = text.chars().take(QUOTE_BOUND).collect();
+        return format!("{truncated}…");
+    }
     text
+}
+
+/// How Nix opens a line that states why an evaluation failed.
+const EVALUATOR_ERROR: &str = "error:";
+
+/// How Nix opens advice about its own settings, which this adapter fixes on its command line.
+const EVALUATOR_HINT: &str = "Hint:";
+
+/// What a failed evaluation said, from the first error that states a cause.
+///
+/// Nix opens a trace with a bare `error:` and ends it with the error that stopped the evaluation,
+/// and a build it was asked for and declined reports its own errors before the trace: the 1.3.1
+/// report quoted the trace's first three lines, `error: / … while calling the 'map' builtin / at
+/// «string»:1:217:`, and never reached the line that said why. So the excerpt starts at the first
+/// line that opens with `error:` and states something after it, or that is a bare `error:` whose
+/// message follows on the next line rather than a frame of a trace, as Nix 2.22 writes a build it
+/// cannot start, joined to that line. It runs to the end of the output, within [`QUOTE_BOUND`]
+/// characters but no limit of lines. The first one, because where an import's
+/// own dependency is what is missing, the last error Nix writes is `Build failed due to failed
+/// dependency` and the first is the build it declined; and no limit of lines, because Nix gives the
+/// reason a foreign import was declined, `platform mismatch` and the system it needs, on the fourth
+/// to sixth lines of that error.
+///
+/// Each line is trimmed, because Nix indents all but the first and the quote joins them into one.
+/// A `Hint:` line is left out, because it advises changing `max-jobs` or `builders`, which this
+/// adapter states on the command line and an operator cannot change for it. Terminal escape
+/// sequences are removed first: Nix 2.34.6 colours nothing it writes to a pipe, but a later Nix can
+/// be told to, and a coloured `error:` would otherwise not be found. Output with no such line is
+/// quoted as [`excerpt`] quotes any probe's.
+///
+/// The evaluation's alone, because the order is a fact about Nix: a tool's version output, `git
+/// status`, and an answer of the wrong shape are quoted from their first lines, as they were.
+fn evaluator_excerpt(output: &str) -> String {
+    let plain = without_terminal_escapes(output);
+    let lines: Vec<&str> = plain
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect();
+    // An `error:` states a cause on its own line, or, bare, on the lines after it, as Nix 2.22
+    // writes a build it cannot start. The bare one that opens a trace is followed by a frame.
+    let states_a_cause = |index: &usize| {
+        let Some(rest) = lines
+            .get(*index)
+            .and_then(|line| line.strip_prefix(EVALUATOR_ERROR))
+        else {
+            return false;
+        };
+        !rest.trim().is_empty()
+            || lines.get(index + 1).is_some_and(|next| {
+                !next.starts_with(TRACE_FRAME) && !next.starts_with(EVALUATOR_ERROR)
+            })
+    };
+    let Some(start) = (0..lines.len()).find(states_a_cause) else {
+        return excerpt(&plain);
+    };
+    let mut quoted: Vec<String> = Vec::new();
+    let mut rest = lines.iter().skip(start);
+    if let Some(first) = rest.next() {
+        // A bare `error:` is joined with the line that states its cause, so the quote reads as one.
+        quoted.push(match first.strip_prefix(EVALUATOR_ERROR) {
+            Some(after) if after.trim().is_empty() => match rest.next() {
+                Some(cause) => format!("{EVALUATOR_ERROR} {cause}"),
+                None => (*first).to_owned(),
+            },
+            _ => (*first).to_owned(),
+        });
+    }
+    quoted.extend(
+        rest.filter(|line| !line.starts_with(EVALUATOR_HINT))
+            .map(|line| (*line).to_owned()),
+    );
+    bounded(quoted.join(" / "))
+}
+
+/// How Nix opens each frame of a trace.
+const TRACE_FRAME: char = '…';
+
+/// `text` without the terminal escape sequences a program writes to colour it.
+///
+/// A control sequence, `ESC [` up to its final byte from `@` to `~`; an operating-system command,
+/// `ESC ]` up to a bell or `ESC \`; an escape with intermediate bytes, such as `ESC ( B`, its
+/// bytes from space to `/` and the one after them; and any other escape, `ESC` and the character
+/// after it. Total: an escape the text ends inside is dropped with the rest of the text.
+fn without_terminal_escapes(text: &str) -> String {
+    const ESCAPE: char = '\u{1b}';
+    const BELL: char = '\u{7}';
+    let mut plain = String::with_capacity(text.len());
+    let mut characters = text.chars();
+    while let Some(character) = characters.next() {
+        if character != ESCAPE {
+            plain.push(character);
+            continue;
+        }
+        match characters.next() {
+            Some('[') => {
+                for parameter in characters.by_ref() {
+                    if ('@'..='~').contains(&parameter) {
+                        break;
+                    }
+                }
+            }
+            Some(']') => loop {
+                match characters.next() {
+                    None | Some(BELL) => break,
+                    Some(ESCAPE) => {
+                        characters.next();
+                        break;
+                    }
+                    Some(_) => {}
+                }
+            },
+            Some(intermediate) if (' '..='/').contains(&intermediate) => {
+                for byte in characters.by_ref() {
+                    if !(' '..='/').contains(&byte) {
+                        break;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    plain
 }
 
 /// Observes every check a contract declares, in document order.
@@ -1847,6 +2164,7 @@ mod tests {
             program: sleep,
             arguments: vec![String::from("30")],
             workdir: std::env::temp_dir(),
+            environment: &[],
         }
     }
 
@@ -1945,6 +2263,7 @@ mod tests {
                     ),
                 ],
                 workdir: std::env::temp_dir(),
+                environment: &[],
             },
             &Cancellation::new(),
         );
@@ -1981,17 +2300,49 @@ mod tests {
         let arguments = evaluation_arguments("/work/project", &shell("default"));
         let joined = arguments.join(" ");
 
-        for wanted in [
-            "--offline",
-            "--no-write-lock-file",
-            "--no-allow-import-from-derivation",
-            "--json",
-        ] {
-            assert!(
-                arguments.iter().any(|argument| argument == wanted),
-                "the invocation does not carry {wanted}: {joined}"
-            );
-        }
+        // Every argument before the expression, as one literal. Nix takes the last value it is
+        // given for a setting, so a later `--max-jobs 4` or `--option substitute true` would undo
+        // one of these while a test that looked for each would still pass: only the whole vector
+        // rules that out. It reads the import a store holds, builds nothing here or on a builder,
+        // substitutes nothing whatever the configuration says, bounds a fetch's wait, and leaves
+        // the lock alone. `--no-allow-import-from-derivation`, which refused every import from a
+        // derivation, built or not, is not among them.
+        let Some((expression, settled)) = arguments.split_last() else {
+            panic!("the invocation is empty");
+        };
+        assert_eq!(
+            settled,
+            [
+                "--extra-experimental-features",
+                "nix-command flakes",
+                "eval",
+                "--offline",
+                "--option",
+                "allow-import-from-derivation",
+                "true",
+                "--max-jobs",
+                "0",
+                "--builders",
+                "",
+                "--option",
+                "substitute",
+                "false",
+                "--option",
+                "connect-timeout",
+                "1",
+                "--no-write-lock-file",
+                "--impure",
+                "--json",
+                "--expr",
+            ],
+            "the invocation's arguments before its expression changed: {joined}"
+        );
+        // The settings a test hands `nix config show` are exactly the ones the invocation carries.
+        assert_eq!(
+            &settled[3..17],
+            evaluation_settings().as_slice(),
+            "the settings and the invocation disagree"
+        );
         // The subcommand is `eval`, and it is the only verb: `develop`, `build`, `shell`, and the
         // fetch commands are all things this probe must not do, and all of them would appear here.
         assert_eq!(
@@ -2008,9 +2359,51 @@ mod tests {
             );
         }
 
+        // The child's environment, whole: every proxy variable the operator set removed, six set to
+        // the closed local port, and `git`'s own connections closed.
+        let closed = "http://127.0.0.1:1";
+        assert_eq!(
+            EVALUATION_ENVIRONMENT,
+            [
+                EnvironmentChange::RemoveEveryEndingIn { suffix: "_proxy" },
+                EnvironmentChange::Set {
+                    name: "http_proxy",
+                    value: closed
+                },
+                EnvironmentChange::Set {
+                    name: "HTTP_PROXY",
+                    value: closed
+                },
+                EnvironmentChange::Set {
+                    name: "https_proxy",
+                    value: closed
+                },
+                EnvironmentChange::Set {
+                    name: "HTTPS_PROXY",
+                    value: closed
+                },
+                EnvironmentChange::Set {
+                    name: "all_proxy",
+                    value: closed
+                },
+                EnvironmentChange::Set {
+                    name: "ALL_PROXY",
+                    value: closed
+                },
+                EnvironmentChange::Set {
+                    name: "GIT_PROXY_COMMAND",
+                    value: "false"
+                },
+                EnvironmentChange::Set {
+                    name: "GIT_SSH_COMMAND",
+                    value: "false"
+                },
+            ],
+            "the evaluation's environment changed"
+        );
+
         // The expression reads both input lists and asks for store paths, which is what makes the
         // answer about the environment rather than about one attribute of it.
-        let expression = arguments.last().expect("an expression");
         for wanted in [
             "nativeBuildInputs",
             "buildInputs",
@@ -2405,12 +2798,425 @@ mod tests {
             Err(ProbeFault::Unavailable { reason, remedy }) => {
                 assert!(reason.contains("cannot fetch input"), "{reason}");
                 assert!(
-                    remedy.contains("fetches, builds, and updates nothing"),
+                    remedy.contains("builds, substitutes, and updates nothing"),
                     "{remedy}"
                 );
             }
             other => panic!("a failed evaluation was reported as {other:?}"),
         }
+    }
+
+    /// The trace Nix 2.34.6 writes before the error, when the adapter's expression fails.
+    ///
+    /// Recorded from the real-Nix tests' flake below, with the scratch directory replaced by
+    /// `/work/project`, the column numbers moved to match, and each echoed source line and its
+    /// caret shortened. Nix ends every frame's block with a blank line and writes the error last.
+    const NIX_TRACE: &str = "error:
+       … while calling the 'map' builtin
+         at «string»:1:193:
+            1| let flake = builtins.getFlake (\"path:\" + \"/work/project\"); …
+             |                                                              ^
+
+       … while calling the 'filter' builtin
+         at «string»:1:230:
+            1| let flake = builtins.getFlake (\"path:\" + \"/work/project\"); …
+             |                                                                   ^
+
+       (stack trace truncated; use '--show-trace' to show the full, detailed trace)
+
+";
+
+    /// What Nix said when the 1.3.1 adapter evaluated a shell importing from a derivation.
+    ///
+    /// The import's output was in the store, built minutes earlier, and the flag refused it anyway.
+    fn refused_every_import() -> String {
+        format!(
+            "{NIX_TRACE}       error: cannot build \
+             '/nix/store/7jqcih3zvw6s4j9hrkysfvqyn24lchw3-htmlspec-import-from-derivation-fixture.drv^out' \
+             during evaluation because the option 'allow-import-from-derivation' is disabled\n"
+        )
+    }
+
+    /// What Nix says when the adapter's settings decline to build an import the store lacks.
+    fn declined_a_build() -> String {
+        format!(
+            "{NIX_TRACE}       error: Cannot build \
+             '/nix/store/bvir5q2xy21ma6kaacjz6d56nna5pk74-htmlspec-import-from-derivation-fixture.drv'.
+       Reason: local builds are disabled (max-jobs = 0)
+       Hint: set 'max-jobs' to a non-zero value to enable local builds, or configure remote builders via 'builders'
+"
+        )
+    }
+
+    /// The same, for an import built for another platform: the reason it could not be built here
+    /// follows the hint, on the error's fourth to sixth lines.
+    fn declined_a_foreign_build() -> String {
+        format!(
+            "{NIX_TRACE}       error: Cannot build \
+             '/nix/store/6al9zakaihh9bkmlwdx0hlq93bl0bcjx-htmlspec-import-from-derivation-fixture.drv'.
+       Reason: local builds are disabled (max-jobs = 0)
+       Hint: set 'max-jobs' to a non-zero value to enable local builds, or configure remote builders via 'builders'
+       Reason: platform mismatch
+       Required system: 'aarch64-linux'
+       Current system: 'aarch64-darwin'
+"
+        )
+    }
+
+    /// What Nix says when the import's own dependency is what the store lacks, as after a garbage
+    /// collection. The build it declined comes first, and the error the evaluation ends on names
+    /// only a failed dependency.
+    fn declined_a_dependency() -> String {
+        format!(
+            "error: Cannot build '/nix/store/ckd3pz6hja342hs02ssn5gi91mfxnbi2-htmlspec-import-dependency.drv'.
+       Reason: local builds are disabled (max-jobs = 0)
+       Hint: set 'max-jobs' to a non-zero value to enable local builds, or configure remote builders via 'builders'
+error: Cannot build '/nix/store/hclaqqijdvbrm7jr6aydnr26yjzhadxj-htmlspec-import-from-derivation-fixture.drv'.
+       Reason: 1 dependency failed.
+       Output paths:
+         /nix/store/1q75s9drr62y409768wiv7dgw0w9i5ab-htmlspec-import-from-derivation-fixture
+{NIX_TRACE}       error: Build failed due to failed dependency
+"
+        )
+    }
+
+    /// What Nix 2.22.1, the release continuous integration's runner installs, says when the
+    /// adapter's settings decline to build an import the store lacks, for this machine's system or
+    /// another: a bare `error:` closing the trace, its message on the lines after it, and no
+    /// derivation named. Recorded from that release's own binary.
+    fn could_not_start_a_build_on_nix_2_22() -> String {
+        format!(
+            "warning: unknown setting 'lazy-trees'\n{NIX_TRACE}       error:
+                               Unable to start any build;
+                               either increase '--max-jobs' or enable remote builds.
+
+                               For more information run 'man nix.conf' and search for '/machines'.
+"
+        )
+    }
+
+    /// What Nix says when the manifest defines no shell of the declared name.
+    fn a_missing_shell() -> String {
+        format!(
+            "{NIX_TRACE}       error: attribute 'missing' missing
+       at «string»:1:176:
+            1| let flake = builtins.getFlake (\"path:\" + \"/work/project\"); …
+             |                                                                          ^
+"
+        )
+    }
+
+    /// A failed evaluation quotes the error Nix stated, not the trace it began with.
+    ///
+    /// Measured on the defect: the 1.3.1 report read `error: / … while calling the 'map' builtin /
+    /// at «string»:1:217:`, the trace's first three lines, and never reached the one that said why.
+    /// The remedy names the case that remains once the import is allowed: an import whose output
+    /// the store no longer holds. The request carries the child's proxy variables.
+    #[test]
+    fn a_failed_evaluation_quotes_the_error_rather_than_the_trace() {
+        let scratch = Scratch::new("evaluation-trace");
+        let search = a_locked_project(&scratch);
+        let mut host = scripted(
+            &scratch,
+            &[search],
+            ScriptedRunner::new(vec![RunResult::Exited {
+                status: 1,
+                stdout: String::new(),
+                stderr: declined_a_build(),
+                truncated: false,
+            }]),
+        );
+
+        match host.toolchain(&path("flake.nix"), &shell("default"), &[name("cargo")]) {
+            Err(ProbeFault::Unavailable { reason, remedy }) => {
+                assert!(
+                    reason.starts_with(
+                        "the manifest could not be evaluated read-only: error: Cannot build \
+                         '/nix/store/"
+                    ),
+                    "the reason does not start at the evaluator's error: {reason}"
+                );
+                assert!(
+                    reason.contains("Reason: local builds are disabled (max-jobs = 0)"),
+                    "{reason}"
+                );
+                assert!(
+                    !reason.contains("while calling"),
+                    "the reason quotes the trace: {reason}"
+                );
+                assert!(remedy.contains("imports from a derivation"), "{remedy}");
+                assert!(
+                    remedy.contains("builds, substitutes, and updates nothing"),
+                    "{remedy}"
+                );
+            }
+            other => panic!("a failed evaluation was reported as {other:?}"),
+        }
+        let requests = host.runner.requests.lock().expect("the requests").clone();
+        let [evaluation] = requests.as_slice() else {
+            panic!("one evaluation was expected: {requests:?}");
+        };
+        assert_eq!(evaluation.environment, EVALUATION_ENVIRONMENT);
+    }
+
+    /// The excerpt of a failed evaluation starts at the first error that states a cause.
+    ///
+    /// Pinned on what Nix 2.34.6 wrote for the 1.3.1 refusal, for an import the store lacks, for
+    /// one built for another platform, for an import whose own dependency the store lacks, and for
+    /// a shell the manifest does not define. [`excerpt`], which every other probe still quotes
+    /// through, is asserted beside it on the first, because the difference between the two is the
+    /// defect.
+    #[test]
+    fn the_evaluators_excerpt_starts_at_the_first_error_that_states_a_cause() {
+        let refused = refused_every_import();
+        assert_eq!(
+            evaluator_excerpt(&refused),
+            "error: cannot build \
+             '/nix/store/7jqcih3zvw6s4j9hrkysfvqyn24lchw3-htmlspec-import-from-derivation-fixture.drv^out' \
+             during evaluation because the option 'allow-import-from-derivation' is disabled"
+        );
+        assert_eq!(
+            excerpt(&refused),
+            "error: /        … while calling the 'map' builtin /          at «string»:1:193:",
+            "the first lines are what 1.3.1 quoted, and what every other probe still quotes"
+        );
+
+        // One import missing: the error and its reason, without the hint about `max-jobs`, which
+        // the adapter sets and the operator cannot.
+        assert_eq!(
+            evaluator_excerpt(&declined_a_build()),
+            "error: Cannot build \
+             '/nix/store/bvir5q2xy21ma6kaacjz6d56nna5pk74-htmlspec-import-from-derivation-fixture.drv'. \
+             / Reason: local builds are disabled (max-jobs = 0)"
+        );
+
+        // Built for another platform: the reason it could not be built here, past the third line.
+        assert_eq!(
+            evaluator_excerpt(&declined_a_foreign_build()),
+            "error: Cannot build \
+             '/nix/store/6al9zakaihh9bkmlwdx0hlq93bl0bcjx-htmlspec-import-from-derivation-fixture.drv'. \
+             / Reason: local builds are disabled (max-jobs = 0) / Reason: platform mismatch / Required \
+             system: 'aarch64-linux' / Current system: 'aarch64-darwin'"
+        );
+
+        // The import's dependency missing: the build Nix declined, not the failed dependency it
+        // ended on.
+        let dependency = evaluator_excerpt(&declined_a_dependency());
+        assert!(
+            dependency.starts_with(
+                "error: Cannot build \
+                 '/nix/store/ckd3pz6hja342hs02ssn5gi91mfxnbi2-htmlspec-import-dependency.drv'. / \
+                 Reason: local builds are disabled (max-jobs = 0) / error: Cannot build"
+            ),
+            "{dependency}"
+        );
+        assert!(
+            !dependency.starts_with("error: Build failed due to failed dependency"),
+            "{dependency}"
+        );
+
+        // Nix 2.22: the error's message on the lines after a bare `error:`, joined to it, and the
+        // bare `error:` that opens the trace passed over.
+        assert_eq!(
+            evaluator_excerpt(&could_not_start_a_build_on_nix_2_22()),
+            "error: Unable to start any build; / either increase '--max-jobs' or enable remote \
+             builds. / For more information run 'man nix.conf' and search for '/machines'."
+        );
+
+        // A shell the manifest does not define: the missing attribute, and where.
+        assert!(
+            evaluator_excerpt(&a_missing_shell()).starts_with(
+                "error: attribute 'missing' missing / at «string»:1:176: / 1| let flake"
+            ),
+            "{}",
+            evaluator_excerpt(&a_missing_shell())
+        );
+    }
+
+    /// The bare `error:` that opens a trace starts nothing, the first line that states one does,
+    /// and the lines after it follow it, trimmed, to the end and within the bound alone.
+    #[test]
+    fn the_first_error_that_states_a_cause_starts_the_excerpt() {
+        let output =
+            "warning: Git tree is dirty\nerror:\n  … while evaluating\nerror: the first\n  \
+                      its detail\n  more\n  and more\n       error: the last\n\n";
+        assert_eq!(
+            evaluator_excerpt(output),
+            "error: the first / its detail / more / and more / error: the last"
+        );
+        assert_eq!(
+            evaluator_excerpt("error:   \n  error: stated\n"),
+            "error: stated"
+        );
+
+        let long = format!("trace\n   error: {}\n", "é".repeat(400));
+        let quoted = evaluator_excerpt(&long);
+        assert!(quoted.starts_with("error: ééé"), "{quoted}");
+        assert_eq!(
+            quoted.chars().count(),
+            301,
+            "the bound is 300 characters and an ellipsis, cut on a character's boundary"
+        );
+    }
+
+    /// Output with no line opening with `error:` and stating something is quoted from its first
+    /// lines, as any probe's is.
+    #[test]
+    fn an_evaluation_without_an_error_line_is_quoted_as_any_probe_is() {
+        for output in [
+            "",
+            "   \n\n",
+            "warning: unknown setting 'eval-cores'\nit failed\n  and said more\nand more\n",
+            "a line with error: inside it opens no error\nsecond\n",
+            "error:\n       … while calling the 'map' builtin\n       (stack trace truncated)\n",
+        ] {
+            assert_eq!(evaluator_excerpt(output), excerpt(output), "{output:?}");
+        }
+        assert_eq!(evaluator_excerpt(""), "nothing");
+    }
+
+    /// Coloured, the same refusals quote the same words.
+    ///
+    /// Nix 2.34.6 colours nothing it writes to a pipe, but a later Nix can be told to with
+    /// `FORCE_COLOR` or `CLICOLOR_FORCE`, and then no line opens with `error:` as text. The
+    /// colouring here is Nix's own: bold red for `error:`, and the escape that resets it.
+    #[test]
+    fn a_coloured_refusal_is_quoted_as_a_plain_one() {
+        for plain in [
+            refused_every_import(),
+            declined_a_build(),
+            declined_a_dependency(),
+        ] {
+            let coloured = plain
+                .replace("error:", "\u{1b}[31;1merror:\u{1b}[0m")
+                .replace("Reason:", "\u{1b}[35;1mReason:\u{1b}[0m")
+                .replace("…", "\u{1b}]8;;file:///work\u{7}…\u{1b}]8;;\u{1b}\\");
+            assert_ne!(coloured, plain);
+            assert_eq!(evaluator_excerpt(&coloured), evaluator_excerpt(&plain));
+        }
+        assert_eq!(
+            without_terminal_escapes("a\u{1b}[1"),
+            "a",
+            "a cut escape is dropped"
+        );
+        assert_eq!(without_terminal_escapes("a\u{1b}"), "a");
+        assert_eq!(without_terminal_escapes("a\u{1b}(Bb"), "ab");
+    }
+
+    /// **An operator's own proxy variables do not reach the evaluation.**
+    ///
+    /// The review's finding: libcurl prefers the variable named for a URL's scheme, so an exported
+    /// `ftp_proxy` beat the child's `all_proxy`, and an `ftp://` fetch reached the operator's proxy.
+    /// From an inherited environment holding one of each kind, the evaluation's child keeps the six
+    /// it sets, at the closed port, and nothing else named for a proxy; what is not a proxy's
+    /// passes through untouched.
+    #[test]
+    fn an_operators_proxy_variables_do_not_reach_the_evaluation() {
+        let operator = "http://proxy.operator.example:3128";
+        let inherited: Vec<(std::ffi::OsString, std::ffi::OsString)> = [
+            ("PATH", "/usr/bin:/bin"),
+            ("HOME", "/home/operator"),
+            ("ftp_proxy", operator),
+            ("FTP_PROXY", operator),
+            ("socks_proxy", operator),
+            ("rsync_proxy", operator),
+            ("http_proxy", operator),
+            ("HTTPS_PROXY", operator),
+            ("no_proxy", "*"),
+            ("NO_PROXY", "127.0.0.1"),
+            ("PROXY_PAC", "kept: it does not end in _proxy"),
+            ("GIT_SSH_COMMAND", "ssh -J bastion.operator.example"),
+        ]
+        .into_iter()
+        .map(|(name, value)| (name.into(), value.into()))
+        .collect();
+
+        let mut child = child_environment(inherited, EVALUATION_ENVIRONMENT);
+        child.sort();
+        let child: Vec<(String, String)> = child
+            .into_iter()
+            .map(|(name, value)| {
+                (
+                    name.to_string_lossy().into_owned(),
+                    value.to_string_lossy().into_owned(),
+                )
+            })
+            .collect();
+        let closed = "http://127.0.0.1:1";
+        let expected: Vec<(String, String)> = [
+            ("ALL_PROXY", closed),
+            ("GIT_PROXY_COMMAND", "false"),
+            ("GIT_SSH_COMMAND", "false"),
+            ("HOME", "/home/operator"),
+            ("HTTPS_PROXY", closed),
+            ("HTTP_PROXY", closed),
+            ("PATH", "/usr/bin:/bin"),
+            ("PROXY_PAC", "kept: it does not end in _proxy"),
+            ("all_proxy", closed),
+            ("http_proxy", closed),
+            ("https_proxy", closed),
+        ]
+        .into_iter()
+        .map(|(name, value)| (name.to_owned(), value.to_owned()))
+        .collect();
+        assert_eq!(child, expected);
+
+        // With no changes, the child's environment is what was inherited.
+        let plain = vec![("PATH".into(), "/bin".into())];
+        assert_eq!(child_environment(plain.clone(), &[]), plain);
+    }
+
+    /// The child's environment changes as the request says, and this process's does not.
+    #[test]
+    fn a_probes_environment_reaches_its_child_alone() {
+        let Some(sh) = real_executable("sh") else {
+            panic!("this test needs a shell to read its environment");
+        };
+        // `HOME` is inherited, and a suffix removes it and one set earlier in the request alike.
+        const CHANGES: &[EnvironmentChange] = &[
+            EnvironmentChange::Set {
+                name: "HTMLSPEC_PROBE_SET",
+                value: "set for the child",
+            },
+            EnvironmentChange::Set {
+                name: "HTMLSPEC_PROBE_HOME",
+                value: "set, then removed by its ending",
+            },
+            EnvironmentChange::RemoveEveryEndingIn { suffix: "home" },
+            EnvironmentChange::Set {
+                name: "HTMLSPEC_PROBE_LATER_HOME",
+                value: "set after the removal",
+            },
+        ];
+        let result = SystemRunner.run(
+            &ProbeRequest {
+                program: sh,
+                arguments: vec![
+                    String::from("-c"),
+                    String::from(
+                        "echo \"${HTMLSPEC_PROBE_SET-unset}|${HOME-removed}|\
+                         ${HTMLSPEC_PROBE_HOME-removed}|${HTMLSPEC_PROBE_LATER_HOME-unset}\"",
+                    ),
+                ],
+                workdir: std::env::temp_dir(),
+                environment: CHANGES,
+            },
+            &Cancellation::new(),
+        );
+        let RunResult::Exited {
+            status: 0, stdout, ..
+        } = result
+        else {
+            panic!("the shell did not run: {result:?}");
+        };
+        assert_eq!(
+            stdout.trim(),
+            "set for the child|removed|removed|set after the removal"
+        );
+        assert!(
+            std::env::var_os("HTMLSPEC_PROBE_SET").is_none(),
+            "the child's variable reached this process"
+        );
     }
 
     /// A response that is not the pinned shape is unavailable readiness, not a parse of anything.
@@ -2750,6 +3556,7 @@ mod tests {
                     String::from("echo answer; echo 'warning: unknown setting' >&2"),
                 ],
                 workdir: std::env::temp_dir(),
+                environment: &[],
             },
             &Cancellation::new(),
         );
@@ -3057,6 +3864,581 @@ mod tests {
         let observations = observe_all(&contract, &mut host).expect("observed");
         assert!(observations.observed().is_empty());
         assert!(host.runner.invoked().is_empty());
+    }
+
+    // The real-Nix tests.
+    //
+    // Every other test here scripts Nix's answers, which is how the defect these two exist for went
+    // unseen from 0.15.0 to 1.3.1: the answer the scripted tests pin came from this repository's own
+    // flake, which imports from no derivation. These run this machine's Nix through the real runner
+    // and the adapter's own arguments. The suite cannot run them, because it runs in the Nix build
+    // sandbox, which has no daemon and no store to write, and on a runner with no Nix at all, so each
+    // is ignored by name and says how to run it. A test that passed itself where Nix is missing would
+    // be a skipped assertion that reads as a pass.
+
+    /// A flake whose `default` shell imports a Nix file that one derivation writes.
+    ///
+    /// The shape of `callCabal2nix`, cut down to what the adapter reads: a build writes a Nix
+    /// expression, and the shell is what importing it returns, so the shell cannot be evaluated until
+    /// that build's output exists. The derivation needs nothing but `/bin/sh`'s own `echo`, which a
+    /// Linux build sandbox also provides, and it carries a nonce, so its output is one this store has
+    /// never held until a test builds it. The shell's one input is a directory holding an executable,
+    /// copied into the store with `builtins.path`, because a sandboxed builder has no `mkdir` or
+    /// `chmod` to make one and the repository tracks no executable file.
+    ///
+    /// `@SYSTEM@` is the Nix expression naming the platform the import is built for, and `@NONCE@`
+    /// the nonce. It has no inputs, so its lock is the empty one.
+    const IMPORTING_FLAKE: &str = r#"{
+  outputs = { self }:
+    let
+      systems = [ "aarch64-darwin" "aarch64-linux" "x86_64-darwin" "x86_64-linux" ];
+      generated = system: derivation {
+        name = "htmlspec-import-from-derivation-fixture";
+        system = @SYSTEM@;
+        builder = "/bin/sh";
+        args = [ "-c" "echo '{ tool }: { nativeBuildInputs = [ tool ]; }' > $out" ];
+        nonce = "@NONCE@";
+      };
+      tool = { outPath = builtins.path { path = ./tool; name = "htmlspec-fixture-tool"; }; };
+      each = f: builtins.listToAttrs (map (system: { name = system; value = f system; }) systems);
+    in
+    {
+      packages = each (system: { generated = generated system; });
+      devShells = each (system: { default = import (generated system) { inherit tool; }; });
+    };
+}
+"#;
+
+    /// This machine's Nix, which the real-Nix tests run.
+    fn real_nix() -> PathBuf {
+        let Some(nix) = real_executable(NIX) else {
+            panic!("this test runs this machine's Nix, and no `nix` resolves on the search path");
+        };
+        nix
+    }
+
+    /// The directory holding this machine's Nix, which is all a host's search path needs here.
+    fn directory_of(nix: &Path) -> PathBuf {
+        nix.parent()
+            .expect("an executable lives in a directory")
+            .to_owned()
+    }
+
+    /// A scratch flake whose shell imports from a derivation built for `system`, which no earlier
+    /// run built: the nonce is this process and this moment.
+    fn an_importing_flake(scratch: &Scratch, system: &str) {
+        let since = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("the clock reads after the epoch");
+        let nonce = format!("{}-{}", std::process::id(), since.as_nanos());
+        scratch.write(
+            "flake.nix",
+            &IMPORTING_FLAKE
+                .replace("@SYSTEM@", system)
+                .replace("@NONCE@", &nonce),
+        );
+        scratch.write(
+            "flake.lock",
+            "{\"nodes\":{\"root\":{}},\"root\":\"root\",\"version\":7}\n",
+        );
+        scratch.executable(
+            "tool/bin/htmlspec-fixture-tool",
+            "#!/bin/sh\necho htmlspec-fixture-tool 1.0.0\n",
+        );
+    }
+
+    /// The real runner, as a real-Nix test runs it.
+    ///
+    /// Every request's environment gains, after the adapter's own changes, the test's own cache
+    /// directory, so no Nix a test starts reads or writes the cache in this machine's home, and
+    /// loses the library search path `cargo test` gives a test binary on macOS and Linux: under
+    /// `DYLD_LIBRARY_PATH`, measured, this machine's Nix started its first download ten seconds
+    /// late, past the probe's deadline. The installed binary runs with neither. `operator` comes
+    /// before the adapter's changes, as variables the operator's own environment would hold.
+    struct IsolatedRunner {
+        operator: &'static [EnvironmentChange],
+        isolation: &'static [EnvironmentChange],
+    }
+
+    impl IsolatedRunner {
+        fn new(cache: &Path, operator: &'static [EnvironmentChange]) -> Self {
+            let cache: &'static str = cache
+                .to_str()
+                .expect("a UTF-8 scratch path")
+                .to_owned()
+                .leak();
+            Self {
+                operator,
+                isolation: vec![
+                    EnvironmentChange::Set {
+                        name: "XDG_CACHE_HOME",
+                        value: cache,
+                    },
+                    // `DYLD_LIBRARY_PATH`, `LD_LIBRARY_PATH`, and their kin.
+                    EnvironmentChange::RemoveEveryEndingIn {
+                        suffix: "LIBRARY_PATH",
+                    },
+                ]
+                .leak(),
+            }
+        }
+    }
+
+    impl CommandRunner for IsolatedRunner {
+        fn run(&self, request: &ProbeRequest, cancellation: &Cancellation) -> RunResult {
+            let environment = self
+                .operator
+                .iter()
+                .chain(request.environment)
+                .chain(self.isolation)
+                .copied()
+                .collect::<Vec<_>>()
+                .leak();
+            SystemRunner.run(
+                &ProbeRequest {
+                    environment,
+                    ..request.clone()
+                },
+                cancellation,
+            )
+        }
+    }
+
+    /// What this machine's Nix answers, run from `directory` with `cache` as its cache. A refusal
+    /// stops the test, because these calls set the store up rather than being what is tested.
+    fn nix_answer(nix: &Path, directory: &Path, cache: &Path, arguments: &[&str]) -> String {
+        let output = Command::new(nix)
+            .args(["--extra-experimental-features", "nix-command flakes"])
+            .args(arguments)
+            .current_dir(directory)
+            .env("XDG_CACHE_HOME", cache)
+            .env_remove("DYLD_LIBRARY_PATH")
+            .env_remove("LD_LIBRARY_PATH")
+            .stdin(Stdio::null())
+            .output()
+            .expect("nix starts");
+        assert!(
+            output.status.success(),
+            "`nix {}` failed: {}",
+            arguments.join(" "),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8_lossy(&output.stdout).trim().to_owned()
+    }
+
+    /// The store path the flake's import is built at, asked of Nix without building it.
+    fn the_import_output(nix: &Path, directory: &Path, cache: &Path) -> PathBuf {
+        PathBuf::from(nix_answer(
+            nix,
+            directory,
+            cache,
+            &[
+                "eval",
+                "--offline",
+                "--no-write-lock-file",
+                "--raw",
+                &format!("path:{}#generated.outPath", directory.display()),
+            ],
+        ))
+    }
+
+    /// A system other than this machine's, which a remote builder may serve.
+    fn another_system() -> &'static str {
+        if cfg!(all(target_arch = "aarch64", target_os = "linux")) {
+            "x86_64-linux"
+        } else {
+            "aarch64-linux"
+        }
+    }
+
+    /// One requirement declaring the toolchain check a runbook would over the flake's shell.
+    fn the_fixture_contract() -> MachineContract {
+        MachineContract::of(vec![declared(
+            "fixture-toolchain",
+            MachineCheck::Toolchain {
+                manifest: path("flake.nix"),
+                shell: shell("default"),
+                tools: vec![name("htmlspec-fixture-tool")],
+            },
+        )])
+        .expect("a contract")
+    }
+
+    /// **A shell whose import from a derivation the store holds is read, and the check passes.**
+    ///
+    /// The defect: the 1.3.1 adapter refused this shell though its import was built. The import is
+    /// built first, as entering the shell would build it, and then the adapter evaluates the shell
+    /// from the store and the declared check is ready, its tool attributed to the shell's input.
+    #[test]
+    #[ignore = "runs this machine's Nix against its store; run with `cargo test -p htmlspec-cli --lib -- --ignored real_nix`"]
+    fn real_nix_reads_an_import_from_a_derivation_the_store_holds() {
+        let nix = real_nix();
+        let scratch = Scratch::new("real-nix-held");
+        let cache = Scratch::new("real-nix-held-cache");
+        an_importing_flake(&scratch, "system");
+        let flake = format!("path:{}#generated", scratch.path().display());
+        nix_answer(
+            &nix,
+            scratch.path(),
+            cache.path(),
+            &[
+                "build",
+                "--offline",
+                "--no-link",
+                "--no-write-lock-file",
+                &flake,
+            ],
+        );
+        let output = the_import_output(&nix, scratch.path(), cache.path());
+        assert!(output.is_file(), "the import was not built at {output:?}");
+
+        // The evaluation alone, through the real runner: it reads the import and names the shell's
+        // one input, which the store holds.
+        let mut host = Host::new(
+            scratch.path().to_owned(),
+            None,
+            vec![directory_of(&nix)],
+            IsolatedRunner::new(cache.path(), &[]),
+        );
+        let inputs = match host.evaluate_inputs(&nix, scratch.path(), &shell("default")) {
+            Ok(inputs) => inputs,
+            Err(fault) => panic!("a shell whose import the store holds was refused: {fault:?}"),
+        };
+        let [input] = inputs.as_slice() else {
+            panic!("the shell declares one input, and the evaluation named {inputs:?}");
+        };
+        assert!(
+            input.join("bin/htmlspec-fixture-tool").is_file(),
+            "the input named is not the realized tool directory: {input:?}"
+        );
+
+        // The declared check, end to end, with the tool resolving inside that input.
+        let mut host = Host::new(
+            scratch.path().to_owned(),
+            None,
+            vec![input.join("bin"), directory_of(&nix)],
+            IsolatedRunner::new(cache.path(), &[]),
+        );
+        let contract = the_fixture_contract();
+        let observations = observe_all(&contract, &mut host).expect("observed");
+        let assessment = crate::preflight::assess(&contract, observations);
+        assert!(
+            assessment.is_ready(),
+            "a shell whose import the store holds was not ready: {assessment:?}"
+        );
+    }
+
+    /// **An import from a derivation the store lacks is refused, unbuilt, with Nix's own error.**
+    ///
+    /// Once for this machine's system, which only a local build slot could build, and once for
+    /// another, which a remote builder could: on a machine with one configured, that case is what
+    /// holds `--builders ''`. Each refusal is unavailable readiness, its reason starts at the error
+    /// Nix ended on and names the derivation it declined to build, and the import's output is not in
+    /// the store afterwards.
+    #[test]
+    #[ignore = "runs this machine's Nix against its store; run with `cargo test -p htmlspec-cli --lib -- --ignored real_nix`"]
+    fn real_nix_refuses_an_import_from_a_derivation_the_store_lacks_without_building_it() {
+        let nix = real_nix();
+        let foreign = format!("\"{}\"", another_system());
+        for (label, system) in [("native", "system"), ("foreign", foreign.as_str())] {
+            let scratch = Scratch::new(&format!("real-nix-lacked-{label}"));
+            let cache = Scratch::new(&format!("real-nix-lacked-{label}-cache"));
+            an_importing_flake(&scratch, system);
+            let output = the_import_output(&nix, scratch.path(), cache.path());
+            assert!(
+                !output.exists(),
+                "{label}: the nonce did not make a fresh import, because {output:?} is in the store"
+            );
+
+            let mut host = Host::new(
+                scratch.path().to_owned(),
+                None,
+                vec![directory_of(&nix)],
+                IsolatedRunner::new(cache.path(), &[]),
+            );
+            let contract = the_fixture_contract();
+            let observations = observe_all(&contract, &mut host).expect("observed");
+            let crate::preflight::PreflightAssessment::NotReady(findings) =
+                crate::preflight::assess(&contract, observations)
+            else {
+                panic!("{label}: a shell whose import the store lacks was ready");
+            };
+            let [finding] = findings.findings() else {
+                panic!("{label}: one check was declared: {findings:?}");
+            };
+            assert_eq!(
+                finding.outcome,
+                crate::preflight::CheckOutcome::Unavailable,
+                "{label}: {finding:?}"
+            );
+            assert!(
+                finding
+                    .observed
+                    .starts_with("the manifest could not be evaluated read-only: error: "),
+                "{label}: {}",
+                finding.observed
+            );
+            // Nix 2.34 names the derivation it declined to build; Nix 2.22, which continuous
+            // integration's runner installs, says it can start no build and names none.
+            assert!(
+                finding.observed.contains("Cannot build '/nix/store/")
+                    && finding
+                        .observed
+                        .contains("htmlspec-import-from-derivation-fixture.drv")
+                    || finding
+                        .observed
+                        .contains("error: Unable to start any build;"),
+                "{label}: the report does not quote the build Nix declined: {}",
+                finding.observed
+            );
+            assert!(
+                !finding.observed.contains("while calling"),
+                "{label}: the report quotes Nix's trace rather than its error: {}",
+                finding.observed
+            );
+            assert!(
+                !output.exists(),
+                "{label}: the check built the import it was to refuse, at {output:?}"
+            );
+        }
+    }
+
+    /// **No configuration of the machine turns substitution back on.**
+    ///
+    /// The review's finding: `--offline` turns substitution off only where nothing configured it,
+    /// and a `substitute` line in `nix.conf` or `NIX_CONFIG` counts as configured, so on such a
+    /// machine the adapter downloaded an import's dependency from a binary cache and reported the
+    /// shell ready. Asked of `nix config show` with exactly the adapter's settings, and
+    /// `NIX_CONFIG='substitute = true'` set on that child alone: first without the settings, so a
+    /// configuration that failed to reach the child cannot make this pass, then with them.
+    #[test]
+    #[ignore = "runs this machine's Nix against its store; run with `cargo test -p htmlspec-cli --lib -- --ignored real_nix`"]
+    fn real_nix_substitutes_nothing_whatever_the_configuration_says() {
+        let nix = real_nix();
+        let substitute = |settings: &[String]| -> String {
+            let output = Command::new(&nix)
+                .args(["--extra-experimental-features", "nix-command flakes"])
+                .args(["config", "show", "substitute"])
+                .args(settings)
+                .env("NIX_CONFIG", "substitute = true")
+                .stdin(Stdio::null())
+                .output()
+                .expect("nix starts");
+            assert!(
+                output.status.success(),
+                "`nix config show substitute` failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            String::from_utf8_lossy(&output.stdout).trim().to_owned()
+        };
+        assert_eq!(
+            substitute(&[]),
+            "true",
+            "the configuration did not reach the child, so the next assertion would prove nothing"
+        );
+        assert_eq!(
+            substitute(&evaluation_settings()),
+            "false",
+            "the adapter's settings leave substitution on where the configuration turns it on"
+        );
+    }
+
+    /// A flake whose `default` shell's one input is `@SOURCE@`, a Nix expression that fetches, and
+    /// whose one flake input, where `@INPUTS@` declares one, is `missing`.
+    const FETCHING_FLAKE: &str = r#"{
+  @INPUTS@
+  outputs = { self, ... }@inputs:
+    let
+      systems = [ "aarch64-darwin" "aarch64-linux" "x86_64-darwin" "x86_64-linux" ];
+      each = f: builtins.listToAttrs (map (system: { name = system; value = f system; }) systems);
+    in
+    {
+      devShells = each (system: {
+        default = { nativeBuildInputs = [ { outPath = @SOURCE@; } ]; };
+      });
+    };
+}
+"#;
+
+    /// A lock holding one input, `missing`, locked as `locked`, which no store or cache holds.
+    fn a_lock_holding(locked: &str, original: &str) -> String {
+        format!(
+            "{{\"nodes\":{{\"missing\":{{\"flake\":false,\"locked\":{locked},\"original\":{original}}},\
+             \"root\":{{\"inputs\":{{\"missing\":\"missing\"}}}}}},\"root\":\"root\",\"version\":7}}\n"
+        )
+    }
+
+    /// **Nothing the evaluation fetches leaves the machine, by any route the environment closes.**
+    ///
+    /// The review's findings, older than 1.3.2: under every release's settings, a shell's
+    /// `builtins.fetchurl` and `builtins.fetchTarball`, a missing locked flake input, `git://` and
+    /// SSH fetches, and an `ftp://` fetch through an operator's own `ftp_proxy` all reached the
+    /// network. A listener on the loopback interface stands in for the network and for that
+    /// operator's proxy, which the runner sets before the adapter's changes as the operator's own
+    /// environment would hold it. Each case is refused within five seconds, its reason starting at
+    /// Nix's error, and no connection reaches the listener: libcurl and `git` meet the closed local
+    /// port, the operator's `ftp_proxy` is removed, and `git` opens no `git://` or SSH connection.
+    /// `git+https` is the case a closed port exists for: `git` reads the proxy and not
+    /// `connect-timeout`, so behind an address nothing answered it waited out the deadline.
+    #[test]
+    #[ignore = "runs this machine's Nix against its store; run with `cargo test -p htmlspec-cli --lib -- --ignored real_nix`"]
+    fn real_nix_fetches_nothing_a_shell_asks_for() {
+        let nix = real_nix();
+        let listener =
+            std::net::TcpListener::bind("127.0.0.1:0").expect("a loopback listener binds");
+        let port = listener
+            .local_addr()
+            .expect("the listener's address")
+            .port();
+        listener
+            .set_nonblocking(true)
+            .expect("the listener stops blocking");
+        let arrived = Arc::new(AtomicBool::new(false));
+        let stop = Arc::new(AtomicBool::new(false));
+        let watching = {
+            let arrived = Arc::clone(&arrived);
+            let stop = Arc::clone(&stop);
+            std::thread::spawn(move || {
+                while !stop.load(Ordering::SeqCst) {
+                    match listener.accept() {
+                        Ok(_) => arrived.store(true, Ordering::SeqCst),
+                        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                            std::thread::sleep(Duration::from_millis(10));
+                        }
+                        Err(_) => break,
+                    }
+                }
+            })
+        };
+        let at = format!("127.0.0.1:{port}");
+        let operator: &'static [EnvironmentChange] = vec![EnvironmentChange::Set {
+            name: "ftp_proxy",
+            value: format!("http://{at}").leak(),
+        }]
+        .leak();
+        let nar_hash = format!("sha256-{}=", "A".repeat(43));
+        let missing =
+            |url: &str| format!("inputs.missing = {{ url = \"{url}\"; flake = false; }};");
+
+        // (label, flake inputs, the shell's input, lock)
+        let cases: Vec<(&str, String, String, Option<String>)> = vec![
+            (
+                "fetchurl",
+                String::new(),
+                format!("builtins.fetchurl \"http://{at}/htmlspec-fetchurl\""),
+                None,
+            ),
+            (
+                "fetchTarball",
+                String::new(),
+                format!("builtins.fetchTarball \"http://{at}/htmlspec-fetchTarball.tar.gz\""),
+                None,
+            ),
+            (
+                "ftp through the operator's ftp_proxy",
+                String::new(),
+                format!("builtins.fetchurl \"ftp://{at}/htmlspec-ftp\""),
+                None,
+            ),
+            (
+                "fetchGit over git://",
+                String::new(),
+                format!("builtins.fetchGit {{ url = \"git://{at}/htmlspec-git\"; }}"),
+                None,
+            ),
+            (
+                "fetchGit over SSH",
+                String::new(),
+                format!("builtins.fetchGit {{ url = \"ssh://git@{at}/htmlspec-ssh\"; }}"),
+                None,
+            ),
+            (
+                "a missing locked tarball input",
+                missing(&format!("http://{at}/htmlspec-missing.tar.gz")),
+                String::from("\"${inputs.missing}\""),
+                Some(a_lock_holding(
+                    &format!(
+                        "{{\"narHash\":\"{nar_hash}\",\"type\":\"tarball\",\
+                         \"url\":\"http://{at}/htmlspec-missing.tar.gz\"}}"
+                    ),
+                    &format!(
+                        "{{\"type\":\"tarball\",\"url\":\"http://{at}/htmlspec-missing.tar.gz\"}}"
+                    ),
+                )),
+            ),
+            (
+                "a missing locked git+https input",
+                missing(&format!("git+https://{at}/htmlspec-missing.git")),
+                String::from("\"${inputs.missing}\""),
+                Some(a_lock_holding(
+                    &format!(
+                        "{{\"lastModified\":1,\"narHash\":\"{nar_hash}\",\"rev\":\"{}\",\
+                         \"revCount\":1,\"type\":\"git\",\
+                         \"url\":\"https://{at}/htmlspec-missing.git\"}}",
+                        "1".repeat(40)
+                    ),
+                    &format!("{{\"type\":\"git\",\"url\":\"https://{at}/htmlspec-missing.git\"}}"),
+                )),
+            ),
+        ];
+
+        for (label, inputs, source, lock) in cases {
+            let slug: String = label
+                .chars()
+                .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+                .collect();
+            let scratch = Scratch::new(&format!("real-nix-fetch-{slug}"));
+            let cache = Scratch::new(&format!("real-nix-fetch-{slug}-cache"));
+            scratch.write(
+                "flake.nix",
+                &FETCHING_FLAKE
+                    .replace("@INPUTS@", &inputs)
+                    .replace("@SOURCE@", &source),
+            );
+            scratch.write(
+                "flake.lock",
+                &lock.unwrap_or_else(|| {
+                    String::from("{\"nodes\":{\"root\":{}},\"root\":\"root\",\"version\":7}\n")
+                }),
+            );
+            let mut host = Host::new(
+                scratch.path().to_owned(),
+                None,
+                vec![directory_of(&nix)],
+                IsolatedRunner::new(cache.path(), operator),
+            );
+            let started = Instant::now();
+            let result = host.evaluate_inputs(&nix, scratch.path(), &shell("default"));
+            let took = started.elapsed();
+            match result {
+                Err(ProbeFault::Unavailable { reason, .. }) => {
+                    assert!(
+                        reason
+                            .starts_with("the manifest could not be evaluated read-only: error: "),
+                        "{label}: {reason}"
+                    );
+                    // A failed fetch, not some other refusal: Nix 2.34 names the URL it could not
+                    // fetch, and Nix 2.22, which continuous integration's runner installs, ends a
+                    // failed `fetchGit` on the reference it then could not resolve.
+                    assert!(
+                        reason.contains(&at) || reason.contains("error: resolving Git reference"),
+                        "{label}: the refusal is not the failed fetch: {reason}"
+                    );
+                }
+                other => panic!("{label}: a shell that fetches was reported as {other:?}"),
+            }
+            assert!(
+                took < Duration::from_secs(5),
+                "{label}: the refusal took {took:?}"
+            );
+        }
+
+        stop.store(true, Ordering::SeqCst);
+        watching.join().expect("the listener's thread ends");
+        assert!(
+            !arrived.load(Ordering::SeqCst),
+            "a request the check made reached the listener"
+        );
     }
 
     /// A declared check paired with the requirement that declared it.
