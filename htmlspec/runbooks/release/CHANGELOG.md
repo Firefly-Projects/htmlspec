@@ -5,6 +5,20 @@ What this runbook's releases are. A release is the pair of canonical documents â
 identifies one such pair. Nothing else moves it: a run's record is history rather than procedure, so
 adding or editing one is not a release.
 
+## 0.6.1
+
+Published with the project's 1.3.2 release.
+
+**The toolchain check's verification names the settings the check runs with.**
+`verify-the-pinned-toolchain` said the evaluation runs "with import-from-derivation disabled". From
+1.3.2 the program allows an import from a derivation whose output the store holds, and forbids every
+build instead, so the verification says the evaluation is offline, with no local build slot and no
+remote builder. This repository's development shell imports from no derivation, so what the check
+reads here, and what it concludes, are unchanged.
+
+**What this release does not do.** The four steps, their order, their words, and the seven
+requirements are unchanged, so this is a patch.
+
 ## 0.6.0
 
 Published with the project's 1.3.1 release.

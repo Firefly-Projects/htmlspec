@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Read a development shell built by import from a derivation</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Read a development shell built by import from a derivation</h1>
+        <p>A toolchain check refuses every Nix development shell that imports from a derivation, even when this machine already holds what the import reads, and its report quotes Nix's trace instead of Nix's error, so nobody can tell why. This change lets the check read such a shell from the store while still building and downloading nothing, and makes the report quote the error, as a patch release, 1.3.2.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Read a development shell built by import from a derivation</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p>A project whose development shell builds a tool with import from a derivation carries runbooks that each declare a toolchain check over its flake's <code>default</code> development shell. <code>htmlspec preflight</code> refuses every one, outside the shell and inside <code>nix develop</code> alike, and <code>htmlspec run --as</code> refuses too, because runbook-portability's "Preflight gates the creation of a run" makes the start take the same observation and allows no override. The shell is ordinary Nix, built the standard nixpkgs way. It passed the check until the project added that tool, and it has failed every check since.</p>
+          <p>The cause is one flag. The adapter evaluates the shell with <code>--no-allow-import-from-derivation</code>. A package from nixpkgs' <code>callCabal2nix</code>, for one, runs <code>cabal2nix</code> in a build and imports the Nix file the build writes, which is an import from a derivation, and with that setting off Nix refuses every such import, whether or not the store already holds the output. On the machine that reported it, the output was in the store, and Nix still said:</p>
+          <pre><code>error: cannot build '/nix/store/….drv^out' during evaluation because the option 'allow-import-from-derivation' is disabled</code></pre>
+          <p>The report never shows that line. The adapter quotes the first three lines of what Nix wrote, and Nix writes its trace first and its error last, so the operator reads:</p>
+          <pre><code>observed: the manifest could not be evaluated read-only: error: /        … while calling the 'map' builtin /          at «string»:1:217: (make the environment inspectable from what this machine already holds — …)</code></pre>
+          <p>and a remedy telling them to realize an environment their machine already holds. Nothing they can do in the shell changes the outcome.</p>
+          <p>Both halves break the contract. runbook-portability's "Package manifests retain authority over package pins" says the adapter "SHALL cover a local locked Nix flake's development shell" and that preflight SHALL NOT build or download. Its scenario "Resolving the environment would require provisioning" allows a refusal only when the environment "cannot be inspected using locally available data", and this one can. The same requirement makes a refusal come "with an explanation", and a quoted trace explains nothing. The flag came from the design of <code>carry-a-runbook-to-another-machine</code>, which archived the check at 0.15.0 and chose "import-from-derivation disabled" as its means of building nothing. The means was stronger than the end, and every release from 0.15.0 to 1.3.1 carries it. No test caught it, because the adapter's tests script Nix's answers, and the answer they pin came from this repository's own flake, which imports from no derivation.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <ul>
+            <li><strong>The check reads an import from a derivation, and still builds nothing.</strong> The evaluation drops <code>--no-allow-import-from-derivation</code> and passes <code>--option allow-import-from-derivation true --max-jobs 0 --builders ''</code>, beside the <code>--offline</code> it already passes. <code>--max-jobs 0</code> leaves no local build slot and <code>--builders ''</code> no remote builder, so nothing builds. The review of the pull request found that <code>--offline</code> leaves substitution on wherever a configuration sets it, and that it never stopped a shell's own fetch, so the evaluation also passes <code>--option substitute false</code> and sends its child's every connection, by libcurl or <code>git</code>, to a closed local port. An import whose output the store holds is read. One whose output it lacks is refused, unbuilt, and the check reports the environment as unavailable, as it does today for any input this machine does not hold.</li>
+            <li><strong>The report quotes the evaluator's error.</strong> Where Nix fails, the excerpt starts at the last line that opens with <code>error:</code>, which is where Nix states the cause. Output with no such line is quoted from its first lines, as now.</li>
+            <li><strong>The remedy names the import.</strong> The refusal's remedy says that a file the shell imports from a derivation must already be built in the store, and that entering the shell once builds it.</li>
+            <li><strong>Real Nix checks it.</strong> Beside the scripted tests, which keep pinning the argument vector, a test runs this machine's Nix against a small flake whose shell imports from a derivation, once with the import's output in the store, where the check passes, and once without it, where the check refuses with Nix's error and no output appears in the store. The suite runs inside the Nix sandbox, where no Nix is available, so this test is marked ignored and is run by hand, and the README says how.</li>
+            <li><strong>The documents stop describing the old flag.</strong> The README and the release runbook said the evaluation runs with "import-from-derivation disabled". Both say instead that it runs with local builds and remote builders disabled. The release runbook's text changes, so it moves to 0.6.1.</li>
+          </ul>
+          <p>What working looks like: in the project that reported it, inside <code>nix develop</code>, <code>htmlspec preflight</code> reports each of its runbooks with a toolchain check ready. Outside the shell, one whose tool the machine also has from another installation still refuses, naming that installation, which is that runbook's own scenario for a run started outside the shell. On a machine whose store has lost the import's output, preflight refuses as unavailable, and the observed line reads <code>error: Cannot build '/nix/store/….drv'. / Reason: local builds are disabled (max-jobs = 0)</code>, which names the build it declined to do. Nothing in the store changed.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <ul>
+            <li><strong><code>--read-only</code> in place of the three settings.</strong> It reads like the guard this needs and is not one: with the import allowed under <code>--read-only</code>, Nix built an import's derivation the store had never held, on the machine where this was diagnosed and again on a scratch flake while this change was written. A flag that does not stop a build cannot be what keeps preflight from building.</li>
+            <li><strong>Keep refusing and document it.</strong> Telling runbook authors that a shell with an import from a derivation cannot be checked contradicts "SHALL cover a local locked Nix flake's development shell", and the contract nowhere excludes such a shell. It would also leave a standard nixpkgs pattern outside the only adapter the project has.</li>
+            <li><strong>Leave the setting to the operator's <code>nix.conf</code>.</strong> The adapter states the setting on the command line, which overrides <code>nix.conf</code> and <code>NIX_CONFIG</code>, and stating it is right: what preflight may do to a machine is the adapter's promise, not a setting the machine supplies.</li>
+            <li><strong>A tool check in place of the toolchain check.</strong> A runbook could check each tool's version instead. That reads a version and not provenance, so it weakens the runbook's requirement to work around a defect in this program.</li>
+            <li><strong>Change the flake.</strong> The project could stop importing from a derivation. That repairs a fault the flake does not have, in every project that meets it.</li>
+            <li><strong>Quote the whole of Nix's output.</strong> The trace is long, and the excerpt's bound exists so a report stays readable. Starting where the error starts gives the reader the cause inside the same bound.</li>
+          </ul>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <ul>
+            <li>It changes no command, flag, exit code, or payload field. Only the wording of a refusal's observed text and remedy changes, which toolchain-packaging's "The command surface is stable within a major version" leaves out of the stable surface. It is a patch release, 1.3.2, and <code>tests/surface/1.3.json</code> does not move.</li>
+            <li>It does not change what preflight refuses to do. It still installs, builds, downloads, updates, and enters nothing.</li>
+            <li>It does not change the probe's ten-second deadline or its output limit, the expression it evaluates, or which inputs it reads.</li>
+            <li>It does not change how any other probe quotes a program's output.</li>
+            <li>It adds no adapter for another package manager, and it changes nothing in the project that reported the defect.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>
