@@ -710,9 +710,9 @@ mod tests {
             .collect();
         assert!(
             recorded == current,
-            "{} does not record what the program now adds. Run `cargo test -p htmlspec-cli --bin \
-             htmlspec -- --ignored write_the_current_minors_surface` to record it, and review the \
-             diff. Facts the file does not record as the program states them:\n{}",
+            "{} does not record what the program now adds. Run `cargo test -p htmlspec-cli --lib \
+             -- --ignored write_the_current_minors_surface` to record it, and review the diff. \
+             Facts the file does not record as the program states them:\n{}",
             path.display(),
             added.join("\n")
         );

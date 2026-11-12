@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="design" name="htmlspec-kind">
+    <title>Count only the checks a run ran: design</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Count only the checks a run ran: design</h1>
+        <p>How the three defects are fixed. The progress report and the conformance report share one function that says whether a recorded outcome attests to a check, the progress requirement gains a sentence and a scenario that give the count its rule, every scratch directory of the topology tests carries a process-wide count in its name, and the stage argument's help is built from the workflow table. It ships as the patch release 1.3.3.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">design</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Count only the checks a run ran: design</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-contract">
+          <h2>What the contract says</h2>
+          <p><strong>The count.</strong> runbook-execution's "A run's progress is reported from its record" says what <code>--status &lt;record&gt;</code> lists: each requirement "with the outcomes recorded for it", and an absent or empty outcome shown "as no outcome, as the rule reads it". It says nothing of the line that counts them. Two neighbouring requirements say what an outcome is. "A record carries the procedure it ran and the obligations it attests to" asks a record for an outcome and how it was reached, and <code>htmlspec run --as</code> writes <code>not-run</code> only so the record lists what it owes. "A run's conformance to its runbook's contract is reported and never gated", which <code>--check</code> carries out, names each requirement nothing in a record attests to, and its code reads <code>not-run</code> as nothing attested. So the contract is silent on the count and clear on what an outcome means, and this change states the count in the requirement that owns the report, by the meaning the other two give.</p>
+          <p><strong>The verdict.</strong> runbook-portability's "A prerequisite run is met by a finished, passed record" names a record that "recorded an outcome other than <code>passed</code>" as not counting, and the report's verdict line, "recorded not-run for", keeps that sense. It is a different question, whether a record passed, and nothing here changes it.</p>
+          <p><strong>The surface.</strong> toolchain-packaging's "The command surface is stable within a major version" holds every payload field and every flag, and says "The wording of human-readable output is not covered". The <code>--status</code> payload, in <code>crates/htmlspec-cli/schema/payload/run.schema.json</code> and in <code>tests/surface/1.3.json</code>, carries each requirement's <code>outcomes</code> and no count, so the count is wording. The surface is read from the parser, not from <code>--help</code>, so the help is wording too. No requirement says what the stage argument's help must list: the contract is silent there, and the fix preserves what exists, a help that lists the stages.</p>
+          <p><strong>The tests.</strong> toolchain-packaging's "Project checks are runnable as one command" makes <code>scripts/check</code> the one command contributors and continuous integration run. No requirement speaks to how a test names a scratch directory; the fix follows the tools crate's own <code>Scratch</code>, in <code>xtask/src/scratch.rs</code>, which already carries a counter for this reason.</p>
+        </section>
+        <section id="hs-decisions">
+          <h2>Decisions</h2>
+          <section class="decision" id="decision-one-definition-of-a-recorded-outcome" data-change="added" data-status="accepted">
+            <h3>One function says whether an outcome attests to a check <span class="hs-id">decision-one-definition-of-a-recorded-outcome</span></h3>
+            <p><code>has_run</code> moves from <code>runs.rs</code> to <code>prerequisites.rs</code>, beside <code>outcome_of</code>, as <code>pub(crate)</code>, with its body, its documentation, and its unit test unchanged in what they hold: an absent outcome, <code>not-run</code>, and any value the schema's outcome vocabulary does not list attest to nothing, and <code>passed</code>, <code>failed</code>, <code>blocked</code>, and <code>partial</code> each attest to a check that ran. <code>runs.rs</code>'s <code>recorded_ids</code>, which <code>--check</code> reads, calls it from there. The progress report's <code>Owed</code> gains a method, <code>attested</code>, true where any of its recorded outcomes is one <code>has_run</code> accepts, and the count reads it. The outcomes themselves are kept as the record states them, so a requirement whose only outcome is <code>not-run</code> is listed with <code>not-run</code> and not counted.</p>
+            <p data-field="rationale">Two modules answered one question two ways, and the progress report's answer was the one no requirement supports. Putting the function where the run check's other readings of a record live, <code>outcome_of</code>, <code>named_by</code>, <code>owed</code>, and <code>StepState</code>, gives the three readers of a record one place to look. The count is computed from the list it summarises rather than from the verifications a second time, so the count and the lines beneath it cannot come from two readings.</p>
+            <p data-field="rationale"><strong>Rejected: counting with <code>outcome_of</code> and moving <code>--check</code> to it.</strong> A record would conform from the moment it starts, which is the case the conformance report exists to catch. <strong>Rejected: renaming the line</strong> to "have a verification". It would describe the defect accurately and count nothing a reader asks about. <strong>Rejected: the validator's <code>has_run</code>,</strong> in <code>crates/htmlspec-validate/src/rules/review.rs</code>. It counts a value the schema does not list as having run, which suits its question, whether a recorded check can go stale, and would let a typo attest here; sharing it would also widen a published crate's interface for one caller.</p>
+          </section>
+          <section class="decision" id="decision-the-requirement-states-the-count" data-change="added" data-status="accepted">
+            <h3>The progress requirement states the count <span class="hs-id">decision-the-requirement-states-the-count</span></h3>
+            <p>runbook-execution's "A run's progress is reported from its record" gains one sentence, after the one on an absent or empty outcome: the report counts a requirement as having an outcome only where a verification referencing it records an outcome that says its check ran, one the schema's vocabulary lists other than <code>not-run</code>, as the conformance report reads a record, and a requirement whose outcomes are all <code>not-run</code> is still listed with them. It gains two scenarios: a run just started, whose every requirement reads <code>not-run</code>, listed and not counted, and named by <code>--check</code>; and a requirement recorded twice, once <code>not-run</code> and once <code>passed</code>, which is counted once. The other statements and the seven scenarios stay as accepted. At archival the requirement is stated whole and marked modified, with the new words marked as inserted.</p>
+            <p data-field="rationale">A count with no rule is how this defect lasted from 1.3.0 to now: the test pinned what the code did, and nothing said what it should do. The sentence names the conformance report's reading rather than restating the vocabulary, so the two cannot drift apart in the contract as they did in the code.</p>
+          </section>
+          <section class="decision" id="decision-the-tests-state-the-right-count" data-change="added" data-status="accepted">
+            <h3>The tests state the right count, and hold the two reports together <span class="hs-id">decision-the-tests-state-the-right-count</span></h3>
+            <p><code>one_run_shows_its_steps_outcomes_release_and_verdict</code>, in <code>crates/htmlspec-cli/tests/progress.rs</code>, pinned the defect: it expects "1 of 1 have an outcome" above a <code>not-run</code> line. It now expects "0 of 1", with the line unchanged and the payload unchanged. <code>every_outcome_is_shown_as_recorded</code> asserts the count for each outcome: "1 of 1" for <code>passed</code>, <code>failed</code>, <code>blocked</code>, and <code>partial</code>, and "0 of 1" for <code>not-run</code>. A new test writes records of a runbook with two requirements, with outcomes of every kind, a typo, a requirement with no verification, and one recorded twice, once <code>not-run</code> and once <code>passed</code>, and holds each record's count to the requirements <code>--check</code>'s payload says it recorded. Each new assertion is run against the code before the fix and fails there.</p>
+            <p data-field="rationale">The test is changed and not weakened: it asserts the same lines and the same payload, and the one number it asserts is the one the requirement now gives. The test of agreement is what would have caught this defect, and it reads both reports through the built binary, as an operator does.</p>
+          </section>
+          <section class="decision" id="decision-a-counter-names-every-scratch" data-change="added" data-status="accepted">
+            <h3>A process-wide counter names every scratch directory <span class="hs-id">decision-a-counter-names-every-scratch</span></h3>
+            <p><code>Scratch::new</code> in <code>conformance/tests/topology.rs</code> names its directory <code>htmlspec-topology-fixture-{label}-{pid}-{n}</code>, where <code>n</code> is the next value of a static <code>AtomicUsize</code>, taken with <code>fetch_add</code>. It still removes a directory of that name before creating it, which now clears only what an earlier process with the same id left, and still removes its own on drop. A new test, <code>two_scratches_with_one_label_never_share_a_directory</code>, builds two scratches with one label at once, writes a file in each, drops the first, and asserts that the second's file is still there.</p>
+            <p data-field="rationale">The collision becomes impossible by construction rather than unlikely by convention: no label, however chosen, gives two live scratches one path. <code>xtask/src/scratch.rs</code> does exactly this, "Tells apart the directories one process's tests make, which run in parallel", so the fix follows the repository's own pattern. The new test does not depend on how threads interleave: against the old <code>Scratch::new</code> the two scratches share a path and the first's drop deletes the second's file, every time.</p>
+            <p data-field="rationale"><strong>Rejected: <code>tempfile</code>.</strong> It is locked only beneath <code>proptest</code> and <code>rusty-fork</code>, and a direct dependency of the conformance crate is more to review on every upgrade than three lines. <strong>Rejected: a label per test.</strong> It fixes these three tests and leaves the next one to choose well.</p>
+          </section>
+          <section class="decision" id="decision-the-help-is-built-from-the-table" data-change="added" data-status="accepted">
+            <h3>The stage argument's help is built from the workflow table <span class="hs-id">decision-the-help-is-built-from-the-table</span></h3>
+            <p>The <code>stage</code> field of <code>InstructionsArgs</code> takes <code>#[arg(help = stage_help())]</code>, where <code>stage_help</code>, in <code>crates/htmlspec-cli/src/lib.rs</code>, joins the names in <code>WORKFLOWS</code> into "The stage: migrate, explore, new, continue, ff, apply, verify, sync, or archive", in the table's lifecycle order. It is total over the table: an empty table, one row, and two rows each read as English. Both spellings, <code>instructions</code> and <code>get instructions</code>, carry the struct, so both show it. A test renders each spelling's help from the parser and asserts that its stage argument names every row of <code>WORKFLOWS</code>, and that the rendered help shows it.</p>
+            <p data-field="rationale">The error for an unknown stage already reads the table, and the help now does too, so a stage added to the table is in both without anyone remembering the comment. clap's derive takes an expression for <code>help</code>, and a <code>String</code> becomes the styled text clap prints.</p>
+            <p data-field="rationale"><strong>Rejected: clap's possible values.</strong> <code>crates/htmlspec-cli/src/surface.rs</code> records an argument's possible values in the command surface, so the stages would join <code>tests/surface/1.3.json</code> in a patch release, and clap's own error would replace the program's message for a stage it does not know. <strong>Rejected: a test comparing the doc comment to the table.</strong> It would catch the next omission and keep a list that must be edited by hand.</p>
+          </section>
+          <section class="decision" id="decision-a-patch-release" data-change="added" data-status="accepted">
+            <h3>A patch release, 1.3.3 <span class="hs-id">decision-a-patch-release</span></h3>
+            <p>No command, flag, exit code, or payload field changes, and <code>tests/surface/1.3.json</code> does not move: the count and the help are human-readable wording, which toolchain-packaging's "The command surface is stable within a major version" leaves out of the surface. The release runbook's steps open it, <code>cargo xtask set-version 1.3.3</code> and the 1.3.3 binary's <code>htmlspec init --tools claude,codex,pi</code>, and archival records it. No runbook changes, so neither runbook's version moves.</p>
+            <p data-field="rationale">The fixes are worth shipping before the next minor, not inside it. The workflow for working a run, planned for 1.4.0, reports <code>--status</code>, its pull requests run the topology tests many times, and its three new stages would be missing from the help as two are now. A patch first lets that release quote the count, run a suite that does not fail at random, and list its stages with no further work.</p>
+          </section>
+        </section>
+        <section id="hs-risks">
+          <h2>Risks</h2>
+          <section class="risk" id="risk-a-script-reads-the-count" data-change="added" data-response="accepted">
+            <h3>A script that reads the count from the text sees a lower number <span class="hs-id">risk-a-script-reads-the-count</span></h3>
+            <p>A script that parses "N of M have an outcome" from the text, rather than reading the payload, sees N fall for every record holding a <code>not-run</code> outcome. The change bears it: the text is wording, which the surface does not cover, the payload is unchanged and carries every outcome, and the number it read before was wrong for every run under way.</p>
+          </section>
+          <section class="risk" id="risk-two-functions-of-one-name" data-change="added" data-response="mitigated">
+            <h3>Two functions named <code>has_run</code> answer two questions <span class="hs-id">risk-two-functions-of-one-name</span></h3>
+            <p>The program's <code>has_run</code> and the validator's differ on a value the schema does not list, and a later reader could take one for the other and unify them in the wrong direction.</p>
+            <p data-field="mitigation">The program's function says in its documentation which question it answers, that the validator's answers another, and why they differ on an unlisted value; its unit test pins the typo cases, so a unification the wrong way fails it.</p>
+          </section>
+          <section class="risk" id="risk-another-file-shares-a-label" data-change="added" data-response="accepted">
+            <h3>Another test file could share a scratch label through a helper <span class="hs-id">risk-another-file-shares-a-label</span></h3>
+            <p>Most test files name their scratch directories by label and process id alone. A search found no label written into a test that two tests give a scratch root in one file, and found the repeated ones to be subdirectories of one test's scratch, or names the tools crate's counter already separates. Labels a helper passes on from its callers were not traced. The change bears it: no failure but the topology tests' has been seen, and a later one takes this fix.</p>
+          </section>
+        </section>
+        <section id="hs-follow-ups">
+          <h2>Follow-ups</h2>
+          <p>The review of pull request 110 left two for later changes: reading a verification's outcome into a type with one case for each kind, so the count, the conformance report, and the run check match on it rather than on strings; and one convention for the scratch directories of every test file, a counter beside the process id as the topology tests and the tools crate now have, in place of the label and process id the other helpers use, which are unique in their binaries today.</p>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

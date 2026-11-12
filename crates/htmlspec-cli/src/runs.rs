@@ -35,6 +35,7 @@ use htmlspec_validate::rules::runs::{RecordedRun, RunbookUnderReview};
 use crate::exit::Outcome;
 use crate::output::Streams;
 use crate::preflight::{Fact, MachineContract};
+use crate::prerequisites::has_run;
 use crate::project::ProjectRoot;
 use crate::terminal::shown;
 use crate::version::RunbookVersion;
@@ -53,6 +54,16 @@ pub(crate) const CONTRACT: &str = "specification.html";
 
 /// The extension a run's record is written with.
 const RECORD_SUFFIX: &str = ".html";
+
+/// The method the start writes for a requirement no preflight check reached.
+///
+/// A placeholder, for the run to replace with how the requirement was checked when it sets the
+/// outcome. Named, because the `run` and `review` instructions name its first sentence, the one
+/// a reader looks for beside a recorded outcome, and a test holds both bodies to it: rewording it
+/// here fails that test rather than leaving the review looking for words no record holds.
+const PLACEHOLDER_METHOD: &str = "Not run yet. State how this requirement was checked during this \
+                                  run, precisely enough that someone else could repeat it, and \
+                                  set the outcome accordingly.";
 
 /// Starts a run of `runbook`, writing its record under `--as`.
 ///
@@ -1228,7 +1239,7 @@ pub(crate) fn is_withdrawn(change: &str) -> bool {
 /// That matters because it is exactly what [`start`] writes — one per requirement, so the record
 /// enumerates what it owes — so counting them would report every run as conforming from the instant
 /// it began. `runbook-execution` requires a record to state an outcome *and* how it was reached, and
-/// "not run" states neither.
+/// "not run" states neither. [`has_run`] draws that line, and `run --status` counts by it too.
 fn recorded_ids(parsed: &htmlspec_parse::ParseOutcome) -> std::collections::BTreeSet<String> {
     let projection = htmlspec_parse::project(&parsed.document);
     projection
@@ -1239,43 +1250,6 @@ fn recorded_ids(parsed: &htmlspec_parse::ParseOutcome) -> std::collections::BTre
         .flat_map(|verification| verification.references.iter())
         .map(|reference| reference.target.clone())
         .collect()
-}
-
-/// Whether a recorded outcome says the check actually ran.
-///
-/// The values come from the schema rather than from a list here, which is
-/// [`htmlspec_validate::rules::review`]'s discipline for the same question: only the "not run"
-/// outcome means nothing was checked, so it is found by a stem and everything else counts as having
-/// run. A literal `"not-run"` here would be a second statement of a value the schema owns, and
-/// `tests/schema_rust_split.rs` exists because that is a thing this project has done wrong before.
-///
-/// An absent outcome counts as *not* having run. The schema requires one, so a verification without
-/// it is a document the validator reports — and treating an absent value as a recorded outcome would
-/// make a malformed record satisfy the contract.
-fn has_run(outcome: Option<&str>) -> bool {
-    let Some(outcome) = outcome else {
-        return false;
-    };
-    let enumerated =
-        htmlspec_validate::schema_facts::enum_values("definitions/verification/properties/outcome");
-    // **The outcome must be one the schema enumerates, and this is the fix.** The previous version
-    // asked only "is it not the not-run one", which an unenumerated value answers `true` — so
-    // `data-outcome="notrun"`, a typo, reported the run as conforming. Measured: `each run of rb
-    // records what the runbook states`.
-    //
-    // A value outside the vocabulary is not a recorded outcome. It is a document the validator
-    // reports, and treating it as a recorded pass would let a typo satisfy the contract — the same
-    // reasoning that makes an *absent* outcome count as not having run.
-    //
-    // Still no literal `"not-run"` here: the vocabulary and the not-run member both come from the
-    // schema, which is what `tests/schema_rust_split.rs` exists to keep true.
-    if !enumerated.iter().any(|value| value == outcome) {
-        return false;
-    }
-    !enumerated
-        .into_iter()
-        .filter(|value| value.contains("not"))
-        .any(|value| value == outcome)
 }
 
 /// How much a record holds, for its report.
@@ -1702,14 +1676,7 @@ fn record_section(
                     }
                 ),
             ),
-            None => (
-                "not-run",
-                String::from(
-                    "Not run yet. State how this requirement was checked during this run, \
-                     precisely enough that someone else could repeat it, and set the outcome \
-                     accordingly.",
-                ),
-            ),
+            None => ("not-run", String::from(PLACEHOLDER_METHOD)),
         };
         out.push_str(&format!(
             "          <section class=\"verification\" id=\"{verification_attribute}\" \
@@ -1825,6 +1792,46 @@ mod tests {
     /// No machine-check evidence, which is the state every requirement a run has not reached is in.
     fn no_evidence() -> crate::preflight::PassedChecks {
         crate::preflight::PassedChecks::default()
+    }
+
+    /// The `review` and `run` instructions name the placeholder the start writes, as it writes it.
+    ///
+    /// Every check the program makes reads a verification's outcome alone, so a `passed` outcome
+    /// beside the placeholder passes all of them, and the review is the one reader that catches it.
+    /// It catches it by the placeholder's first sentence, quoted in the body, so a reworded
+    /// placeholder would leave the review looking for words no record holds. The record this
+    /// composes is the one the start writes for a requirement no preflight check reached.
+    #[test]
+    fn the_review_and_the_run_name_the_placeholder_the_start_writes() {
+        let units = [CopiedUnit {
+            markup: String::new(),
+            id: Some(String::from("req-a-step-is-recorded")),
+        }];
+        let section = record_section("release", released(), &units, &no_evidence());
+        assert!(
+            section.contains(&format!(
+                "<p data-field=\"method\">{PLACEHOLDER_METHOD}</p>"
+            )),
+            "the start no longer writes the named placeholder:\n{section}"
+        );
+        let Some(first) = PLACEHOLDER_METHOD
+            .split_inclusive(". ")
+            .next()
+            .map(str::trim_end)
+        else {
+            panic!("the placeholder has no first sentence");
+        };
+        assert_eq!(first, "Not run yet.");
+        for name in ["review", "run"] {
+            let Some(workflow) = htmlspec_assets::instructions::workflow_for(name) else {
+                panic!("the table has no `{name}` stage");
+            };
+            assert!(
+                workflow.body.contains(&format!("\"{first}\"")),
+                "{name} does not name the placeholder the start writes, \"{first}\", so a \
+                 recorded outcome beside it goes unnamed"
+            );
+        }
     }
 
     /// A requirement identifier carrying markup is escaped, in content **and** in attributes.
@@ -2001,39 +2008,6 @@ mod tests {
             "the read path demands an outcome for a withdrawn requirement, which the record is \
              right not to carry"
         );
-    }
-
-    /// An outcome the schema does not enumerate is not a recorded outcome.
-    ///
-    /// Measured before the fix: `data-outcome="notrun"` — a typo — reported the run as conforming,
-    /// because the filter kept schema values containing `not` and an unknown string matched none of
-    /// them. An absent outcome was already handled; an unrecognized one fell through to "ran".
-    #[test]
-    fn only_an_outcome_the_schema_enumerates_counts_as_recorded() {
-        assert!(
-            has_run(Some("passed")),
-            "a passed check did not count as run"
-        );
-        assert!(
-            has_run(Some("failed")),
-            "a failed check recorded an outcome"
-        );
-        assert!(
-            has_run(Some("blocked")),
-            "a blocked check recorded an outcome"
-        );
-        assert!(
-            has_run(Some("partial")),
-            "a check that reached part of its requirement recorded an outcome"
-        );
-        assert!(!has_run(Some("not-run")), "not-run records no outcome");
-        assert!(!has_run(None), "an absent outcome records none");
-        for typo in ["notrun", "not run", "NOT-RUN", "ran", ""] {
-            assert!(
-                !has_run(Some(typo)),
-                "{typo:?} is outside the schema's vocabulary and counted as a recorded outcome"
-            );
-        }
     }
 
     /// The whole of the procedure's `main` is carried, not only its units.

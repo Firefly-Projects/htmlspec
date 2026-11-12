@@ -16,6 +16,8 @@
 
 use std::path::Path;
 
+use htmlspec_assets::instructions::Workflow;
+
 /// A supported tool.
 ///
 /// A closed enum rather than a string, so a typo is a compile error and the set of tools
@@ -56,7 +58,12 @@ pub enum Delivery {
     },
     /// A skill directory and nothing else.
     SkillsOnly {
-        /// How a contributor invokes the skill.
+        /// How a contributor invokes the skill, given the skill's directory.
+        ///
+        /// The directory rather than the workflow's name, because a tool that has only skills
+        /// knows each one by the `name:` its `SKILL.md` declares, and the installer writes the
+        /// directory there. `new` installs as `htmlspec-new-change`, so a template filled with
+        /// the name would teach `$htmlspec-new`, which names no skill.
         invocation: &'static str,
     },
     /// A marked region inside a file the contributor also writes.
@@ -110,10 +117,9 @@ pub const TOOLS: &[Tool] = &[
         directory: ".codex",
         detection: &[".codex"],
         // Codex reads skills and has no command surface, which is why `SkillsOnly`
-        // exists as its own variant rather than as a tool with an empty command path.
-        delivery: Delivery::SkillsOnly {
-            invocation: "$htmlspec-{}",
-        },
+        // exists as its own variant rather than as a tool with an empty command path. The
+        // directory already carries the `htmlspec-` prefix, so the template adds only `$`.
+        delivery: Delivery::SkillsOnly { invocation: "${}" },
     },
     Tool {
         id: ToolId::Cursor,
@@ -175,10 +181,17 @@ impl Tool {
     }
 
     /// How a contributor invokes `workflow` in this tool.
-    pub fn invocation(&self, workflow: &str) -> String {
-        let template = match self.delivery {
-            Delivery::SkillsAndCommands { invocation, .. } => invocation,
-            Delivery::SkillsOnly { invocation } => invocation,
+    ///
+    /// Takes the workflow rather than its name, because the delivery decides which of its
+    /// identities the tool resolves: a command file is invoked by the name it is written under,
+    /// and a skill by the name its `SKILL.md` declares, which is its directory. The variant
+    /// chooses the field, so no tool can be given the other.
+    pub fn invocation(&self, workflow: &Workflow) -> String {
+        match self.delivery {
+            Delivery::SkillsAndCommands { invocation, .. } => {
+                invocation.replace("{}", workflow.name)
+            }
+            Delivery::SkillsOnly { invocation } => invocation.replace("{}", workflow.directory),
             // A shared file carries instructions rather than a command, so the
             // instruction is what to ask for rather than what to type.
             //
@@ -187,10 +200,9 @@ impl Tool {
             // a verb. `new`, `ff`, and `continue` are not — "ask your assistant to new"
             // is the sentence that shape produces, and it is not English.
             Delivery::SingleFile { .. } => {
-                return format!("ask your assistant to run the {workflow} workflow")
+                format!("ask your assistant to run the {} workflow", workflow.name)
             }
-        };
-        template.replace("{}", workflow)
+        }
     }
 }
 
@@ -396,21 +408,26 @@ mod tests {
     }
 
     /// Every invocation names the workflow it invokes, so the closing message cannot
-    /// print a template with the placeholder still in it.
+    /// print a template with the placeholder still in it. Whether a skill's invocation names
+    /// the skill its tool installed is held where the skills are written, by
+    /// `every_skill_invocation_names_the_skill_installed` in the installer's tests.
     #[test]
     fn every_invocation_names_its_workflow() {
         for tool in TOOLS {
-            let rendered = tool.invocation("archive");
-            assert!(
-                rendered.contains("archive"),
-                "{}'s invocation does not name the workflow: {rendered}",
-                tool.name
-            );
-            assert!(
-                !rendered.contains("{}"),
-                "{}'s invocation left its placeholder unfilled: {rendered}",
-                tool.name
-            );
+            for workflow in htmlspec_assets::instructions::WORKFLOWS {
+                let rendered = tool.invocation(workflow);
+                assert!(
+                    rendered.contains(workflow.name),
+                    "{}'s invocation does not name the workflow {}: {rendered}",
+                    tool.name,
+                    workflow.name
+                );
+                assert!(
+                    !rendered.contains("{}"),
+                    "{}'s invocation left its placeholder unfilled: {rendered}",
+                    tool.name
+                );
+            }
         }
     }
 
