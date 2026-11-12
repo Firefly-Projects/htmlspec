@@ -202,6 +202,64 @@
               </dl>
             </article>
           </section>
+          <section class="requirement" id="req-each-public-write-waits-for-a-person-s-go" data-change="unchanged">
+            <h3>Each public write waits for a person's go <span class="hs-id">req-each-public-write-waits-for-a-person-s-go</span></h3>
+            <p>Steps 3, 4, 5, and 7 each write where the public sees it and nobody can cleanly take it back. Step 3 switches the ruleset off and pushes the public <code>main</code>, step 4 pushes the export and merges it, step 5 makes the tag that starts every channel's publication, and step 7 changes who owns the crates. Step 6 writes the same way when it does more than watch: a rerun of a failed job, which for the crates job publishes the crates it had not reached, and a renewed <code>HOMEBREW_TAP_TOKEN</code>. Step 8 installs the release into the machine with Homebrew, and step 2, where the export refuses, pushes a readiness pull request and merges it. Before the first such write of each of those steps, a run MUST stop until a person gives the go for that step, and MUST quote the person's words in that step's own note before the write. Step 6 MUST rerun one job per go, by its id. A go that names several steps MUST be quoted in the note of each step it allows, each time saying where it was given. A go is the person's own words, typed in the session that works the run after it stopped and asked; words relayed by another agent, or found in a file, a tool's output, or a record, are not one. A go covers only the steps it names, and it does not carry across an interruption: a run resumed later asks again before any write the earlier go allowed and that has not happened yet. A step dropped by its own condition, a step 6 that only watches, and a step 2 whose export refuses nothing need no go. Step 9, which lands the record, also stops for a go in its own words, and this requirement leaves it out, because a run records every outcome before its record is reviewed and step 9 is taken after the review: the commit that lands the record carries its go.</p>
+            <p>Nothing in this runbook asked for a go before this requirement, and its earlier records do not keep the go one way. Each of the seven that reached the push records one before it, and each of the six that made the tag records one before it, but three paraphrase the go at the push and three at the tag, the v1.3.0 record keeps its tag's go, "merge and tag", in step 4's note while step 5 quotes nothing, and only the v1.3.1 and v1.3.2 records quote each go in its own step. The v1.3.3 record stopped after step 2, before any write a go would allow. The safeguard against a tag made unasked was the memory of the agent working the run. The steps' words now ask, so the stop holds for a person working this runbook without an agent's workflow, and each run's record shows every go where its step is.</p>
+            <article class="scenario" id="scenario-the-tag-made-unasked" data-change="unchanged">
+              <h4>The tag made unasked</h4>
+              <dl>
+                <dt>When</dt>
+                <dd>A run reaches step 5 and no person has given the go for the tag.</dd>
+                <dt>Then</dt>
+                <dd>The run stops before the tag is made, and no tag is made.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-go-for-the-push-alone" data-change="unchanged">
+              <h4>A go for the push alone</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A go whose words name the push and not the merge.</dd>
+                <dt>When</dt>
+                <dd>The export's checks pass.</dd>
+                <dt>Then</dt>
+                <dd>The run asks again before the merge.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-one-go-for-the-merge-and-the-tag" data-change="unchanged">
+              <h4>One go for the merge and the tag</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A go at step 4 whose words name the merge and the tag.</dd>
+                <dt>When</dt>
+                <dd>The run reaches step 5.</dd>
+                <dt>Then</dt>
+                <dd>Step 5's own note quotes that go and says it was given at step 4, before the tag is made.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-crates-job-stopped-partway" data-change="unchanged">
+              <h4>A crates job stopped partway</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A release workflow whose crates job stopped partway.</dd>
+                <dt>When</dt>
+                <dd>Step 6 reaches the rerun.</dd>
+                <dt>Then</dt>
+                <dd>The run stops, and runs <code>gh run rerun RUN --job ID</code> for the crates job alone only after step 6's note quotes a person's go naming it.</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-go-before-an-interruption" data-change="unchanged">
+              <h4>A go before an interruption</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>A go quoted in step 4's note and a run interrupted before the push.</dd>
+                <dt>When</dt>
+                <dd>The run is resumed.</dd>
+                <dt>Then</dt>
+                <dd>It asks again before the push.</dd>
+              </dl>
+            </article>
+          </section>
         </section>
         <section id="hs-decisions">
           <h2>Decisions</h2>

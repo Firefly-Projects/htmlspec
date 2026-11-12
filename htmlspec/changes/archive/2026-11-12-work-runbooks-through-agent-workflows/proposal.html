@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Writing, running, and reviewing a runbook through agent workflows</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Writing, running, and reviewing a runbook through agent workflows</h1>
+        <p>html-spec installs nine agent workflows, every one of them for a change, and none for a runbook. So each publish run of this release cycle, v1.3.0, v1.3.1, and v1.3.2, was worked by hand: 28 to 31 exact string edits to one HTML record per run, and a stop for a person's go before the push and the tag that held only because the agent working the run remembered to make it. This change adds three workflows. <code>runbook</code> writes a runbook or revises one inside a change, <code>run</code> works a run from preflight to its report and stops for a person's go before anything that writes outside the working copy, and <code>review</code> reads a finished record before it lands and writes nothing. It revises the publish runbook to 0.5.0, so that its own words ask for that go, widens the bootstrap requirement to a runbook's lifecycle, and adds a requirement for the run stage. It adds no command, no flag, and no schema field, so it ships as the minor release 1.4.0, after 1.3.3.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Writing, running, and reviewing a runbook through agent workflows</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <p><strong>No workflow serves a runbook.</strong> The <code>WORKFLOWS</code> table in <code>crates/htmlspec-assets/src/instructions.rs</code> holds nine rows, from <code>migrate</code> to <code>archive</code>, and every one serves a change. <code>htmlspec instructions run</code> exits 2 with "no workflow named run". The set is scoped that way by project-bootstrap's <a href="../../../specs/project-bootstrap/spec.html#req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses">"Bootstrapping installs agent instructions for the tools a project uses"</a>, which says the instructions "SHALL cover the project's lifecycle from an idea to an archived change". The <code>new</code> workflow sends a repeated procedure to <code>htmlspec new runbook</code> and stops, and nothing installed tells an agent how to work a run, settle a step, or record an outcome.</p>
+          <p><strong>The gap was deferred on purpose, twice, and never closed.</strong> The proposal of <a href="../2026-09-18-establish-a-runbook/proposal.html">establish-a-runbook</a>, at 0.13.0, excluded "A workflow for authoring one" and named its successor, <code>author-a-runbook-through-the-change-lifecycle</code>. The design of <a href="../2026-09-26-log-a-runbook-run/design.html">log-a-runbook-run</a>, at 0.14.0, excluded a workflow again. Nobody created the successor. This change is it, and more: it covers running and reviewing as well as writing.</p>
+          <p><strong>This release cycle's publish runs were worked entirely by hand.</strong> The publish runbook has nine steps and six requirements each run records. In each run, preflight, the start, and the two reports were commands. Everything else was an edit to one HTML file: each of the nine step states, each dated note or reason, and an outcome and a method for each of the five requirements the start did not settle.</p>
+          <table>
+            <caption>Hand writes in this cycle's three publish records, counted from the records in <code>htmlspec/runbooks/publish/runs/</code>. Writes are the nine step states, the dated paragraphs, and two for each outcome set by hand.</caption>
+            <thead>
+              <tr>
+                <th>Record</th>
+                <th>Done, dropped</th>
+                <th>Dated paragraphs</th>
+                <th>Outcomes by hand</th>
+                <th>Writes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><a href="../../../runbooks/publish/runs/v1.3.0.html">v1.3.0</a></td>
+                <td>7, 2</td>
+                <td>12</td>
+                <td>5</td>
+                <td>31</td>
+              </tr>
+              <tr>
+                <td><a href="../../../runbooks/publish/runs/v1.3.1.html">v1.3.1</a></td>
+                <td>7, 2</td>
+                <td>9</td>
+                <td>5</td>
+                <td>28</td>
+              </tr>
+              <tr>
+                <td><a href="../../../runbooks/publish/runs/v1.3.2.html">v1.3.2</a></td>
+                <td>7, 2</td>
+                <td>11</td>
+                <td>5</td>
+                <td>30</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>Each write is an exact string edit inside long lines of markup, and nothing checks most of them. The element schema does not require a verification's method. The start writes the method "Not run yet. State how this requirement was checked during this run…" as a placeholder, and <code>--check</code>, <code>--status</code>, and a prerequisite run check all read the outcome alone, so a <code>passed</code> outcome beside that placeholder satisfies every one of them.</p>
+          <p><strong>The stop for a person was a habit, not a rule, and the records show it.</strong> Nothing in the publish runbook asks for a go at the push or the tag. Its specification says that "a person reads its diff" at step 2, and that switching the ruleset off "is a person's act", and its tag step says nothing of a person at all. The contract is silent on which steps need a person: a task in the element schema carries no field that marks one. So each run kept the go its own way. All seven records note a go before the push, and each of the six that made the tag notes one before it, but only the last two quote every go in its own step's note:</p>
+          <table>
+            <caption>How each publish record keeps the go at the push and at the tag, read from each step's own notes. A paraphrase reports that the contributor said to go on; a quote gives their words.</caption>
+            <thead>
+              <tr>
+                <th>Record</th>
+                <th>The go at the push, step 4</th>
+                <th>The go at the tag, step 5</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><a href="../../../runbooks/publish/runs/v1.0.0.html">v1.0.0</a></td>
+                <td>a paraphrase: "said to push it"</td>
+                <td>a paraphrase: "said to tag"</td>
+              </tr>
+              <tr>
+                <td><a href="../../../runbooks/publish/runs/v1.1.0.html">v1.1.0</a></td>
+                <td>a paraphrase: "said to push"</td>
+                <td>a paraphrase: "said to tag"</td>
+              </tr>
+              <tr>
+                <td><a href="../../../runbooks/publish/runs/v1.2.1.html">v1.2.1</a></td>
+                <td>quoted: “yes push”</td>
+                <td>a paraphrase: "said to tag"</td>
+              </tr>
+              <tr>
+                <td><a href="../../../runbooks/publish/runs/v1.2.2.html">v1.2.2</a></td>
+                <td>a paraphrase: "said yes to the push"</td>
+                <td>none: the step was dropped when the contributor chose to skip the release, one of five steps dropped</td>
+              </tr>
+              <tr>
+                <td><a href="../../../runbooks/publish/runs/v1.3.0.html">v1.3.0</a></td>
+                <td>quoted: “push”, then “go”</td>
+                <td>quoted, “merge and tag”, but in step 4's note; step 5's own note quotes nothing</td>
+              </tr>
+              <tr>
+                <td><a href="../../../runbooks/publish/runs/v1.3.1.html">v1.3.1</a></td>
+                <td>quoted: “yes”</td>
+                <td>quoted: “yes”</td>
+              </tr>
+              <tr>
+                <td><a href="../../../runbooks/publish/runs/v1.3.2.html">v1.3.2</a></td>
+                <td>quoted: “yes push it”</td>
+                <td>quoted: “yes please do this”</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>The stop held at the push in all seven runs and at the tag in all six that made it, and that is the habit worth keeping. What the records show is that nothing fixed its form: a reader of v1.0.0 cannot tell what the contributor's words were, and a reader of v1.3.0's tag step finds no go there at all. The one safeguard against a tag made unasked was the memory of the agent working the run.</p>
+          <p><strong>The publish runbook is the run workflow's only real user here.</strong> The release runbook's four steps run inside each change, copied into its tasks, and <code>htmlspec run release --status</code> reports no runs. So the 1.4.0 publish run is where the <code>run</code> workflow meets real work first.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <p>Three rows join <code>WORKFLOWS</code> after <code>archive</code>, each with a body in <code>crates/htmlspec-assets/instructions/</code>, written in the voice of the nine bodies that exist and held by the tests that hold them.</p>
+          <table>
+            <caption>The three workflows, as Claude Code users invoke them. Codex users type each skill's name, <code>$htmlspec-write-runbook</code>, <code>$htmlspec-run-runbook</code>, and <code>$htmlspec-review-run</code>, and Pi and Cursor users <code>/htmlspec-runbook</code>, <code>/htmlspec-run</code>, and <code>/htmlspec-review</code>.</caption>
+            <thead>
+              <tr>
+                <th>Workflow</th>
+                <th>Directory</th>
+                <th>What it does</th>
+                <th>What it refuses</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>/htmlspec:runbook</code></td>
+                <td><code>htmlspec-write-runbook</code></td>
+                <td>Writes a new runbook with <code>htmlspec new runbook</code>, or revises one inside a change. States the hazards and what each run must record as requirements, writes the steps in the order the hazards force, declares what the machine needs for preflight, writes "stop for a go" into each step that needs a person, and raises the version with its changelog entry.</td>
+                <td>Starts no run and edits no record. Advances no step in the canonical tasks. Revises no runbook outside a change.</td>
+              </tr>
+              <tr>
+                <td><code>/htmlspec:run</code></td>
+                <td><code>htmlspec-run-runbook</code></td>
+                <td>Reads the runbook whole, runs preflight, then starts a record or resumes the open one. Works one step at a time: settles its state, adds a dated note or reason, and runs <code>htmlspec validate</code> on the record. Stops for a person's go before anything that writes outside the working copy. Records each outcome with its method, and ends with <code>--status</code> and <code>--check</code>.</td>
+                <td>Opens no second record for an open run. Takes no gated step without a go. Rewrites no earlier note. Turns no recorded failure into a pass.</td>
+              </tr>
+              <tr>
+                <td><code>/htmlspec:review</code></td>
+                <td><code>htmlspec-review-run</code></td>
+                <td>Reads a finished record beside its runbook before it lands. Checks that each note holds what its step asks for, that each dropped step's reason meets the step's own condition, that each gated step quotes its go, and that each method can be repeated and is not the start's placeholder. Runs <code>validate</code>, <code>--status</code>, and <code>--check</code>.</td>
+                <td>Writes nothing. Its tools are the read-only ones <code>verify</code> has.</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>Beside the workflows, the publish runbook moves to <strong>0.5.0</strong>. Its bootstrap, push, tag, and co-owner steps say in their own words to stop for a go, and so does its watch step before it reruns a failed job or renews <code>HOMEBREW_TAP_TOKEN</code>, since a rerun of the crates job publishes. Its specification gains a requirement that each of those writes waits for a person's go and that the run quotes the words. So the stop holds for a person who works the runbook without the workflow, and every run's record attests to it.</p>
+          <p>Two accepted requirements move. project-bootstrap's <a href="../../../specs/project-bootstrap/spec.html#req-bootstrapping-installs-agent-instructions-for-the-tools-a-project-uses">"Bootstrapping installs agent instructions for the tools a project uses"</a> widens from a change's lifecycle to a change's and a runbook's, and that specification's summary follows it. toolchain-packaging gains a requirement beside <a href="../../../specs/toolchain-packaging/spec.html#req-the-workflow-instructions-carry-a-stage-for-applying-a-change-s-contract">"The workflow instructions carry a stage for applying a change's contract"</a>, saying what the run stage's instructions must state: preflight first, a record worked until it lands and never restarted, each step settled as it lands, a go quoted before any write outside the working copy, the record reviewed before the step that lands it, and each outcome with its method.</p>
+          <p>One fix rides along. <code>init</code> tells a Codex user to type <code>$htmlspec-new</code>, but Codex knows a skill by the name its <code>SKILL.md</code> declares, <code>htmlspec-new-change</code>, so the line names nothing. It is fixed here, for the nine workflows and the three new ones.</p>
+          <h3>What working looks like</h3>
+          <p>In Claude Code, on the 1.4.0 publish run, interrupted after step 3:</p>
+          <pre><code>You:   /htmlspec:run publish
+Agent: Preflight is ready inside nix develop. publish has one open run,
+       v1.4.0, with step 4 next: push the export and merge it. Step 2
+       reviewed TREE, and gh is signed in as smurphy8. Step 4 pushes to
+       Firefly-Projects/htmlspec, so I stop here.
+       May I push the export, and merge it once its checks pass?
+
+You:   yes push it, and merge it when it's green
+
+Agent: Quoted your words in step 4's note, then pushed and merged: what
+       was merged is the tree step 2 reviewed. Step 5 tags MERGE as
+       v1.4.0 through the API. May I make the tag?
+
+You:   yes please do this
+
+Agent: … Steps 6 and 8 are done, and step 7 is dropped by its own
+       condition. Every requirement has an outcome with its method.
+       htmlspec run publish --status v1.4.0 names step 9 next, and
+       --check names nothing for v1.4.0. The record is ready for
+       review, and step 9, which lands it, waits for the review and
+       your go.
+
+You:   /htmlspec:review publish v1.4.0
+Agent: The record can land as it stands. Every step but step 9 is
+       settled, each note holds what its step asks for, each go is
+       quoted in its own step before its write, and each method can be
+       repeated. This review changed nothing.
+
+You:   /htmlspec:run publish
+Agent: v1.4.0 has been reviewed, and step 9 is left: commit the record
+       on a branch, push it, open the pull request, and merge it.
+       May I?
+
+You:   yes land it
+
+Agent: Quoted “yes land it” in step 9's note, set the step done, and
+       committed, pushed, and merged. The main line holds the record,
+       so it has landed, and --status v1.4.0 ends "Finished and
+       passed: yes".</code></pre>
+          <p>Concretely, once this change is archived:</p>
+          <ol>
+            <li><code>htmlspec instructions runbook</code>, <code>run</code>, and <code>review</code> each print their workflow, and <code>htmlspec init</code> installs twelve workflows: 60 files in this repository, where it installs 45 today.</li>
+            <li><code>/htmlspec:run publish</code> works the one record that has not landed from where it stands, and starts no new one. A record <code>--status</code> calls finished, whose steps are all settled but which the main line does not hold, still takes its outcomes, its review's fixes, and its landing. A landed record is not resumed, and takes only a correction note a person asks for. With every record landed, it runs preflight and starts the record under the name the runbook's words give, <code>vX.Y.Z</code>. With more than one record not landed, it lists them and asks which.</li>
+            <li>After each step the record validates with no error, and the step has its state and a dated note or reason.</li>
+            <li>Before a push, a tag, a merge, a publication, a remote API write, a deploy, or an installation into the machine, the agent stops and asks, and quotes the answer in the step's note before the write. A go that names several steps is quoted in the note of each step it allows. A go covers only the steps it names, and none carries across an interruption.</li>
+            <li>Each requirement's outcome has a method someone else could repeat, recorded before the review. Once the record lands, <code>htmlspec run publish --status v1.4.0</code> ends "Finished and passed: yes", and <code>--check</code> names nothing for that record.</li>
+            <li><code>/htmlspec:review publish v1.4.0</code> writes nothing. On a record with a <code>passed</code> outcome whose method still reads "Not run yet.", a gated step whose own note quotes no go, or a dropped step whose reason does not meet its condition, it names each one.</li>
+            <li>The publish runbook at 0.5.0 asks for a go at steps 3, 4, 5, and 7 in its own words, and at step 6 before a rerun or a renewed secret, and a run of it owes an outcome for seven requirements.</li>
+            <li><code>htmlspec init --tools codex</code> tells a Codex user to type <code>$htmlspec-new-change</code>, a skill Codex has.</li>
+          </ol>
+          <p>The release is <strong>1.4.0</strong>, a minor one. Three workflows are added and none is removed. <code>instructions</code> takes its stage as a free argument, and the instructions payload states <code>stage</code> as a plain string, so no recorded fact of the command surface changes. It follows <strong>1.3.3</strong>, which shipped first, archived as <code>2026-11-11-count-only-the-checks-a-run-ran</code>, and which makes <code>--status</code> count only outcomes whose check ran, as <code>--check</code> does, so the run workflow can report the two without a caveat. The change declares that order in its <code>FOLLOWS</code> file.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <ul>
+            <li><strong>Five workflows, with one to carry a runbook to another machine and one to revise a runbook.</strong> A revision is the same work as a first draft, the same two documents and the same rules, plus a raised version, and archival already refuses a changed runbook whose version did not move. Carrying one is <code>htmlspec store add</code> once and <code>--store</code> on <code>preflight</code> and <code>run</code>, which is a paragraph of the <code>run</code> body. So <code>runbook</code> covers both, and neither earns a row.</li>
+            <li><strong>A command that settles a step without a hand edit, in this change.</strong> It would remove the string edits and could refuse a bad shape at the moment of the write, and it is worth building. It is not built here, for three reasons. Its design is open: it needs a way to name the record and the step, rules for which flags go together, a note argument that takes or escapes markup, an outcome and its method in one call, and runbook-portability's <a href="../../../specs/runbook-portability/spec.html#req-preflight-gates-the-creation-of-a-run">"Preflight gates the creation of a run"</a> keeps "checking or editing an existing record" out of preflight. Its size is that of the change that added <code>--status</code>: each flag joins the recorded surface and the payload schema, and each refusal needs its own test. And its evidence is the 1.4.0 publish run worked under <code>run</code>, which shows which edits go wrong. Until it ships, the <code>run</code> body teaches the markup edit, because project-bootstrap's requirement above forbids a body naming a command the program does not provide.</li>
+            <li><strong>A field in the task schema marking a step that needs a person.</strong> The element schema gives a task eight fields and none is a gate. runbook-authority's <a href="../../../specs/runbook-authority/spec.html#req-a-runbook-records-what-its-history-taught">"A runbook records what its history taught"</a> declines an attribute for a similar distinction, because the artifact vocabulary is closed. A rule in the <code>run</code> body, with the runbook's own words as a second line, covers every runbook today. A field waits for evidence that the rule is too coarse.</li>
+            <li><strong>Leaving the stop to the tool's permission prompts.</strong> A session that skips permission checks, as agent sessions here often do, asks nothing before <code>git push</code>. Where checks are on, pre-approving only <code>htmlspec</code> commands does make the tool ask before a push, and the <code>run</code> row does that, but the instruction has to be the gate.</li>
+            <li><strong>One workflow, <code>run</code>, as the first sketch of this gap proposed.</strong> The review earns a row of its own. The last two publish records, v1.3.1 and v1.3.2, each landed after a read-only fact check that its pull request names, and the change lifecycle already keeps its read-only check, <code>verify</code>, apart from <code>apply</code>: a reader who did not work the run catches what the worker read as they meant it.</li>
+            <li><strong><code>check-run</code> instead of <code>review</code>.</strong> Held in reserve, in case <code>review</code> collided with something. It collides with nothing: no workflow, operation, request-verb spelling, skill directory, or installed file name uses it.</li>
+          </ul>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <ul>
+            <li><strong>No settle command.</strong> Settling a step's state from the command line is its own change, named here so it is not lost as <code>author-a-runbook-through-the-change-lifecycle</code> was: <code>settle-a-step-of-a-run-from-the-command-line</code>. The review of the 1.4.0 publish run's record decides whether to draft it, and with what further refusals. Two of its parts are already settled: it adds a <code>run --check</code> finding, advisory like the rest of that report, for an outcome recorded beside the start's placeholder method, and its settle command refuses to set an outcome without a method.</li>
+            <li><strong>No new schema field, command, flag, exit code, or payload field.</strong> Which steps need a person is a rule in the <code>run</code> body and words in each runbook.</li>
+            <li><strong>No workflow for carrying a runbook to another machine, or for revising one.</strong> <code>--store</code> and the <code>runbook</code> workflow cover both.</li>
+            <li><strong>No change to runbook-execution, runbook-authority, or runbook-portability.</strong> The workflows rest on what they already state. 1.3.3 adds one sentence to runbook-execution's <a href="../../../specs/runbook-execution/spec.html#req-a-run-s-progress-is-reported-from-its-record">"A run's progress is reported from its record"</a>, in its own change.</li>
+            <li><strong>No change to the release runbook,</strong> which stays at 0.6.1.</li>
+            <li><strong>Not 1.3.3's fixes.</strong> The status count, the topology test race, and the stale <code>instructions --help</code> were one patch of their own, which shipped first as 1.3.3, in <code>count-only-the-checks-a-run-ran</code>.</li>
+            <li><strong>No run of this repository's publish runbook.</strong> The instructions are proved by a dry run against a scratch runbook in a scratch project. The 1.4.0 publish run comes after archival, under the <code>run</code> workflow, and it is the workflow's first real test.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>

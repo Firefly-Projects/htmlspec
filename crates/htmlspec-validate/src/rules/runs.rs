@@ -55,8 +55,11 @@ pub struct RecordedRun {
     /// outcome states neither, so a record full of them has recorded nothing. That is exactly what
     /// the operation starting a run writes — one per requirement, so the record enumerates what it
     /// owes — and a rule counting them would report every run as conforming from the moment it
-    /// started. [`super::review`]'s `has_run` draws the same line for the same reason, and reads
-    /// the outcome values out of the schema rather than naming them.
+    /// started. The command line's `has_run`, in `htmlspec-cli`'s `prerequisites` module, is what
+    /// decides which identifiers a caller puts here, and reads the outcome values out of the schema
+    /// rather than naming them. [`super::review`]'s `has_run`, which asks whether a check can have
+    /// gone stale, agrees with it on every value the schema lists and differs on any other, which it
+    /// counts as having run where the command line's does not.
     ///
     /// A set rather than a list: two verifications recording one requirement is a record saying so
     /// twice, which is not a fault and not a second fact.

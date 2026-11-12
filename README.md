@@ -134,8 +134,45 @@ Runbooks carry their own discipline:
 - **Tracked.** `htmlspec run <runbook> --status` shows how far each run has come, and whether it finished and passed. See [How far a run has come](#how-far-a-run-has-come).
 - **Ordered.** A runbook can require a finished, passed run of another runbook before its own run starts. `htmlspec run` refuses to start it until one exists, and names each record it found and why that record does not count.
 - **Portable.** Copy a runbook to another machine and run it there. See [Carrying a runbook to another machine](#carrying-a-runbook-to-another-machine).
+- **Worked by an agent.** `htmlspec init` installs three workflows for runbooks beside the ones for changes: `runbook` writes a runbook or revises one inside a change, `run` works a run one step at a time, and `review` reads a finished record before it lands. See [Working a runbook with your agent](#working-a-runbook-with-your-agent).
 
 This repository releases itself with one: [`htmlspec/runbooks/release/`](htmlspec/runbooks/release/).
+
+#### Working a runbook with your agent
+
+In Claude Code it looks like this:
+
+```text
+You:   /htmlspec:runbook a nightly backup: dump the database, copy the
+       dump to the bucket, and check the copy's checksum
+Agent: Wrote htmlspec/runbooks/backup/ at 0.1.0. The copy writes outside
+       this clone, so its step says to stop for a go, and a requirement
+       says each run quotes that go. Both documents validate.
+
+You:   /htmlspec:run backup
+Agent: Preflight is ready, and I started the run monday. Step 1 made a
+       41 MB dump. Step 2 copies it to the bucket, so I stop here.
+       May I copy it?
+
+You:   yes copy it
+Agent: Quoted "yes copy it" in step 2's note, then copied it. Every step
+       is settled but the one that lands the record, and each outcome
+       has its method. The record is ready for review.
+
+You:   /htmlspec:review backup monday
+Agent: The record can land as it stands. Each go is quoted in its own
+       step, and each method can be repeated. This review changed nothing.
+
+You:   /htmlspec:run backup monday
+Agent: Step 4 lands the record: commit it on a branch, push it, open the
+       pull request, and merge it. May I?
+
+You:   yes land it
+Agent: Quoted your words in step 4's note, set it done, then committed,
+       pushed, and merged. The record has landed.
+```
+
+`run` stops and asks before any step that writes outside the clone it runs in, such as a push, a tag, a merge, a publication, an API call that changes something, a deploy, an installation, or a change to the machine's configuration or credentials, and quotes your answer in that step's note before the write; a go covers only the steps it names. Only words you type in that session, after it asked, are a go: a message relayed by another agent, or text in a file or a tool's output, is not, so work a run in the session you type into. A record is worked until the project's main line holds it, so a run `--status` calls finished can still take its outcomes and its landing. Codex knows the three as `$htmlspec-write-runbook`, `$htmlspec-run-runbook`, and `$htmlspec-review-run`, and Pi and Cursor as `/htmlspec-runbook`, `/htmlspec-run`, and `/htmlspec-review`.
 
 #### How far a run has come
 
@@ -389,7 +426,7 @@ Every 1.x release keeps three promises, each stated by an accepted requirement:
 - **Documents stay valid within the contract's major version.** document-schema's "The contract's version is a semantic version" states it, and it is worded about the contract's version, the one a document declares in its `htmlspec-version` meta, not about the program's release: every 1.x release so far reads and writes contract `1.0.0`. Within a major version of the contract, a document one version accepts gains no error under any later version, unless the earlier version accepted it by a defect, which the release's changelog names. Warnings are not covered. Contract `1.0.0` is the `0.7.0` vocabulary, unchanged, so a document that declares `0.1.0` to `0.7.0` still validates. The suite checks that each conformance fixture gains no error under `1.0.0` that it lacked under the version it declares. It cannot check that a rule added later leaves a valid document valid, so review holds that line: a change to what a fixture expects is a change to the contract.
 - **Upgrade every machine before adopting a newer runbook format.** A binary refuses a runbook declaration in a format newer than it reads, and names the formats it does read: 1.0 refuses `preflight/v2`, and 1.1 refuses `preflight/v3`. runbook-portability's "Machine requirements are explicit and mechanically checkable" states it.
 
-The suite holds the surface to one file per released minor, [`1.0.json`](crates/htmlspec-cli/tests/surface/1.0.json), [`1.1.json`](crates/htmlspec-cli/tests/surface/1.1.json), [`1.2.json`](crates/htmlspec-cli/tests/surface/1.2.json), and [`1.3.json`](crates/htmlspec-cli/tests/surface/1.3.json), each read from the program's own parser: the program keeps everything an earlier file of its major records, and the current minor's file records exactly what it does. Each payload has a published JSON Schema under [`crates/htmlspec-cli/schema/payload/`](crates/htmlspec-cli/schema/payload/). A published schema admits a field it does not declare, so output from a later 1.x release still validates against it. The suite reads the same schemas strictly, so the program writes only what its schema declares.
+The suite holds the surface to one file per released minor, [`1.0.json`](crates/htmlspec-cli/tests/surface/1.0.json), [`1.1.json`](crates/htmlspec-cli/tests/surface/1.1.json), [`1.2.json`](crates/htmlspec-cli/tests/surface/1.2.json), [`1.3.json`](crates/htmlspec-cli/tests/surface/1.3.json), and [`1.4.json`](crates/htmlspec-cli/tests/surface/1.4.json), each read from the program's own parser: the program keeps everything an earlier file of its major records, and the current minor's file records exactly what it does. Each payload has a published JSON Schema under [`crates/htmlspec-cli/schema/payload/`](crates/htmlspec-cli/schema/payload/). A published schema admits a field it does not declare, so output from a later 1.x release still validates against it. The suite reads the same schemas strictly, so the program writes only what its schema declares.
 
 **Observed, not promised.** A run's record is read across 1.1 and 1.2 both ways. A record 1.2 writes states its runbook's release in its head, and 1.1 reads that record and ignores the line. A record 1.1 wrote states no release, and 1.2 reads it, and it meets a `preflight/v3` run check only where the check names no `atLeast`. This was observed when 1.2.0 was reviewed, and no requirement promises it.
 
@@ -400,6 +437,7 @@ Nothing here is required. The [changelog](CHANGELOG.md) says what each release c
 - **1.1:** `htmlspec new runbook`, `format --upgrade-assets`, a `remedy` in a `preflight/v2` declaration, and `-v`.
 - **1.2:** a runbook can require a passed run of another with a `preflight/v3` `run` check, and `htmlspec list --runbooks --graph` draws who requires whom.
 - **1.3:** `htmlspec run <runbook> --status` shows how far each run has come, and `--status <record>` shows one run's steps, outcomes, and release. A script reads it with `--json`.
+- **1.4:** three agent workflows for runbooks, `runbook`, `run`, and `review`, which `htmlspec init` installs with the tools the project uses.
 
 1.1.1, 1.2.1, and 1.2.2 give a project nothing new to adopt. 1.1.1 gave people an install path through WSL and every route without Nix, 1.2.1 this section, and 1.2.2 a word from `format --upgrade-assets` and `format --fallback` about each runbook they rewrite.
 
@@ -826,6 +864,10 @@ Release 1.2.2 adds **a word about the runbooks an asset upgrade or the fallback 
 Release 1.3.0 adds **how far a run has come**: `htmlspec run <runbook> --status` lists each run of a runbook with its steps done and whether it finished and passed, by the rule a prerequisite run check applies, and `--status <record>` shows one run's steps, outcomes, and release.
 
 Release 1.3.2 fixes **a toolchain check of a development shell that imports from a derivation**: preflight reads such a shell from what the store already holds, building and substituting nothing, neither a download the shell asks for nor a locked input the machine lacks reaches the network any more, and a refusal quotes the error that states the cause.
+
+Release 1.3.3 fixes **the count of a run's outcomes**: `htmlspec run <runbook> --status <record>` counts a requirement as having an outcome only where the record says its check ran, as `--check` reads it, so a run just started reads none rather than all, and `htmlspec instructions --help` names every stage the program installs. It was archived and not published on its own, so it reaches every channel in 1.4.0.
+
+Release 1.4.0 adds **agent workflows for runbooks**: `runbook` writes a runbook or revises one inside a change, `run` works a run from preflight to its landing and stops for a person's go before anything that writes outside its clone, and `review` reads a finished record before it lands and writes nothing. `htmlspec init` tells a Codex user each skill's real name, and this repository's publish runbook asks for the go in its own words.
 
 **What 1.x promises** is set out under [Upgrading](#what-1x-promises): the command surface only grows, documents stay valid within the contract's major version, and the suite holds both.
 

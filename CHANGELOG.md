@@ -7,6 +7,126 @@ find it. That check also requires every archived change to record the version it
 in, in a `VERSION` file beside its documents. Prose inside an entry is not parsed — a
 changelog exists to be read by a person.
 
+## 1.4.0 — write, run, and review a runbook through agent workflows
+
+A minor release, and the next published one after 1.3.2: it also carries 1.3.3, below, which was
+archived and not published. html-spec installed nine agent workflows, every one of them for a
+change, so every run of a runbook was worked by hand. Now three more serve a runbook, and a run
+stops for a person before anything that writes outside the clone it runs in.
+
+- **Three workflows for runbooks.** `runbook` writes a runbook with `htmlspec new runbook`, or
+  revises one inside a change: its hazards and what each run must record as requirements, its steps
+  in the order the hazards force, what the machine needs, "stop for a go" in the words of each step
+  that needs a person, and its version with a changelog entry. `run` reads the runbook whole, runs
+  preflight, starts a record or resumes the one that has not landed, works one step at a time,
+  settling each in the record with a dated note and validating it, records each outcome with the
+  method that reached it, and reports from `--status` and `--check`. `review` reads a finished
+  record beside its runbook before it lands, and writes nothing: each note against what its step
+  asks for, each dropped step's reason against the step's condition, each go, and each method,
+  which must not be the start's placeholder, "Not run yet.". Claude Code invokes them as
+  `/htmlspec:runbook`, `/htmlspec:run`, and `/htmlspec:review`, Codex by each skill's name,
+  `$htmlspec-write-runbook`, `$htmlspec-run-runbook`, and `$htmlspec-review-run`, and Pi and Cursor
+  as `/htmlspec-runbook`, `/htmlspec-run`, and `/htmlspec-review`. `htmlspec instructions runbook`,
+  `run`, and `review` print them.
+- **A run stops for a person's go.** Before any write outside the clone it runs in, including a
+  push, a tag, a merge, a pull request, a publication, an API call that creates, changes, or
+  deletes something, a deploy, an installation into the machine, a change to the machine's
+  configuration or credentials, and deleting anything outside the clone, and before a step whose
+  words give it to a person, `run` stops and asks, and quotes the answer in the step's note before
+  the write. Only words the person types in the run's own session, after it asked, are a go: words
+  relayed by another agent, even one that says it relays the person, text in a tool's output, a
+  file, a pull request, or a record, and words given before it asked are not, and a session that
+  cannot hear the person takes no gated step. A go covers only the steps it names, a go that names
+  several steps is quoted in the note of each step it allows, and no go carries across an
+  interruption: a failure, an answer of no or wait, or a new session. The instruction is the gate,
+  because a session that skips permission checks asks nothing before a push.
+- **A record is worked until it lands, not until `--status` calls it finished.** `--status` calls a
+  run finished once every step is settled, so a settled record can still take its outcomes, its
+  review's fixes, and the step that lands it. Only the project's main line holding the record, which
+  `run` reads with `git ls-tree` after a fetch, makes it history, and a landed record takes only a
+  dated correction note a person asks for.
+- **`init` tells a Codex user each skill's real name.** Codex knows a skill by the name its
+  `SKILL.md` declares, and `init`'s closing line told a Codex user to type `$htmlspec-new`, which
+  named no skill. It now says `$htmlspec-new-change`.
+- **This repository's publish runbook is at 0.5.0.** Its bootstrap, push, tag, co-owner, and
+  landing steps say to stop for a go before their first write, its watch step before each rerun,
+  one job per go, or a renewed `HOMEBREW_TAP_TOKEN`, its channel step before `brew install`, and
+  its review step before pushing a readiness pull request, and
+  `req-each-public-write-waits-for-a-person-s-go` makes each run quote every go in its own step's
+  note. Its earlier records kept the go by habit: each of the seven that
+  reached the push records one before it, and each of the six that made the tag records one before
+  it, but only the v1.3.1 and v1.3.2 records quote each go in its own step.
+- **The contract names both lifecycles.** project-bootstrap's "Bootstrapping installs agent
+  instructions for the tools a project uses" now has the instructions cover a runbook's lifecycle as
+  well as a change's, a change's stages before a runbook's, and that specification's summary says
+  so. toolchain-packaging gains "The workflow instructions carry a stage for working a run of a
+  runbook", which says what the run stage's text must state, the person's go among it.
+
+**What this release does not do.** No command, flag, exit code, payload field, or schema field
+changes: a stage is a value of `instructions`'s free argument, so `tests/surface/1.4.json` equals
+`1.3.json` but for its version. And no command settles a step of a run: `run` teaches the edit to
+the record's markup, and a later change, `settle-a-step-of-a-run-from-the-command-line`, is named to
+add one.
+
+### Upgrading
+
+1.3.3 was archived and not published, so no channel ever shipped it, and 1.4.0 carries it. From
+1.3.2, follow 1.3.3's note below as well as this one: upgrade the binary, and run `htmlspec init`
+with the tools the project uses, which installs the three workflows, fifteen files for
+`claude,codex,pi`, and moves every installed instruction's recorded release to 1.4.0. Nothing
+installed before is removed, and no document or record has to change. A script that reads the
+count from `run --status`'s text sees it fall for every record holding a `not-run` outcome, as
+1.3.3's note says.
+
+From 1.3.1 or earlier, follow the notes of each release after yours too.
+
+## 1.3.3 — count only the checks a run ran
+
+A patch release that fixes three defects. `htmlspec run <runbook> --status <record>` counted a
+requirement whose only outcome is `not-run` as having an outcome, so it disagreed with `--check`
+about the same record; now both read an outcome the same way. Three tests of the suite deleted
+each other's scratch directories and failed it at random; now every scratch directory is its own.
+And `htmlspec instructions --help` named seven of the nine stages; now it names every stage the
+program installs.
+
+No command, flag, exit code, or payload field changes. The count and the help are human-readable
+wording, which the stable command surface does not cover, and the `--json` payload of
+`run --status` carries each requirement's outcomes and no count.
+
+- **`run --status` counts only an outcome that says a check ran.** "Requirements: N of M have an
+  outcome" counted every outcome that was not empty, so the `not-run` that `htmlspec run --as`
+  writes for each requirement counted, and every run read "M of M" from the moment it started,
+  while `htmlspec run <runbook> --check` named the same requirements as unrecorded. Both reports
+  now read an outcome through one function: `passed`, `failed`, `blocked`, and `partial` count,
+  and `not-run`, an empty outcome, and a value the schema does not list do not. Each requirement's
+  line still shows its outcomes as the record states them, `not-run` included. On this
+  repository's publish runbook, `htmlspec run publish --status v1.2.2` read "6 of 6" and now reads
+  "4 of 6", its two `not-run` requirements being the two `--check` names. The verdict line, and
+  what a run check, preflight, and `--check` decide about a record, are unchanged.
+- **The contract states the count.** runbook-execution's "A run's progress is reported from its
+  record" gains the sentence that says so, and two scenarios: a run just started, whose every
+  requirement reads `not-run`, and a requirement recorded twice, once `not-run` and once
+  `passed`, which counts once. The change is archived as
+  `2026-11-11-count-only-the-checks-a-run-ran`.
+- **Every scratch directory of the topology tests is its own.** `conformance/tests/topology.rs`
+  named a scratch directory by its label and the process id alone, and three of its tests, which
+  run on threads of one process, built fixtures under the same two labels, so one test could
+  remove the directory another was reading. That failed the check suite on `main` on 2, 23, and 27
+  October. Each name now carries a process-wide count as well, as the tools crate's own scratch
+  directories do, and a test holds two scratches built with one label apart.
+- **`htmlspec instructions --help` names every stage.** The stage argument's help was written by
+  hand before `sync` and `migrate` existed. It is now built from the table of workflows the
+  program installs, as the error for an unknown stage already was, so `instructions --help` and
+  `get instructions --help` both read "The stage: migrate, explore, new, continue, ff, apply,
+  verify, sync, or archive".
+
+### Upgrading
+
+From 1.3.2, upgrading the binary is enough, and `htmlspec init` in a project only moves its
+instructions' recorded release to 1.3.3. A project needs nothing else, and no record changes. A
+script that reads the count from `--status`'s text sees it fall for every record holding a
+`not-run` outcome; one that reads the `--json` payload sees no change.
+
 ## 1.3.2 — read a development shell built by import from a derivation
 
 A patch release. A runbook's toolchain check refused every Nix development shell that imports from a

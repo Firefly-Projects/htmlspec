@@ -6432,8 +6432,8 @@ fn terminal_width() -> Option<usize> {
 /// Names the literal command to run next, spelled for the tools that were selected.
 ///
 /// **One line per distinct spelling**, labelled with the tools it applies to. The
-/// spelling differs per tool — `/htmlspec:new` for one, `$htmlspec-new` for another — and
-/// a single canonical form would be wrong for most of them. Printing a command no selected
+/// spelling differs per tool — `/htmlspec:new` for one, `$htmlspec-new-change` for another —
+/// and a single canonical form would be wrong for most of them. Printing a command no selected
 /// tool answers to teaches a command that does not work, which is why this runs after the
 /// selection is known rather than as part of a banner.
 ///
@@ -6483,7 +6483,7 @@ fn report_next_command<O: Write, E: Write>(
     let mut spellings: Vec<(String, Vec<&'static str>)> = Vec::new();
     for id in &served {
         let tool = id.tool();
-        let spelling = tool.invocation(entry.name);
+        let spelling = tool.invocation(entry);
         match spellings.iter_mut().find(|(known, _)| *known == spelling) {
             Some((_, names)) => names.push(tool.name),
             None => spellings.push((spelling, vec![tool.name])),
@@ -6502,8 +6502,9 @@ fn report_next_command<O: Write, E: Write>(
     // Archival follows, and it is a sentence rather than the headline: a contributor who
     // has just bootstrapped has nothing to archive yet.
     let _ = streams.report(&format!(
-        "\n{} workflow(s) were installed, covering the lifecycle from exploring an idea \
-         to archiving the result.\n",
+        "\n{} workflow(s) were installed, covering a change's lifecycle from exploring an idea \
+         to archiving the result, and a runbook's from writing it to reviewing a run's \
+         record.\n",
         WORKFLOWS.len()
     ));
 }

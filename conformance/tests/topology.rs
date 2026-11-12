@@ -19,6 +19,7 @@
 //! [`htmlspec_validate::rules::topology`], with no reach into a private module.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use htmlspec_assets::{address, sha256_hex, Store};
 use htmlspec_validate::rules::topology;
@@ -106,14 +107,23 @@ const FIXTURES: &[(&str, ProjectFixture)] = &[
     ),
 ];
 
+/// Tells apart the scratch directories one process's tests make, which run in parallel on its
+/// threads, as the tools crate's own `Scratch` does.
+static MADE: AtomicUsize = AtomicUsize::new(0);
+
 /// A scratch project, removed when the test ends.
+///
+/// Named by its label, the process id, and the next value of [`MADE`], so no two scratches alive at
+/// once share a directory, whatever labels the tests give them. The removal before creating it
+/// clears only what an earlier process with the same id left.
 struct Scratch(PathBuf);
 
 impl Scratch {
     fn new(label: &str) -> Self {
         let path = std::env::temp_dir().join(format!(
-            "htmlspec-topology-fixture-{label}-{}",
-            std::process::id()
+            "htmlspec-topology-fixture-{label}-{}-{}",
+            std::process::id(),
+            MADE.fetch_add(1, Ordering::Relaxed)
         ));
         let _ = std::fs::remove_dir_all(&path);
         std::fs::create_dir_all(path.join("assets")).expect("the scratch store is created");
@@ -224,6 +234,38 @@ fn a_duplication_report_is_a_non_downgradable_error() {
     assert!(
         !found[0].rule.namespace().is_downgradable(),
         "the asset namespace accepted a downgrade"
+    );
+}
+
+/// Two scratches built with one label never share a directory, so removing one leaves the other.
+///
+/// The tests in this file run on threads of one process, and three of them build fixtures under
+/// the same two labels. Until 1.3.3 a scratch was named by its label and the process id alone, so
+/// two threads could hold one directory, and the removal at one's start or end deleted the tree
+/// the other was writing or reading. That failed the check suite on `main` three times in October
+/// 2026: twice as "the scratch store is created: … NotFound", and once as a report of two copies
+/// where the fixture builds four. This holds the property those failures needed, without
+/// depending on how threads interleave: against the old naming the two scratches below share a
+/// path, every time, which the first assertion reports. Run against that naming, this test also
+/// failed `a_duplication_report_names_every_location_holding_the_bytes` on its first run, because
+/// building a scratch under that test's label removed the tree it was reading.
+#[test]
+fn two_scratches_with_one_label_never_share_a_directory() {
+    let first = Scratch::new("a-copy-per-document");
+    let second = Scratch::new("a-copy-per-document");
+    assert_ne!(
+        first.0, second.0,
+        "two scratches with one label share a path"
+    );
+
+    first.write("proposal/htmlspec.js", RUNTIME);
+    second.write("design/htmlspec.js", RUNTIME);
+    let kept = second.0.join("assets").join("design/htmlspec.js");
+    drop(first);
+    assert!(
+        kept.is_file(),
+        "removing one scratch deleted another's file at {}",
+        kept.display()
     );
 }
 

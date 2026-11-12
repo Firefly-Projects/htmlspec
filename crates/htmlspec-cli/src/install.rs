@@ -354,6 +354,62 @@ mod tests {
             .exists());
     }
 
+    /// Each skills-only tool is told to type the name its installed skill declares.
+    ///
+    /// A tool with only skills knows each one by the `name:` its `SKILL.md` declares, so the
+    /// invocation `init` prints must be `$` and that name, read back from the files an install
+    /// for every tool produced rather than from the table, because the name is written by a
+    /// format string here and the invocation by a template in the tool table. Codex was told to
+    /// type `$htmlspec-new`, a name filled from the workflow, while its skill declared
+    /// `htmlspec-new-change`.
+    #[test]
+    fn every_skill_invocation_names_the_skill_installed() {
+        let scratch = Scratch::new("skill-invocations");
+        let mut wrong = Vec::new();
+        let mut checked = 0;
+        for tool in TOOLS {
+            let installed = install_for(&scratch.0, tool.id).expect("installed");
+            let Delivery::SkillsOnly { .. } = tool.delivery else {
+                continue;
+            };
+            for workflow in WORKFLOWS {
+                let path = scratch
+                    .0
+                    .join(tool.directory)
+                    .join(SKILLS)
+                    .join(workflow.directory)
+                    .join("SKILL.md");
+                assert!(
+                    installed.skills.contains(&path),
+                    "{} installed no skill at {}",
+                    tool.name,
+                    path.display()
+                );
+                let contents = std::fs::read_to_string(&path).expect("readable");
+                let Some(name) = contents
+                    .lines()
+                    .find_map(|line| line.strip_prefix("name: "))
+                else {
+                    panic!("{} declares no name", path.display());
+                };
+                let invocation = tool.invocation(workflow);
+                if invocation != format!("${name}") {
+                    wrong.push(format!(
+                        "{}: {invocation} for the skill named {name}",
+                        tool.name
+                    ));
+                }
+                checked += 1;
+            }
+        }
+        assert!(checked > 0, "no skills-only tool is in the table to check");
+        assert!(
+            wrong.is_empty(),
+            "a skills-only tool is told to type a name no installed skill declares:\n{}",
+            wrong.join("\n")
+        );
+    }
+
     /// A flat command directory gets the prefix, or the file would collide with another
     /// tool's command of the same name.
     #[test]

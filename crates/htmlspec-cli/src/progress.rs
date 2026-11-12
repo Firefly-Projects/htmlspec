@@ -15,7 +15,7 @@ use std::io::Write;
 use crate::exit::Outcome;
 use crate::output::Streams;
 use crate::prerequisites::{
-    named_by, outcome_of, owed, Judged, NotSatisfying, Read, RecordRelease, StepState,
+    has_run, named_by, outcome_of, owed, Judged, NotSatisfying, Read, RecordRelease, StepState,
 };
 use crate::terminal::shown;
 
@@ -75,9 +75,21 @@ struct Step {
 struct Owed {
     /// The requirement's identifier.
     id: String,
-    /// Every outcome a verification referencing it states, in the record's order. Empty where none
-    /// does.
+    /// Every outcome a verification referencing it states, in the record's order, as the record
+    /// states it: `not-run` and a value the schema does not list included. Empty where none does.
     outcomes: Vec<String>,
+}
+
+impl Owed {
+    /// Whether the record attests to the requirement: whether any outcome it records says its
+    /// check ran, by [`has_run`], the reading `run --check` applies. A requirement whose only
+    /// outcome is the `not-run` the start writes is listed with it and not counted, as
+    /// runbook-execution's "A run's progress is reported from its record" states.
+    fn attested(&self) -> bool {
+        self.outcomes
+            .iter()
+            .any(|outcome| has_run(Some(outcome.as_str())))
+    }
 }
 
 /// A verification that references no requirement the record owes an outcome for: one that
@@ -348,7 +360,7 @@ fn one_run(runbook: &str, status: &RunStatus) -> String {
         let recorded = detail
             .requirements
             .iter()
-            .filter(|requirement| !requirement.outcomes.is_empty())
+            .filter(|requirement| requirement.attested())
             .count();
         text.push_str(&format!(
             "Requirements: {recorded} of {} have an outcome\n",

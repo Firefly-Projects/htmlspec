@@ -732,8 +732,38 @@ struct StoreRemoveArgs {
 
 #[derive(Args, Clone, Debug, Eq, PartialEq)]
 struct InstructionsArgs {
-    /// The stage: explore, new, continue, ff, apply, verify, or archive.
+    // The help is built from the workflow table rather than written here, so it names every stage
+    // the program installs: see `stage_help`.
+    #[arg(help = stage_help())]
     stage: String,
+}
+
+/// The stage argument's help: every workflow in [`htmlspec_assets::instructions::WORKFLOWS`], in
+/// the table's lifecycle order, as "The stage: migrate, explore, …, or review".
+///
+/// Built from the table, as the error for an unknown stage in `commands` is, so a stage added to
+/// the table is named in both without anyone editing a list. Until 1.3.3 this was a doc comment
+/// written by hand, which named seven of the nine stages. Help rather than clap's possible values,
+/// because the command surface records an argument's possible values (`surface.rs`), so listing
+/// the stages there would add to the recorded surface in a patch release and replace the program's
+/// own message for an unknown stage with clap's. The wording of help is not part of the surface.
+fn stage_help() -> String {
+    let names: Vec<&str> = htmlspec_assets::instructions::WORKFLOWS
+        .iter()
+        .map(|workflow| workflow.name)
+        .collect();
+    stage_help_naming(&names)
+}
+
+/// The stage help naming `names`, in their order. Total over any list: no name, one, and two each
+/// read as English, as three or more do.
+fn stage_help_naming(names: &[&str]) -> String {
+    match names {
+        [] => String::from("The stage"),
+        [only] => format!("The stage: {only}"),
+        [first, second] => format!("The stage: {first} or {second}"),
+        [rest @ .., last] => format!("The stage: {}, or {last}", rest.join(", ")),
+    }
 }
 
 #[derive(Args, Clone, Debug, Eq, PartialEq)]
@@ -1164,6 +1194,66 @@ mod tests {
     #[test]
     fn the_command_definition_is_internally_consistent() {
         command().debug_assert();
+    }
+
+    /// The stage help reads as English however many stages the table holds.
+    #[test]
+    fn the_stage_help_reads_as_a_list_for_any_number_of_stages() {
+        assert_eq!(stage_help_naming(&[]), "The stage");
+        assert_eq!(stage_help_naming(&["new"]), "The stage: new");
+        assert_eq!(
+            stage_help_naming(&["new", "apply"]),
+            "The stage: new or apply"
+        );
+        assert_eq!(
+            stage_help_naming(&["new", "apply", "archive"]),
+            "The stage: new, apply, or archive"
+        );
+    }
+
+    /// The stage argument's help names every workflow the program installs, in both spellings,
+    /// and the help each spelling renders shows it.
+    ///
+    /// Until 1.3.3 the help was a doc comment written by hand on 30 August 2026, naming seven
+    /// stages; `sync` joined the table the next day and `migrate` on 13 September, and nothing
+    /// held the comment to the table, so `--help` named seven of nine while the error for an
+    /// unknown stage, built from the table, named all nine.
+    #[test]
+    fn the_stage_help_names_every_workflow_in_both_spellings() {
+        let mut presented = command();
+        presented.build();
+        for spelling in [&["instructions"][..], &["get", "instructions"]] {
+            let mut subcommand = spelling.iter().fold(presented.clone(), |current, word| {
+                current
+                    .find_subcommand(word)
+                    .unwrap_or_else(|| panic!("the parser has no `{}`", spelling.join(" ")))
+                    .clone()
+            });
+            let help = subcommand
+                .get_arguments()
+                .find(|argument| argument.get_id() == "stage")
+                .and_then(clap::Arg::get_help)
+                .map(ToString::to_string)
+                .unwrap_or_else(|| panic!("`{}` has no stage help", spelling.join(" ")));
+            let named: BTreeSet<&str> = help
+                .split(|character: char| !(character.is_ascii_alphanumeric() || character == '-'))
+                .filter(|word| !word.is_empty())
+                .collect();
+            for workflow in htmlspec_assets::instructions::WORKFLOWS {
+                assert!(
+                    named.contains(workflow.name),
+                    "`htmlspec {} --help` omits the stage {}: {help}",
+                    spelling.join(" "),
+                    workflow.name
+                );
+            }
+            let rendered = subcommand.render_long_help().to_string();
+            assert!(
+                rendered.contains(&help),
+                "`htmlspec {} --help` does not show the stage help:\n{rendered}",
+                spelling.join(" ")
+            );
+        }
     }
 
     /// Every subcommand and option is documented, which is the discoverability

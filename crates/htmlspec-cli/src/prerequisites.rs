@@ -715,6 +715,62 @@ pub(crate) fn outcome_of(verification: &htmlspec_parse::model::Verification) -> 
         .filter(|outcome| !outcome.is_empty())
 }
 
+/// Whether a recorded outcome says the check actually ran: whether it attests to the requirement.
+///
+/// **One answer for every reader of a record.** `run --check` asks it of each verification to find
+/// the requirements a record attests to, and `run --status` asks it to count the requirements that
+/// have an outcome, so the two reports agree about every record. Until 1.3.3 this was private to
+/// [`crate::runs`] and `--status` counted every outcome [`outcome_of`] returns, `not-run` included,
+/// so a run read "6 of 6" from the moment it started while `--check` named all six as unrecorded.
+/// runbook-execution's "A run's progress is reported from its record" now states the count by this
+/// reading. [`outcome_of`] still answers what a report *shows*: a `not-run` is listed as the record
+/// states it, and only not counted.
+///
+/// The values come from the schema rather than from a list here, as the validator's own `has_run`
+/// reads them: only the "not run" outcome means nothing was checked, so it is found by a stem and
+/// every other value the schema enumerates counts as having run. A literal `"not-run"` here would
+/// be a second statement of a value the schema owns, and `tests/schema_rust_split.rs` exists
+/// because that is a thing this project has done wrong before. The stem would also catch a value
+/// the schema added later that holds "not"; the test
+/// `only_an_outcome_the_schema_enumerates_counts_as_recorded` holds the vocabulary to exactly one
+/// value that attests to nothing, `not-run`, which is what runbook-execution's "A run's progress is
+/// reported from its record" states, so such a value fails it until someone decides what it means.
+///
+/// An absent outcome counts as *not* having run. The schema requires one, so a verification without
+/// it is a document the validator reports — and treating an absent value as a recorded outcome would
+/// make a malformed record satisfy the contract.
+///
+/// **Not the validator's `has_run`**, in `htmlspec_validate::rules::review`, which answers another
+/// question — whether a verification's check can have gone stale — and counts a value the schema
+/// does not enumerate as having run. Here such a value attests to nothing, so a typo cannot satisfy
+/// the contract. The two differ on exactly that case, and the test
+/// `only_an_outcome_the_schema_enumerates_counts_as_recorded` pins this one's answer.
+pub(crate) fn has_run(outcome: Option<&str>) -> bool {
+    let Some(outcome) = outcome else {
+        return false;
+    };
+    let enumerated =
+        htmlspec_validate::schema_facts::enum_values("definitions/verification/properties/outcome");
+    // **The outcome must be one the schema enumerates.** An earlier version asked only "is it not
+    // the not-run one", which an unenumerated value answers `true` — so `data-outcome="notrun"`, a
+    // typo, reported the run as conforming. Measured: `each run of rb records what the runbook
+    // states`.
+    //
+    // A value outside the vocabulary is not a recorded outcome. It is a document the validator
+    // reports, and treating it as a recorded pass would let a typo satisfy the contract — the same
+    // reasoning that makes an *absent* outcome count as not having run.
+    //
+    // Still no literal `"not-run"` here: the vocabulary and the not-run member both come from the
+    // schema, which is what `tests/schema_rust_split.rs` exists to keep true.
+    if !enumerated.iter().any(|value| value == outcome) {
+        return false;
+    }
+    !enumerated
+        .into_iter()
+        .filter(|value| value.contains("not"))
+        .any(|value| value == outcome)
+}
+
 /// What a report calls a verification: the requirement it references first, or else its own
 /// identifier. The rule names a verification that did not pass this way.
 pub(crate) fn named_by(verification: &htmlspec_parse::model::Verification) -> Option<&str> {
@@ -904,6 +960,53 @@ mod tests {
     impl Drop for Scratch {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    /// An outcome the schema does not enumerate is not a recorded outcome.
+    ///
+    /// Measured before the fix: `data-outcome="notrun"` — a typo — reported the run as conforming,
+    /// because the filter kept schema values containing `not` and an unknown string matched none of
+    /// them. An absent outcome was already handled; an unrecognized one fell through to "ran".
+    ///
+    /// Moved here from `runs` with the function at 1.3.3, when `run --status` began counting by it.
+    ///
+    /// **Every value the schema lists is held to one split**: `not-run` attests to nothing, and
+    /// every other value attests, which is what runbook-execution's "A run's progress is reported
+    /// from its record" states. The function finds the not-run value by a stem, so a value the
+    /// schema later added holding "not" would stop counting while the contract says it counts; the
+    /// loop fails on it until someone decides, and so does the validator's own
+    /// `the_not_run_outcome_is_found_in_the_schema`, which holds its function to the same split.
+    /// The typos below are the one place this function and the validator's differ.
+    #[test]
+    fn only_an_outcome_the_schema_enumerates_counts_as_recorded() {
+        let listed = htmlspec_validate::schema_facts::enum_values(
+            "definitions/verification/properties/outcome",
+        );
+        assert!(
+            listed.iter().any(|value| value == "not-run"),
+            "the schema no longer lists not-run: {listed:?}"
+        );
+        for value in &listed {
+            assert_eq!(
+                has_run(Some(value)),
+                value != "not-run",
+                "{value:?}: the contract counts every listed outcome but not-run"
+            );
+        }
+        for counted in ["passed", "failed", "blocked", "partial"] {
+            assert!(
+                has_run(Some(counted)),
+                "{counted} did not count as a check that ran"
+            );
+        }
+        assert!(!has_run(Some("not-run")), "not-run records no outcome");
+        assert!(!has_run(None), "an absent outcome records none");
+        for typo in ["notrun", "not run", "NOT-RUN", "ran", ""] {
+            assert!(
+                !has_run(Some(typo)),
+                "{typo:?} is outside the schema's vocabulary and counted as a recorded outcome"
+            );
         }
     }
 

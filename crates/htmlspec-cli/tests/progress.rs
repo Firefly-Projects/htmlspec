@@ -317,6 +317,11 @@ fn each_run_gets_one_line_in_name_order() {
 
 /// One run: every step with its state, a dropped step's reason, each requirement's outcome, the
 /// release the record states, and the verdict, in text and in the payload.
+///
+/// The requirement's one outcome is the `not-run` the start writes, so it is listed and not
+/// counted: runbook-execution's "A run's progress is reported from its record" counts only an
+/// outcome that says its check ran. Until 1.3.3 this test expected "1 of 1", which pinned the
+/// defect rather than the rule.
 #[test]
 fn one_run_shows_its_steps_outcomes_release_and_verdict() {
     let scratch = Scratch::new("one-run");
@@ -341,7 +346,7 @@ fn one_run_shows_its_steps_outcomes_release_and_verdict() {
          \x20 1. dropped      The first step\n\
          \x20                 reason: Not needed this time.\n\
          \x20 2. in progress  The second step\n\
-         Requirements: 1 of 1 have an outcome\n\
+         Requirements: 0 of 1 have an outcome\n\
          \x20 not-run  req-example\n\
          Runbook release: 0.1.0\n\
          Finished and passed: no, it has no task done, so it records no work\n"
@@ -384,19 +389,28 @@ fn one_run_shows_its_steps_outcomes_release_and_verdict() {
     assert_eq!(payload["records"][0]["steps"][1]["state"], "in-progress");
 }
 
-/// Each outcome a requirement can record is shown as recorded, and only `passed` passes.
+/// Each outcome a requirement can record is shown as recorded, and only `passed` passes. Every
+/// outcome but `not-run` says its check ran, so it is counted, and `not-run` is listed and not.
 #[test]
 fn every_outcome_is_shown_as_recorded() {
     let scratch = Scratch::new("outcomes");
     let project = Project::new(&scratch);
     project.ok(&["new", "runbook", "backup"]);
-    for recorded in ["passed", "failed", "blocked", "partial", "not-run"] {
+    for (recorded, counted) in [
+        ("passed", 1),
+        ("failed", 1),
+        ("blocked", 1),
+        ("partial", 1),
+        ("not-run", 0),
+    ] {
         project.started("backup", recorded, |source| {
             outcome(&steps(&source, "done", 2), recorded)
         });
         let out = project.ok(&["run", "backup", "--status", recorded]);
         assert!(
-            out.contains(&format!("  {recorded}  req-example\n")),
+            out.contains(&format!(
+                "Requirements: {counted} of 1 have an outcome\n  {recorded}  req-example\n"
+            )),
             "{out}"
         );
         let verdict = if recorded == "passed" {
@@ -549,6 +563,220 @@ fn the_report_and_preflight_agree_about_every_record() {
     assert!(
         withdrawn.ends_with("Finished and passed: no, it recorded failed for req-example\n"),
         "{withdrawn}"
+    );
+}
+
+/// `runbook`'s specification with a second requirement, `req-second`, after `req-example`.
+fn a_second_requirement(project: &Project, runbook: &str) {
+    let specification = project.runbook(runbook).join("specification.html");
+    let source = std::fs::read_to_string(&specification).expect("the specification reads");
+    let unit = "          <section class=\"requirement\" id=\"req-second\" \
+                data-change=\"unchanged\">\n\
+         \x20           <h3>A second obligation <span class=\"hs-id\">req-second</span></h3>\n\
+         \x20           <p>A run MUST record a second thing.</p>\n\
+         \x20           <article class=\"scenario\" id=\"scenario-second\" \
+         data-change=\"unchanged\">\n\
+         \x20             <h4>The second thing</h4>\n\
+         \x20             <dl>\n\
+         \x20               <dt>When</dt>\n\
+         \x20               <dd>A run ends.</dd>\n\
+         \x20               <dt>Then</dt>\n\
+         \x20               <dd>The second thing is recorded.</dd>\n\
+         \x20             </dl>\n\
+         \x20           </article>\n\
+         \x20         </section>\n";
+    let written = source.replace(
+        "        </section>\n      </main>",
+        &format!("{unit}        </section>\n      </main>"),
+    );
+    assert_ne!(written, source, "the second requirement was not added");
+    std::fs::write(&specification, written).expect("rewritten");
+    project.ok(&["format", &specification.to_string_lossy()]);
+}
+
+/// A record's outcomes set in the record's order: its first `not-run` to `given[0]`, its second to
+/// `given[1]`, and so on, one for each the start wrote.
+fn outcomes(source: &str, given: &[&str]) -> String {
+    let pieces: Vec<&str> = source.split("data-outcome=\"not-run\"").collect();
+    assert_eq!(
+        pieces.len(),
+        given.len() + 1,
+        "the record holds {} outcome(s), and {} were given",
+        pieces.len() - 1,
+        given.len()
+    );
+    let mut written = String::from(pieces[0]);
+    for (outcome, piece) in given.iter().zip(&pieces[1..]) {
+        written.push_str(&format!("data-outcome=\"{outcome}\""));
+        written.push_str(piece);
+    }
+    written
+}
+
+/// A record without the verification that references `requirement`.
+fn unverified(source: &str, requirement: &str) -> String {
+    let refs = format!("data-refs=\"{requirement}\"");
+    let mut from = 0;
+    while let Some(found) = source[from..].find("<section class=\"verification\"") {
+        let opening = from + found;
+        let closing =
+            opening + source[opening..].find("</section>").expect("it closes") + "</section>".len();
+        if source[opening..closing].contains(&refs) {
+            return format!("{}{}", &source[..opening], &source[closing..]);
+        }
+        from = closing;
+    }
+    panic!("no verification references {requirement}");
+}
+
+/// A record with a second verification of `requirement`, recording `outcome`, after its first
+/// verification.
+fn verified_again(source: &str, requirement: &str, outcome: &str) -> String {
+    let opening = source
+        .find("<section class=\"verification\"")
+        .expect("a verification");
+    let after =
+        opening + source[opening..].find("</section>").expect("it closes") + "</section>".len();
+    format!(
+        "{}<section class=\"verification\" id=\"verify-again\" data-change=\"unchanged\" \
+         data-outcome=\"{outcome}\" data-refs=\"{requirement}\"><h3>Checked again \
+         <span class=\"hs-id\">verify-again</span></h3><p data-field=\"method\">Looked again.</p>\
+         </section>{}",
+        &source[..after],
+        &source[after..]
+    )
+}
+
+/// One record of [`the_count_agrees_with_check_about_every_record`].
+struct Case {
+    /// The record's name.
+    record: &'static str,
+    /// How the record is edited after the start writes it.
+    edit: fn(String) -> String,
+    /// The requirements the rule says it attests to, which the count counts and `--check`
+    /// records, in `--check`'s order.
+    attested: &'static [&'static str],
+}
+
+/// The count and `--check` agree about every record: a requirement is counted exactly where the
+/// conformance report finds an outcome that attests to it, so a `not-run`, a typo, an empty outcome,
+/// and a missing verification are listed and not counted, and a requirement recorded twice counts
+/// once where either outcome says its check ran.
+///
+/// Measured against 1.3.2, which counted every outcome that is not empty: `a-started` read "2 of 2",
+/// where `--check` named both requirements as unrecorded.
+#[test]
+fn the_count_agrees_with_check_about_every_record() {
+    let scratch = Scratch::new("count-agrees");
+    let project = Project::new(&scratch);
+    project.ok(&["new", "runbook", "backup"]);
+    a_second_requirement(&project, "backup");
+
+    // Each record, how it is edited after the start, and the requirements the rule says it attests
+    // to, which the count counts and `--check` records.
+    let cases = [
+        Case {
+            record: "a-started",
+            edit: |source| source,
+            attested: &[],
+        },
+        Case {
+            record: "b-one-passed",
+            edit: |source| outcomes(&source, &["passed", "not-run"]),
+            attested: &["req-example"],
+        },
+        Case {
+            record: "c-both-ran",
+            edit: |source| outcomes(&steps(&source, "done", 2), &["passed", "failed"]),
+            attested: &["req-example", "req-second"],
+        },
+        Case {
+            record: "d-blocked-and-partial",
+            edit: |source| outcomes(&source, &["blocked", "partial"]),
+            attested: &["req-example", "req-second"],
+        },
+        Case {
+            record: "e-a-typo",
+            edit: |source| outcomes(&source, &["notrun", "passed"]),
+            attested: &["req-second"],
+        },
+        Case {
+            record: "f-one-unverified",
+            edit: |source| unverified(&outcomes(&source, &["passed", "not-run"]), "req-second"),
+            attested: &["req-example"],
+        },
+        Case {
+            record: "g-recorded-twice",
+            edit: |source| {
+                verified_again(
+                    &outcomes(&source, &["not-run", "not-run"]),
+                    "req-example",
+                    "passed",
+                )
+            },
+            attested: &["req-example"],
+        },
+        Case {
+            record: "h-an-empty-outcome",
+            edit: |source| outcomes(&source, &["", "passed"]),
+            attested: &["req-second"],
+        },
+    ];
+    for case in &cases {
+        project.started("backup", case.record, case.edit);
+    }
+
+    let check = project.payload(&["run", "backup", "--check"]);
+    let required: Vec<&str> = check["required"]
+        .as_array()
+        .expect("the requirements the runbook states")
+        .iter()
+        .map(|id| id.as_str().expect("an identifier"))
+        .collect();
+    assert_eq!(required, ["req-example", "req-second"]);
+    for Case {
+        record, attested, ..
+    } in &cases
+    {
+        let out = project.ok(&["run", "backup", "--status", record]);
+        assert!(
+            out.contains(&format!(
+                "Requirements: {} of 2 have an outcome\n",
+                attested.len()
+            )),
+            "{record}: {out}"
+        );
+        let run = check["runs"]
+            .as_array()
+            .expect("the runs")
+            .iter()
+            .find(|run| run["record"] == format!("{record}.html"))
+            .unwrap_or_else(|| panic!("--check reads no record {record}: {check:#}"));
+        let recorded: Vec<&str> = run["recorded"]
+            .as_array()
+            .expect("what it recorded")
+            .iter()
+            .map(|id| id.as_str().expect("an identifier"))
+            .filter(|id| required.contains(id))
+            .collect();
+        assert_eq!(recorded, *attested, "{record}: --check read {run}");
+    }
+
+    // The lines keep each outcome as the record states it, whether or not it is counted.
+    let typo = project.ok(&["run", "backup", "--status", "e-a-typo"]);
+    assert!(
+        typo.contains("  notrun  req-example\n  passed  req-second\n"),
+        "{typo}"
+    );
+    let twice = project.ok(&["run", "backup", "--status", "g-recorded-twice"]);
+    assert!(
+        twice.contains("  not-run, passed  req-example\n  not-run          req-second\n"),
+        "{twice}"
+    );
+    let unverified = project.ok(&["run", "backup", "--status", "f-one-unverified"]);
+    assert!(
+        unverified.contains("  passed      req-example\n  no outcome  req-second\n"),
+        "{unverified}"
     );
 }
 

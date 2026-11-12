@@ -256,7 +256,7 @@
             <h3>A run's progress is reported from its record <span class="hs-id">req-a-run-s-progress-is-reported-from-its-record</span></h3>
             <p><code>htmlspec run &lt;runbook&gt; --status</code> SHALL report every file under the runbook's <code>runs/</code>, one line each, in name order, and SHALL say that the order is name order, because a record states no time. For each run it SHALL state the steps done of the total and the steps dropped, and then the steps in progress, or the first step neither done nor dropped where none is in progress, or that the run finished and whether it passed.</p>
             <p>Whether a run finished and passed SHALL be decided by the rule runbook-portability's "A prerequisite run is met by a finished, passed record" states, without a lowest release, and by the code the run check applies, so the report and preflight give one answer about every record. A run that did not pass, and a file not read as a run's record, SHALL be named with the first reason that rule gives, in its words.</p>
-            <p><code>htmlspec run &lt;runbook&gt; --status &lt;record&gt;</code> SHALL report the run recorded under that name, matched byte for byte against the names the runbook's <code>runs/</code> holds: every step in order with its state and its heading, each dropped step's reason, each requirement the record carries with an identifier and does not withdraw, with the outcomes recorded for it, the outcome of every other verification the record holds, the runbook release the record's head states, and whether it is finished and passed. An absent or empty outcome SHALL be shown as no outcome, as the rule reads it, and every verification the rule reads SHALL be shown, so a verdict never names an outcome the report leaves out.</p>
+            <p><code>htmlspec run &lt;runbook&gt; --status &lt;record&gt;</code> SHALL report the run recorded under that name, matched byte for byte against the names the runbook's <code>runs/</code> holds: every step in order with its state and its heading, each dropped step's reason, each requirement the record carries with an identifier and does not withdraw, with the outcomes recorded for it, the outcome of every other verification the record holds, the runbook release the record's head states, and whether it is finished and passed. An absent or empty outcome SHALL be shown as no outcome, as the rule reads it, and every verification the rule reads SHALL be shown, so a verdict never names an outcome the report leaves out. The count of the requirements that have an outcome SHALL count a requirement only where a verification referencing it records an outcome that says its check ran: one the schema's vocabulary of outcomes lists, other than <code>not-run</code>, which is how "A run's conformance to its runbook's contract is reported and never gated" reads a record, so the two reports agree about which requirements a record attests to. A requirement whose only outcomes say no check ran SHALL still be listed with them.</p>
             <p>The report SHALL write nothing, and SHALL exit 0 whatever the runs say. It SHALL exit 2 when the runbook or the record is not there, naming the records the runbook has. With <code>--json</code> it SHALL write the payload <code>run</code>'s published schema states. A name or text a record or a directory holds SHALL reach the terminal with each character a terminal would act on written by its code point.</p>
             <article class="scenario" id="scenario-every-run-on-one-line" data-change="unchanged">
               <h4>Every run on one line</h4>
@@ -331,6 +331,28 @@
                 <dd><code>htmlspec run backup --status v9</code> names no record the runbook holds, or names one with its <code>.html</code>, as a path, or in another case</dd>
                 <dt>Then</dt>
                 <dd>it exits 2, naming the records the runbook has, and writes nothing</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-run-just-started" data-change="unchanged">
+              <h4>A run just started</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a run just started of a runbook stating two requirements, whose record holds the <code>not-run</code> outcome the start writes for each</dd>
+                <dt>When</dt>
+                <dd><code>htmlspec run backup --status</code> names that run's record</dd>
+                <dt>Then</dt>
+                <dd>both requirements are listed with <code>not-run</code>, the report says 0 of 2 have an outcome, and <code>htmlspec run backup --check</code> names both as unrecorded</dd>
+              </dl>
+            </article>
+            <article class="scenario" id="scenario-a-requirement-recorded-twice" data-change="unchanged">
+              <h4>A requirement recorded twice</h4>
+              <dl>
+                <dt>Given</dt>
+                <dd>a record whose first requirement has two verifications, one <code>not-run</code> and one <code>passed</code>, and whose second has one, <code>not-run</code></dd>
+                <dt>When</dt>
+                <dd>the run is reported</dd>
+                <dt>Then</dt>
+                <dd>the first requirement is listed with both outcomes and counted, the second is listed with <code>not-run</code> and not counted, the report says 1 of 2 have an outcome, and <code>--check</code> names the second alone</dd>
               </dl>
             </article>
           </section>

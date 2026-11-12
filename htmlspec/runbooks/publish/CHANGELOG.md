@@ -5,6 +5,32 @@ What this runbook's releases are. A release is the pair of canonical documents â
 identifies one such pair. Nothing else moves it: a run's record is history rather than procedure, so
 adding or editing one is not a release.
 
+## 0.5.0
+
+Published with the project's 1.4.0 release.
+
+**Eight steps ask for a person's go in their own words.** The bootstrap, the push and merge,
+the tag, the co-owner, and the landing of the record each say to stop before their first write;
+the watch step says to stop before each rerun or a renewed `HOMEBREW_TAP_TOKEN`, since a rerun of
+the crates job publishes, and reruns one job per go, by its id, where `gh run rerun --failed`
+would rerun every failed job at once; the channel step says to stop before `brew install`, which
+installs into the machine; and the review step says to stop before pushing a readiness pull
+request. Each asks the contributor and quotes the answer in the step's note, and a go is the
+person's own words, typed in the session that works the run, never a relayed message. Nothing here
+asked for a go before, and the earlier records do not keep it one way: each of the seven that
+reached the push records a go before it, and each of the six that made the tag records one
+before it, but three paraphrase the go at the push and three at the tag, v1.3.0 keeps its tag's
+go in step 4's note, and only v1.3.1 and v1.3.2 quote each go in its own step. The v1.3.3
+record stopped after step 2, before any such write.
+`req-each-public-write-waits-for-a-person-s-go` states the hazard and the one way to keep the
+go, quoted in the note of each step it allows, so a run started from this release owes seven
+outcomes. It names every gated step but step 9, which is taken after the record's review, when
+every outcome is already recorded. What this procedure consumes names the person.
+
+**What this release does not do.** The nine steps, their order, and the six requirements already
+stated are unchanged, and so are their commands but step 6's rerun. It is a minor release because
+a requirement is added.
+
 ## 0.4.0
 
 Published with the project's 1.3.1 release.

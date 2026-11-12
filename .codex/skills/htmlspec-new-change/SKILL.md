@@ -5,7 +5,7 @@ allowed-tools: Bash(htmlspec:*), Read, Write, Edit, Glob, Grep
 argument-hint: [a description of the work]
 license: MIT
 metadata:
-  generatedBy: htmlspec 1.3.2
+  generatedBy: htmlspec 1.4.0
 ---
 
 Start an html-spec change.
@@ -87,6 +87,9 @@ step `todo`. `htmlspec run <name> --as <record>` starts a run of it, and
 `htmlspec run <name> --status` shows how far each run has come. Name the record after `--status`
 to see that run's steps, the outcome recorded for each requirement, and whether it is finished
 and passed.
+
+The `runbook` workflow writes its documents: the hazards and what each run records, the steps,
+and the steps that wait for a person.
 
 **Where one runbook must run only after another has run, declare it; do not write the order as
 prose.** A sentence saying "run the backup first" is read by nobody but a person. Declare it

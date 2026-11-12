@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="1.0.0" name="htmlspec-version">
+    <meta content="proposal" name="htmlspec-kind">
+    <title>Count only the checks a run ran</title>
+    <style>
+      @layer htmlspec-fallback {
+        body { margin: 0; padding: 2rem max(1rem, calc((100% - 44rem) / 2)); background: #fdfcfa; color: #1a1a1a; font-family: Charter, Georgia, "Times New Roman", Times, serif; font-size: 1.0625rem; line-height: 1.55; }
+        code, kbd, samp { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.88em; }
+        pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.8rem; line-height: 1.45; background: #f2efe9; border-left: 2px solid #d6d2ca; padding: 0.7rem 0.9rem; margin: 0.4rem 0; overflow-x: auto; }
+        .hs-skip-link { position: absolute; left: -9999px; top: 0; }
+        .hs-skip-link:focus { left: 1.5rem; top: 1.5rem; }
+      }
+    </style>
+    <link href="../../../assets/sha256-03627137bcbb81c9/htmlspec.css" rel="stylesheet">
+    <link href="../../../assets/sha256-04ac9a24fc436a87/htmlspec-print.css" media="print" rel="stylesheet">
+  </head>
+  <body>
+    <a class="hs-skip-link" href="#hs-content">Skip to content</a>
+    <div class="hs-page">
+      <header class="hs-masthead">
+        <h1>Count only the checks a run ran</h1>
+        <p>Three defects, fixed in one patch release, 1.3.3. <code>htmlspec run --status</code> counts a requirement whose only outcome is <code>not-run</code> as having an outcome, where <code>--check</code>, reading the same record, says nothing attests to it. Three tests of the asset-topology fixtures share two scratch directories and delete each other's files, which failed the check suite on <code>main</code> three times in October. And <code>htmlspec instructions --help</code> names seven of the nine stages the program installs. Each fix is small, none changes the recorded command surface, and the first gives the progress report's count a rule it does not have today.</p>
+        <dl class="hs-meta">
+          <dt>Kind</dt>
+          <dd><span class="hs-kind">proposal</span></dd>
+          <dt>Contract</dt>
+          <dd>1.0.0</dd>
+          <dt>Subject</dt>
+          <dd>Count only the checks a run ran</dd>
+        </dl>
+      </header>
+      <main class="hs-main" id="hs-content">
+        <section id="hs-why">
+          <h2>Why</h2>
+          <h3>The progress report counts a check that did not run</h3>
+          <p>The two reports a runbook's runs have disagree about one record. With the 1.3.2 binary, on this repository's publish runbook:</p>
+          <pre><code>$ htmlspec run publish --status v1.2.2
+…
+Requirements: 6 of 6 have an outcome
+  passed   req-the-public-repository-is-reached-only-through-the-export-and-the-api
+  not-run  req-the-tag-names-the-public-merge-commit-and-the-archived-version
+  passed   req-the-first-run-leaves-the-ruleset-active
+  passed   req-only-an-archived-and-merged-release-is-published
+  not-run  req-each-channels-version-is-recorded
+  passed   req-the-pinned-toolchain-is-what-runs
+…
+$ htmlspec run publish --check
+…
+2 unrecorded requirement(s) across 7 run(s). …</code></pre>
+          <p>The two <code>not-run</code> requirements are the two <code>--check</code> names. <code>htmlspec run --as</code> writes one <code>not-run</code> verification per requirement, so the record lists what it owes, and by the progress report's count every new run reads "6 of 6" from the moment it starts.</p>
+          <p><code>--check</code> is right. runbook-execution's "A record carries the procedure it ran and the obligations it attests to" requires a record to state an outcome and how that outcome was reached, and <code>not-run</code> states neither. The same specification's "A run's conformance to its runbook's contract is reported and never gated" is what <code>--check</code> carries out, and it reads <code>not-run</code> as nothing attested. "A run's progress is reported from its record", the requirement <code>--status</code> carries out, is silent on the count: it says only that an absent or empty outcome is shown as no outcome. The code answers one question two ways. The progress report counts any outcome that is not empty, through <code>outcome_of</code> in <code>prerequisites.rs</code>; <code>--check</code> asks <code>has_run</code>, private to <code>runs.rs</code>, which excludes <code>not-run</code> and any value the schema does not list. A test pins the defect: <code>one_run_shows_its_steps_outcomes_release_and_verdict</code> expects "1 of 1 have an outcome" beside a <code>not-run</code> line.</p>
+          <h3>Three topology tests delete each other's files</h3>
+          <p>In <code>conformance/tests/topology.rs</code>, <code>Scratch::new</code> names its directory <code>htmlspec-topology-fixture-{label}-{pid}</code>, and removes it at the start and again when it is dropped. The tests of one test binary run on threads of one process, so they share the process id. <code>every_project_fixture_reports_the_duplication_it_declares</code> builds all five fixtures, and two other tests each build one of them under the same label, so two threads can hold one directory, and one thread's removal deletes the tree the other is still writing or reading. The check suite failed on <code>main</code> three times this way, each a push run of <code>check</code> whose log still shows it:</p>
+          <ul>
+            <li>2 October, run 37021000931: <code>every_project_fixture_reports_the_duplication_it_declares</code> panicked at <code>topology.rs:119</code>, "the scratch store is created: … NotFound".</li>
+            <li>23 October, run 39879572276: the same test, the same panic.</li>
+            <li>27 October, run 40552369480: <code>a_duplication_report_names_every_location_holding_the_bytes</code> found "these 2 locations hold identical bytes" where its fixture builds four, and reported "the report omits proposal/htmlspec.js".</li>
+          </ul>
+          <p>toolchain-packaging's "Project checks are runnable as one command" requires the one command contributors and continuous integration both run to verify the same thing, and a stage that fails at random verifies nothing a reader can trust.</p>
+          <h3>The help names seven of nine stages</h3>
+          <pre><code>$ htmlspec instructions --help
+…
+  &lt;STAGE&gt;
+          The stage: explore, new, continue, ff, apply, verify, or archive</code></pre>
+          <p>The help is a doc comment on <code>InstructionsArgs</code> in <code>crates/htmlspec-cli/src/lib.rs</code>, written by hand on 30 August. <code>sync</code> joined the workflow table the next day and <code>migrate</code> on 13 September, and nothing held the comment to the table. The error for a stage the table lacks, in <code>commands.rs</code>, builds its list from <code>WORKFLOWS</code>, which is why it names all nine. Both spellings, <code>instructions</code> and <code>get instructions</code>, share the one struct, so both show the stale list.</p>
+        </section>
+        <section id="hs-what-changes">
+          <h2>What changes</h2>
+          <ul>
+            <li><strong>One definition of a recorded outcome.</strong> <code>has_run</code> moves from <code>runs.rs</code> to <code>prerequisites.rs</code>, beside <code>outcome_of</code>, crate-visible, and the progress report counts a requirement as having an outcome only where a verification referencing it records one that says its check ran. Each requirement's line keeps its raw values, so <code>not-run</code> is still shown. runbook-execution's "A run's progress is reported from its record" gains a sentence saying so, with scenarios of a run just started and of a requirement recorded twice.</li>
+            <li><strong>The pinned test states the right count.</strong> <code>one_run_shows_its_steps_outcomes_release_and_verdict</code> expects "0 of 1" beside its <code>not-run</code> line. New tests hold the count for each outcome and hold the report to <code>--check</code> on every record they write.</li>
+            <li><strong>Every scratch directory is unique.</strong> <code>Scratch::new</code> adds the next value of a process-wide atomic counter to the directory's name, so two calls with one label get two paths, and a test holds that two scratches built with one label are distinct and that removing one leaves the other.</li>
+            <li><strong>The help is built from the table.</strong> The stage argument's help is an expression over <code>WORKFLOWS</code> rather than a hand-written list, and a test holds the help of both spellings to every row.</li>
+            <li><strong>Release 1.3.3.</strong> The workspace version, the installed instruction files' stamps, the changelog with an Upgrading note, and the README's line for the release.</li>
+          </ul>
+          <p>What working looks like: on this repository, <code>htmlspec run publish --status v1.2.2</code> reads "Requirements: 4 of 6 have an outcome", with the two <code>not-run</code> lines still listed, and <code>--check</code> still names those two. A run just started reads "0 of 6". The topology tests pass when the suite runs them on its threads, however the threads interleave. And <code>htmlspec instructions --help</code> reads "The stage: migrate, explore, new, continue, ff, apply, verify, sync, or archive", as <code>get instructions --help</code> does.</p>
+        </section>
+        <section id="hs-alternatives">
+          <h2>Alternatives considered</h2>
+          <ul>
+            <li><strong>Count with <code>outcome_of</code> and let <code>--check</code> follow it.</strong> That makes the wrong report the rule. A record that has recorded nothing would conform from its first moment, which is the case the conformance report exists to catch.</li>
+            <li><strong>Leave the count and change its words</strong>, to "6 of 6 have a verification". It describes what the code counts, and it counts nothing a reader asks about: the start writes a verification for every requirement, so the number is always the total.</li>
+            <li><strong>Share the validator's <code>has_run</code>.</strong> <code>rules/review.rs</code> has a function of the same name for the stale-verification rule, and it counts a value the schema does not list as having run. That is right for its question, whether a recorded check can go stale, and wrong for this one, where a typo must not attest. Making either crate's function public to the other would change a published crate's interface to answer a question one crate asks.</li>
+            <li><strong>Make <code>tempfile</code> a dependency of the conformance crate.</strong> It is in <code>Cargo.lock</code>, but only beneath <code>proptest</code> and <code>rusty-fork</code>. A counter does the same job in three lines, and adds nothing to review on the next upgrade.</li>
+            <li><strong>Give each test its own label.</strong> It would fix these three tests, and leave the next test written against the same fixtures to pick a label nobody else uses. The counter makes the collision impossible however the tests are written.</li>
+            <li><strong>List the stages as clap's possible values.</strong> clap would print them in the help, and also record them in the command surface, which <code>crates/htmlspec-cli/src/surface.rs</code> reads from the parser, so a stage would join the 1.3 surface as a value, a patch release would change the recorded surface, and clap's own error would replace the program's message for a stage it does not know.</li>
+          </ul>
+        </section>
+        <section id="hs-scope">
+          <h2>Scope</h2>
+          <ul>
+            <li>It changes no command, flag, exit code, or payload field. The <code>--json</code> payload of <code>run --status</code> carries each requirement's outcomes and no count, so it does not change, and the help's wording is not part of the surface: toolchain-packaging's "The command surface is stable within a major version" says the wording of human-readable output is not covered. It is a patch release, 1.3.3, and <code>tests/surface/1.3.json</code> does not move.</li>
+            <li>It does not change what a run check, preflight, or <code>--check</code> decides about any record, or what the verdict line says. The verdict keeps reading <code>not-run</code> as "an outcome other than passed", as runbook-portability's "A prerequisite run is met by a finished, passed record" reads it.</li>
+            <li>It does not change the validator's own <code>has_run</code> or the stale-verification rule.</li>
+            <li>It does not change any other test file's scratch directories. The tools crate's <code>Scratch</code> already names each directory with a counter, as this fix does. A search of the other files found no label written into a test that two tests give a scratch directory, and found the repeated ones to be subdirectories inside one test's scratch; labels a helper passes on from its callers were not traced, and a later failure there takes the same fix.</li>
+            <li>It adds no stage and changes no workflow body.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script defer="" src="../../../assets/sha256-18327bef70d96fb5/mermaid.min.js"></script>
+    <script defer="" src="../../../assets/sha256-70bfdc84b15f11f3/vega.min.js"></script>
+    <script defer="" src="../../../assets/sha256-35a9821df838825b/vega-lite.min.js"></script>
+    <script defer="" src="../../../assets/sha256-c36254270219eee5/vega-embed.min.js"></script>
+    <script defer="" src="../../../assets/sha256-84427613110957a7/htmlspec.js"></script>
+  </body>
+</html>
